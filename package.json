@@ -41,7 +41,7 @@
 		"@playwright/test": "^1.56.1",
 		"@sveltejs/adapter-auto": "3.2.2",
 		"@sveltejs/adapter-static": "^3.0.2",
-		"@sveltejs/kit": "2.52.2",
+		"@sveltejs/kit": "2.57.1",
 		"@sveltejs/vite-plugin-svelte": "^3.1.2",
 		"@tailwindcss/typography": "^0.5.13",
 		"@types/file-saver": "^2.0.7",
@@ -101,7 +101,7 @@
 		"codemirror-lang-hcl": "^0.0.0-beta.2",
 		"crc-32": "^1.2.2",
 		"dayjs": "^1.11.10",
-		"dompurify": "^3.1.6",
+		"dompurify": "3.4.0",
 		"eventsource-parser": "^1.1.2",
 		"file-saver": "^2.0.5",
 		"fuse.js": "^7.0.0",
@@ -139,11 +139,11 @@
 	},
 	"overrides": {
 		"glob": {
-			"minimatch": "5.1.7"
+			"minimatch": "5.1.8"
 		},
-		"lodash-es": "4.17.23",
+		"lodash-es": "4.18.0",
 		"markdown-it": "14.1.1",
-		"tar": "7.5.8"
+		"tar": "7.5.11"
 	},
 	"engines": {
 		"node": ">=18.13.0 <=22.x.x",
