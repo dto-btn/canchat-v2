@@ -6,7 +6,10 @@ from typing import Optional, Union
 import requests
 
 from huggingface_hub import snapshot_download
-from langchain.retrievers import ContextualCompressionRetriever, EnsembleRetriever
+from langchain_classic.retrievers import (
+    ContextualCompressionRetriever,
+    EnsembleRetriever,
+)
 from langchain_community.retrievers import BM25Retriever
 from langchain_core.documents import Document
 
