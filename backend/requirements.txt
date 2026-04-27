@@ -26,8 +26,9 @@ crewai-tools[mcp]>=0.76.0 # >0.76.0 require lancedb~=0.5.4 and are way past that
 litellm==1.83.0  # Required by CrewAI for Azure OpenAI integration
 
 langchain==1.2.15
+langchain-classic==1.0.4
 langchain-community==0.4.1
-langchain-core==1.2.31
+langchain-core==1.3.2
 langchain-text-splitters==1.1.2
 ## MCP (Model Context Protocol)
 fastmcp==3.2.0
