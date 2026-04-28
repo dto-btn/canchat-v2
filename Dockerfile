@@ -33,6 +33,8 @@ RUN npm ci && npm cache clean --force
 
 COPY . .
 ENV APP_BUILD_HASH=${BUILD_HASH}
+# Increase Node's memory limit to 4GB to prevent heap crashes during Vite build
+#ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN npm run ${BUILD_MODE} && \
     # Cleanup node_modules and other build artifacts to reduce layer size
     rm -rf node_modules .svelte-kit src static/pyodide package-lock.json
@@ -67,7 +69,13 @@ ENV RAG_EMBEDDING_MODEL="$USE_EMBEDDING_MODEL_DOCKER" \
 
 # Install system dependencies for model downloads
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc python3-dev curl && \
+    apt-get install -y --no-install-recommends \
+        gcc \
+        python3-dev \
+        curl \
+        libgl1 \
+        libglib2.0-0 \
+        libsndfile1 && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/*
 
 # Create model directories
@@ -91,7 +99,7 @@ RUN python -c "import os; from sentence_transformers import SentenceTransformer;
     python -c "import os; from faster_whisper import WhisperModel; WhisperModel(os.environ['WHISPER_MODEL'], device='cpu', compute_type='int8', download_root=os.environ['WHISPER_MODEL_DIR'])" && \
     python -c "import os; import tiktoken; tiktoken.get_encoding(os.environ['TIKTOKEN_ENCODING_NAME'])" && \
     HF_HOME="/models/txtai" python -c "import os; from txtai.embeddings import Embeddings; e = Embeddings(); e.load(provider='huggingface-hub', container='neuml/txtai-wikipedia')" && \
-    python -c "import os; from transformers import pipeline; pipeline('translation', model='Helsinki-NLP/opus-mt-fr-en', device='cpu')" && \
+    python -c "from transformers import AutoTokenizer, AutoModel; AutoTokenizer.from_pretrained('Helsinki-NLP/opus-mt-fr-en'); AutoModel.from_pretrained('Helsinki-NLP/opus-mt-fr-en')" && \
     # Cleanup after model downloads
     pip3 cache purge && \
     rm -rf /root/.cache /tmp/* /var/tmp/* && \
