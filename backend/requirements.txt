@@ -23,7 +23,7 @@ transformers==5.4.0
 ## CrewAI MCP Integration
 crewai[azure-ai-inference]==1.14.3
 crewai-tools[mcp]>=0.76.0 # >0.76.0 require lancedb~=0.5.4 and are way past that
-litellm==1.83.0  # Required by CrewAI for Azure OpenAI integration
+litellm==1.83.0  # Required by CrewAI for Azure OpenAI integration. 1.83.1+ requires pydantic that is in conflict with crewai
 
 langchain==1.2.15
 langchain-classic==1.0.4
