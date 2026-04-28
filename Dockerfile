@@ -33,8 +33,6 @@ RUN npm ci && npm cache clean --force
 
 COPY . .
 ENV APP_BUILD_HASH=${BUILD_HASH}
-# Increase Node's memory limit to 4GB to prevent heap crashes during Vite build
-#ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN npm run ${BUILD_MODE} && \
     # Cleanup node_modules and other build artifacts to reduce layer size
     rm -rf node_modules .svelte-kit src static/pyodide package-lock.json
