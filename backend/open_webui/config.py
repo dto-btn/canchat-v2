@@ -2054,7 +2054,7 @@ MODEL_CONTEXT_LENGTHS = PersistentConfig(
 )
 
 # You can provide a list of your own websites to filter after performing a web search.
-# This ensures the highest level of safety and reliability of the information sources.
+# This ensures the highest level of safety and reliability of the information sources
 RAG_WEB_SEARCH_DOMAIN_FILTER_LIST = PersistentConfig(
     "RAG_WEB_SEARCH_DOMAIN_FILTER_LIST",
     "rag.rag.web.search.domain.filter_list",
