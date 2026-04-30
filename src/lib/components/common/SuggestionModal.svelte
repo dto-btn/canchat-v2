@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { getContext, onMount } from 'svelte';
+	import { getI18n } from '$lib/utils/context';
+
+	import { onMount } from 'svelte';
 	import Modal from './Modal.svelte';
 	import { user } from '$lib/stores';
 	import { createSuggestion } from '$lib/apis/suggestions';
@@ -7,7 +9,7 @@
 
 	export let show = false;
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	let description = '';
 	let files: FileList | null = null;

@@ -1,10 +1,11 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import WikipediaGroundingConfig from './grounding/WikipediaGroundingConfig.svelte';
 	import { updateRAGConfig } from '$lib/apis/retrieval';
-	import { getContext } from 'svelte';
 	import { toast } from 'svelte-sonner';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let saveHandler: Function;
 

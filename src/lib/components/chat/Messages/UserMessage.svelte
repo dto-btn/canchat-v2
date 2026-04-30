@@ -1,7 +1,9 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import dayjs from 'dayjs';
 	import { toast } from 'svelte-sonner';
-	import { tick, getContext, onMount } from 'svelte';
+	import { tick } from 'svelte';
 
 	import { ariaMessage, models, settings } from '$lib/stores';
 	import { user as _user } from '$lib/stores';
@@ -13,8 +15,9 @@
 	import FileItem from '$lib/components/common/FileItem.svelte';
 	import Markdown from './Markdown.svelte';
 	import Image from '$lib/components/common/Image.svelte';
+	import DeleteConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let user;
 
@@ -35,6 +38,7 @@
 	let edit = false;
 	let editedContent = '';
 	let messageEditTextAreaElement: HTMLTextAreaElement;
+	let showDeleteConfirm = false;
 
 	let message = JSON.parse(JSON.stringify(history.messages[messageId]));
 	$: if (history.messages) {
@@ -82,7 +86,7 @@
 	};
 
 	const deleteMessageHandler = async () => {
-		deleteMessage(message.id);
+		showDeleteConfirm = true;
 	};
 </script>
 
@@ -426,3 +430,15 @@
 		</div>
 	</div>
 </div>
+
+<DeleteConfirmDialog
+	bind:show={showDeleteConfirm}
+	title={$i18n.t('Delete message?')}
+	on:confirm={() => {
+		deleteMessage(message.id);
+	}}
+>
+	<div class="text-sm text-gray-500">
+		{$i18n.t('Are you sure you want to delete this message?')}
+	</div>
+</DeleteConfirmDialog>

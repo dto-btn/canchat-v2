@@ -434,3 +434,36 @@ export const updateUserById = async (token: string, userId: string, user: UserUp
 
 	return res;
 };
+
+export const getUserByDomain = async (
+	token: string,
+	startDate: number,
+	endDate: number,
+	domain: string | undefined = undefined
+) => {
+	let error = null;
+	const domainParam = domain ? `&domain=${encodeURIComponent(domain)}` : '';
+	const url = `${WEBUI_API_BASE_URL}/users/count-per-domain?start_timestamp=${startDate}&end_timestamp=${endDate}${domainParam}`;
+	const res = await fetch(url, {
+		method: 'GET',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`
+		}
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			console.log(err);
+			error = err.detail;
+			return null;
+		});
+
+	if (error) {
+		throw error;
+	}
+
+	return res;
+};

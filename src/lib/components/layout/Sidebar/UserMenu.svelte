@@ -1,10 +1,9 @@
 <script lang="ts">
-	import { DropdownMenu } from 'bits-ui';
-	import { createEventDispatcher, getContext, onMount, tick } from 'svelte';
-	import { toast } from 'svelte-sonner';
+	import { getI18n } from '$lib/utils/context';
 
-	import { flyAndScale } from '$lib/utils/transitions';
-	import { goto } from '$app/navigation';
+	import { DropdownMenu } from 'bits-ui';
+	import { createEventDispatcher, tick } from 'svelte';
+
 	import ArchiveBox from '$lib/components/icons/ArchiveBox.svelte';
 	import {
 		showSettings,
@@ -12,14 +11,13 @@
 		activeUserIds,
 		USAGE_POOL,
 		mobile,
-		showSidebar,
-		user
+		showSidebar
 	} from '$lib/stores';
-	import { fade, slide } from 'svelte/transition';
+	import { fade } from 'svelte/transition';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import { userSignOut } from '$lib/apis/auths';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let show = false;
 	export let role = '';

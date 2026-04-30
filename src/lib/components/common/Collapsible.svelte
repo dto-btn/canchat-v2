@@ -1,6 +1,8 @@
 <script lang="ts">
-	import { getContext, createEventDispatcher } from 'svelte';
-	const i18n = getContext('i18n');
+	import { getI18n } from '$lib/utils/context';
+
+	import { createEventDispatcher } from 'svelte';
+	const i18n = getI18n();
 
 	import dayjs from '$lib/dayjs';
 	import duration from 'dayjs/plugin/duration';

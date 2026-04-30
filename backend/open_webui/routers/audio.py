@@ -25,6 +25,7 @@ from pydantic import BaseModel
 
 
 from open_webui.utils.auth import get_admin_user, get_verified_user
+from open_webui.utils.misc import validate_path
 from open_webui.config import (
     WHISPER_MODEL_AUTO_UPDATE,
     WHISPER_MODEL_DIR,
@@ -37,7 +38,6 @@ from open_webui.env import (
     DEVICE_TYPE,
     ENABLE_FORWARD_USER_INFO_HEADERS,
 )
-
 
 router = APIRouter()
 
@@ -471,6 +471,9 @@ def transcribe(request: Request, file_path):
 
         # save the transcript to a json file
         transcript_file = f"{file_dir}/{id}.json"
+
+        validate_path(transcript_file, CACHE_DIR)
+
         with open(transcript_file, "w") as f:
             json.dump(data, f)
 
@@ -498,6 +501,9 @@ def transcribe(request: Request, file_path):
 
             # save the transcript to a json file
             transcript_file = f"{file_dir}/{id}.json"
+
+            validate_path(transcript_file, CACHE_DIR)
+
             with open(transcript_file, "w") as f:
                 json.dump(data, f)
 
@@ -559,6 +565,8 @@ def transcription(
         file_dir = f"{CACHE_DIR}/audio/transcriptions"
         os.makedirs(file_dir, exist_ok=True)
         file_path = f"{file_dir}/{filename}"
+
+        validate_path(file_path, CACHE_DIR)
 
         with open(file_path, "wb") as f:
             f.write(contents)

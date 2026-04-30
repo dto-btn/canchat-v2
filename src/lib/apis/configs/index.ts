@@ -377,6 +377,9 @@ export interface ChatLifetimeScheduleInfo {
 	next_run: string | null;
 	lifetime_days: number;
 	schedule?: string;
+	schedule_cron?: string;
+	schedule_timezone?: string;
+	reason?: string;
 	error?: string;
 }
 

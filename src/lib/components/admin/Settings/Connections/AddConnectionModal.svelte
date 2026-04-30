@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { toast } from 'svelte-sonner';
-	import { getContext, onMount } from 'svelte';
-	const i18n = getContext('i18n');
+	import { getI18n } from '$lib/utils/context';
 
-	import { models } from '$lib/stores';
+	import { toast } from 'svelte-sonner';
+	import { onMount } from 'svelte';
+	const i18n = getI18n();
+
 	import { verifyOpenAIConnection } from '$lib/apis/openai';
 	import { verifyOllamaConnection } from '$lib/apis/ollama';
 	import { verifyMCPConnection } from '$lib/apis/mcp';
@@ -11,7 +12,6 @@
 	import Modal from '$lib/components/common/Modal.svelte';
 	import Plus from '$lib/components/icons/Plus.svelte';
 	import Minus from '$lib/components/icons/Minus.svelte';
-	import PencilSolid from '$lib/components/icons/PencilSolid.svelte';
 	import SensitiveInput from '$lib/components/common/SensitiveInput.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import Switch from '$lib/components/common/Switch.svelte';

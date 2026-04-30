@@ -1,12 +1,14 @@
 <script>
-	import { getContext, tick, onMount } from 'svelte';
+	import { getI18n } from '$lib/utils/context';
+
+	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import Leaderboard from './Evaluations/Leaderboard.svelte';
 	import Feedbacks from './Evaluations/Feedbacks.svelte';
 
 	import { getAllFeedbacks, getFeedbacksCount } from '$lib/apis/evaluations';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	let selectedTab = 'leaderboard';
 

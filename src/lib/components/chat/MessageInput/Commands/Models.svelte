@@ -1,12 +1,14 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import Fuse from 'fuse.js';
 
 	import { createEventDispatcher, onMount } from 'svelte';
-	import { tick, getContext } from 'svelte';
+	import { tick } from 'svelte';
 
 	import { models } from '$lib/stores';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	const dispatch = createEventDispatcher();
 

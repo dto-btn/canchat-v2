@@ -1,10 +1,12 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import { DropdownMenu } from 'bits-ui';
 	import { marked } from 'marked';
 	import Fuse from 'fuse.js';
 
 	import { flyAndScale } from '$lib/utils/transitions';
-	import { createEventDispatcher, onMount, getContext, tick } from 'svelte';
+	import { createEventDispatcher, onMount } from 'svelte';
 
 	import ChevronDown from '$lib/components/icons/ChevronDown.svelte';
 	import Check from '$lib/components/icons/Check.svelte';
@@ -18,11 +20,10 @@
 	import { getModels } from '$lib/apis';
 
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
-	import Switch from '$lib/components/common/Switch.svelte';
 	import ChatBubbleOval from '$lib/components/icons/ChatBubbleOval.svelte';
 	import { goto } from '$app/navigation';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 	const dispatch = createEventDispatcher();
 
 	export let id = '';
@@ -562,6 +563,10 @@
 
 				<div class="flex items-center mx-2 my-2">
 					<button
+						type="button"
+						role="switch"
+						aria-checked={$temporaryChatEnabled}
+						aria-labelledby="temporary-chat-label"
 						class="flex justify-between w-full font-medium line-clamp-1 select-none items-center rounded-button py-2 px-3 text-sm text-gray-700 dark:text-gray-100 outline-none transition-all duration-75 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg cursor-pointer data-[highlighted]:bg-muted"
 						on:click={async () => {
 							temporaryChatEnabled.set(!$temporaryChatEnabled);
@@ -583,13 +588,26 @@
 					>
 						<div class="flex gap-2.5 items-center">
 							<ChatBubbleOval className="size-4" strokeWidth="2.5" />
-
-							{$i18n.t(`Temporary Chat`)}
+							<span id="temporary-chat-label">
+								{$i18n.t(`Temporary Chat`)}
+							</span>
 						</div>
 
-						<div>
-							<Switch state={$temporaryChatEnabled} />
-						</div>
+						<span
+							aria-hidden="true"
+							data-checked={$temporaryChatEnabled}
+							class="flex h-5 w-9 items-center rounded-full px-[3px]
+								transition-colors duration-200
+								bg-gray-200 dark:bg-gray-700
+								data-[checked=true]:bg-emerald-600
+								dark:data-[checked=true]:bg-emerald-500"
+						>
+							<span
+								class={`block h-4 w-4 rounded-full bg-white transition-transform ${
+									$temporaryChatEnabled ? 'translate-x-3.5' : 'translate-x-0'
+								}`}
+							/>
+						</span>
 					</button>
 				</div>
 			{/if}

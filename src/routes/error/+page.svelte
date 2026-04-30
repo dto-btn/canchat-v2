@@ -1,9 +1,11 @@
 <script>
+	import { getI18n } from '$lib/utils/context';
+
 	import { goto } from '$app/navigation';
 	import { WEBUI_NAME, config } from '$lib/stores';
-	import { onMount, getContext } from 'svelte';
+	import { onMount } from 'svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	let loaded = false;
 

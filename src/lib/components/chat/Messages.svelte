@@ -1,20 +1,13 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import { v4 as uuidv4 } from 'uuid';
-	import {
-		chats,
-		config,
-		settings,
-		user as _user,
-		mobile,
-		currentChatPage,
-		ariaMessage
-	} from '$lib/stores';
-	import { tick, getContext, onMount, createEventDispatcher } from 'svelte';
+	import { chats, settings, user as _user, currentChatPage, ariaMessage } from '$lib/stores';
+	import { tick, createEventDispatcher } from 'svelte';
 	const dispatch = createEventDispatcher();
 
 	import { toast } from 'svelte-sonner';
 	import { getChatList, updateChatById } from '$lib/apis/chats';
-	import { copyToClipboard, findWordIndices } from '$lib/utils';
 
 	import Message from './Messages/Message.svelte';
 	import Loader from '../common/Loader.svelte';
@@ -22,7 +15,7 @@
 
 	import ChatPlaceholder from './ChatPlaceholder.svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let className = 'h-full flex pt-8';
 

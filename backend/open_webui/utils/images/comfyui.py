@@ -1,7 +1,7 @@
 import asyncio
 import json
 import logging
-import random
+import secrets
 import urllib.parse
 import urllib.request
 from typing import Optional
@@ -161,7 +161,7 @@ async def comfyui_generate_image(
                 seed = (
                     payload.seed
                     if payload.seed
-                    else random.randint(0, 18446744073709551614)
+                    else secrets.randbelow(18446744073709551615)
                 )
                 for node_id in node.node_ids:
                     workflow[node_id]["inputs"][node.key] = seed

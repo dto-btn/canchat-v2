@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import { toast } from 'svelte-sonner';
 	import { v4 as uuidv4 } from 'uuid';
 
@@ -6,8 +8,6 @@
 	import {
 		user,
 		chats,
-		settings,
-		showSettings,
 		chatId,
 		tags,
 		showSidebar,
@@ -21,11 +21,13 @@
 		socket,
 		config,
 		isApp,
-		ariaMessage
+		ariaMessage,
+		suggestionCycle,
+		initNewChatAction
 	} from '$lib/stores';
-	import { onMount, getContext, tick, onDestroy } from 'svelte';
+	import { onMount, tick, onDestroy } from 'svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	import {
 		getChatList,
@@ -46,11 +48,9 @@
 	import ChatItem from './Sidebar/ChatItem.svelte';
 	import Spinner from '../common/Spinner.svelte';
 	import Loader from '../common/Loader.svelte';
-	import AddFilesPlaceholder from '../AddFilesPlaceholder.svelte';
 	import SearchInput from './Sidebar/SearchInput.svelte';
 	import ConfirmDialog from '../common/ConfirmDialog.svelte';
 	import Folder from '../common/Folder.svelte';
-	import Plus from '../icons/Plus.svelte';
 	import Tooltip from '../common/Tooltip.svelte';
 	import Folders from './Sidebar/Folders.svelte';
 	import { getChannels, createNewChannel } from '$lib/apis/channels';
@@ -298,7 +298,16 @@
 	};
 
 	const selectAllChats = () => {
-		const allChatIds = [...($chats || []), ...($pinnedChats || [])].map((chat) => chat.id);
+		const folderChatIds = Object.values(folders).flatMap((folder) =>
+			(folder.items?.chats ?? []).map((chat) => chat.id)
+		);
+		const allChatIds = [
+			...new Set([
+				...($chats || []).map((chat) => chat.id),
+				...($pinnedChats || []).map((chat) => chat.id),
+				...folderChatIds
+			])
+		];
 		selectedChatIds = allChatIds;
 	};
 
@@ -575,6 +584,8 @@
 <div
 	bind:this={navElement}
 	id="sidebar"
+	role="navigation"
+	aria-label={$i18n.t('Main navigation')}
 	class="h-screen max-h-[100dvh] min-h-screen select-none {$showSidebar
 		? 'md:relative w-[260px] max-w-[260px]'
 		: '-translate-x-[260px] w-[0px]'} {$isApp
@@ -624,10 +635,15 @@
 				draggable="false"
 				on:click={async () => {
 					clearSelection();
+					await chatId.set('');
 					await goto('/');
-					const newChatButton = document.getElementById('new-chat-button');
-					setTimeout(() => {
-						newChatButton?.click();
+					suggestionCycle.update((n) => n + 1);
+					setTimeout(async () => {
+						if ($initNewChatAction) {
+							await $initNewChatAction();
+						} else {
+							document.getElementById('new-chat-button')?.click();
+						}
 						if ($mobile) {
 							showSidebar.set(false);
 						}
@@ -925,6 +941,8 @@
 				{#if !search && folders}
 					<Folders
 						{folders}
+						{selectedChatIds}
+						showBulkActions={selectedChatIds.length > 0}
 						on:import={(e) => {
 							const { folderId, items } = e.detail;
 							importChatHandler(items, false, folderId);
@@ -934,6 +952,16 @@
 						}}
 						on:change={async () => {
 							initChatList();
+						}}
+						on:select={(e) => {
+							toggleChatSelection(e.detail);
+						}}
+						on:unselect={(e) => {
+							toggleChatSelection(e.detail);
+						}}
+						on:tag={(e) => {
+							const { type, name, chatId } = e.detail;
+							tagEventHandler(type, name, chatId);
 						}}
 					/>
 				{/if}

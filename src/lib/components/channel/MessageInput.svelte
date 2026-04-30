@@ -1,12 +1,14 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import { toast } from 'svelte-sonner';
 	import { v4 as uuidv4 } from 'uuid';
 
-	import { tick, getContext, onMount, onDestroy } from 'svelte';
+	import { tick, onMount, onDestroy } from 'svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
-	import { config, mobile, settings, socket } from '$lib/stores';
+	import { config, mobile, settings } from '$lib/stores';
 	import { blobToFile, compressImage } from '$lib/utils';
 
 	import Tooltip from '../common/Tooltip.svelte';

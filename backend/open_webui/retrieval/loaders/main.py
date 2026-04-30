@@ -25,7 +25,9 @@ from langchain_community.document_loaders import (
     UnstructuredXMLLoader,
 )
 from langchain_core.documents import Document
-from open_webui.env import SRC_LOG_LEVELS, GLOBAL_LOG_LEVEL
+from open_webui.env import SRC_LOG_LEVELS, GLOBAL_LOG_LEVEL, DATA_DIR
+from open_webui.config import UPLOAD_DIR, CACHE_DIR
+from open_webui.utils.misc import validate_path
 
 logging.basicConfig(stream=sys.stdout, level=GLOBAL_LOG_LEVEL)
 log = logging.getLogger(__name__)
@@ -92,6 +94,7 @@ class TikaLoader:
         self.mime_type = mime_type
 
     def load(self) -> list[Document]:
+        validate_path(self.file_path, [str(UPLOAD_DIR), str(CACHE_DIR), str(DATA_DIR)])
         with open(self.file_path, "rb") as f:
             data = f.read()
 
@@ -276,6 +279,7 @@ class Loader:
     def load(
         self, filename: str, file_content_type: str, file_path: str
     ) -> list[Document]:
+        validate_path(file_path, [str(UPLOAD_DIR), str(CACHE_DIR), str(DATA_DIR)])
         loader = self._get_loader(filename, file_content_type, file_path)
         docs = loader.load()
 

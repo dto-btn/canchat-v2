@@ -15,11 +15,12 @@ from open_webui.models.users import (
 from open_webui.socket.main import get_active_status_by_user_id
 from open_webui.constants import ERROR_MESSAGES
 from open_webui.env import SRC_LOG_LEVELS
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from pydantic import BaseModel, ConfigDict
 from open_webui.utils.auth import (
     get_admin_user,
     get_current_user,
+    get_metrics_user,
     get_password_hash,
     get_verified_user,
 )
@@ -28,6 +29,22 @@ log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["MODELS"])
 
 router = APIRouter()
+
+
+def _normalize_department_range_end(start_timestamp: int, end_timestamp: int) -> int:
+    # The frontend date picker sends midnight timestamps (UTC).
+    # User.last_active_at is continuously updated to 'now', so users active on
+    # the selected end date fall outside the exclusive < end_timestamp boundary.
+    # Extend the end by one day so the selected end date is fully included.
+    if (
+        start_timestamp < end_timestamp
+        and start_timestamp % 86400 == 0
+        and end_timestamp % 86400 == 0
+    ):
+        return end_timestamp + 86400
+
+    return end_timestamp
+
 
 ############################
 # GetUsers
@@ -129,9 +146,10 @@ async def get_daily_users_count(domain: str = None, user=Depends(get_verified_us
 # User Default Permissions
 ############################
 class MCPPermissions(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     time_server: bool = False
     news_server: bool = False
-    mpo_sharepoint_server: bool = False
 
 
 class WorkspacePermissions(BaseModel):
@@ -301,6 +319,53 @@ async def update_user_info_by_session_user(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ERROR_MESSAGES.USER_NOT_FOUND,
         )
+
+
+############################
+# Get Users Per Domain
+############################
+
+
+@router.get("/count-per-domain")
+async def get_users_per_domain(
+    start_timestamp: int,
+    end_timestamp: int,
+    domain: Optional[str] = Query(None),
+    user=Depends(get_metrics_user),
+):
+    if user.role in ["admin", "global_analyst"]:
+        domain_to_use = domain
+    else:
+        domain_to_use = user.domain
+
+    end_timestamp = _normalize_department_range_end(start_timestamp, end_timestamp)
+
+    # Fetch aggregated user counts and prompt users separately
+    user_counts = Users.get_users_count_by_domain(
+        start_timestamp, end_timestamp, domain_to_use
+    )
+    prompt_users_by_domain = Users.get_prompt_users_by_domain(
+        start_timestamp, end_timestamp, domain_to_use
+    )
+
+    # Merge by domain to keep department/domain labels aligned
+    merged = {}
+
+    for item in user_counts or []:
+        key = item.get("domain")
+        merged[key] = {
+            "domain": item.get("domain"),
+            "department": item.get("department"),
+            "total_users": item.get("total_users", 0),
+            "active_users": item.get("active_users", 0),
+            "prompt_users": prompt_users_by_domain.get(key, 0),
+        }
+
+    # Return a sorted list for stable ordering (by department then domain)
+    return sorted(
+        merged.values(),
+        key=lambda x: ((x.get("department") or ""), (x.get("domain") or "")),
+    )
 
 
 ############################

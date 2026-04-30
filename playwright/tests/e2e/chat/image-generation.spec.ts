@@ -1,22 +1,19 @@
 import { test, expect } from '../../../src/fixtures/base-fixture';
 import { describeLocalImage } from '../../../src/utils/openai';
-import { Language } from '../../../src/pages/base.page';
 
 test.describe('Feature: Image Generation', () => {
-	test('user can generate images using dall-e-2', async ({
+	test.skip('user can generate images using dall-e-2', async ({
+		//dall-e has been deprecated, skipping test for now.
 		adminPage,
-		userPage,
-		locale
+		userPage
 	}, testInfo) => {
 		test.setTimeout(240000);
 		console.log('Testing: user can generate images using dall-e-2');
 
 		// Enable image generation globally
-		await adminPage.verifyPageLanguage(locale as Language);
 		await adminPage.configureImageGeneration('dall-e-2', true);
 
 		await userPage.goto('/');
-		await userPage.verifyPageLanguage(locale as Language);
 		await userPage.toggleChatTool(userPage.getTranslation('Image'), true);
 
 		await userPage.sendMessage(

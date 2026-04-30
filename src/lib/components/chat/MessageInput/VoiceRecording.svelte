@@ -1,12 +1,14 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import { toast } from 'svelte-sonner';
-	import { createEventDispatcher, tick, getContext, onMount, onDestroy } from 'svelte';
+	import { createEventDispatcher, tick, onMount, onDestroy } from 'svelte';
 	import { ariaMessage, config, settings } from '$lib/stores';
-	import { blobToFile, calculateSHA256, findWordIndices } from '$lib/utils';
+	import { blobToFile } from '$lib/utils';
 
 	import { transcribeAudio } from '$lib/apis/audio';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	const dispatch = createEventDispatcher();
 

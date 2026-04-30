@@ -4,6 +4,66 @@
 
 Your interest in contributing to CANChat is greatly appreciated. This document is here to guide you through the process, ensuring your contributions enhance the project effectively. Let's make CANChat even better, together!
 
+---
+
+## 🗂️ MCP SharePoint Integration — Adding a New Department
+
+CANChat has a department-aware SharePoint RAG integration built on the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/). It is designed so that **onboarding a new department requires zero changes to application code** — it is purely configuration-driven.
+
+### What you need to do (two steps only)
+
+1. **Add the department prefix** to the `SHAREPOINT_DEPARTMENTS` environment variable (comma-separated):
+
+   ```
+   SHAREPOINT_DEPARTMENTS=MPO,PMO,FIN
+   ```
+
+2. **Set department environment variables** in your `.env` / Azure Key Vault / IaC secret store:
+
+   When `SHP_USE_DELEGATED_ACCESS=true` (production / delegated auth):
+
+   ```
+   {DEPT_UPPER}_SHP_SITE_URL=<SharePoint site URL>
+   # Optional:
+   {DEPT_UPPER}_SHP_ORG_NAME=<Human-readable department name>
+   {DEPT_UPPER}_SHP_DOC_LIBRARY=<Default document library path>
+   {DEPT_UPPER}_SHP_DEFAULT_SEARCH_FOLDERS=<Comma-separated folder paths>
+   ```
+
+   When `SHP_USE_DELEGATED_ACCESS=false` (local dev / application credentials):
+
+   ```
+   {DEPT_UPPER}_SHP_ID_APP=<Azure AD client ID>
+   {DEPT_UPPER}_SHP_ID_APP_SECRET=<Azure AD client secret>
+   {DEPT_UPPER}_SHP_TENANT_ID=<Azure AD tenant ID>
+   {DEPT_UPPER}_SHP_SITE_URL=<SharePoint site URL>
+   ```
+
+   Global variables shared across all departments (`SHP_USE_DELEGATED_ACCESS`, `SHP_OBO_SCOPE`) are already configured.
+
+That's it. On next startup all departments listed in `SHAREPOINT_DEPARTMENTS` are registered automatically — no new files, no image rebuild required.
+
+### What happens automatically
+
+| What                                         | Where                                                      |
+| -------------------------------------------- | ---------------------------------------------------------- |
+| Server process started                       | `backend/mcp_backend/management/mcp_manager.py`            |
+| CrewAI adapter initialised                   | `backend/mcp_backend/integration/crew_mcp_integration.py`  |
+| MCP API endpoint exposes the server          | `backend/mcp_backend/routers/mcp.py`                       |
+| Admin UI lists and describes the server      | `src/lib/components/admin/Settings/MCP.svelte`             |
+| Permissions UI shows a toggle for the server | `src/lib/components/admin/Users/Groups/Permissions.svelte` |
+| Chat tool names/descriptions localised       | `src/lib/utils/mcp-tools.ts`                               |
+
+### Naming convention
+
+| Item                          | Pattern                          | Example                     |
+| ----------------------------- | -------------------------------- | --------------------------- |
+| MCP server name               | `{dept_lower}_sharepoint_server` | `fin_sharepoint_server`     |
+| Env var prefix                | `{DEPT_UPPER}_SHP_`              | `FIN_SHP_`                  |
+| Tool names exposed to the LLM | `{dept_lower}_{action}`          | `fin_search_documents_fast` |
+
+---
+
 ## 📌 Key Points
 
 ### 🦙 Ollama vs. CANChat

@@ -1,12 +1,13 @@
 <script>
-	import { getContext, createEventDispatcher, onMount, tick } from 'svelte';
+	import { getI18n } from '$lib/utils/context';
 
-	const i18n = getContext('i18n');
+	import { createEventDispatcher, tick } from 'svelte';
+
+	const i18n = getI18n();
 
 	import CodeEditor from '$lib/components/common/CodeEditor.svelte';
 	import { goto } from '$app/navigation';
 	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
-	import Badge from '$lib/components/common/Badge.svelte';
 	import ChevronLeft from '$lib/components/icons/ChevronLeft.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import LockClosed from '$lib/components/icons/LockClosed.svelte';

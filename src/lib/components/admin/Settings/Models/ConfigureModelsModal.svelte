@@ -1,8 +1,10 @@
 <script>
+	import { getI18n } from '$lib/utils/context';
+
 	import { toast } from 'svelte-sonner';
 
-	import { createEventDispatcher, getContext, onMount } from 'svelte';
-	const i18n = getContext('i18n');
+	import { createEventDispatcher, onMount } from 'svelte';
+	const i18n = getI18n();
 	const dispatch = createEventDispatcher();
 
 	import { models } from '$lib/stores';
@@ -15,7 +17,6 @@
 	import { getModelsConfig, setModelsConfig } from '$lib/apis/configs';
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import Minus from '$lib/components/icons/Minus.svelte';
-	import Plus from '$lib/components/icons/Plus.svelte';
 
 	export let show = false;
 	export let initHandler = () => {};

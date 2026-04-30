@@ -1,15 +1,16 @@
 <script lang="ts">
-	import { onMount, tick, getContext } from 'svelte';
+	import { getI18n } from '$lib/utils/context';
+
+	import { onMount, tick } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import AccessControl from '../common/AccessControl.svelte';
-	import { user } from '$lib/stores';
 	import { goto } from '$app/navigation';
 
 	export let onSubmit: Function;
 	export let edit = false;
 	export let prompt = null;
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	let loading = false;
 

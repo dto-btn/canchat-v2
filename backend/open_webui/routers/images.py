@@ -20,12 +20,12 @@ from open_webui.constants import ERROR_MESSAGES
 from open_webui.env import SRC_LOG_LEVELS, ENABLE_FORWARD_USER_INFO_HEADERS
 
 from open_webui.utils.auth import get_admin_user, get_verified_user
+from open_webui.utils.misc import validate_path
 from open_webui.utils.images.comfyui import (
     ComfyUIGenerateImageForm,
     ComfyUIWorkflow,
     comfyui_generate_image,
 )
-
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["IMAGES"])
@@ -401,6 +401,8 @@ def save_b64_image(b64_str):
             image_filename = f"{image_id}.png"
             file_path = IMAGE_CACHE_DIR.joinpath(image_filename)
 
+            validate_path(file_path, IMAGE_CACHE_DIR)
+
             img_data = base64.b64decode(b64_str)
 
             # Write the image data to a file
@@ -432,6 +434,9 @@ def save_url_image(url, headers=None):
             image_filename = f"{image_id}{image_format}"
 
             file_path = IMAGE_CACHE_DIR.joinpath(f"{image_filename}")
+
+            validate_path(file_path, IMAGE_CACHE_DIR)
+
             with open(file_path, "wb") as image_file:
                 for chunk in r.iter_content(chunk_size=8192):
                     image_file.write(chunk)
@@ -502,6 +507,8 @@ async def image_generations(
                 images.append({"url": f"/cache/image/generations/{image_filename}"})
                 file_body_path = IMAGE_CACHE_DIR.joinpath(f"{image_filename}.json")
 
+                validate_path(file_body_path, IMAGE_CACHE_DIR)
+
                 with open(file_body_path, "w") as f:
                     json.dump(data, f)
 
@@ -554,6 +561,8 @@ async def image_generations(
                 images.append({"url": f"/cache/image/generations/{image_filename}"})
                 file_body_path = IMAGE_CACHE_DIR.joinpath(f"{image_filename}.json")
 
+                validate_path(file_body_path, IMAGE_CACHE_DIR)
+
                 with open(file_body_path, "w") as f:
                     json.dump(form_data.model_dump(exclude_none=True), f)
 
@@ -605,6 +614,8 @@ async def image_generations(
                 image_filename = save_b64_image(image)
                 images.append({"url": f"/cache/image/generations/{image_filename}"})
                 file_body_path = IMAGE_CACHE_DIR.joinpath(f"{image_filename}.json")
+
+                validate_path(file_body_path, IMAGE_CACHE_DIR)
 
                 with open(file_body_path, "w") as f:
                     json.dump({**data, "info": res["info"]}, f)

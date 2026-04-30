@@ -1,9 +1,11 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import { toast } from 'svelte-sonner';
 	import { v4 as uuidv4 } from 'uuid';
 	import { createPicker } from '$lib/utils/google-drive-picker';
 
-	import { onMount, tick, getContext, createEventDispatcher, onDestroy } from 'svelte';
+	import { onMount, tick, createEventDispatcher, onDestroy } from 'svelte';
 	const dispatch = createEventDispatcher();
 
 	import {
@@ -22,7 +24,7 @@
 	import { blobToFile, compressImage, createMessagesList, findWordIndices } from '$lib/utils';
 	import { transcribeAudio } from '$lib/apis/audio';
 	import { uploadFile } from '$lib/apis/files';
-	import { getToolDisplayName } from '$lib/utils/mcp-tools';
+	import { getToolDisplayName, getToolTooltipContent } from '$lib/utils/mcp-tools';
 
 	import { WEBUI_BASE_URL, WEBUI_API_BASE_URL, PASTED_TEXT_CHARACTER_LIMIT } from '$lib/constants';
 
@@ -39,7 +41,7 @@
 	import Image from '../common/Image.svelte';
 	import { deleteFileById } from '$lib/apis/files';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	// Static references for i18next-parser - DO NOT REMOVE
 	// These ensure the parser finds the dynamic translation keys
@@ -210,7 +212,7 @@
 					console.warn('File upload warning:', uploadedFile.error);
 					toast.warning(uploadedFile.error);
 				} else {
-					toast.success('File uploaded successfully');
+					toast.success($i18n.t('File uploaded successfully'));
 				}
 
 				fileItem.status = 'uploaded';
@@ -406,7 +408,7 @@
 												return $tools ? $tools.find((t) => t.id === id) : { id: id, name: id };
 											}) as tool, toolIdx (toolIdx)}
 												<Tooltip
-													content={tool?.meta?.description ?? ''}
+													content={getToolTooltipContent(tool, $i18n)}
 													className=" {toolIdx !== 0 ? 'pl-0.5' : ''} flex-shrink-0"
 													placement="top"
 												>

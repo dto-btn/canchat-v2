@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import { config, models, settings, showCallOverlay } from '$lib/stores';
-	import { onMount, tick, getContext, onDestroy, createEventDispatcher } from 'svelte';
+	import { onMount, tick, onDestroy, createEventDispatcher } from 'svelte';
 
 	const dispatch = createEventDispatcher();
 
@@ -13,7 +15,7 @@
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import VideoInputMenu from './CallOverlay/VideoInputMenu.svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let eventTarget: EventTarget;
 	export let submitPrompt: Function;
@@ -49,7 +51,7 @@
 		const devices = await navigator.mediaDevices.enumerateDevices();
 		videoInputDevices = devices.filter((device) => device.kind === 'videoinput');
 
-		if (!!navigator.mediaDevices.getDisplayMedia) {
+		if (navigator.mediaDevices.getDisplayMedia) {
 			videoInputDevices = [
 				...videoInputDevices,
 				{

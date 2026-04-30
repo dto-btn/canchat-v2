@@ -1,13 +1,12 @@
 <script lang="ts">
-	import { getContext, tick } from 'svelte';
-	const i18n = getContext('i18n');
+	import { getI18n } from '$lib/utils/context';
+
+	const i18n = getI18n();
 
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
-	import SensitiveInput from '$lib/components/common/SensitiveInput.svelte';
 	import AddConnectionModal from './AddConnectionModal.svelte';
 
 	import Cog6 from '$lib/components/icons/Cog6.svelte';
-	import Wrench from '$lib/components/icons/Wrench.svelte';
 	import ManageOllamaModal from './ManageOllamaModal.svelte';
 	import ArrowDownTray from '$lib/components/icons/ArrowDownTray.svelte';
 

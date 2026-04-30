@@ -1,8 +1,9 @@
 <script>
-	import { toast } from 'svelte-sonner';
-	import { getContext } from 'svelte';
+	import { getI18n } from '$lib/utils/context';
 
-	const i18n = getContext('i18n');
+	import { toast } from 'svelte-sonner';
+
+	const i18n = getI18n();
 
 	import { deleteGroupById, updateGroupById } from '$lib/apis/groups';
 

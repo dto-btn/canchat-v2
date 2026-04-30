@@ -1,6 +1,8 @@
 <script lang="ts">
-	import { onMount, getContext, tick } from 'svelte';
-	import { models, tools, functions, knowledge as knowledgeCollections, user } from '$lib/stores';
+	import { getI18n } from '$lib/utils/context';
+
+	import { onMount, tick } from 'svelte';
+	import { models, tools, functions, knowledge as knowledgeCollections } from '$lib/stores';
 
 	import AdvancedParams from '$lib/components/chat/Settings/Advanced/AdvancedParams.svelte';
 	import Tags from '$lib/components/common/Tags.svelte';
@@ -16,7 +18,7 @@
 	import AccessControl from '../common/AccessControl.svelte';
 	import { toast } from 'svelte-sonner';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let onSubmit: Function;
 	export let onBack: null | Function = null;

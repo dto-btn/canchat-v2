@@ -18,6 +18,7 @@ from starlette.background import BackgroundTask
 from open_webui.models.models import Models
 from open_webui.config import (
     CACHE_DIR,
+    MODEL_CONTEXT_LENGTHS,
 )
 from open_webui.env import (
     AIOHTTP_CLIENT_TIMEOUT,
@@ -37,7 +38,6 @@ from open_webui.utils.payload import (
 
 from open_webui.utils.auth import get_admin_user, get_verified_user
 from open_webui.utils.access_control import has_access
-
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["OPENAI"])
@@ -352,7 +352,6 @@ async def get_filtered_models(models, user):
 
 @cached(ttl=3)
 async def get_all_models(request: Request) -> dict[str, list]:
-    log.info("get_all_models()")
 
     if not request.app.state.config.ENABLE_OPENAI_API:
         return {"data": []}
@@ -402,6 +401,51 @@ async def get_all_models(request: Request) -> dict[str, list]:
 
     models = {"data": merge_models_lists(map(extract_data, responses))}
     log.debug(f"models: {models}")
+
+    for model in models["data"]:
+        if "context_length" not in model:
+            openai_data = model.get("openai", {})
+            model_info = openai_data.get("model_info", {})
+
+            # Check top-level, openai sub-dict, and LiteLLM's model_info
+            for field in (
+                "context_length",  # Generic / some proxies
+                "context_window",  # OpenRouter
+                "max_model_len",  # vLLM
+                "max_input_tokens",  # LiteLLM (in model_info)
+            ):
+                value = (
+                    model.get(field) or openai_data.get(field) or model_info.get(field)
+                )
+                if value is not None:
+                    try:
+                        model["context_length"] = int(value)
+                    except (ValueError, TypeError):
+                        log.warning(
+                            f"Invalid context length value '{value}' for field '{field}' in model '{model.get('id', 'unknown')}'"
+                        )
+                        continue
+                    break
+
+        # Fallback: look up well-known model context lengths (longest prefix wins)
+        if "context_length" not in model:
+            try:
+                context_lengths = MODEL_CONTEXT_LENGTHS.value
+                if context_lengths and isinstance(context_lengths, dict):
+                    model_id_lower = model.get("id", "").lower()
+                    for prefix in sorted(context_lengths, key=len, reverse=True):
+                        if model_id_lower.startswith(prefix.lower()):
+                            try:
+                                model["context_length"] = int(context_lengths[prefix])
+                            except (ValueError, TypeError):
+                                log.warning(
+                                    f"Invalid context length value '{context_lengths[prefix]}' for prefix '{prefix}'"
+                                )
+                            break
+            except Exception as e:
+                log.warning(
+                    f"Failed to look up context length for model '{model.get('id', 'unknown')}': {e}"
+                )
 
     request.app.state.OPENAI_MODELS = {model["id"]: model for model in models["data"]}
     return models

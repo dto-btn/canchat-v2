@@ -98,6 +98,14 @@ class CronJobSimulator:
 
     def _validate_script_exists(self):
         """Ensure the cleanup script exists."""
+        # Resolve to absolute path
+        resolved_path = self.script_path.resolve()
+        expected_dir = Path(__file__).parent.resolve()
+
+        # Ensure script path is within the scripts directory
+        if not str(resolved_path).startswith(str(expected_dir)):
+            raise ValueError(f"Script path escapes expected directory: {resolved_path}")
+
         if not self.script_path.exists():
             raise FileNotFoundError(f"Cleanup script not found: {self.script_path}")
         self.logger.info(f"✅ Found cleanup script: {self.script_path}")
@@ -118,7 +126,7 @@ class CronJobSimulator:
 
         try:
             # Build command
-            cmd = ["python", str(self.script_path)]
+            cmd = [sys.executable, str(self.script_path.resolve())]
             if self.dry_run:
                 cmd.append("--dry-run")
 

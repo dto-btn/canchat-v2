@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { getBackendConfig, getWebhookUrl, updateWebhookUrl } from '$lib/apis';
+	import { getI18n } from '$lib/utils/context';
+
+	import { getWebhookUrl, updateWebhookUrl } from '$lib/apis';
 	import {
 		getAdminConfig,
 		getLdapConfig,
@@ -11,11 +13,10 @@
 	import SensitiveInput from '$lib/components/common/SensitiveInput.svelte';
 	import Switch from '$lib/components/common/Switch.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
-	import { config } from '$lib/stores';
-	import { onMount, getContext } from 'svelte';
+	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let saveHandler: Function;
 

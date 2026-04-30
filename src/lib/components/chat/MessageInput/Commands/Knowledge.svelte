@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import { toast } from 'svelte-sonner';
 	import Fuse from 'fuse.js';
 
@@ -6,11 +8,11 @@
 	import relativeTime from 'dayjs/plugin/relativeTime';
 	dayjs.extend(relativeTime);
 
-	import { createEventDispatcher, tick, getContext, onMount } from 'svelte';
+	import { createEventDispatcher, tick, onMount } from 'svelte';
 	import { removeLastWordFromString, isValidHttpUrl } from '$lib/utils';
 	import { knowledge } from '$lib/stores';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let prompt = '';
 	export let command = '';

@@ -1,4 +1,8 @@
-import { OPENAI_API_BASE_URL, WEBUI_API_BASE_URL, WEBUI_BASE_URL } from '$lib/constants';
+import { OPENAI_API_BASE_URL, WEBUI_BASE_URL } from '$lib/constants';
+import i18next from 'i18next';
+
+const getFetchErrorMessage = (err: any) =>
+	err?.message === 'Failed to fetch' ? i18next.t('Failed to fetch') : err?.message;
 
 export const getOpenAIConfig = async (token: string = '') => {
 	let error = null;
@@ -227,7 +231,7 @@ export const getOpenAIModels = async (token: string, urlIdx?: number) => {
 			return res.json();
 		})
 		.catch((err) => {
-			error = `OpenAI: ${err?.error?.message ?? 'Network Problem'}`;
+			error = `OpenAI: ${err?.detail ?? err?.error?.message ?? getFetchErrorMessage(err) ?? i18next.t('Unable to load OpenAI models. Please try again.')}`;
 			return [];
 		});
 
@@ -262,7 +266,7 @@ export const verifyOpenAIConnection = async (
 			return res.json();
 		})
 		.catch((err) => {
-			error = `OpenAI: ${err?.error?.message ?? 'Network Problem'}`;
+			error = `OpenAI: ${err?.detail ?? err?.error?.message ?? getFetchErrorMessage(err) ?? i18next.t('OpenAI connection check failed. Please try again.')}`;
 			return [];
 		});
 
@@ -320,7 +324,7 @@ export const generateOpenAIChatCompletion = async (
 	})
 		.then(async (res) => {
 			const contentType = res.headers.get('content-type');
-			
+
 			if (!res.ok) {
 				const text = await res.text();
 				try {
@@ -329,16 +333,16 @@ export const generateOpenAIChatCompletion = async (
 					throw { detail: `HTTP ${res.status}: ${text.substring(0, 200)}` };
 				}
 			}
-			
+
 			// For streaming responses (SSE), return the response object directly
 			// The caller (Chat.svelte) handles parsing SSE format
 			if (contentType?.includes('text/event-stream') || body?.stream === true) {
 				return res;
 			}
-			
+
 			// For non-streaming responses, parse and return JSON
 			const text = await res.text();
-			
+
 			try {
 				return JSON.parse(text);
 			} catch (e) {
@@ -346,7 +350,7 @@ export const generateOpenAIChatCompletion = async (
 			}
 		})
 		.catch((err) => {
-			error = `${err?.detail ?? 'Network Problem'}`;
+			error = `${err?.detail ?? err?.error?.message ?? getFetchErrorMessage(err) ?? i18next.t('Chat completion failed. Please try again.')}`;
 			return null;
 		});
 

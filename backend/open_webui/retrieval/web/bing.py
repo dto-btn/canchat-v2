@@ -1,8 +1,8 @@
 import logging
 from pprint import pprint
 from typing import Optional
-import requests
 from open_webui.retrieval.web.main import SearchResult, get_filtered_results
+from open_webui.retrieval.web.utils import get_json_with_timeout
 from open_webui.env import SRC_LOG_LEVELS
 import argparse
 
@@ -26,9 +26,12 @@ def search_bing(
     headers = {"Ocp-Apim-Subscription-Key": subscription_key}
 
     try:
-        response = requests.get(endpoint, headers=headers, params=params)
-        response.raise_for_status()
-        json_response = response.json()
+        json_response = get_json_with_timeout(
+            endpoint,
+            provider_name="Bing search",
+            headers=headers,
+            params=params,
+        )
         results = json_response.get("webPages", {}).get("value", [])
         if filter_list:
             results = get_filtered_results(results, filter_list)

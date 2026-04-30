@@ -1,16 +1,17 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import { toast } from 'svelte-sonner';
 	import fileSaver from 'file-saver';
 	const { saveAs } = fileSaver;
 
 	import { goto } from '$app/navigation';
-	import { onMount, getContext } from 'svelte';
+	import { onMount } from 'svelte';
 	import { WEBUI_NAME, prompts as _prompts, user } from '$lib/stores';
 
 	import {
 		createNewPrompt,
 		deletePromptByCommand,
-		getPrompts,
 		getPromptList,
 		getPromptsCount,
 		getPromptsLegacy
@@ -26,9 +27,9 @@
 	import Spinner from '../common/Spinner.svelte';
 	import Tooltip from '../common/Tooltip.svelte';
 	import Pagination from '$lib/components/common/Pagination.svelte';
-	import { capitalizeFirstLetter, sanitizeResponseContent } from '$lib/utils';
+	import { capitalizeFirstLetter } from '$lib/utils';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 	let promptsImportInputElement: HTMLInputElement;
 	let promptsV1ImportInputElement: HTMLInputElement;
 	let loaded = false;
@@ -242,8 +243,9 @@
 				<a
 					class=" px-2 py-2 rounded-xl hover:bg-gray-700/10 dark:hover:bg-gray-100/10 dark:text-gray-300 dark:hover:text-white transition font-medium text-sm flex items-center space-x-1"
 					href="/workspace/prompts/create"
+					aria-label={$i18n.t('Create Prompt')}
 				>
-					<Plus className="size-3.5" />
+					<Plus className="size-3.5" aria-hidden="true" />
 				</a>
 			</div>
 		</div>

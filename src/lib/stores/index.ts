@@ -85,6 +85,8 @@ export const playingNotificationSound = writable(false);
 
 export const suggestionCycle = writable(0);
 
+export const initNewChatAction: Writable<(() => Promise<void>) | null> = writable(null);
+
 export type Model = OpenAIModel | OllamaModel;
 
 type BaseModel = {
@@ -155,7 +157,6 @@ type Settings = {
 	repeat_penalty?: string;
 	top_k?: string;
 	top_p?: string;
-	num_ctx?: string;
 	num_batch?: string;
 	num_keep?: string;
 	options?: ModelOptions;

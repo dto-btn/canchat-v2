@@ -1,7 +1,7 @@
 import logging
 
-import requests
 from open_webui.retrieval.web.main import SearchResult
+from open_webui.retrieval.web.utils import request_json_with_timeout
 from open_webui.env import SRC_LOG_LEVELS
 
 log = logging.getLogger(__name__)
@@ -21,10 +21,12 @@ def search_tavily(api_key: str, query: str, count: int) -> list[SearchResult]:
     url = "https://api.tavily.com/search"
     data = {"query": query, "api_key": api_key}
 
-    response = requests.post(url, json=data)
-    response.raise_for_status()
-
-    json_response = response.json()
+    json_response = request_json_with_timeout(
+        "POST",
+        url,
+        provider_name="Tavily search",
+        json=data,
+    )
 
     raw_search_results = json_response.get("results", [])
 

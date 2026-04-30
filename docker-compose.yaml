@@ -1,4 +1,14 @@
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: open-webui-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+
   ollama:
     volumes:
       - ollama:/root/.ollama
@@ -26,23 +36,15 @@ services:
       - ./backend/open_webui:/app/backend/open_webui
     depends_on:
       - ollama
+      - redis
     ports:
       - ${OPEN_WEBUI_PORT-3000}:8080
     environment:
       # Ollama Configuration
       - 'OLLAMA_BASE_URL=http://ollama:11434'
-      # OpenAI Configuration
-      - 'OPENAI_API_BASE_URLS=https://api.openai.com/v1'
-      - 'OPENAI_API_KEYS=${OPENAI_API_KEY}'
-      # Application Configuration
-      - 'PYTHONPATH=/app:/app/backend'
-      # Llama Guard Configuration
-      - 'LLAMA_GUARD_ENABLED=true'
-      - 'LLAMA_GUARD_OLLAMA_URL=http://ollama:11434'
-      - 'LLAMA_GUARD_MODEL_NAME=llama-guard3:8b'
-      - 'LLAMA_GUARD_TIMEOUT=30'
-      - 'LLAMA_GUARD_SAMPLE_RATE=1.0'
-      
+      - 'WEBUI_SECRET_KEY='
+      - 'REDIS_URL=redis://redis:6379/0'
+      - 'QDRANT_URL=${QDRANT_URL-http://qdrant:6333}'
     extra_hosts:
       - host.docker.internal:host-gateway
     restart: unless-stopped
@@ -50,3 +52,4 @@ services:
 volumes:
   ollama: {}
   open-webui: {}
+  redis_data: {}

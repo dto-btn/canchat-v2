@@ -5,6 +5,7 @@ import os
 import pkgutil
 import sys
 import shutil
+import redis
 from pathlib import Path
 
 import markdown
@@ -154,47 +155,38 @@ def parse_section(section):
     return items
 
 
-try:
-    changelog_path = BASE_DIR / "CHANGELOG.md"
-    with open(str(changelog_path.absolute()), "r", encoding="utf8") as file:
-        changelog_content = file.read()
+def parse_changelog_file(filename: str) -> dict:
+    try:
+        changelog_path = BASE_DIR / filename
+        with open(str(changelog_path.absolute()), "r", encoding="utf8") as file:
+            changelog_content = file.read()
+    except Exception:
+        changelog_content = (pkgutil.get_data("open_webui", filename) or b"").decode()
 
-except Exception:
-    changelog_content = (pkgutil.get_data("open_webui", "CHANGELOG.md") or b"").decode()
+    html_content = markdown.markdown(changelog_content)
+    soup = BeautifulSoup(html_content, "html.parser")
+    changelog_json = {}
 
+    for version in soup.find_all("h2"):
+        version_number = version.get_text().strip().split(" - ")[0][1:-1]
+        date = version.get_text().strip().split(" - ")[1]
+        version_data = {"date": date}
 
-# Convert markdown content to HTML
-html_content = markdown.markdown(changelog_content)
+        current = version.find_next_sibling()
+        while current and current.name != "h2":
+            if current.name == "h3":
+                section_title = current.get_text().lower()
+                section_items = parse_section(current.find_next_sibling("ul"))
+                version_data[section_title] = section_items
+            current = current.find_next_sibling()
 
-# Parse the HTML content
-soup = BeautifulSoup(html_content, "html.parser")
+        changelog_json[version_number] = version_data
 
-# Initialize JSON structure
-changelog_json = {}
-
-# Iterate over each version
-for version in soup.find_all("h2"):
-    version_number = version.get_text().strip().split(" - ")[0][1:-1]  # Remove brackets
-    date = version.get_text().strip().split(" - ")[1]
-
-    version_data = {"date": date}
-
-    # Find the next sibling that is a h3 tag (section title)
-    current = version.find_next_sibling()
-
-    while current and current.name != "h2":
-        if current.name == "h3":
-            section_title = current.get_text().lower()  # e.g., "added", "fixed"
-            section_items = parse_section(current.find_next_sibling("ul"))
-            version_data[section_title] = section_items
-
-        # Move to the next element
-        current = current.find_next_sibling()
-
-    changelog_json[version_number] = version_data
+    return changelog_json
 
 
-CHANGELOG = changelog_json
+CHANGELOG = parse_changelog_file("CHANGELOG.md")
+CHANGELOG_FR = parse_changelog_file("CHANGELOG-FR.md")
 
 ####################################
 # SAFE_MODE
@@ -333,6 +325,21 @@ ENABLE_REALTIME_CHAT_SAVE = (
 
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
+USE_REDIS_LOCKS = False
+
+try:
+    # Set a socket timeout so the app doesn't hang if Redis is unreachable
+    redis_health_client = redis.Redis.from_url(REDIS_URL, socket_connect_timeout=2)
+
+    if redis_health_client.ping():
+        USE_REDIS_LOCKS = True
+        log.info("Redis is up. Redis locks are ENABLED.")
+        redis_health_client.close()
+
+except (redis.ConnectionError, redis.TimeoutError, Exception) as e:
+    log.warning(f"Redis is unavailable ({e}). " "Redis locks are DISABLED.")
+    USE_REDIS_LOCKS = False
+
 ####################################
 # WEBUI_AUTH (Required for security)
 ####################################
@@ -370,6 +377,8 @@ WEBUI_SESSION_COOKIE_SECURE = os.environ.get(
 
 if WEBUI_AUTH and WEBUI_SECRET_KEY == "":
     raise ValueError(ERROR_MESSAGES.ENV_VAR_NOT_FOUND)
+
+ENABLE_PBMM_ENV = os.environ.get("ENABLE_PBMM_ENV", "false").lower() == "true"
 
 ENABLE_WEBSOCKET_SUPPORT = (
     os.environ.get("ENABLE_WEBSOCKET_SUPPORT", "True").lower() == "true"

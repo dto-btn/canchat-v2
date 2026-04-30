@@ -1,7 +1,9 @@
 <script>
-	import { onMount, getContext, createEventDispatcher } from 'svelte';
+	import { getI18n } from '$lib/utils/context';
+
+	import { createEventDispatcher } from 'svelte';
 	const dispatch = createEventDispatcher();
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	import Switch from './Switch.svelte';
 

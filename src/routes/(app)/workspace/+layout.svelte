@@ -1,22 +1,15 @@
 <script lang="ts">
-	import { onMount, getContext } from 'svelte';
-	import {
-		WEBUI_NAME,
-		showSidebar,
-		functions,
-		user,
-		mobile,
-		models,
-		prompts,
-		knowledge,
-		tools
-	} from '$lib/stores';
+	import { getI18n } from '$lib/utils/context';
+
+	import { onMount } from 'svelte';
+	import { WEBUI_NAME, showSidebar, user } from '$lib/stores';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 
+	import NavbarExtras from '$lib/components/common/NavbarExtras.svelte';
 	import MenuLines from '$lib/components/icons/MenuLines.svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	let loaded = false;
 
@@ -72,24 +65,27 @@
 			? 'md:max-w-[calc(100%-260px)]'
 			: ''} max-w-full"
 	>
-		<nav class="   px-2.5 pt-1 backdrop-blur-xl drag-region">
-			<div class=" flex items-center gap-1">
-				<div class="{$showSidebar ? 'md:hidden' : ''} self-center flex flex-none items-center">
-					<button
-						id="sidebar-toggle-button"
-						class="cursor-pointer p-1.5 flex rounded-xl hover:bg-gray-100 dark:hover:bg-gray-850 transition"
-						on:click={() => {
-							showSidebar.set(!$showSidebar);
-						}}
-						aria-label="Toggle Sidebar"
-					>
-						<div class=" m-auto self-center">
-							<MenuLines />
-						</div>
-					</button>
-				</div>
+		<nav class="px-2.5 pt-1 backdrop-blur-xl drag-region">
+			<div class="flex items-center gap-1 justify-between">
+				<!-- Left Section: Sidebar Toggle and Links -->
+				<div class="flex items-center gap-1">
+					<!-- Sidebar Toggle -->
+					<div class="{$showSidebar ? 'md:hidden' : ''} self-center flex flex-none items-center">
+						<button
+							id="sidebar-toggle-button"
+							class="cursor-pointer p-1.5 flex rounded-xl hover:bg-gray-100 dark:hover:bg-gray-850 transition"
+							on:click={() => {
+								showSidebar.set(!$showSidebar);
+							}}
+							aria-label="Toggle Sidebar"
+						>
+							<div class="m-auto self-center">
+								<MenuLines />
+							</div>
+						</button>
+					</div>
 
-				<div class="">
+					<!-- Links -->
 					<div
 						class="flex gap-1 scrollbar-none overflow-x-auto w-fit text-center text-sm font-medium rounded-full bg-transparent py-1 touch-auto pointer-events-auto"
 					>
@@ -154,11 +150,11 @@
 					</div>
 				</div>
 
-				<!-- <div class="flex items-center text-xl font-semibold">{$i18n.t('Workspace')}</div> -->
+				<NavbarExtras />
 			</div>
 		</nav>
 
-		<div class="  pb-1 px-[18px] flex-1 max-h-full overflow-y-auto" id="workspace-container">
+		<div class="pb-1 px-[18px] flex-1 max-h-full overflow-y-auto" id="workspace-container">
 			<slot />
 		</div>
 	</div>

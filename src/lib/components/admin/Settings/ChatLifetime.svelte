@@ -319,18 +319,34 @@
 								) || scheduleInfo.status}</span
 							>
 						</div>
-						{#if scheduleInfo.schedule}
+						{#if scheduleInfo.schedule_cron}
 							<div>
 								{$i18n.t('Schedule')}:
-								<span class="font-medium"
-									>{$i18n.t(scheduleInfo.schedule) || scheduleInfo.schedule}</span
+								<a
+									class="font-medium underline underline-offset-2"
+									href={`https://crontab.guru/#${scheduleInfo.schedule_cron.replace(/\s+/g, '_')}`}
+									target="_blank"
+									rel="noopener noreferrer"
 								>
+									{scheduleInfo.schedule_cron}
+								</a>
+							</div>
+						{/if}
+						{#if scheduleInfo.schedule_timezone}
+							<div>
+								{$i18n.t('Timezone')}:
+								<span class="font-medium">{scheduleInfo.schedule_timezone}</span>
 							</div>
 						{/if}
 						{#if scheduleInfo.next_run}
 							<div>
 								{$i18n.t('Next Run')}:
 								<span class="font-medium">{new Date(scheduleInfo.next_run).toLocaleString()}</span>
+							</div>
+						{/if}
+						{#if scheduleInfo.reason}
+							<div class="text-amber-600 dark:text-amber-400">
+								{$i18n.t('Reason')}: {scheduleInfo.reason}
 							</div>
 						{/if}
 						{#if scheduleInfo.error}

@@ -2,8 +2,8 @@ import json
 import logging
 from typing import Optional
 
-import requests
 from open_webui.retrieval.web.main import SearchResult, get_filtered_results
+from open_webui.retrieval.web.utils import request_json_with_timeout
 from open_webui.env import SRC_LOG_LEVELS
 
 log = logging.getLogger(__name__)
@@ -24,10 +24,13 @@ def search_serper(
     payload = json.dumps({"q": query})
     headers = {"X-API-KEY": api_key, "Content-Type": "application/json"}
 
-    response = requests.request("POST", url, headers=headers, data=payload)
-    response.raise_for_status()
-
-    json_response = response.json()
+    json_response = request_json_with_timeout(
+        "POST",
+        url,
+        provider_name="Serper search",
+        headers=headers,
+        data=payload,
+    )
     results = sorted(
         json_response.get("organic", []), key=lambda x: x.get("position", 0)
     )

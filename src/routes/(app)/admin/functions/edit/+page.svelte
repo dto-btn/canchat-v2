@@ -1,6 +1,8 @@
 <script>
+	import { getI18n } from '$lib/utils/context';
+
 	import { toast } from 'svelte-sonner';
-	import { onMount, getContext } from 'svelte';
+	import { onMount } from 'svelte';
 
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -13,7 +15,7 @@
 	import { compareVersion, extractFrontmatter } from '$lib/utils';
 	import { WEBUI_VERSION } from '$lib/constants';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	let func = null;
 

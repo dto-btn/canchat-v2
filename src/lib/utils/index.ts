@@ -20,6 +20,94 @@ import { TTS_RESPONSE_SPLIT } from '$lib/types';
 
 export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * Format a number with thousands separators (commas)
+ * @param num - The number to format (number, string, null, or undefined)
+ * @param locale - Optional locale code (default: 'en-US')
+ * @returns Formatted number string with commas, or '0' for invalid input
+ */
+export const formatNumber = (num: number | string | null | undefined, locale = 'en-US'): string => {
+	const n = Number(num);
+	return Number.isFinite(n) && num !== '' && num !== null
+		? n.toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 10 })
+		: '0';
+};
+
+/**
+ * Svelte action for automatic number formatting.
+ * Recursively walks the DOM and formats text numbers >= 1000.
+ * Usage: <div use:autoFormatNumber />
+ *
+ * Note: Temporarily disconnects observer while modifying text to prevent infinite loops.
+ */
+export const autoFormatNumber = (node: HTMLElement, options: { locale?: string } = {}) => {
+	const { locale = 'en-US' } = options;
+
+	let observer: MutationObserver | null = null;
+
+	const formatNodeRecursive = (target: Node) => {
+		if (target.nodeType === Node.TEXT_NODE) {
+			const original = target.textContent || '';
+			// Match 4+ consecutive digits (and optional decimal)
+			// This regex implicitly skips already-formatted numbers like "1,000"
+			const formatted = original.replace(/\b\d{4,}(?:\.\d+)?\b/g, (match) => {
+				return formatNumber(match, locale);
+			});
+
+			if (formatted !== original) {
+				// Temporarily disconnect observer to prevent infinite loop
+				if (observer) {
+					observer.disconnect();
+				}
+				target.textContent = formatted;
+				// Reconnect observer
+				if (observer) {
+					observer.observe(node, {
+						childList: true,
+						subtree: true,
+						characterData: true
+					});
+				}
+			}
+		} else if (target instanceof HTMLElement) {
+			// Skip scripts, styles, and form fields
+			const skipTags = ['SCRIPT', 'STYLE', 'INPUT', 'TEXTAREA'];
+			if (skipTags.includes(target.tagName) || target.dataset.noFormat !== undefined) {
+				return;
+			}
+			target.childNodes.forEach(formatNodeRecursive);
+		}
+	};
+
+	// Initial run
+	formatNodeRecursive(node);
+
+	// Watch for added nodes or text changes
+	observer = new MutationObserver((mutations) => {
+		for (const mutation of mutations) {
+			if (mutation.type === 'childList') {
+				mutation.addedNodes.forEach(formatNodeRecursive);
+			} else if (mutation.type === 'characterData') {
+				formatNodeRecursive(mutation.target);
+			}
+		}
+	});
+
+	observer.observe(node, {
+		childList: true,
+		subtree: true,
+		characterData: true
+	});
+
+	return {
+		destroy() {
+			if (observer) {
+				observer.disconnect();
+			}
+		}
+	};
+};
+
 function escapeRegExp(string: string): string {
 	return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

@@ -1,9 +1,11 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import { getRAGConfig } from '$lib/apis/retrieval';
 	import Switch from '$lib/components/common/Switch.svelte';
-	import { onMount, getContext } from 'svelte';
+	import { onMount } from 'svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let config = { enabled: false };
 

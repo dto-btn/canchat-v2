@@ -1,8 +1,8 @@
 import logging
 from typing import Optional
-import requests
 import validators
 from open_webui.retrieval.web.main import SearchResult, get_filtered_results
+from open_webui.retrieval.web.utils import get_json_with_timeout
 from open_webui.env import SRC_LOG_LEVELS
 
 log = logging.getLogger(__name__)
@@ -24,13 +24,20 @@ def validate_url(url: str) -> bool:
 
 
 def search_brave(
-    api_key: str, query: str, count: int, filter_list: Optional[list[str]] = None
+    api_key: str,
+    query: str,
+    count: int,
+    filter_list: Optional[list[str]] = None,
+    request_timeout: Optional[int] = None,
 ) -> list[SearchResult]:
     """Search using Brave's Search API and return the results as a list of SearchResult objects.
 
     Args:
         api_key (str): A Brave Search API key
         query (str): The query to search for
+        count (int): Number of results to return
+        filter_list (Optional[list[str]]): Optional list of domains to filter
+        request_timeout (Optional[int]): Optional timeout override in seconds for this request
     """
     url = "https://api.search.brave.com/res/v1/web/search"
     headers = {
@@ -40,10 +47,13 @@ def search_brave(
     }
     params = {"q": query, "count": count}
 
-    response = requests.get(url, headers=headers, params=params)
-    response.raise_for_status()
-
-    json_response = response.json()
+    json_response = get_json_with_timeout(
+        url,
+        provider_name="Brave search",
+        headers=headers,
+        params=params,
+        timeout_seconds=request_timeout,
+    )
     results = json_response.get("web", {}).get("results", [])
     if filter_list:
         results = get_filtered_results(results, filter_list)

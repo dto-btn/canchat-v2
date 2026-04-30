@@ -1,11 +1,12 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import DOMPurify from 'dompurify';
 	import { toast } from 'svelte-sonner';
 
 	import type { Token } from 'marked';
-	import { getContext } from 'svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	import { WEBUI_BASE_URL } from '$lib/constants';
 	import { copyToClipboard, unescapeHtml } from '$lib/utils';
@@ -64,9 +65,13 @@
 	{:else if token.type === 'br'}
 		<br />
 	{:else if token.type === 'del'}
-		<del>
-			<svelte:self id={`${id}-del`} tokens={token.tokens} {onSourceClick} />
-		</del>
+		{#if /^~(?!~)[\s\S]*~$/.test(token.raw)}
+			{token.raw}
+		{:else}
+			<del>
+				<svelte:self id={`${id}-del`} tokens={token.tokens} {onSourceClick} />
+			</del>
+		{/if}
 	{:else if token.type === 'inlineKatex'}
 		{#if token.text}
 			<KatexRenderer content={token.text} displayMode={false} />

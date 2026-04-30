@@ -1,9 +1,11 @@
 <script lang="ts">
-	import { getContext, onMount } from 'svelte';
+	import { getI18n } from '$lib/utils/context';
+
+	import { onMount } from 'svelte';
 	import { getDomains } from '$lib/apis/domains';
 	import { toast } from 'svelte-sonner';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let allowedDomains = [];
 

@@ -20,6 +20,7 @@ from open_webui.config import (
 from google.cloud import storage
 from google.cloud.exceptions import GoogleCloudError, NotFound
 from open_webui.constants import ERROR_MESSAGES
+from open_webui.utils.misc import validate_path
 
 
 class StorageProvider(ABC):
@@ -47,6 +48,7 @@ class LocalStorageProvider(StorageProvider):
         if not contents:
             raise ValueError(ERROR_MESSAGES.EMPTY_CONTENT)
         file_path = f"{UPLOAD_DIR}/{filename}"
+        validate_path(file_path, UPLOAD_DIR)
         with open(file_path, "wb") as f:
             f.write(contents)
         return contents, file_path
@@ -61,6 +63,7 @@ class LocalStorageProvider(StorageProvider):
         """Handles deletion of the file from local storage."""
         filename = file_path.split("/")[-1]
         file_path = f"{UPLOAD_DIR}/{filename}"
+        validate_path(file_path, UPLOAD_DIR)
         if os.path.isfile(file_path):
             os.remove(file_path)
         else:

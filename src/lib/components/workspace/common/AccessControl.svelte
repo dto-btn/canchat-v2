@@ -1,7 +1,9 @@
 <script lang="ts">
-	import { getContext, onMount } from 'svelte';
+	import { getI18n } from '$lib/utils/context';
 
-	const i18n = getContext('i18n');
+	import { onMount } from 'svelte';
+
+	const i18n = getI18n();
 
 	import { getGroups } from '$lib/apis/groups';
 	import UserCircleSolid from '$lib/components/icons/UserCircleSolid.svelte';

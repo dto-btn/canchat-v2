@@ -1,11 +1,12 @@
 <script lang="ts">
-	import hljs from 'highlight.js';
+	import { getI18n } from '$lib/utils/context';
+
 	import { loadPyodide } from 'pyodide';
 	import mermaid from 'mermaid';
 
 	import { v4 as uuidv4 } from 'uuid';
 
-	import { getContext, getAllContexts, onMount, tick, createEventDispatcher } from 'svelte';
+	import { onMount, tick, createEventDispatcher } from 'svelte';
 	import { copyToClipboard } from '$lib/utils';
 
 	import 'highlight.js/styles/github-dark.min.css';
@@ -14,7 +15,7 @@
 	import CodeEditor from '$lib/components/common/CodeEditor.svelte';
 	import SvgPanZoom from '$lib/components/common/SVGPanZoom.svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 	const dispatch = createEventDispatcher();
 
 	export let id = '';

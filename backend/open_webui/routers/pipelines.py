@@ -22,6 +22,7 @@ from open_webui.config import CACHE_DIR
 from open_webui.routers.openai import get_all_models_responses
 
 from open_webui.utils.auth import get_admin_user
+from open_webui.utils.misc import validate_path
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["MAIN"])
@@ -196,6 +197,7 @@ async def upload_pipeline(
     upload_folder = f"{CACHE_DIR}/pipelines"
     os.makedirs(upload_folder, exist_ok=True)
     file_path = os.path.join(upload_folder, file.filename)
+    validate_path(file_path, CACHE_DIR)
 
     r = None
     try:

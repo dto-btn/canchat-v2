@@ -1,11 +1,13 @@
 <script lang="ts">
-	import { onDestroy, onMount, getContext } from 'svelte';
+	import { getI18n } from '$lib/utils/context';
+
+	import { onDestroy, onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import { flyAndScale } from '$lib/utils/transitions';
 	import * as focusTrap from 'focus-trap';
 	import { ariaMessage } from '$lib/stores';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let show = true;
 	export let size = 'md';

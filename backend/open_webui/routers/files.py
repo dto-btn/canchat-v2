@@ -1,7 +1,6 @@
 import logging
 import os
 import uuid
-import asyncio
 from pathlib import Path
 from typing import Optional
 from pydantic import BaseModel
@@ -23,6 +22,7 @@ from open_webui.constants import ERROR_MESSAGES
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status, Request
 from fastapi.responses import FileResponse, StreamingResponse
+from starlette.concurrency import run_in_threadpool
 
 
 from open_webui.utils.auth import get_admin_user, get_verified_user
@@ -39,14 +39,9 @@ router = APIRouter()
 
 
 @router.post("/", response_model=FileModelResponse)
-def upload_file(
-    # NOTE: This function is intentionally synchronous (def) rather than async (async def)
-    # to prevent blocking the event loop during large file processing operations.
-    # File uploads and vector processing can be CPU-intensive and time-consuming,
-    # so FastAPI will automatically run this in a thread pool executor.
-    # The async process_file() call is handled via asyncio.run() to maintain
-    # proper async vector database operations while keeping the endpoint non-blocking.
-    # See: https://fastapi.tiangolo.com/async/#in-a-hurry
+async def upload_file(
+    # Keep vector indexing on the request loop to avoid per-request event loops
+    # competing over shared async clients.
     request: Request,
     file: UploadFile = File(...),
     user=Depends(get_verified_user),
@@ -60,7 +55,9 @@ def upload_file(
         id = str(uuid.uuid4())
         name = filename
         filename = f"{id}_{filename}"
-        contents, file_path = Storage.upload_file(file.file, filename)
+        contents, file_path = await run_in_threadpool(
+            Storage.upload_file, file.file, filename
+        )
 
         file_item = Files.insert_new_file(
             user.id,
@@ -79,8 +76,7 @@ def upload_file(
         )
 
         try:
-            # Run the async process_file in the thread pool executor
-            asyncio.run(process_file(request, ProcessFileForm(file_id=id)))
+            await process_file(request, ProcessFileForm(file_id=id))
             file_item = Files.get_file_by_id(id=id)
         except Exception as e:
             log.exception(e)

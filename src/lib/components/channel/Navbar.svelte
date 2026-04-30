@@ -1,17 +1,12 @@
 <script lang="ts">
-	import { getContext } from 'svelte';
-	import { toast } from 'svelte-sonner';
+	import { getI18n } from '$lib/utils/context';
 
 	import { showArchivedChats, showSidebar, user } from '$lib/stores';
 
-	import { slide } from 'svelte/transition';
-	import { page } from '$app/stores';
-
 	import UserMenu from '$lib/components/layout/Sidebar/UserMenu.svelte';
 	import MenuLines from '../icons/MenuLines.svelte';
-	import PencilSquare from '../icons/PencilSquare.svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let channel;
 </script>

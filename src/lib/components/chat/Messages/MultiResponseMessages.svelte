@@ -1,13 +1,11 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import dayjs from 'dayjs';
-	import { onMount, tick, getContext } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { createEventDispatcher } from 'svelte';
 
-	import { mobile, settings } from '$lib/stores';
-
-	import { generateMoACompletion } from '$lib/apis';
-	import { updateChatById } from '$lib/apis/chats';
-	import { createOpenAITextStream } from '$lib/apis/streaming';
+	import { mobile } from '$lib/stores';
 
 	import ResponseMessage from './ResponseMessage.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
@@ -16,7 +14,7 @@
 	import Markdown from './Markdown.svelte';
 	import Name from './Name.svelte';
 	import Skeleton from './Skeleton.svelte';
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let chatId;
 	export let history;

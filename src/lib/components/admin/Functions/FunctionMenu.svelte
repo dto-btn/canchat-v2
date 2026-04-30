@@ -1,7 +1,8 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import { DropdownMenu } from 'bits-ui';
 	import { flyAndScale } from '$lib/utils/transitions';
-	import { getContext } from 'svelte';
 
 	import Dropdown from '$lib/components/common/Dropdown.svelte';
 	import GarbageBin from '$lib/components/icons/GarbageBin.svelte';
@@ -12,7 +13,7 @@
 	import Switch from '$lib/components/common/Switch.svelte';
 	import GlobeAlt from '$lib/components/icons/GlobeAlt.svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let func;
 

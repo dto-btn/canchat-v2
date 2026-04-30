@@ -1,11 +1,10 @@
 <script>
-	import { getContext } from 'svelte';
-	const i18n = getContext('i18n');
+	import { getI18n } from '$lib/utils/context';
+
+	const i18n = getI18n();
 
 	import RichTextInput from '../common/RichTextInput.svelte';
 	import Spinner from '../common/Spinner.svelte';
-	import Sparkles from '../icons/Sparkles.svelte';
-	import SparklesSolid from '../icons/SparklesSolid.svelte';
 	import Mic from '../icons/Mic.svelte';
 	import VoiceRecording from '../chat/MessageInput/VoiceRecording.svelte';
 	import Tooltip from '../common/Tooltip.svelte';

@@ -1,11 +1,10 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import { toast } from 'svelte-sonner';
 
-	import DOMPurify from 'dompurify';
-	import { marked } from 'marked';
-
-	import { getContext, tick } from 'svelte';
-	const i18n = getContext('i18n');
+	import { tick } from 'svelte';
+	const i18n = getI18n();
 
 	import { chatCompletion } from '$lib/apis/openai';
 

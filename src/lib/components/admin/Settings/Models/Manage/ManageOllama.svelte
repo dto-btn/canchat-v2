@@ -1,25 +1,22 @@
 <script lang="ts">
-	import { toast } from 'svelte-sonner';
-	import { getContext, onMount } from 'svelte';
-	const i18n = getContext('i18n');
+	import { getI18n } from '$lib/utils/context';
 
-	import { WEBUI_NAME, models, MODEL_DOWNLOAD_POOL, user, config } from '$lib/stores';
+	import { toast } from 'svelte-sonner';
+	const i18n = getI18n();
+
+	import { models, MODEL_DOWNLOAD_POOL } from '$lib/stores';
 	import { splitStream } from '$lib/utils';
 
 	import {
 		createModel,
 		deleteModel,
 		downloadModel,
-		getOllamaUrls,
-		getOllamaVersion,
 		pullModel,
 		uploadModel,
-		getOllamaConfig,
 		getOllamaModels
 	} from '$lib/apis/ollama';
 	import { getModels } from '$lib/apis';
 
-	import Modal from '$lib/components/common/Modal.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import ModelDeleteConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import Spinner from '$lib/components/common/Spinner.svelte';
@@ -56,7 +53,7 @@
 	let modelUploadMode = 'file';
 	let modelInputFile: File[] | null = null;
 	let modelFileUrl = '';
-	let modelFileContent = `TEMPLATE """{{ .System }}\nUSER: {{ .Prompt }}\nASSISTANT: """\nPARAMETER num_ctx 4096\nPARAMETER stop "</s>"\nPARAMETER stop "USER:"\nPARAMETER stop "ASSISTANT:"`;
+	let modelFileContent = `TEMPLATE """{{ .System }}\nUSER: {{ .Prompt }}\nASSISTANT: """\nPARAMETER stop "</s>"\nPARAMETER stop "USER:"\nPARAMETER stop "ASSISTANT:"`;
 	let modelFileDigest = '';
 
 	let uploadProgress = null;
@@ -398,6 +395,7 @@
 
 		deleteModelTag = '';
 		models.set(await getModels(localStorage.token));
+		await init();
 	};
 
 	const cancelModelPullHandler = async (model: string) => {
@@ -792,7 +790,7 @@
 
 					{#if createModelDigest !== ''}
 						<div class="flex flex-col mt-1">
-							<div class="font-medium mb-1">{createModelTag}</div>
+							<div class="font-medium mb-1">{createModelName}</div>
 							<div class="">
 								<div class="flex flex-row justify-between space-x-4 pr-2">
 									<div class=" flex-1">

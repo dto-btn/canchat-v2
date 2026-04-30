@@ -1,5 +1,7 @@
 <script>
-	import { getContext, tick, onMount } from 'svelte';
+	import { getI18n } from '$lib/utils/context';
+
+	import { tick, onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 
 	import { config } from '$lib/stores';
@@ -18,11 +20,10 @@
 	import WebSearch from './Settings/WebSearch.svelte';
 	import Grounding from './Settings/Grounding.svelte';
 	import ChatLifetime from './Settings/ChatLifetime.svelte';
-	import ChartBar from '../icons/ChartBar.svelte';
 	import DocumentChartBar from '../icons/DocumentChartBar.svelte';
 	import Evaluations from './Settings/Evaluations.svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	let selectedTab = 'general';
 

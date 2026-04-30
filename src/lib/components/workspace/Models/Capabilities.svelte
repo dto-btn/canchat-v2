@@ -1,10 +1,11 @@
 <script lang="ts">
-	import { getContext } from 'svelte';
+	import { getI18n } from '$lib/utils/context';
+
 	import Checkbox from '$lib/components/common/Checkbox.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import { marked } from 'marked';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	const helpText = {
 		vision: $i18n.t('Model accepts image inputs'),

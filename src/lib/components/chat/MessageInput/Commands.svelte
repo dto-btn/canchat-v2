@@ -1,13 +1,11 @@
 <script>
-	import { createEventDispatcher, onMount } from 'svelte';
-	import { toast } from 'svelte-sonner';
+	import { createEventDispatcher } from 'svelte';
 
 	const dispatch = createEventDispatcher();
 
-	import { knowledge, prompts } from '$lib/stores';
+	import { knowledge } from '$lib/stores';
 
 	import { removeLastWordFromString } from '$lib/utils';
-	import { getPrompts } from '$lib/apis/prompts';
 	import { getKnowledgeBases } from '$lib/apis/knowledge';
 
 	import Prompts from './Commands/Prompts.svelte';

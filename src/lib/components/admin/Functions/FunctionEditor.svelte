@@ -1,9 +1,11 @@
 <script>
-	import { getContext, createEventDispatcher, onMount, tick } from 'svelte';
+	import { getI18n } from '$lib/utils/context';
+
+	import { createEventDispatcher, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 
 	const dispatch = createEventDispatcher();
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	import CodeEditor from '$lib/components/common/CodeEditor.svelte';
 	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';

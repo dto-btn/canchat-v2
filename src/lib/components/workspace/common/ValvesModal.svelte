@@ -1,8 +1,8 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import { toast } from 'svelte-sonner';
 	import { createEventDispatcher } from 'svelte';
-	import { onMount, getContext } from 'svelte';
-	import { addUser } from '$lib/apis/auths';
 
 	import Modal from '../../common/Modal.svelte';
 	import {
@@ -12,10 +12,9 @@
 	} from '$lib/apis/functions';
 	import { getToolValvesById, getToolValvesSpecById, updateToolValvesById } from '$lib/apis/tools';
 	import Spinner from '../../common/Spinner.svelte';
-	import Switch from '$lib/components/common/Switch.svelte';
 	import Valves from '$lib/components/common/Valves.svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 	const dispatch = createEventDispatcher();
 
 	export let show = false;

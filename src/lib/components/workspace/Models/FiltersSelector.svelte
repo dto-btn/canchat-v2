@@ -1,9 +1,11 @@
 <script lang="ts">
-	import { getContext, onMount } from 'svelte';
+	import { getI18n } from '$lib/utils/context';
+
+	import { onMount } from 'svelte';
 	import Checkbox from '$lib/components/common/Checkbox.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let filters = [];
 	export let selectedFilterIds = [];

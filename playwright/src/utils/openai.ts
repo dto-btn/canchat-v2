@@ -1,12 +1,24 @@
 import fs from 'fs';
 import OpenAI from 'openai';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+let openai: OpenAI | null = null;
+
+function getOpenAI(): OpenAI {
+	if (!openai) {
+		if (!process.env.OPENAI_API_KEY) {
+			throw new Error(
+				'OPENAI_API_KEY environment variable is not set. Skipping image description.'
+			);
+		}
+		openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+	}
+	return openai;
+}
 
 export async function describeLocalImage(fileName: string): Promise<string> {
 	const imageBase64 = fs.readFileSync(fileName).toString('base64');
 
-	const response = await openai.chat.completions.create({
+	const response = await getOpenAI().chat.completions.create({
 		model: 'gpt-4o-mini',
 		messages: [
 			{

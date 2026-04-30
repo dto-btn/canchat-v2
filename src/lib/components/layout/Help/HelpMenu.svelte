@@ -1,6 +1,7 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import { DropdownMenu } from 'bits-ui';
-	import { getContext } from 'svelte';
 
 	import { flyAndScale } from '$lib/utils/transitions';
 
@@ -11,7 +12,7 @@
 	import ExclamationCircle from '$lib/components/icons/ExclamationCircle.svelte';
 	import LightBlub from '$lib/components/icons/LightBlub.svelte';
 	import BookOpen from '$lib/components/icons/BookOpen.svelte';
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let showShortcutsHandler: Function;
 	export let showSurveyHandler: Function;

@@ -67,7 +67,13 @@ ENV RAG_EMBEDDING_MODEL="$USE_EMBEDDING_MODEL_DOCKER" \
 
 # Install system dependencies for model downloads
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc python3-dev curl libsndfile1 && \
+    apt-get install -y --no-install-recommends \
+    gcc \
+    python3-dev \
+    curl \
+    libgl1 \
+    libglib2.0-0 \
+    libsndfile1 && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/*
 
 # Create model directories
@@ -91,7 +97,7 @@ RUN python -c "import os; from sentence_transformers import SentenceTransformer;
     python -c "import os; from faster_whisper import WhisperModel; WhisperModel(os.environ['WHISPER_MODEL'], device='cpu', compute_type='int8', download_root=os.environ['WHISPER_MODEL_DIR'])" && \
     python -c "import os; import tiktoken; tiktoken.get_encoding(os.environ['TIKTOKEN_ENCODING_NAME'])" && \
     HF_HOME="/models/txtai" python -c "import os; from txtai.embeddings import Embeddings; e = Embeddings(); e.load(provider='huggingface-hub', container='neuml/txtai-wikipedia')" && \
-    python -c "import os; from transformers import pipeline; pipeline('translation', model='Helsinki-NLP/opus-mt-fr-en', device='cpu')" && \
+    python -c "from transformers import AutoTokenizer, AutoModel; AutoTokenizer.from_pretrained('Helsinki-NLP/opus-mt-fr-en'); AutoModel.from_pretrained('Helsinki-NLP/opus-mt-fr-en')" && \
     # Cleanup after model downloads
     pip3 cache purge && \
     rm -rf /root/.cache /tmp/* /var/tmp/* && \
@@ -255,6 +261,7 @@ RUN if [ ! -z "$BUILDKIT_VERSION" ]; then \
 # copy built frontend files
 COPY --chown=$UID:$GID --chmod=g=u --from=build /app/build /app/build
 COPY --chown=$UID:$GID --chmod=g=u --from=build /app/CHANGELOG.md /app/CHANGELOG.md
+COPY --chown=$UID:$GID --chmod=g=u --from=build /app/CHANGELOG-FR.md /app/CHANGELOG-FR.md
 COPY --chown=$UID:$GID --chmod=g=u --from=build /app/package.json /app/package.json
 
 # copy backend files

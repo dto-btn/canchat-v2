@@ -1,13 +1,12 @@
 <script lang="ts">
-	import { toast } from 'svelte-sonner';
+	import { getI18n } from '$lib/utils/context';
+
 	import dayjs from 'dayjs';
-	import { getContext, onMount } from 'svelte';
 
 	import Modal from '$lib/components/common/Modal.svelte';
-	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import ChevronLeft from '$lib/components/icons/ChevronLeft.svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let show = false;
 	export let feedback = null;

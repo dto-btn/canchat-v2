@@ -1,11 +1,12 @@
 <script lang="ts">
-	import { getContext } from 'svelte';
+	import { getI18n } from '$lib/utils/context';
+
 	import Collapsible from '$lib/components/common/Collapsible.svelte';
 	import BookOpen from '$lib/components/icons/BookOpen.svelte';
 	import ChevronDown from '$lib/components/icons/ChevronDown.svelte';
 	import ChevronUp from '$lib/components/icons/ChevronUp.svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let sources: Array<{
 		title: string;

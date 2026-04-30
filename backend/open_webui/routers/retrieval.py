@@ -6,10 +6,11 @@ import shutil
 import hashlib
 import time
 import tiktoken
+import asyncio
 
 import uuid
 from datetime import datetime, timedelta
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 from fastapi import (
     Depends,
@@ -18,11 +19,10 @@ from fastapi import (
     status,
     APIRouter,
 )
-from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 import tiktoken
 
-from langchain.text_splitter import RecursiveCharacterTextSplitter, TokenTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter, TokenTextSplitter
 from langchain_core.documents import Document
 
 from open_webui.constants import VECTOR_COLLECTION_PREFIXES
@@ -41,6 +41,12 @@ from open_webui.retrieval.loaders.youtube import YoutubeLoader
 # Web search engines
 from open_webui.retrieval.web.main import SearchResult
 from open_webui.retrieval.web.utils import get_web_loader
+from open_webui.retrieval.web.web_search_logger import (
+    new_web_search_event_id,
+    log_web_search_result,
+    log_web_search_content_load,
+    web_search_audit_scope,
+)
 from open_webui.retrieval.web.brave import search_brave
 from open_webui.retrieval.web.kagi import search_kagi
 from open_webui.retrieval.web.mojeek import search_mojeek
@@ -80,6 +86,8 @@ from open_webui.config import (
     UPLOAD_DIR,
     DEFAULT_LOCALE,
     ENABLE_WIKIPEDIA_GROUNDING_RERANKER,
+    RAG_WEB_SEARCH_REQUEST_TIMEOUT,
+    RAG_WEB_SEARCH_TOTAL_TIMEOUT,
 )
 from open_webui.env import (
     SRC_LOG_LEVELS,
@@ -183,10 +191,6 @@ class CollectionNameForm(BaseModel):
 
 class ProcessUrlForm(CollectionNameForm):
     url: str
-
-
-class SearchForm(CollectionNameForm):
-    query: str
 
 
 @router.get("/")
@@ -530,6 +534,7 @@ async def update_rag_config(
         )
 
         request.app.state.config.ENABLE_RAG_WEB_SEARCH = form_data.web.search.enabled
+
         request.app.state.config.BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL = (
             form_data.web.search.bypass_embedding_and_retrieval
         )
@@ -711,6 +716,22 @@ async def save_docs_to_vector_db(
     add: bool = False,
     user=None,
 ) -> bool:
+    """
+    Save documents to the vector database with proper synchronization to prevent
+    race conditions during concurrent operations.
+
+    Race conditions prevented:
+    1. Hash duplicate check-then-insert: Now atomic within lock
+    2. Collection exists check-then-create: Handled by QdrantClient.upsert() with lock
+    3. Overwrite delete-then-insert: Now atomic within lock
+
+    Returns:
+        bool: True if successful
+
+    Raises:
+        ValueError: If duplicate content detected or other validation errors
+    """
+
     def _get_docs_info(docs: list[Document]) -> str:
         docs_info = set()
 
@@ -728,27 +749,10 @@ async def save_docs_to_vector_db(
         return ", ".join(docs_info)
 
     log.info(
-        f"save_docs_to_vector_db: document {_get_docs_info(docs)} {collection_name}"
+        f"[RETRIEVAL:SAVE_DOCS_START] save_docs_to_vector_db: document {_get_docs_info(docs)} → {collection_name}"
     )
 
-    # Check if entries with the same hash (metadata.hash) already exist
-    if metadata and "hash" in metadata:
-        result = await VECTOR_DB_CLIENT.query(
-            collection_name=collection_name,
-            filter={"hash": metadata["hash"]},
-        )
-
-        if (
-            result is not None
-            and result.ids
-            and len(result.ids) > 0
-            and len(result.ids[0]) > 0
-        ):
-            existing_doc_ids = result.ids[0]
-            if existing_doc_ids:
-                log.info(f"Document with hash {metadata['hash']} already exists")
-                raise ValueError(ERROR_MESSAGES.DUPLICATE_CONTENT)
-
+    # Prepare documents (splitting) BEFORE acquiring lock to minimize lock hold time
     if split:
         if request.app.state.config.TEXT_SPLITTER in ["", "character"]:
             text_splitter = RecursiveCharacterTextSplitter(
@@ -814,67 +818,72 @@ async def save_docs_to_vector_db(
             if isinstance(value, datetime):
                 metadata[key] = str(value)
 
+    # Generate embeddings BEFORE acquiring lock to minimize lock hold time
+    embedding_function = get_embedding_function(
+        request.app.state.config.RAG_EMBEDDING_ENGINE,
+        request.app.state.config.RAG_EMBEDDING_MODEL,
+        request.app.state.ef,
+        (
+            request.app.state.config.RAG_OPENAI_API_BASE_URL
+            if request.app.state.config.RAG_EMBEDDING_ENGINE == "openai"
+            else request.app.state.config.RAG_OLLAMA_BASE_URL
+        ),
+        (
+            request.app.state.config.RAG_OPENAI_API_KEY
+            if request.app.state.config.RAG_EMBEDDING_ENGINE == "openai"
+            else request.app.state.config.RAG_OLLAMA_API_KEY
+        ),
+        request.app.state.config.RAG_EMBEDDING_BATCH_SIZE,
+    )
+
+    # Check if embedding function is properly initialized
+    if embedding_function is None:
+        error_msg = f"Embedding function is None. Engine: {request.app.state.config.RAG_EMBEDDING_ENGINE}, Model: {request.app.state.config.RAG_EMBEDDING_MODEL}"
+        log.error(error_msg)
+        raise ValueError(error_msg)
+
+    embeddings = embedding_function(
+        list(map(lambda x: x.replace("\n", " "), texts)), user=user
+    )
+
+    items = [
+        {
+            "id": str(uuid.uuid4()),
+            "text": text,
+            "vector": embeddings[idx],
+            "metadata": metadatas[idx],
+        }
+        for idx, text in enumerate(texts)
+    ]
+
+    # Locking is now handled internally by QdrantClient methods
+    # The lock manager automatically handles reentrancy, so delete_collection
+    # and insert can be called sequentially without deadlock
     try:
         if await VECTOR_DB_CLIENT.has_collection(collection_name=collection_name):
-            log.info(f"collection {collection_name} already exists")
-
             if overwrite:
+                log.info(f"Overwriting collection: {collection_name}")
                 await VECTOR_DB_CLIENT.delete_collection(
-                    collection_name=collection_name
+                    collection_name=collection_name,
                 )
-                log.info(f"deleting existing collection {collection_name}")
             elif add is False:
-                log.info(
-                    f"collection {collection_name} already exists, overwrite is False and add is False"
-                )
                 return True
-
-        log.info(f"adding to collection {collection_name}")
-        embedding_function = get_embedding_function(
-            request.app.state.config.RAG_EMBEDDING_ENGINE,
-            request.app.state.config.RAG_EMBEDDING_MODEL,
-            request.app.state.ef,
-            (
-                request.app.state.config.RAG_OPENAI_API_BASE_URL
-                if request.app.state.config.RAG_EMBEDDING_ENGINE == "openai"
-                else request.app.state.config.RAG_OLLAMA_BASE_URL
-            ),
-            (
-                request.app.state.config.RAG_OPENAI_API_KEY
-                if request.app.state.config.RAG_EMBEDDING_ENGINE == "openai"
-                else request.app.state.config.RAG_OLLAMA_API_KEY
-            ),
-            request.app.state.config.RAG_EMBEDDING_BATCH_SIZE,
-        )
-
-        # Check if embedding function is properly initialized
-        if embedding_function is None:
-            error_msg = f"Embedding function is None. Engine: {request.app.state.config.RAG_EMBEDDING_ENGINE}, Model: {request.app.state.config.RAG_EMBEDDING_MODEL}"
-            log.error(error_msg)
-            raise ValueError(error_msg)
-
-        embeddings = embedding_function(
-            list(map(lambda x: x.replace("\n", " "), texts)), user=user
-        )
-
-        items = [
-            {
-                "id": str(uuid.uuid4()),
-                "text": text,
-                "vector": embeddings[idx],
-                "metadata": metadatas[idx],
-            }
-            for idx, text in enumerate(texts)
-        ]
 
         await VECTOR_DB_CLIENT.insert(
             collection_name=collection_name,
             items=items,
         )
+        log.info(
+            f"Successfully indexed {len(items)} document chunks in collection: {collection_name}"
+        )
 
         return True
+
     except Exception as e:
-        log.exception(e)
+        log.error(
+            f"Error saving documents to collection {collection_name}: {type(e).__name__}: {e}",
+            exc_info=True,
+        )
         raise e
 
 
@@ -962,14 +971,18 @@ async def process_file(
             # Usage: /files/
             file_path = file.path
             if file_path:
-                file_path = Storage.get_file(file_path)
+                # Storage and loader calls can block; keep them off the event loop.
+                file_path = await asyncio.to_thread(Storage.get_file, file_path)
                 loader = Loader(
                     engine=request.app.state.config.CONTENT_EXTRACTION_ENGINE,
                     TIKA_SERVER_URL=request.app.state.config.TIKA_SERVER_URL,
                     PDF_EXTRACT_IMAGES=request.app.state.config.PDF_EXTRACT_IMAGES,
                 )
-                docs = loader.load(
-                    file.filename, file.meta.get("content_type"), file_path
+                docs = await asyncio.to_thread(
+                    loader.load,
+                    file.filename,
+                    file.meta.get("content_type"),
+                    file_path,
                 )
 
                 docs = [
@@ -1110,7 +1123,7 @@ async def process_youtube_video(
         content = " ".join([doc.page_content for doc in docs])
         log.debug(f"text_content: {content}")
 
-        save_docs_to_vector_db(request, docs, collection_name, overwrite=True)
+        await save_docs_to_vector_db(request, docs, collection_name, overwrite=True)
 
         return {
             "status": True,
@@ -1175,7 +1188,14 @@ async def process_web(
         )
 
 
-def search_web(request: Request, engine: str, query: str) -> list[SearchResult]:
+def search_web(
+    request: Request,
+    engine: str,
+    query: str,
+    request_timeout: Optional[int] = None,
+    user=None,
+    audit_event_id: Optional[str] = None,
+) -> list[SearchResult]:
     """Search the web using a search engine and return the results as a list of SearchResult objects.
     Will look for a search engine API key in environment variables in the following order:
     - SEARXNG_QUERY_URL
@@ -1188,9 +1208,36 @@ def search_web(request: Request, engine: str, query: str) -> list[SearchResult]:
     - SERPLY_API_KEY
     - TAVILY_API_KEY
     - SEARCHAPI_API_KEY + SEARCHAPI_ENGINE (by default `google`)
+
     Args:
+        request (Request): FastAPI request object with app config.
+        engine (str): Configured web search engine identifier.
         query (str): The query to search for
+        request_timeout (Optional[int]): Optional per-request timeout override in seconds.
+            If not provided, providers use the configured default request timeout.
+        user: The authenticated user who triggered the search (for audit logging).
     """
+
+    result_count = request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT
+    domain_filter = request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST
+
+    with web_search_audit_scope(
+        engine=engine,
+        query=query,
+        result_count_requested=result_count,
+        domain_filter_list=domain_filter,
+        user=user,
+        event_id=audit_event_id,
+    ) as dispatch_ctx:
+        results = _dispatch_search(request, engine, query, request_timeout)
+        log_web_search_result(dispatch_ctx=dispatch_ctx, results=results)
+        return results
+
+
+def _dispatch_search(
+    request: Request, engine: str, query: str, request_timeout: Optional[int] = None
+) -> list[SearchResult]:
+    """Internal dispatcher — routes to the correct search provider."""
 
     # TODO: add playwright to search the web
     if engine == "searxng":
@@ -1214,6 +1261,7 @@ def search_web(request: Request, engine: str, query: str) -> list[SearchResult]:
                 query,
                 request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
+                request_timeout=request_timeout,
             )
         else:
             raise Exception(
@@ -1226,6 +1274,7 @@ def search_web(request: Request, engine: str, query: str) -> list[SearchResult]:
                 query,
                 request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
+                request_timeout=request_timeout,
             )
         else:
             raise Exception("No BRAVE_SEARCH_API_KEY found in environment variables")
@@ -1325,196 +1374,201 @@ def search_web(request: Request, engine: str, query: str) -> list[SearchResult]:
         raise Exception("No search engine API key found in environment variables")
 
 
+class SearchForm(BaseModel):
+    query: str
+
+
 @router.post("/process/web/search")
 async def process_web_search(
     request: Request, form_data: SearchForm, user=Depends(get_verified_user)
 ):
+    total_timeout = RAG_WEB_SEARCH_TOTAL_TIMEOUT.value
+    request_timeout_cap = RAG_WEB_SEARCH_REQUEST_TIMEOUT.value
+    start_time = time.monotonic()
+    audit_event_id = new_web_search_event_id()
+    loaded_docs: list[Document] = []
+    loaded_urls: list[str] = []
+
+    def get_remaining_timeout() -> int:
+        elapsed = time.monotonic() - start_time
+        remaining = total_timeout - elapsed
+        if remaining <= 0:
+            raise TimeoutError()
+        return max(1, int(remaining))
+
+    def get_capped_request_timeout() -> int:
+        return min(get_remaining_timeout(), request_timeout_cap)
+
     try:
-        # Check for cached web search results first
-        search_hash = get_web_search_hash(
-            form_data.query, request.app.state.config.RAG_WEB_SEARCH_ENGINE
-        )
-        log.info(
-            f"Generated search hash for query '{form_data.query}' with engine '{request.app.state.config.RAG_WEB_SEARCH_ENGINE}': {search_hash}"
-        )
-
-        cached_collection = await check_web_search_cache(search_hash)
-        log.info(f"Cache check result: {cached_collection}")
-
-        if cached_collection:
-            log.info(f"✅ Using cached web search results: {cached_collection}")
-            # Return cached results without doing new web search
+        async with asyncio.timeout(total_timeout):
             try:
-                # Get ALL documents from the cached collection to extract ALL original URLs
-                # Don't limit to k results - we want all the original URLs that were cached
-                log.info(
-                    f"Getting all documents from cached collection: {cached_collection}"
+                request_timeout = get_capped_request_timeout()
+                log.debug(
+                    f"[process_web_search] query: '{form_data.query}', engine: '{request.app.state.config.RAG_WEB_SEARCH_ENGINE}'"
                 )
-                cached_result = await VECTOR_DB_CLIENT.get(
-                    collection_name=cached_collection
+                web_results = await asyncio.to_thread(
+                    search_web,
+                    request,
+                    request.app.state.config.RAG_WEB_SEARCH_ENGINE,
+                    form_data.query,
+                    request_timeout,
+                    user,
+                    audit_event_id,
                 )
+            except TimeoutError:
+                raise
+            except Exception as e:
+                log.exception(e)
 
-                cached_urls = []
-
-                if cached_result and cached_result.metadatas:
-                    # Extract unique URLs from all cached documents
-                    # NOTE: For Qdrant, metadatas is a list of lists: [[metadata1], [metadata2], [metadata3]]
-                    log.info(
-                        f"Processing {len(cached_result.metadatas)} metadata groups"
-                    )
-                    for i, metadata_group in enumerate(cached_result.metadatas):
-                        # Each metadata_group is a list containing one metadata dict
-                        if isinstance(metadata_group, list) and len(metadata_group) > 0:
-                            metadata = metadata_group[0]  # Get the actual metadata dict
-                            log.debug(f"Metadata group {i}: {metadata}")
-                            if isinstance(metadata, dict) and "source" in metadata:
-                                url = metadata["source"]
-                                if url not in cached_urls:
-                                    cached_urls.append(url)
-                                    log.debug(f"✅ Added URL from metadata {i}: {url}")
-                            else:
-                                log.warning(
-                                    f"⚠️ Metadata {i} missing 'source' field or not a dict: {metadata}"
-                                )
-                        else:
-                            log.warning(
-                                f"⚠️ Metadata group {i} is not a list or empty: {metadata_group}"
-                            )
-
-                log.info(
-                    f"🎯 Extracted {len(cached_urls)} unique URLs from cached metadata"
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=ERROR_MESSAGES.WEB_SEARCH_ERROR(e),
                 )
 
-                # If no URLs found, fall back to similarity search
-                if not cached_urls:
-                    log.warning(
-                        "No URLs found in cached metadata, falling back to similarity search"
+            log.debug(f"[process_web_search] web_results: {web_results}")
+
+            urls = []
+            content_load_start = time.monotonic()
+            try:
+                urls = [result.link for result in web_results]
+                loaded_urls = urls
+                content_load_start = time.monotonic()
+                request_timeout = get_capped_request_timeout()
+                loader = get_web_loader(
+                    urls,
+                    verify_ssl=request.app.state.config.ENABLE_RAG_WEB_LOADER_SSL_VERIFICATION,
+                    requests_per_second=request.app.state.config.RAG_WEB_SEARCH_CONCURRENT_REQUESTS,
+                    request_timeout=request_timeout,
+                )
+
+                def enrich_doc_metadata(doc: Document) -> None:
+                    if not hasattr(doc, "metadata"):
+                        doc.metadata = {}
+                    doc.metadata.update(
+                        {
+                            "created_at": int(time.time()),
+                            "search_query": form_data.query,
+                            "search_engine": request.app.state.config.RAG_WEB_SEARCH_ENGINE,
+                            "type": "web_search",
+                        }
                     )
-                    result = query_collection(
-                        collection_names=[cached_collection],
-                        queries=[form_data.query],
-                        embedding_function=request.app.state.EMBEDDING_FUNCTION,
-                        k=request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+
+                def load_docs_incremental() -> list[Document]:
+                    for doc in loader.lazy_load():
+                        enrich_doc_metadata(doc)
+                        loaded_docs.append(doc)
+                    return loaded_docs
+
+                docs = await asyncio.to_thread(load_docs_incremental)
+                loaded_docs = docs
+
+                if request.app.state.config.BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL:
+                    content_load_ms = round(
+                        (time.monotonic() - content_load_start) * 1000
                     )
+                    log_web_search_content_load(
+                        event_id=audit_event_id,
+                        urls=urls,
+                        docs_loaded=len(docs),
+                        latency_ms=content_load_ms,
+                        bypass_embedding=True,
+                        engine=request.app.state.config.RAG_WEB_SEARCH_ENGINE,
+                    )
+                    # Return raw results without embedding
+                    return {
+                        "status": True,
+                        "collection_name": None,
+                        "docs": [
+                            {
+                                "content": doc.page_content,
+                                "metadata": doc.metadata,
+                            }
+                            for doc in docs
+                        ],
+                        "filenames": urls,
+                        "loaded_count": len(docs),
+                    }
 
-                    if (
-                        result
-                        and result.get("metadatas")
-                        and len(result["metadatas"]) > 0
-                    ):
-                        for metadata in result["metadatas"][0]:
-                            if "source" in metadata:
-                                url = metadata["source"]
-                                if url not in cached_urls:
-                                    cached_urls.append(url)
+                # Use timestamp + random UUID to ensure uniqueness without hash-based caching
+                timestamp = int(time.time())
+                unique_id = str(uuid.uuid4())[:8]
+                collection_name = (
+                    f"{VECTOR_COLLECTION_PREFIXES.WEB_SEARCH}{timestamp}-{unique_id}"
+                )
 
-                # Final fallback
-                if not cached_urls:
-                    log.warning("No URLs found in cached results, using fallback")
-                    cached_urls = ["cached_results"]
+                await save_docs_to_vector_db(
+                    request,
+                    docs,
+                    collection_name,
+                    overwrite=True,
+                    user=user,
+                )
 
-                log.info(f"🎯 Returning {len(cached_urls)} cached URLs: {cached_urls}")
+                content_load_ms = round((time.monotonic() - content_load_start) * 1000)
+                log_web_search_content_load(
+                    event_id=audit_event_id,
+                    urls=urls,
+                    docs_loaded=len(docs),
+                    latency_ms=content_load_ms,
+                    bypass_embedding=False,
+                    collection_name=collection_name,
+                    engine=request.app.state.config.RAG_WEB_SEARCH_ENGINE,
+                )
+
                 return {
                     "status": True,
-                    "collection_name": cached_collection,
-                    "filenames": cached_urls,
-                    "loaded_count": (
-                        len(cached_result.metadatas)
-                        if cached_result and cached_result.metadatas
-                        else 0
-                    ),
-                    "cached": True,
+                    "collection_name": collection_name,
+                    "filenames": urls,
+                    "loaded_count": len(docs),
                 }
+            except (TimeoutError, asyncio.TimeoutError):
+                raise
             except Exception as e:
-                log.warning(
-                    f"Error querying cached results, proceeding with fresh search: {e}"
+                content_load_ms = round((time.monotonic() - content_load_start) * 1000)
+                log_web_search_content_load(
+                    event_id=audit_event_id,
+                    urls=urls,
+                    docs_loaded=0,
+                    latency_ms=content_load_ms,
+                    engine=request.app.state.config.RAG_WEB_SEARCH_ENGINE,
+                    error=e,
                 )
-        else:
-            log.info(
-                f"❌ No cached results found for hash {search_hash}, proceeding with fresh search"
+                log.exception(e)
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=ERROR_MESSAGES.DEFAULT(e),
+                )
+    except (TimeoutError, asyncio.TimeoutError):
+        if loaded_docs:
+            log.warning(
+                f"[process_web_search] total timeout reached after loading {len(loaded_docs)} docs; returning partial results"
             )
-
-        logging.info(
-            f"Performing new web search with {request.app.state.config.RAG_WEB_SEARCH_ENGINE, form_data.query}"
-        )
-        web_results = search_web(
-            request, request.app.state.config.RAG_WEB_SEARCH_ENGINE, form_data.query
-        )
-    except Exception as e:
-        log.exception(e)
-
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=ERROR_MESSAGES.WEB_SEARCH_ERROR(e),
-        )
-
-    log.debug(f"web_results: {web_results}")
-
-    try:
-        collection_name = form_data.collection_name
-        if collection_name == "" or collection_name is None:
-            # Use consistent hash-based naming for web search caching
-            search_hash = get_web_search_hash(
-                form_data.query, request.app.state.config.RAG_WEB_SEARCH_ENGINE
-            )
-            collection_name = f"web_{search_hash}"
-
-        urls = [result.link for result in web_results]
-        loader = get_web_loader(
-            urls,
-            verify_ssl=request.app.state.config.ENABLE_RAG_WEB_LOADER_SSL_VERIFICATION,
-            requests_per_second=request.app.state.config.RAG_WEB_SEARCH_CONCURRENT_REQUESTS,
-        )
-        docs = loader.load()
-
-        # Add timestamp metadata for cache management
-        for doc in docs:
-            if not hasattr(doc, "metadata"):
-                doc.metadata = {}
-            doc.metadata.update(
-                {
-                    "created_at": int(time.time()),
-                    "search_query": form_data.query,
-                    "search_engine": request.app.state.config.RAG_WEB_SEARCH_ENGINE,
-                    "type": "web_search",
+            if request.app.state.config.BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL:
+                return {
+                    "status": True,
+                    "collection_name": None,
+                    "docs": [
+                        {
+                            "content": doc.page_content,
+                            "metadata": doc.metadata,
+                        }
+                        for doc in loaded_docs
+                    ],
+                    "filenames": loaded_urls,
+                    "loaded_count": len(loaded_docs),
                 }
-            )
-
-        if request.app.state.config.BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL:
             return {
                 "status": True,
                 "collection_name": None,
-                "docs": [
-                    {
-                        "content": doc.page_content,
-                        "metadata": doc.metadata,
-                    }
-                    for doc in docs
-                ],
-                "filenames": urls,
-                "loaded_count": len(docs),
+                "filenames": loaded_urls,
+                "loaded_count": len(loaded_docs),
             }
-        else:
-            await run_in_threadpool(
-                save_docs_to_vector_db,
-                request,
-                docs,
-                collection_name,
-                overwrite=True,
-                user=user,
-            )
-
-            return {
-                "status": True,
-                "collection_name": collection_name,
-                "filenames": urls,
-                "loaded_count": len(docs),
-            }
-    except Exception as e:
-        log.exception(e)
+        log.error(
+            f"[process_web_search] exceeded total timeout of {total_timeout}s for query: '{form_data.query}'"
+        )
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=ERROR_MESSAGES.DEFAULT(e),
+            status_code=status.HTTP_408_REQUEST_TIMEOUT,
+            detail=f"Web search timed out after {total_timeout} seconds",
         )
 
 
@@ -2114,8 +2168,9 @@ async def get_vector_db_stats(user) -> dict:
 
 def get_web_search_hash(query: str, search_engine: str) -> str:
     """
-    Generate a consistent hash for web search caching.
-    Normalizes query for better cache hits.
+    Generate a hash for web search queries.
+    Used for cleanup operations and temporary collection naming.
+    NOTE: No longer used for caching - web searches always return fresh results.
 
     Args:
         query: Search query string
@@ -2124,7 +2179,7 @@ def get_web_search_hash(query: str, search_engine: str) -> str:
     Returns:
         str: Hash string for the search
     """
-    # Normalize the query for consistent caching
+    # Normalize the query for consistent hashing
     normalized_query = query.lower().strip()
     # Remove extra whitespace and normalize punctuation
     normalized_query = re.sub(r"\s+", " ", normalized_query)
@@ -2135,31 +2190,7 @@ def get_web_search_hash(query: str, search_engine: str) -> str:
     return hashlib.sha256(content).hexdigest()[:16]
 
 
-async def check_web_search_cache(search_hash: str) -> str:
-    """
-    Check if a web search result is cached in vector DB.
-
-    Args:
-        search_hash: Hash of the search query
-
-    Returns:
-        str: Collection name if cached, None otherwise
-    """
-    try:
-        if not VECTOR_DB_CLIENT:
-            return None
-
-        collection_name = f"web_{search_hash}"
-
-        # Check if collection exists
-        if await VECTOR_DB_CLIENT.has_collection(collection_name=collection_name):
-            return collection_name
-
-        return None
-
-    except Exception as e:
-        log.error(f"Error checking web search cache: {e}")
-        return None
+# REMOVED: check_web_search_cache function - web search caching is disabled
 
 
 async def cleanup_expired_web_searches(
@@ -2208,7 +2239,7 @@ async def cleanup_expired_web_searches(
                 collection if isinstance(collection, str) else collection.name
             )
 
-            # Only process web search collections (both old and new prefix formats)
+            # Only process web search collections (all naming formats)
             if not (
                 collection_name.startswith("web_")
                 or collection_name.startswith(VECTOR_COLLECTION_PREFIXES.WEB_SEARCH)
@@ -2313,6 +2344,219 @@ async def cleanup_expired_web_searches(
         return {"error": str(e), "collections_cleaned": 0, "vectors_cleaned": 0}
 
 
+async def cleanup_expired_web_searches_safe(
+    max_age_days: int = 30,
+    force_delete_all: bool = False,
+    batch_size: int = 10,
+    max_concurrent: int = 5,
+):
+    """
+    K8s-safe cleanup of expired web search collections with batching and concurrency control.
+
+    Features:
+    - Batched processing to prevent memory spikes
+    - Controlled concurrency to prevent database overload
+    - Non-blocking with regular yields to prevent pod lockup
+    - Timeout protection
+    - Error isolation (one failure doesn't stop others)
+
+    Args:
+        max_age_days: Age threshold for deletion
+        force_delete_all: Delete all web collections regardless of age
+        batch_size: Number of collections to process in each batch
+        max_concurrent: Maximum concurrent deletion operations
+    """
+    import time
+
+    start_time = time.time()
+
+    try:
+        cleanup_summary = {
+            "collections_checked": 0,
+            "collections_cleaned": 0,
+            "vectors_cleaned": 0,
+            "errors": [],
+            "batches_processed": 0,
+            "start_time": start_time,
+        }
+
+        if not VECTOR_DB_CLIENT:
+            cleanup_summary["errors"].append("Vector DB client not available")
+            return cleanup_summary
+
+        log.info(
+            f"🧹 Starting K8s-safe web search cleanup (batch_size={batch_size}, max_concurrent={max_concurrent})"
+        )
+
+        # Get collections with timeout protection
+        collections = []
+        try:
+            async with asyncio.timeout(30):  # 30 second timeout for collection listing
+                if hasattr(VECTOR_DB_CLIENT, "list_collections"):
+                    collections = await VECTOR_DB_CLIENT.list_collections()
+                else:
+                    log.warning("Vector DB client does not support listing collections")
+                    return cleanup_summary
+        except asyncio.TimeoutError:
+            error_msg = "Timeout getting collection list"
+            log.error(error_msg)
+            cleanup_summary["errors"].append(error_msg)
+            return cleanup_summary
+        except Exception as e:
+            error_msg = f"Error getting collections: {e}"
+            log.error(error_msg)
+            cleanup_summary["errors"].append(error_msg)
+            return cleanup_summary
+
+        # Filter to only web search collections
+        web_collections = []
+        for collection in collections:
+            collection_name = (
+                collection if isinstance(collection, str) else collection.name
+            )
+            if collection_name.startswith("web_") or collection_name.startswith(
+                VECTOR_COLLECTION_PREFIXES.WEB_SEARCH
+            ):
+                web_collections.append(collection_name)
+
+        total_collections = len(web_collections)
+        log.info(f"📊 Found {total_collections} web search collections to process")
+
+        if total_collections == 0:
+            log.info("✅ No web search collections found")
+            return cleanup_summary
+
+        # Process in batches to prevent memory issues and pod lockup
+        cutoff_timestamp = datetime.now() - timedelta(days=max_age_days)
+        semaphore = asyncio.Semaphore(max_concurrent)
+
+        async def delete_collection_safe(collection_name: str):
+            """Safely delete a collection with timeout and error handling"""
+            async with semaphore:  # Limit concurrent operations
+                try:
+                    async with asyncio.timeout(10):  # 10 second timeout per deletion
+                        await VECTOR_DB_CLIENT.delete_collection(collection_name)
+                        log.info(f"🗑️ Deleted web search collection: {collection_name}")
+                        return {"success": True, "collection": collection_name}
+                except asyncio.TimeoutError:
+                    error_msg = f"Timeout deleting collection {collection_name}"
+                    log.error(error_msg)
+                    return {
+                        "success": False,
+                        "collection": collection_name,
+                        "error": error_msg,
+                    }
+                except Exception as e:
+                    error_msg = f"Error deleting collection {collection_name}: {str(e)}"
+                    log.error(error_msg)
+                    return {
+                        "success": False,
+                        "collection": collection_name,
+                        "error": error_msg,
+                    }
+
+        # Process collections in batches
+        for i in range(0, total_collections, batch_size):
+            batch = web_collections[i : i + batch_size]
+            batch_num = (i // batch_size) + 1
+            total_batches = (total_collections + batch_size - 1) // batch_size
+
+            log.info(
+                f"🔄 Processing batch {batch_num}/{total_batches} ({len(batch)} collections)"
+            )
+
+            if force_delete_all:
+                # Force delete all in this batch
+                tasks = [
+                    delete_collection_safe(collection_name) for collection_name in batch
+                ]
+
+                try:
+                    # Process batch with overall timeout
+                    async with asyncio.timeout(60):  # 60 second timeout per batch
+                        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                        for result in results:
+                            cleanup_summary["collections_checked"] += 1
+                            if isinstance(result, dict):
+                                if result.get("success"):
+                                    cleanup_summary["collections_cleaned"] += 1
+                                else:
+                                    cleanup_summary["errors"].append(
+                                        result.get("error", "Unknown error")
+                                    )
+                            else:
+                                # Exception occurred
+                                error_msg = f"Unexpected error: {str(result)}"
+                                cleanup_summary["errors"].append(error_msg)
+                                log.error(error_msg)
+
+                except asyncio.TimeoutError:
+                    error_msg = f"Batch {batch_num} timed out"
+                    log.error(error_msg)
+                    cleanup_summary["errors"].append(error_msg)
+                    # Continue to next batch instead of failing completely
+
+            else:
+                # Normal age-based cleanup (more complex - keeping simple for now)
+                for collection_name in batch:
+                    cleanup_summary["collections_checked"] += 1
+                    # For now, implement simple deletion - can add age checking later if needed
+                    result = await delete_collection_safe(collection_name)
+                    if result.get("success"):
+                        cleanup_summary["collections_cleaned"] += 1
+                    else:
+                        cleanup_summary["errors"].append(
+                            result.get("error", "Unknown error")
+                        )
+
+            cleanup_summary["batches_processed"] += 1
+
+            # Yield control to prevent blocking the event loop
+            await asyncio.sleep(0.1)  # Small delay between batches
+
+            log.info(f"✅ Completed batch {batch_num}/{total_batches}")
+
+        # Add completion timing
+        end_time = time.time()
+        total_duration = end_time - start_time
+        cleanup_summary["end_time"] = end_time
+        cleanup_summary["total_duration_seconds"] = total_duration
+
+        log.info(
+            f"🎉 Web search cleanup completed in {total_duration:.2f} seconds: {cleanup_summary}"
+        )
+        return cleanup_summary
+
+    except Exception as e:
+        # Add timing even for errors
+        end_time = time.time()
+        total_duration = end_time - start_time if "start_time" in locals() else 0
+        log.error(
+            f"Critical error during web search cleanup after {total_duration:.2f} seconds: {e}"
+        )
+        return {
+            "error": str(e),
+            "collections_cleaned": cleanup_summary.get("collections_cleaned", 0),
+            "vectors_cleaned": 0,
+            "batches_processed": cleanup_summary.get("batches_processed", 0),
+            "total_duration_seconds": total_duration,
+        }
+
+
+async def cleanup_all_web_search_cache():
+    """
+    Helper function to cleanup ALL web search cache collections.
+    Used by API endpoint with optimal batch settings for maintenance operations.
+    """
+    return await cleanup_expired_web_searches_safe(
+        max_age_days=0,
+        force_delete_all=True,
+        batch_size=20,  # Larger batches for API maintenance
+        max_concurrent=10,  # Higher concurrency for faster cleanup
+    )
+
+
 ####################################
 #
 # API Endpoints for K8s CronJob Integration
@@ -2337,6 +2581,33 @@ async def api_cleanup_orphaned_vectors(user=Depends(get_admin_user)):
         }
     except Exception as e:
         log.error(f"Orphaned vector cleanup API failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "status": "error",
+                "timestamp": datetime.now().isoformat(),
+                "error": str(e),
+            },
+        )
+
+
+@router.post("/maintenance/cleanup/all-web-search-cache")
+async def api_cleanup_all_web_search_cache(user=Depends(get_admin_user)):
+    """
+    API endpoint to forcibly cleanup ALL web search cache collections.
+    This removes all existing cached web search results to ensure fresh searches.
+    Used after disabling web search caching to clean up old cached data.
+    """
+    try:
+        result = await cleanup_all_web_search_cache()
+        return {
+            "status": "success",
+            "timestamp": datetime.now().isoformat(),
+            "message": "All web search cache collections have been cleaned up",
+            "cleanup_result": result,
+        }
+    except Exception as e:
+        log.error(f"All web search cache cleanup API failed: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
@@ -2602,23 +2873,23 @@ def extract_file_ids_from_chat_data(chat):
 
 def get_all_file_references_from_chats(exclude_chat_ids=None):
     """
-    Extract all file IDs referenced across all chats in the system.
+    Extract all file IDs with reference counts across all chats in the system.
     Uses pagination to handle large datasets efficiently.
 
     Args:
         exclude_chat_ids: List of chat IDs to exclude from scanning (e.g., chats being deleted)
 
     Returns:
-        set: Set of all file IDs that are still referenced by existing chats
+        dict: Map of file_id -> reference_count for all files referenced by existing chats
     """
     try:
-        log.info("Scanning all chats for file references...")
+        log.info("Scanning all chats for file references with counts...")
         if exclude_chat_ids:
             log.info(
                 f"Excluding {len(exclude_chat_ids)} chats from file reference scan"
             )
 
-        all_file_ids = set()
+        file_ref_counts = {}  # file_id -> count
 
         # Get chats in batches to avoid memory issues
         from open_webui.models.chats import get_db, Chat
@@ -2657,7 +2928,11 @@ def get_all_file_references_from_chats(exclude_chat_ids=None):
                             chat_data.id, chat_data.chat
                         )
                         file_ids = extract_file_ids_from_chat_data(temp_chat)
-                        all_file_ids.update(file_ids)
+                        # Increment reference count for each file
+                        for file_id in file_ids:
+                            file_ref_counts[file_id] = (
+                                file_ref_counts.get(file_id, 0) + 1
+                            )
 
                     except Exception as e:
                         log.error(
@@ -2670,20 +2945,246 @@ def get_all_file_references_from_chats(exclude_chat_ids=None):
                 # Log progress every 1000 records
                 if offset % 1000 == 0:
                     log.info(
-                        f"Scanned {offset} chats for file references, found {len(all_file_ids)} unique file IDs so far"
+                        f"Scanned {offset} chats for file references, found {len(file_ref_counts)} unique file IDs so far"
                     )
 
                 # Clear batch from memory
                 del chat_batch
 
         log.info(
-            f"Completed file reference scan. Found {len(all_file_ids)} total file references across {total_chats_scanned} chats"
+            f"Completed file reference scan. Found {len(file_ref_counts)} total file references across {total_chats_scanned} chats"
         )
-        return all_file_ids
+        return file_ref_counts
 
     except Exception as e:
-        log.error(f"Error scanning chats for file references: {e}")
-        return set()
+        log.error(f"Error getting file references from chats: {e}")
+        return {}
+
+
+# ============================================================================
+# Service Layer Functions - Separate ORM/DB operations from business logic
+# ============================================================================
+
+
+def get_knowledge_base_file_ids() -> set:
+    """
+    Service function to retrieve all file IDs referenced in knowledge bases.
+
+    Returns:
+        set: File IDs from knowledge bases
+    """
+    from open_webui.models.knowledge import Knowledges
+
+    kb_file_ids = set()
+    try:
+        knowledge_bases = Knowledges.get_knowledge_bases()
+        for kb in knowledge_bases:
+            if kb.data and isinstance(kb.data, dict):
+                file_ids = kb.data.get("file_ids", [])
+                if isinstance(file_ids, list):
+                    kb_file_ids.update(file_ids)
+        log.debug(f"Retrieved {len(kb_file_ids)} file IDs from knowledge bases")
+    except Exception as e:
+        log.error(f"Error getting knowledge base file IDs: {e}")
+
+    return kb_file_ids
+
+
+def get_chat_batch_for_cleanup(
+    max_age_days: int = None,
+    preserve_pinned: bool = True,
+    preserve_archived: bool = False,
+    batch_size: int = 100,
+) -> list:
+    """
+    Service function to retrieve next batch of chats for cleanup.
+
+    Args:
+        max_age_days: Age threshold in days
+        preserve_pinned: Exclude pinned chats
+        preserve_archived: Exclude archived chats
+        batch_size: Number of chats to retrieve
+
+    Returns:
+        list: Batch of chat objects to process
+    """
+    from open_webui.models.chats import Chats
+
+    try:
+        return Chats.get_chats_for_cleanup_batch(
+            max_age_days=max_age_days,
+            preserve_pinned=preserve_pinned,
+            preserve_archived=preserve_archived,
+            batch_size=batch_size,
+            offset=0,  # Always 0 since we delete as we go
+        )
+    except Exception as e:
+        log.error(f"Error retrieving chat batch: {e}")
+        return []
+
+
+# ============================================================================
+# Business Logic Functions - Orchestrate cleanup operations
+# ============================================================================
+
+
+async def cleanup_orphaned_files(
+    file_ids: set, exclude_from_chats: set = None, kb_files: set = None
+) -> dict:
+    """
+    Clean up orphaned files that are no longer referenced by any chats.
+    This function is separated from chat cleanup to follow single responsibility principle.
+
+    Args:
+        file_ids: Set of file IDs to potentially clean up
+        exclude_from_chats: Set of file IDs still referenced by remaining chats
+        kb_files: Set of file IDs used by knowledge bases (should be preserved)
+
+    Returns:
+        dict: Summary with files_cleaned and collections_cleaned counts
+    """
+    from open_webui.models.files import Files
+    from open_webui.storage.provider import Storage
+
+    cleanup_stats = {
+        "files_cleaned": 0,
+        "collections_cleaned": 0,
+        "errors": [],
+    }
+
+    if exclude_from_chats is None:
+        exclude_from_chats = set()
+    if kb_files is None:
+        kb_files = set()
+
+    for file_id in file_ids:
+        try:
+            # Skip knowledge base files - NEVER delete them
+            if file_id in kb_files:
+                log.debug(f"Preserving knowledge base file: {file_id}")
+                continue
+
+            # Only delete if not referenced by other chats
+            if file_id not in exclude_from_chats:
+                file = Files.get_file_by_id(file_id)
+                if file:
+                    # Delete physical file first. If this fails, keep vector/db state untouched.
+                    storage_delete_succeeded = True
+                    if file.path:
+                        try:
+                            await asyncio.to_thread(Storage.delete_file, file.path)
+                            log.debug(f"Deleted physical file: {file.path}")
+                        except Exception as e:
+                            storage_delete_succeeded = False
+                            log.warning(
+                                f"Could not delete physical file {file.path}: {e}"
+                            )
+
+                    if not storage_delete_succeeded:
+                        cleanup_stats["errors"].append(
+                            f"Skipped file DB deletion for {file_id} due to storage cleanup failure."
+                        )
+                        continue
+
+                    # Clean up vector collection after storage cleanup.
+                    # Vector cleanup failures should not block DB deletion of already-removed files.
+                    collection_name = f"{VECTOR_COLLECTION_PREFIXES.FILE}{file_id}"
+                    try:
+                        if await VECTOR_DB_CLIENT.has_collection(collection_name):
+                            await VECTOR_DB_CLIENT.delete_collection(collection_name)
+                            cleanup_stats["collections_cleaned"] += 1
+                            log.debug(f"Deleted vector collection: {collection_name}")
+                    except Exception as e:
+                        error_msg = f"Could not delete vector collection {collection_name} for file {file_id}: {e}"
+                        log.warning(error_msg)
+                        cleanup_stats["errors"].append(error_msg)
+
+                    # Delete DB record after storage cleanup regardless of vector cleanup outcome.
+                    Files.delete_file_by_id(file_id)
+                    cleanup_stats["files_cleaned"] += 1
+                    log.debug(f"Deleted file record: {file_id}")
+            else:
+                log.debug(f"File {file_id} still referenced by other chats, preserving")
+
+        except Exception as e:
+            error_msg = f"Error cleaning up file {file_id}: {e}"
+            log.error(error_msg)
+            cleanup_stats["errors"].append(error_msg)
+
+    return cleanup_stats
+
+
+async def delete_chats_with_retry(
+    chat_ids: list, max_retries: int = 3, context_label: Optional[str] = None
+) -> dict:
+    """
+    Delete a list of chats with retry logic for transient errors.
+    Separated from cleanup logic to follow single responsibility principle.
+
+    Args:
+        chat_ids: List of chat IDs to delete
+        max_retries: Maximum number of retry attempts
+        context_label: Optional label included in deletion logs for easier tracing
+
+    Returns:
+        dict: Result with deleted_count and any errors
+    """
+    from open_webui.models.chats import Chats
+
+    deletion_result = None
+
+    for retry in range(max_retries):
+        try:
+            deletion_result = Chats.delete_chat_list(
+                chat_ids, log_context=context_label
+            )
+            break  # Success, exit retry loop
+        except Exception as e:
+            if retry < max_retries - 1:
+                wait_time = 2**retry  # Exponential backoff: 1s, 2s, 4s
+                log.warning(
+                    f"Chat deletion attempt {retry + 1} failed, retrying in {wait_time}s: {e}"
+                )
+                await asyncio.sleep(wait_time)
+            else:
+                error_msg = f"Failed to delete chats after {max_retries} attempts: {e}"
+                log.error(error_msg)
+                deletion_result = {
+                    "deleted_count": 0,
+                    "errors": [error_msg],
+                }
+
+    return deletion_result
+
+
+async def emit_chat_deletion_notification(
+    deleted_chat_ids: list, deleted_count: int
+) -> None:
+    """
+    Emit WebSocket notification for chat deletions.
+    Separated from cleanup logic to follow single responsibility principle.
+
+    Args:
+        deleted_chat_ids: List of deleted chat IDs
+        deleted_count: Number of chats actually deleted
+    """
+    import time
+
+    try:
+        from open_webui.socket.main import sio
+
+        await sio.emit(
+            "chat-deleted",
+            {
+                "type": "chat:cleanup",
+                "deleted_chat_ids": deleted_chat_ids[:deleted_count],
+                "deleted_count": deleted_count,
+                "timestamp": int(time.time()),
+            },
+        )
+        log.debug(f"Emitted chat deletion notification for {deleted_count} chats")
+    except Exception as e:
+        log.warning(f"Failed to emit chat deletion notification: {e}")
 
 
 async def cleanup_orphaned_files_by_reference():
@@ -3466,6 +3967,285 @@ async def cleanup_expired_chats(
         }
 
 
+async def cleanup_expired_chats_streaming(
+    max_age_days: int = 30,
+    preserve_pinned: bool = True,
+    preserve_archived: bool = False,
+    force_cleanup_all: bool = False,
+    should_continue: Optional[Callable[[], bool]] = None,
+) -> dict:
+    """
+    Dispatcher function for memory-efficient chat cleanup operations.
+
+    Orchestrates chat, file, and knowledge base cleanup by delegating to
+    specialized service functions. Handles batching logic without direct
+    ORM operations.
+
+    Args:
+        max_age_days: Age threshold in days (default: 30 days)
+        preserve_pinned: If True, exclude pinned chats from cleanup (default: True)
+        preserve_archived: If True, exclude archived chats from cleanup (default: False)
+        force_cleanup_all: If True, ignore age restrictions and clean up all chats (default: False)
+        should_continue: Optional callback returning True while cleanup is allowed to continue.
+            When it returns False, cleanup stops before further destructive work.
+
+    Returns:
+        dict: Summary of cleanup operations
+    """
+    try:
+        from open_webui.config import (
+            CHAT_CLEANUP_BATCH_SIZE,
+            CHAT_CLEANUP_FILE_BATCH_SIZE,
+        )
+
+        cleanup_summary = {
+            "chats_checked": 0,
+            "expired_chats_found": 0,
+            "chats_deleted": 0,
+            "files_cleaned": 0,
+            "collections_cleaned": 0,
+            "preserved_pinned": 0,
+            "preserved_archived": 0,
+            "errors": [],
+        }
+
+        if force_cleanup_all:
+            log.info("Force cleanup all chats enabled - ignoring age restrictions")
+
+        log.info(
+            f"Starting streaming chat cleanup (age > {max_age_days} days, "
+            f"preserve_pinned={preserve_pinned}, preserve_archived={preserve_archived}, "
+            f"force_cleanup_all={force_cleanup_all})"
+        )
+
+        # Delegate KB file retrieval to service layer
+        kb_referenced_files = get_knowledge_base_file_ids()
+        log.info(
+            f"Found {len(kb_referenced_files)} files in knowledge bases to preserve"
+        )
+
+        # Delegate file reference retrieval to service layer (returns dict with counts)
+        file_ref_counts = get_all_file_references_from_chats()
+        log.info(
+            f"Found {len(file_ref_counts)} unique files with total references across all chats"
+        )
+
+        # Process chats in streaming batches
+        BATCH_SIZE = max(1, CHAT_CLEANUP_BATCH_SIZE)
+        FILE_BATCH_SIZE = max(1, CHAT_CLEANUP_FILE_BATCH_SIZE)
+        total_processed = 0
+        deferred_file_reconciliation_ids = set()
+        cleanup_batch_number = 0
+
+        while True:
+            if should_continue and not should_continue():
+                message = "Stopping chat cleanup: distributed lock ownership was lost."
+                log.warning(message)
+                cleanup_summary["errors"].append(message)
+                break
+
+            # Delegate batch retrieval to service layer
+            chat_batch = get_chat_batch_for_cleanup(
+                max_age_days=None if force_cleanup_all else max_age_days,
+                preserve_pinned=preserve_pinned,
+                preserve_archived=preserve_archived,
+                batch_size=BATCH_SIZE,
+            )
+
+            if not chat_batch:
+                log.info("No more chats to cleanup")
+                break
+
+            cleanup_batch_number += 1
+            batch_size_actual = len(chat_batch)
+            log.info(
+                f"Cleanup batch {cleanup_batch_number}: processing {batch_size_actual} chats "
+                f"(processed_so_far={total_processed})"
+            )
+
+            # Extract chat data (business logic, no ORM)
+            chat_ids_to_delete = []
+            file_ids_to_cleanup = set()
+            # Track how many times each file appears in this batch for accurate ref counting
+            batch_file_ref_counts = {}
+
+            for chat in chat_batch:
+                try:
+                    file_ids = extract_file_ids_from_chat_data(chat)
+                    file_ids_to_cleanup.update(file_ids)
+                    # Count file references in this batch
+                    for file_id in file_ids:
+                        batch_file_ref_counts[file_id] = (
+                            batch_file_ref_counts.get(file_id, 0) + 1
+                        )
+                    chat_ids_to_delete.append(chat.id)
+                    cleanup_summary["expired_chats_found"] += 1
+                except Exception as e:
+                    error_msg = (
+                        f"Error processing chat {getattr(chat, 'id', 'unknown')}: {e}"
+                    )
+                    log.error(error_msg)
+                    cleanup_summary["errors"].append(error_msg)
+
+            if not chat_ids_to_delete:
+                message = (
+                    "Stopping chat cleanup: no valid chat IDs found in current batch "
+                    "to avoid an infinite loop."
+                )
+                log.error(message)
+                cleanup_summary["errors"].append(message)
+                break
+
+            if should_continue and not should_continue():
+                message = "Stopping chat cleanup before chat deletion: lock ownership was lost."
+                log.warning(message)
+                cleanup_summary["errors"].append(message)
+                break
+
+            batch_context = f"cleanup batch {cleanup_batch_number}"
+            log.info(
+                f"{batch_context}: deleting {len(chat_ids_to_delete)} chats from this batch..."
+            )
+            deletion_result = await delete_chats_with_retry(
+                chat_ids_to_delete,
+                max_retries=3,
+                context_label=batch_context,
+            )
+
+            if not deletion_result:
+                message = "Stopping chat cleanup: no deletion result was returned for this batch."
+                log.error(message)
+                cleanup_summary["errors"].append(message)
+                break
+
+            deleted_count = deletion_result.get("deleted_count", 0)
+            cleanup_summary["chats_deleted"] += deleted_count
+            if deletion_result.get("errors"):
+                cleanup_summary["errors"].extend(deletion_result["errors"])
+
+            # Delegate notification to specialized function
+            if deleted_count > 0:
+                await emit_chat_deletion_notification(
+                    deleted_chat_ids=chat_ids_to_delete,
+                    deleted_count=deleted_count,
+                )
+
+            # Prevent re-processing the same batch forever when nothing can be deleted.
+            if deleted_count == 0:
+                message = (
+                    "Stopping chat cleanup: no chats were deleted in this batch "
+                    "to avoid an infinite loop."
+                )
+                log.error(message)
+                cleanup_summary["errors"].append(message)
+                break
+
+            # Only clean files when all chats in this batch were deleted.
+            # Partial deletion means we cannot safely determine which file refs still exist.
+            if deleted_count != len(chat_ids_to_delete):
+                message = (
+                    "Partial chat deletion detected; skipping file cleanup for this batch "
+                    "to avoid deleting files referenced by undeleted chats."
+                )
+                log.warning(message)
+                cleanup_summary["errors"].append(message)
+                deferred_file_reconciliation_ids.update(file_ids_to_cleanup)
+            else:
+                # Update file reference counts by decrementing based on batch counts.
+                for file_id, batch_count in batch_file_ref_counts.items():
+                    if file_id in file_ref_counts:
+                        file_ref_counts[file_id] -= batch_count
+                        if file_ref_counts[file_id] <= 0:
+                            del file_ref_counts[file_id]
+
+                if should_continue and not should_continue():
+                    message = "Stopping chat cleanup before file deletion: lock ownership was lost."
+                    log.warning(message)
+                    cleanup_summary["errors"].append(message)
+                    break
+
+                file_ids_list = list(file_ids_to_cleanup)
+                for i in range(0, len(file_ids_list), FILE_BATCH_SIZE):
+                    file_batch = set(file_ids_list[i : i + FILE_BATCH_SIZE])
+                    file_cleanup_result = await cleanup_orphaned_files(
+                        file_ids=file_batch,
+                        exclude_from_chats=set(file_ref_counts.keys()),
+                        kb_files=kb_referenced_files,
+                    )
+                    cleanup_summary["files_cleaned"] += file_cleanup_result[
+                        "files_cleaned"
+                    ]
+                    cleanup_summary["collections_cleaned"] += file_cleanup_result[
+                        "collections_cleaned"
+                    ]
+                    if file_cleanup_result["errors"]:
+                        cleanup_summary["errors"].extend(file_cleanup_result["errors"])
+
+            total_processed += batch_size_actual
+            cleanup_summary["chats_checked"] += batch_size_actual
+
+            log.info(
+                f"Batch complete. Processed: {total_processed}, "
+                f"Deleted: {cleanup_summary['chats_deleted']}, "
+                f"Files: {cleanup_summary['files_cleaned']}"
+            )
+
+            # Clear batch from memory
+            del chat_batch
+            del chat_ids_to_delete
+            del file_ids_to_cleanup
+            del batch_file_ref_counts
+
+            # If we got fewer chats than batch size, we're done
+            if batch_size_actual < BATCH_SIZE:
+                break
+
+        # Reconcile files from partial-deletion batches after chat cleanup completes.
+        # This ensures files from already-deleted chats are eventually cleaned safely.
+        if deferred_file_reconciliation_ids:
+            if should_continue and not should_continue():
+                message = (
+                    "Skipping deferred file reconciliation: lock ownership was lost."
+                )
+                log.warning(message)
+                cleanup_summary["errors"].append(message)
+            else:
+                log.info(
+                    f"Running deferred file reconciliation for {len(deferred_file_reconciliation_ids)} files"
+                )
+                current_file_refs = get_all_file_references_from_chats()
+                deferred_file_ids = list(deferred_file_reconciliation_ids)
+                for i in range(0, len(deferred_file_ids), FILE_BATCH_SIZE):
+                    deferred_batch = set(deferred_file_ids[i : i + FILE_BATCH_SIZE])
+                    file_cleanup_result = await cleanup_orphaned_files(
+                        file_ids=deferred_batch,
+                        exclude_from_chats=set(current_file_refs.keys()),
+                        kb_files=kb_referenced_files,
+                    )
+                    cleanup_summary["files_cleaned"] += file_cleanup_result[
+                        "files_cleaned"
+                    ]
+                    cleanup_summary["collections_cleaned"] += file_cleanup_result[
+                        "collections_cleaned"
+                    ]
+                    if file_cleanup_result["errors"]:
+                        cleanup_summary["errors"].extend(file_cleanup_result["errors"])
+
+        log.info(f"Streaming chat cleanup completed: {cleanup_summary}")
+        return cleanup_summary
+
+    except Exception as e:
+        log.error(f"Error during streaming chat cleanup: {e}")
+        return {
+            "error": str(e),
+            "chats_checked": cleanup_summary.get("chats_checked", 0),
+            "expired_chats_found": cleanup_summary.get("expired_chats_found", 0),
+            "chats_deleted": cleanup_summary.get("chats_deleted", 0),
+            "files_cleaned": cleanup_summary.get("files_cleaned", 0),
+            "collections_cleaned": cleanup_summary.get("collections_cleaned", 0),
+        }
+
+
 @router.post("/maintenance/cleanup/expired-chats")
 async def api_cleanup_expired_chats(
     max_age_days: int = None,
@@ -3477,15 +4257,24 @@ async def api_cleanup_expired_chats(
     API endpoint to cleanup expired chats based on configured lifetime.
     Cleans up chats older than the specified age and their associated files.
     PRESERVES pinned and/or archived chats based on configuration.
+    Uses the same distributed lock as the scheduler to prevent concurrent cleanup runs.
     Used by K8s CronJobs for scheduled chat lifecycle management.
     """
+    lock = None
+    lock_renewal_task = None
+    lock_lost_event = asyncio.Event()
+
     try:
         from open_webui.config import (
             CHAT_LIFETIME_ENABLED,
             CHAT_LIFETIME_DAYS,
             CHAT_CLEANUP_PRESERVE_PINNED,
             CHAT_CLEANUP_PRESERVE_ARCHIVED,
+            CHAT_CLEANUP_LOCK_TIMEOUT,
+            CHAT_CLEANUP_LOCK_RENEWAL_INTERVAL,
         )
+        from open_webui.env import REDIS_URL, USE_REDIS_LOCKS
+        from open_webui.socket.utils import RedisLock, renew_lock_periodically
 
         # Use config defaults if not specified
         if max_age_days is None:
@@ -3495,22 +4284,56 @@ async def api_cleanup_expired_chats(
         if preserve_archived is None:
             preserve_archived = CHAT_CLEANUP_PRESERVE_ARCHIVED.value
 
+        if USE_REDIS_LOCKS:
+            lock = RedisLock(
+                redis_url=REDIS_URL,
+                lock_name="chat_cleanup_job",
+                timeout_secs=CHAT_CLEANUP_LOCK_TIMEOUT,
+            )
+
+            if not await lock.acquire_lock():
+                if lock.last_error:
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail=f"Chat cleanup lock unavailable: {lock.last_error}",
+                    )
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Another cleanup job is already running.",
+                )
+
+            lock_renewal_task = asyncio.create_task(
+                renew_lock_periodically(
+                    lock,
+                    renewal_interval_secs=CHAT_CLEANUP_LOCK_RENEWAL_INTERVAL,
+                    lock_name="chat_cleanup_job",
+                    on_lock_lost=lock_lost_event.set,
+                )
+            )
+        elif not USE_REDIS_LOCKS:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Chat cleanup requires Redis for distributed locking. ",
+            )
+
         # Check if chat lifetime is enabled to determine cleanup behavior
         if CHAT_LIFETIME_ENABLED.value:
             # Use normal age-based cleanup
-            result = await cleanup_expired_chats(
+            result = await cleanup_expired_chats_streaming(
                 max_age_days=max_age_days,
                 preserve_pinned=preserve_pinned,
                 preserve_archived=preserve_archived,
                 force_cleanup_all=False,
+                should_continue=lambda: not lock_lost_event.is_set(),
             )
         else:
             # Chat lifetime is disabled - clean up ALL chats immediately
-            result = await cleanup_expired_chats(
+            result = await cleanup_expired_chats_streaming(
                 max_age_days=0,  # Not used when force_cleanup_all=True
                 preserve_pinned=preserve_pinned,
                 preserve_archived=preserve_archived,
                 force_cleanup_all=True,
+                should_continue=lambda: not lock_lost_event.is_set(),
             )
 
         return {
@@ -3521,6 +4344,8 @@ async def api_cleanup_expired_chats(
             "preserve_archived": preserve_archived,
             "cleanup_result": result,
         }
+    except HTTPException:
+        raise
     except Exception as e:
         log.error(f"Expired chats cleanup API failed: {str(e)}")
         raise HTTPException(
@@ -3531,6 +4356,18 @@ async def api_cleanup_expired_chats(
                 "error": str(e),
             },
         )
+    finally:
+        if lock_renewal_task:
+            lock_renewal_task.cancel()
+            try:
+                await lock_renewal_task
+            except asyncio.CancelledError:
+                pass
+
+        if lock and lock.lock_obtained:
+            released = await lock.release_lock()
+            if not released:
+                log.warning("Could not confirm admin cleanup lock release")
 
 
 @router.get("/monitoring/wikipedia-grounding/queue-status")

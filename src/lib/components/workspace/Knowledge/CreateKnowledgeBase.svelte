@@ -1,7 +1,8 @@
 <script>
+	import { getI18n } from '$lib/utils/context';
+
 	import { goto } from '$app/navigation';
-	import { getContext } from 'svelte';
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	import { createNewKnowledge, getKnowledgeBases } from '$lib/apis/knowledge';
 	import { toast } from 'svelte-sonner';

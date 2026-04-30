@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { getContext } from 'svelte';
-	import Textarea from '$lib/components/common/Textarea.svelte';
-	import Tooltip from '$lib/components/common/Tooltip.svelte';
+	import { getI18n } from '$lib/utils/context';
 
-	const i18n = getContext('i18n');
+	import Textarea from '$lib/components/common/Textarea.svelte';
+
+	const i18n = getI18n();
 
 	export let name = '';
 	export let color = '';

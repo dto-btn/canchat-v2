@@ -1,6 +1,7 @@
 <script>
-	import { getContext, tick, onMount } from 'svelte';
-	import { toast } from 'svelte-sonner';
+	import { getI18n } from '$lib/utils/context';
+
+	import { onMount } from 'svelte';
 
 	import { goto } from '$app/navigation';
 	import { user } from '$lib/stores';
@@ -11,7 +12,7 @@
 	import Groups from './Users/Groups.svelte';
 	import Domains from './Users/Settings/Domains.svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	let users = [];
 

@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { v4 as uuidv4 } from 'uuid';
+	import { getI18n } from '$lib/utils/context';
 
 	import { toast } from 'svelte-sonner';
 	import { models } from '$lib/stores';
-	import { getContext, onMount, tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import type { Writable } from 'svelte/store';
 	import type { i18n as i18nType } from 'i18next';
 	import {
@@ -21,7 +21,7 @@
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import Switch from '$lib/components/common/Switch.svelte';
 
-	const i18n: Writable<i18nType> = getContext('i18n');
+	const i18n: Writable<i18nType> = getI18n();
 
 	export let saveHandler: Function;
 

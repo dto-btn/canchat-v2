@@ -1,7 +1,9 @@
 <script lang="ts">
-	import { getContext, onMount } from 'svelte';
-	import { getMCPConfig } from '$lib/apis/mcp';
-	const i18n = getContext('i18n');
+	import { getI18n } from '$lib/utils/context';
+
+	import { onMount } from 'svelte';
+	import { getMCPConfig, getBuiltinServers } from '$lib/apis/mcp';
+	const i18n = getI18n();
 
 	import Switch from '$lib/components/common/Switch.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
@@ -27,8 +29,7 @@
 		},
 		mcp: {
 			time_server: false,
-			news_server: false,
-			mpo_sharepoint_server: false
+			news_server: false
 		}
 	};
 
@@ -37,12 +38,28 @@
 	// State for MCP configuration
 	let mcpEnabled = false;
 	let mcpConfigLoading = true;
+	let sharepointServers: string[] = [];
 
-	// Function to check if MCP is globally enabled
+	// Function to check if MCP is globally enabled and discover builtin SharePoint servers
 	const checkMCPEnabled = async () => {
 		try {
-			const mcpConfig = await getMCPConfig(localStorage.token);
+			const [mcpConfig, builtinServersData] = await Promise.all([
+				getMCPConfig(localStorage.token),
+				getBuiltinServers(localStorage.token)
+			]);
 			mcpEnabled = mcpConfig?.ENABLE_MCP_API || false;
+			sharepointServers = (builtinServersData?.servers ?? [])
+				.filter((s: any) => s.name.endsWith('_sharepoint_server'))
+				.map((s: any) => s.name);
+			// Ensure permissions object has a key for each discovered SharePoint server
+			for (const serverName of sharepointServers) {
+				if (!(serverName in (permissions.mcp ?? {}))) {
+					permissions = {
+						...permissions,
+						mcp: { ...(permissions.mcp ?? {}), [serverName]: false }
+					};
+				}
+			}
 		} catch (error) {
 			console.error('Failed to fetch MCP config:', error);
 			mcpEnabled = false;
@@ -311,13 +328,16 @@
 				<Switch bind:state={permissions.mcp.news_server} />
 			</div>
 
-			<div class="  flex w-full justify-between my-2 pr-2">
-				<div class=" self-center text-xs font-medium">
-					{$i18n.t('MCP: MPO SharePoint')}
-				</div>
+			{#each sharepointServers as serverName}
+				{@const dept = serverName.replace('_sharepoint_server', '').toUpperCase()}
+				<div class="  flex w-full justify-between my-2 pr-2">
+					<div class=" self-center text-xs font-medium">
+						{$i18n.t('MCP: {{dept}} SharePoint', { dept })}
+					</div>
 
-				<Switch bind:state={permissions.mcp.mpo_sharepoint_server} />
-			</div>
+					<Switch bind:state={permissions.mcp[serverName]} />
+				</div>
+			{/each}
 		</div>
 	{/if}
 </div>

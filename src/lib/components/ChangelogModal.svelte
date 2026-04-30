@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { onMount, getContext } from 'svelte';
+	import { getI18n } from '$lib/utils/context';
+
+	import { onMount } from 'svelte';
 	import { Confetti } from 'svelte-confetti';
 
 	import { WEBUI_NAME, config, settings } from '$lib/stores';
@@ -10,14 +12,14 @@
 	import Modal from './common/Modal.svelte';
 	import { updateUserSettings } from '$lib/apis/users';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let show = false;
 
 	let changelog = null;
 
 	onMount(async () => {
-		const res = await getChangelog();
+		const res = await getChangelog($i18n.language);
 		changelog = res;
 	});
 </script>
@@ -73,15 +75,17 @@
 							{#each Object.keys(changelog[version]).filter((section) => section !== 'date') as section}
 								<div class="">
 									<div
-										class="font-semibold uppercase text-xs {section === 'added'
+										class="font-semibold uppercase text-xs {section === $i18n.t('added')
 											? 'text-white bg-blue-600'
-											: section === 'fixed'
+											: section === $i18n.t('fixed')
 												? 'text-white bg-green-600'
-												: section === 'changed'
+												: section === $i18n.t('changed')
 													? 'text-white bg-yellow-600'
-													: section === 'removed'
+													: section === $i18n.t('removed')
 														? 'text-white bg-red-600'
-														: ''}  w-fit px-3 rounded-full my-2.5"
+														: section === $i18n.t('enhanced')
+															? 'text-white bg-purple-600'
+															: ''}  w-fit px-3 rounded-full my-2.5"
 									>
 										{section}
 									</div>

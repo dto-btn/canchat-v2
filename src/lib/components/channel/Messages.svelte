@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import { toast } from 'svelte-sonner';
 
 	import dayjs from 'dayjs';
@@ -9,7 +11,7 @@
 	dayjs.extend(relativeTime);
 	dayjs.extend(isToday);
 	dayjs.extend(isYesterday);
-	import { tick, getContext, onMount, createEventDispatcher } from 'svelte';
+	import { tick } from 'svelte';
 
 	import { settings, user } from '$lib/stores';
 
@@ -18,7 +20,7 @@
 	import Spinner from '../common/Spinner.svelte';
 	import { addReaction, deleteMessage, removeReaction, updateMessage } from '$lib/apis/channels';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let id = null;
 	export let channel = null;

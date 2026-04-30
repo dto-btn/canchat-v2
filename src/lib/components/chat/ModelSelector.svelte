@@ -1,12 +1,13 @@
 <script lang="ts">
-	import { models, showSettings, settings, user, mobile, config } from '$lib/stores';
-	import { onMount, tick, getContext } from 'svelte';
+	import { getI18n } from '$lib/utils/context';
+
+	import { models, settings, user } from '$lib/stores';
 	import { toast } from 'svelte-sonner';
 	import Selector from './ModelSelector/Selector.svelte';
 	import Tooltip from '../common/Tooltip.svelte';
 
 	import { updateUserSettings } from '$lib/apis/users';
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let selectedModels = [''];
 	export let disabled = false;

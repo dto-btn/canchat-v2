@@ -63,7 +63,7 @@ def apply_model_params_to_body_ollama(params: dict, form_data: dict) -> dict:
         "mirostat",
         "mirostat_eta",
         "mirostat_tau",
-        "num_ctx",
+        "num_ctx",  # Kept for admin-configured model params; user UI control removed
         "num_batch",
         "num_keep",
         "repeat_last_n",

@@ -1,12 +1,14 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import { toast } from 'svelte-sonner';
-	import { createEventDispatcher, onMount, getContext } from 'svelte';
+	import { createEventDispatcher, onMount } from 'svelte';
 	import { getLanguages } from '$lib/i18n';
 	const dispatch = createEventDispatcher();
 
-	import { ariaMessage, models, settings, theme, user, config } from '$lib/stores';
+	import { ariaMessage, settings, theme, user } from '$lib/stores';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	import AdvancedParams from './Advanced/AdvancedParams.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
@@ -58,7 +60,6 @@
 		min_p: null,
 		stop: null,
 		tfs_z: null,
-		num_ctx: null,
 		num_batch: null,
 		num_keep: null,
 		max_tokens: null,
@@ -312,7 +313,6 @@
 						top_p: params.top_p !== null ? params.top_p : undefined,
 						min_p: params.min_p !== null ? params.min_p : undefined,
 						tfs_z: params.tfs_z !== null ? params.tfs_z : undefined,
-						num_ctx: params.num_ctx !== null ? params.num_ctx : undefined,
 						num_batch: params.num_batch !== null ? params.num_batch : undefined,
 						num_keep: params.num_keep !== null ? params.num_keep : undefined,
 						max_tokens: params.max_tokens !== null ? params.max_tokens : undefined,

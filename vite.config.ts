@@ -36,7 +36,7 @@ export default defineConfig({
 	},
 	worker: {
 		format: 'es'
-	},
+	}
 	// uncomment to test llama guard locally through docker backend
 	// server: {
 	// 	proxy: {

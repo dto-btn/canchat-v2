@@ -1,12 +1,13 @@
 <script lang="ts">
-	import { getContext } from 'svelte';
+	import { getI18n } from '$lib/utils/context';
+
 	import Selector from './Knowledge/Selector.svelte';
 	import FileItem from '$lib/components/common/FileItem.svelte';
 
 	export let selectedKnowledge = [];
 	export let collections = [];
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 </script>
 
 <div>

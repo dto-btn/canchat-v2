@@ -68,6 +68,28 @@ def replace_imports(content):
 
 
 def load_tools_module_by_id(toolkit_id, content=None):
+    """
+    Load a tool module by its ID from the database or from provided content.
+
+    Security Note (CWE-94 - Code Injection):
+        This function uses exec() to execute dynamic Python code. This is intentional
+        for the plugin system. Access control is enforced at the API layer:
+
+        - When content=None: Code is loaded from the Tools database
+        - When content is provided: Caller provides new code to execute
+
+        API Access Control (routers/tools.py):
+        - POST /api/tools/create: Requires admin OR 'workspace.tools' permission
+        - POST /api/tools/id/{id}/update: Requires admin OR owner/write access
+
+        The 'workspace.tools' permission is:
+        - Disabled by default (USER_PERMISSIONS_WORKSPACE_TOOLS_ACCESS=False)
+        - Controlled by admins via Admin Panel -> Users & Access -> Groups -> Permissions -> "Tools Access"
+        - Has UI warning: "Enabling this will allow users to upload arbitrary code"
+
+        Applicable roles when permission enabled: admin, global_analyst, analyst, user
+    """
+
     if content is None:
         tool = Tools.get_tool_by_id(toolkit_id)
         if not tool:
@@ -114,6 +136,24 @@ def load_tools_module_by_id(toolkit_id, content=None):
 
 
 def load_function_module_by_id(function_id, content=None):
+    """
+    Load a function module by its ID from the database or from provided content.
+
+    Security Note (CWE-94 - Code Injection):
+        This function uses exec() to execute dynamic Python code. This is intentional
+        for the plugin system. Access control is enforced at the API layer:
+
+        - When content=None: Code is loaded from the Functions database
+        - When content is provided: Caller provides new code to execute
+
+        API Access Control (routers/functions.py):
+        - POST /api/functions/create: Requires admin only (get_admin_user)
+        - POST /api/functions/id/{id}/update: Requires admin only (get_admin_user)
+        - All other endpoints that call this function load from database only
+
+        Only administrators can create or modify function code.
+    """
+
     if content is None:
         function = Functions.get_function_by_id(function_id)
         if not function:
@@ -163,10 +203,83 @@ def load_function_module_by_id(function_id, content=None):
         os.unlink(temp_file.name)
 
 
+def is_safe_package_name(package: str) -> bool:
+    """
+    Validate that a package name is safe for pip installation.
+
+    Allows:
+        - Package names: alphanumeric, underscores, hyphens, dots
+        - Optional extras: package[extra1,extra2]
+        - Optional version specifiers: ==, >=, <=, !=, ~=, <, >
+        - Version numbers: digits, dots, letters (like 1.0.0a1)
+
+    Rejects:
+        - Shell metacharacters: ; & | ` $ ( ) { } < >
+        - pip flags: anything starting with -
+        - URLs: git+, http://, https://, ftp://
+        - Local paths: /, ./, ../
+        - Windows paths: backslashes
+
+    Args:
+        package: The package specification string (e.g., "requests>=2.28.0")
+
+    Returns:
+        True if the package name is safe, False otherwise
+    """
+    if not package or not package.strip():
+        return False
+
+    package = package.strip()
+
+    # Reject dangerous patterns
+    dangerous_patterns = [
+        r"[;&|`$(){}]",
+        r"^\s*-",
+        r"(git\+|http://|https://|ftp://)",
+        r"^\.\.?[/\\]",
+        r"^[/\\]",
+        r"\\",
+        r"\s",
+    ]
+
+    for pattern in dangerous_patterns:
+        if re.search(pattern, package):
+            return False
+
+    # Validate against safe pattern:
+    # Examples: requests, requests[security], requests>=2.0, PyYAML>=5.0,<7.0
+    safe_pattern = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._\-\[\]=<>!~,.*+]*$")
+
+    return bool(safe_pattern.match(package))
+
+
 def install_frontmatter_requirements(requirements):
+    """
+    Install packages specified in frontmatter requirements.
+
+    Security Note (CWE-78 - Command Injection):
+        This function validates package names before passing them to pip to prevent
+        command injection attacks. Only safe package name patterns are allowed.
+        Dangerous patterns (URLs, paths, shell metacharacters) are rejected.
+
+    Args:
+        requirements: Comma-separated list of package specifications
+
+    Raises:
+        ValueError: If a package name contains unsafe characters or patterns
+    """
     if requirements:
         req_list = [req.strip() for req in requirements.split(",")]
         for req in req_list:
+            if not req:
+                continue
+            if not is_safe_package_name(req):
+                log.warning(f"Rejected unsafe package requirement: {req}")
+                raise ValueError(
+                    f"Invalid package name format: '{req}'. "
+                    "Package names must be alphanumeric with optional version specifiers. "
+                    "URLs, paths, and shell metacharacters are not allowed."
+                )
             log.info(f"Installing requirement: {req}")
             subprocess.check_call([sys.executable, "-m", "pip", "install", req])
     else:

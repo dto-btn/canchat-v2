@@ -1,16 +1,17 @@
 <script>
-	import { v4 as uuidv4 } from 'uuid';
+	import { getI18n } from '$lib/utils/context';
+
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
 	import { models } from '$lib/stores';
 
-	import { onMount, tick, getContext } from 'svelte';
-	import { createNewModel, getModelById } from '$lib/apis/models';
+	import { onMount } from 'svelte';
+	import { createNewModel } from '$lib/apis/models';
 	import { getModels } from '$lib/apis';
 
 	import ModelEditor from '$lib/components/workspace/Models/ModelEditor.svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	const onSubmit = async (modelInfo) => {
 		if ($models.find((m) => m.id === modelInfo.id)) {

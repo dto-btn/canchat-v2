@@ -58,7 +58,6 @@ from open_webui.routers import (
     groups,
     files,
     functions,
-    memories,
     metrics,
     models,
     knowledge,
@@ -279,6 +278,7 @@ from open_webui.config import (
 )
 from open_webui.env import (
     CHANGELOG,
+    CHANGELOG_FR,
     GLOBAL_LOG_LEVEL,
     SAFE_MODE,
     SRC_LOG_LEVELS,
@@ -289,12 +289,13 @@ from open_webui.env import (
     WEBUI_SESSION_COOKIE_SECURE,
     WEBUI_AUTH_TRUSTED_EMAIL_HEADER,
     WEBUI_AUTH_TRUSTED_NAME_HEADER,
+    ENABLE_PBMM_ENV,
     ENABLE_WEBSOCKET_SUPPORT,
     BYPASS_MODEL_ACCESS_CONTROL,
     RESET_CONFIG_ON_START,
 )
 
-from open_webui.logging import LoggingMiddleware, reconfigure_access_log
+from open_webui.custom_logging import LoggingMiddleware, reconfigure_access_log
 
 from open_webui.utils.models import (
     get_all_models,
@@ -346,8 +347,7 @@ class SPAStaticFiles(StaticFiles):
                 raise ex
 
 
-print(
-    rf"""
+print(rf"""
   ___                    __        __   _     _   _ ___
  / _ \ _ __   ___ _ __   \ \      / /__| |__ | | | |_ _|
 | | | | '_ \ / _ \ '_ \   \ \ /\ / / _ \ '_ \| | | || |
@@ -359,12 +359,36 @@ print(
 v{VERSION} - building the best open-source AI user interface.
 {f"Commit: {WEBUI_BUILD_HASH}" if WEBUI_BUILD_HASH != "dev-build" else ""}
 https://github.com/open-webui/open-webui
-"""
-)
+""")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Validate Redis lock manager health (already initialized during import)
+    # The lock manager creation will fail fast if REDIS_URL is not set or Redis is unavailable
+    try:
+        from open_webui.retrieval.vector.locks import get_collection_lock_manager
+
+        redis_lock_manager = get_collection_lock_manager()
+
+        # Perform async health check to verify connectivity
+        if not await redis_lock_manager.health_check():
+            raise RuntimeError(
+                "Redis health check failed during startup. "
+                "Distributed locking requires Redis to be available and responsive."
+            )
+
+        app.state.redis_lock_manager = redis_lock_manager
+        log.info(
+            f"Redis distributed locking validated and ready: {redis_lock_manager.redis_url}"
+        )
+    except Exception as e:
+        log.warning(
+            f"Redis validation failed — distributed locking unavailable. "
+            f"Continuing without Redis (single-instance / local dev mode). Error: {e}"
+        )
+        app.state.redis_lock_manager = None
+
     if RESET_CONFIG_ON_START:
         reset_config()
 
@@ -432,14 +456,14 @@ async def lifespan(app: FastAPI):
     # Start periodic cleanup task in background (should not affect app lifecycle)
     cleanup_task = asyncio.create_task(periodic_usage_pool_cleanup())
 
-    # Initialize chat lifetime scheduler
+    # Initialize scheduler (chat cleanup, Redis pool cleanup, etc.)
     try:
-        from open_webui.scheduler import start_chat_lifetime_scheduler
+        from open_webui.scheduler import start_scheduler
 
-        start_chat_lifetime_scheduler()
-        log.info("Chat lifetime scheduler initialized")
+        start_scheduler()
+        log.info("Scheduler initialized")
     except Exception as e:
-        log.error(f"Failed to initialize chat lifetime scheduler: {e}")
+        log.error(f"Failed to initialize scheduler: {e}")
 
     # Add task completion callback to log if it exits
     def on_cleanup_done(task):
@@ -492,14 +516,32 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 log.error(f"Error during MCP manager cleanup: {e}")
 
-        # Cleanup chat lifetime scheduler
+        # Cleanup scheduler
         try:
-            from open_webui.scheduler import stop_chat_lifetime_scheduler
+            from open_webui.scheduler import stop_scheduler
 
-            stop_chat_lifetime_scheduler()
-            log.info("Chat lifetime scheduler cleanup completed")
+            stop_scheduler()
+            log.info("Scheduler cleanup completed")
         except Exception as e:
-            log.error(f"Error during chat lifetime scheduler cleanup: {e}")
+            log.error(f"Error during scheduler cleanup: {e}")
+
+        # Cleanup cached Qdrant client
+        try:
+            from open_webui.retrieval.vector.connector import VECTOR_DB_CLIENT
+
+            if VECTOR_DB_CLIENT and hasattr(VECTOR_DB_CLIENT, "close"):
+                await VECTOR_DB_CLIENT.close()
+                log.info("Qdrant client cleanup completed")
+        except Exception as e:
+            log.error(f"Error during Qdrant client cleanup: {e}")
+
+        # Cleanup Redis lock manager
+        if hasattr(app.state, "redis_lock_manager") and app.state.redis_lock_manager:
+            try:
+                await app.state.redis_lock_manager.close()
+                log.info("Redis lock manager cleanup completed")
+            except Exception as e:
+                log.error(f"Error during Redis lock manager cleanup: {e}")
 
 
 app = FastAPI(
@@ -1072,7 +1114,6 @@ app.include_router(knowledge.router, prefix="/api/v1/knowledge", tags=["knowledg
 app.include_router(prompts.router, prefix="/api/v1/prompts", tags=["prompts"])
 app.include_router(tools.router, prefix="/api/v1/tools", tags=["tools"])
 
-app.include_router(memories.router, prefix="/api/v1/memories", tags=["memories"])
 app.include_router(folders.router, prefix="/api/v1/folders", tags=["folders"])
 app.include_router(domains.router, prefix="/api/v1/domains", tags=["domains"])
 app.include_router(groups.router, prefix="/api/v1/groups", tags=["groups"])
@@ -1164,7 +1205,7 @@ async def chat_completion(
 ):
     if background_tasks is None:
         background_tasks = BackgroundTasks()
-        
+
     if not request.app.state.MODELS:
         await get_all_models(request)
 
@@ -1204,11 +1245,11 @@ async def chat_completion(
 
     try:
         response = await chat_completion_handler(request, form_data, user)
-        
+
         # Llama Guard evaluation - check user request only (non-blocking)
         try:
             from mcp_backend.integration.llama_guard import evaluate_chat_for_violations
-            
+
             # Schedule evaluation as background task (guaranteed to complete after response)
             background_tasks.add_task(
                 evaluate_chat_for_violations,
@@ -1222,7 +1263,7 @@ async def chat_completion(
             pass  # Llama Guard not available
         except Exception:
             pass  # Llama Guard evaluation failed silently
-        
+
         return await process_chat_response(
             request, response, form_data, user, events, metadata, tasks
         )
@@ -1319,6 +1360,7 @@ async def get_app_config(request: Request):
             }
         },
         "features": {
+            "pbmm_env": ENABLE_PBMM_ENV,
             "auth": WEBUI_AUTH,
             "auth_trusted_header": bool(app.state.AUTH_TRUSTED_EMAIL_HEADER),
             "enable_ldap": app.state.config.ENABLE_LDAP,
@@ -1404,8 +1446,9 @@ async def get_app_version():
 
 
 @app.get("/api/changelog")
-async def get_app_changelog():
-    return {key: CHANGELOG[key] for idx, key in enumerate(CHANGELOG) if idx < 5}
+async def get_app_changelog(locale: str = "en"):
+    source = CHANGELOG_FR if locale.startswith("fr") else CHANGELOG
+    return {key: source[key] for idx, key in enumerate(source) if idx < 5}
 
 
 ############################
@@ -1471,6 +1514,51 @@ def healthcheck_with_db():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database connection failed",
+        )
+
+
+@app.get("/health/redis")
+async def healthcheck_redis():
+    """
+    Redis readiness endpoint for orchestration (Kubernetes, load balancers).
+    Returns 503 if Redis is unhealthy or circuit is OPEN.
+    """
+    try:
+        from open_webui.retrieval.vector.locks import get_collection_lock_manager
+
+        manager = get_collection_lock_manager()
+        metrics = manager.get_health_metrics()
+
+        # Fail if circuit is open (persistent Redis issues)
+        if metrics["circuit_state"] == "open":
+            log.warning(
+                f"[HEALTH:REDIS] Circuit OPEN: {metrics['consecutive_failures']} "
+                f"consecutive failures, {metrics['recovery_attempts']} recovery attempts"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Redis circuit open. State: {metrics}",
+            )
+
+        # Fail if Redis not initialized
+        if not metrics["redis_initialized"]:
+            log.warning("[HEALTH:REDIS] Redis not initialized")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Redis not initialized",
+            )
+
+        return {
+            "status": True,
+            "redis": metrics,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.error(f"Redis health check failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Redis health check error: {str(e)}",
         )
 
 

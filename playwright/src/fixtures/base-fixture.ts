@@ -1,4 +1,10 @@
-import { mergeTests, type BrowserContext, test as baseTest, expect } from '@playwright/test';
+import {
+	mergeTests,
+	type BrowserContext,
+	type TestInfo,
+	test as baseTest,
+	expect
+} from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
@@ -9,6 +15,35 @@ import { Language } from '../pages/base.page';
 
 // Define coverage output directory
 const istanbulCLIOutput = path.join(process.cwd(), '.nyc_output');
+
+/**
+ * Inject CSS to hide toast notifications during test runs.
+ * This prevents notification pollution from concurrent workers.
+ */
+async function hideToastNotifications(context: BrowserContext) {
+	await context.addInitScript(() => {
+		const css = '[data-sonner-toaster] { display: none !important; }';
+		const injectStyle = () => {
+			if (document.head) {
+				const style = document.createElement('style');
+				style.textContent = css;
+				document.head.appendChild(style);
+			} else {
+				// If head doesn't exist yet, wait for DOMContentLoaded
+				document.addEventListener(
+					'DOMContentLoaded',
+					() => {
+						const style = document.createElement('style');
+						style.textContent = css;
+						document.head.appendChild(style);
+					},
+					{ once: true }
+				);
+			}
+		};
+		injectStyle();
+	});
+}
 
 /**
  * Provide a browser context to collect Istanbul coverage
@@ -50,13 +85,18 @@ type PageFixtures = {
 
 export const test = mergeTests(authFixture, baseTest).extend<PageFixtures>({
 	// --- Admin Fixture ---
-	adminPage: async ({ browser, authFiles, locale }, use) => {
-		const context = await browser.newContext({ storageState: authFiles.admin });
+	adminPage: async ({ browser, authFiles, locale }, use, testInfo: TestInfo) => {
+		const context = await browser.newContext({
+			storageState: authFiles.admin,
+			locale: locale,
+			permissions: testInfo.project.use.permissions
+		});
 		await setupCoverage(context);
+		await hideToastNotifications(context);
 
 		const page = await context.newPage();
 		const adminPage = new AdminPage(page, locale as Language);
-		await adminPage.goto('/');
+		await adminPage.goto(`/?lang=${locale}`);
 
 		await use(adminPage);
 
@@ -65,13 +105,18 @@ export const test = mergeTests(authFixture, baseTest).extend<PageFixtures>({
 	},
 
 	// --- Standard User Fixture ---
-	userPage: async ({ browser, authFiles, locale }, use) => {
-		const context = await browser.newContext({ storageState: authFiles.user });
+	userPage: async ({ browser, authFiles, locale }, use, testInfo: TestInfo) => {
+		const context = await browser.newContext({
+			storageState: authFiles.user,
+			locale: locale,
+			permissions: testInfo.project.use.permissions
+		});
 		await setupCoverage(context);
+		await hideToastNotifications(context);
 
 		const page = await context.newPage();
 		const chatPage = new ChatPage(page, locale as Language);
-		await chatPage.goto('/');
+		await chatPage.goto(`/?lang=${locale}`);
 
 		await use(chatPage);
 
@@ -80,13 +125,18 @@ export const test = mergeTests(authFixture, baseTest).extend<PageFixtures>({
 	},
 
 	// --- Analyst Fixture ---
-	analystPage: async ({ browser, authFiles, locale }, use) => {
-		const context = await browser.newContext({ storageState: authFiles.analyst });
+	analystPage: async ({ browser, authFiles, locale }, use, testInfo: TestInfo) => {
+		const context = await browser.newContext({
+			storageState: authFiles.analyst,
+			locale: locale,
+			permissions: testInfo.project.use.permissions
+		});
 		await setupCoverage(context);
+		await hideToastNotifications(context);
 
 		const page = await context.newPage();
 		const chatPage = new ChatPage(page, locale as Language);
-		await chatPage.goto('/');
+		await chatPage.goto(`/?lang=${locale}`);
 
 		await use(chatPage);
 
@@ -95,13 +145,18 @@ export const test = mergeTests(authFixture, baseTest).extend<PageFixtures>({
 	},
 
 	// --- Global Analyst Fixture ---
-	globalAnalystPage: async ({ browser, authFiles, locale }, use) => {
-		const context = await browser.newContext({ storageState: authFiles.globalAnalyst });
+	globalAnalystPage: async ({ browser, authFiles, locale }, use, testInfo: TestInfo) => {
+		const context = await browser.newContext({
+			storageState: authFiles.globalAnalyst,
+			locale: locale,
+			permissions: testInfo.project.use.permissions
+		});
 		await setupCoverage(context);
+		await hideToastNotifications(context);
 
 		const page = await context.newPage();
 		const chatPage = new ChatPage(page, locale as Language);
-		await chatPage.goto('/');
+		await chatPage.goto(`/?lang=${locale}`);
 
 		await use(chatPage);
 
@@ -110,9 +165,12 @@ export const test = mergeTests(authFixture, baseTest).extend<PageFixtures>({
 	},
 
 	// --- Guest/No-Auth Fixture ---
-	guestPage: async ({ browser, locale }, use) => {
-		const context = await browser.newContext();
+	guestPage: async ({ browser, locale }, use, testInfo: TestInfo) => {
+		const context = await browser.newContext({
+			permissions: testInfo.project.use.permissions
+		});
 		await setupCoverage(context);
+		await hideToastNotifications(context);
 
 		const page = await context.newPage();
 		const chatPage = new ChatPage(page, locale as Language);

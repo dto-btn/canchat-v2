@@ -1,12 +1,10 @@
 <script lang="ts">
-	import { getContext } from 'svelte';
-	import { toast } from 'svelte-sonner';
+	import { getI18n } from '$lib/utils/context';
 
 	import {
 		WEBUI_NAME,
 		chatId,
 		mobile,
-		settings,
 		showArchivedChats,
 		showControls,
 		showSidebar,
@@ -14,21 +12,16 @@
 		user
 	} from '$lib/stores';
 
-	import { slide } from 'svelte/transition';
 	import ShareChatModal from '../chat/ShareChatModal.svelte';
 	import ModelSelector from '../chat/ModelSelector.svelte';
 	import Tooltip from '../common/Tooltip.svelte';
 	import Menu from './Navbar/Menu.svelte';
-	import { page } from '$app/stores';
 	import UserMenu from './Sidebar/UserMenu.svelte';
 	import MenuLines from '../icons/MenuLines.svelte';
 	import AdjustmentsHorizontal from '../icons/AdjustmentsHorizontal.svelte';
-	import Map from '../icons/Map.svelte';
-	import { stringify } from 'postcss';
 	import PencilSquare from '../icons/PencilSquare.svelte';
-	import Plus from '../icons/Plus.svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let initNewChat: Function;
 	export let title: string = $WEBUI_NAME;

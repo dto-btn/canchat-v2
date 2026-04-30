@@ -1,14 +1,17 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import { getAllTags } from '$lib/apis/chats';
 	import { tags } from '$lib/stores';
-	import { getContext, createEventDispatcher, onMount, onDestroy } from 'svelte';
+	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
 	import { fade } from 'svelte/transition';
 
 	const dispatch = createEventDispatcher();
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let placeholder = '';
 	export let value = '';
+	let inputElement: HTMLInputElement;
 
 	let selectedIdx = 0;
 
@@ -153,8 +156,10 @@
 		</div>
 
 		<input
-			class="w-full rounded-r-xl py-1.5 pl-2.5 pr-4 text-sm bg-transparent dark:text-gray-300 outline-none"
+			bind:this={inputElement}
+			class="flex-1 py-1.5 pl-2.5 pr-1 text-sm bg-transparent dark:text-gray-300 outline-none"
 			placeholder={placeholder ? placeholder : $i18n.t('Search')}
+			aria-label={placeholder ? placeholder : $i18n.t('Search')}
 			bind:value
 			on:input={() => {
 				dispatch('input');
@@ -178,6 +183,13 @@
 					}
 				}
 
+				if (e.key === 'Escape') {
+					e.preventDefault();
+					focused = false;
+					inputElement.blur();
+					return;
+				}
+
 				if (e.key === 'ArrowUp') {
 					e.preventDefault();
 					selectedIdx = Math.max(0, selectedIdx - 1);
@@ -195,6 +207,33 @@
 				}
 			}}
 		/>
+
+		{#if value}
+			<button
+				type="button"
+				class="flex-shrink-0 self-center pr-3 py-2 rounded-r-xl bg-transparent hover:text-gray-600 dark:hover:text-gray-300 transition"
+				on:click={() => {
+					value = '';
+					dispatch('input');
+					inputElement?.focus();
+				}}
+				aria-label={$i18n.t('Clear Search')}
+				id="clear-search-button"
+				data-testid="clear-search-button"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					viewBox="0 0 20 20"
+					fill="currentColor"
+					class="w-4 h-4"
+					aria-hidden="true"
+				>
+					<path
+						d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
+					/>
+				</svg>
+			</button>
+		{/if}
 	</div>
 
 	{#if focused && (filteredOptions.length > 0 || filteredTags.length > 0)}
@@ -211,18 +250,24 @@
 		>
 			<div class="px-2 py-2 text-xs group">
 				{#if filteredTags.length > 0}
-					<div class="px-1 font-medium dark:text-gray-300 text-gray-700 mb-1">
+					<div
+						class="px-1 font-medium dark:text-gray-300 text-gray-700 mb-1"
+						id="search-tags-label"
+					>
 						{$i18n.t('Tags')}
 					</div>
 
-					<div class="max-h-60 overflow-auto">
+					<div class="max-h-60 overflow-auto" role="listbox" aria-labelledby="search-tags-label">
 						{#each filteredTags as tag, tagIdx}
 							<button
+								type="button"
 								class=" px-1.5 py-0.5 flex gap-1 hover:bg-gray-100 dark:hover:bg-gray-900 w-full rounded {selectedIdx ===
 								tagIdx
 									? 'bg-gray-100 dark:bg-gray-900'
 									: ''}"
 								id="search-tag-{tagIdx}"
+								role="option"
+								aria-selected={selectedIdx === tagIdx}
 								on:click|stopPropagation={async () => {
 									const words = value.split(' ');
 
@@ -232,6 +277,7 @@
 									value = words.join(' ');
 
 									dispatch('input');
+									inputElement?.focus();
 								}}
 							>
 								<div
@@ -247,18 +293,28 @@
 						{/each}
 					</div>
 				{:else if filteredOptions.length > 0}
-					<div class="px-1 font-medium dark:text-gray-300 text-gray-700 mb-1">
+					<div
+						class="px-1 font-medium dark:text-gray-300 text-gray-700 mb-1"
+						id="search-options-label"
+					>
 						{$i18n.t('Search options')}
 					</div>
 
-					<div class=" max-h-60 overflow-auto">
+					<div
+						class=" max-h-60 overflow-auto"
+						role="listbox"
+						aria-labelledby="search-options-label"
+					>
 						{#each filteredOptions as option, optionIdx}
 							<button
+								type="button"
 								class=" px-1.5 py-0.5 flex gap-1 hover:bg-gray-100 dark:hover:bg-gray-900 w-full rounded {selectedIdx ===
 								optionIdx
 									? 'bg-gray-100 dark:bg-gray-900'
 									: ''}"
 								id="search-option-{optionIdx}"
+								role="option"
+								aria-selected={selectedIdx === optionIdx}
 								on:click|stopPropagation={async () => {
 									const words = value.split(' ');
 
@@ -268,6 +324,7 @@
 									value = words.join(' ');
 
 									dispatch('input');
+									inputElement?.focus();
 								}}
 							>
 								<div class="dark:text-gray-300 text-gray-700 font-medium">{option.name}</div>
@@ -282,4 +339,14 @@
 			</div>
 		</div>
 	{/if}
+	<!--A11y for screen reader-->
+	<div class="sr-only" aria-live="polite" aria-atomic="true">
+		{#if value}
+			{#if filteredTags.length > 0}
+				{filteredTags.length} {$i18n.t('tags found')}
+			{:else if filteredOptions.length > 0}
+				{filteredOptions.length} {$i18n.t('options found')}
+			{/if}
+		{/if}
+	</div>
 </div>

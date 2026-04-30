@@ -13,11 +13,10 @@ from fastapi.responses import StreamingResponse
 import logging
 import csv
 import io
-import time
 
 from open_webui.utils.auth import get_metrics_user
 from open_webui.env import SRC_LOG_LEVELS
-from datetime import datetime
+from datetime import datetime, timezone
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["METRICS"])
@@ -93,12 +92,36 @@ async def get_daily_prompts_number(domain: str = None, user=Depends(get_metrics_
 
 
 ############################
+# GetMcpProcesses
+############################
+
+
+@router.get("/mcp-processes")
+async def get_mcp_processes(user=Depends(get_metrics_user)):
+    """Return the distinct MCP toggle/process names that have been logged in message_metrics."""
+    if user.role not in ["admin", "analyst", "global_analyst"]:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=ERROR_MESSAGES.NOT_FOUND,
+        )
+
+    processes = MessageMetrics.get_mcp_processes() or []
+    return {"mcp_processes": processes}
+
+
+############################
 # GetTotalTokens
 ############################
 
 
 @router.get("/tokens")
-async def get_total_tokens(domain: str = None, user=Depends(get_metrics_user)):
+async def get_total_tokens(
+    domain: str = None,
+    start_date: str = None,
+    end_date: str = None,
+    mcp_tool: str = None,
+    user=Depends(get_metrics_user),
+):
     # For analyst role, enforce domain restriction
     if user.role == "analyst":
         # Force domain to user's domain for analysts
@@ -106,10 +129,35 @@ async def get_total_tokens(domain: str = None, user=Depends(get_metrics_user)):
 
     # Admin and global_analyst can see all domains or filter by domain
 
-    total_tokens = (
-        MessageMetrics.get_message_tokens_sum(domain)
-        if domain
-        else MessageMetrics.get_message_tokens_sum()
+    # Convert dates to timestamps if provided
+    start_timestamp = None
+    end_timestamp = None
+
+    if start_date:
+        try:
+            start_dt = datetime.strptime(start_date, "%Y-%m-%d").replace(
+                tzinfo=timezone.utc
+            )
+            start_timestamp = int(start_dt.timestamp())
+        except ValueError:
+            pass
+
+    if end_date:
+        try:
+            end_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(
+                tzinfo=timezone.utc
+            )
+            # Set end_timestamp to the end of the specified day (23:59:59 UTC)
+            end_of_day = end_dt.replace(hour=23, minute=59, second=59)
+            end_timestamp = int(end_of_day.timestamp())
+        except ValueError:
+            pass
+
+    total_tokens = MessageMetrics.get_message_tokens_sum(
+        domain=domain,
+        start_timestamp=start_timestamp,
+        end_timestamp=end_timestamp,
+        mcp_tool=mcp_tool,
     )
 
     return {"total_tokens": total_tokens}
@@ -121,7 +169,9 @@ async def get_total_tokens(domain: str = None, user=Depends(get_metrics_user)):
 
 
 @router.get("/daily/tokens")
-async def get_daily_tokens(domain: str = None, user=Depends(get_metrics_user)):
+async def get_daily_tokens(
+    domain: str = None, mcp_tool: str = None, user=Depends(get_metrics_user)
+):
     # For analyst role, enforce domain restriction
     if user.role == "analyst":
         # Force domain to user's domain for analysts
@@ -129,10 +179,8 @@ async def get_daily_tokens(domain: str = None, user=Depends(get_metrics_user)):
 
     # Admin and global_analyst can see all domains or filter by domain
 
-    total_daily_tokens = (
-        MessageMetrics.get_daily_message_tokens_sum(domain=domain)
-        if domain
-        else MessageMetrics.get_daily_message_tokens_sum()
+    total_daily_tokens = MessageMetrics.get_daily_message_tokens_sum(
+        domain=domain, mcp_tool=mcp_tool
     )
     return {"total_daily_tokens": total_daily_tokens}
 
@@ -169,7 +217,10 @@ async def get_historical_prompts(
 
 @router.get("/historical/tokens")
 async def get_historical_tokens(
-    days: int = 7, domain: str = None, user=Depends(get_metrics_user)
+    days: int = 7,
+    domain: str = None,
+    mcp_tool: str = None,
+    user=Depends(get_metrics_user),
 ):
     # For analyst role, enforce domain restriction
     if user.role == "analyst":
@@ -178,11 +229,13 @@ async def get_historical_tokens(
 
     # Admin and global_analyst can see all domains or filter by domain
 
-    # Handle both None and empty string for domain
+    # Handle both None and empty string for domain / mcp_tool
     if domain == "":
         domain = None
+    if mcp_tool == "":
+        mcp_tool = None
 
-    historical_data = MessageMetrics.get_historical_tokens_data(days, domain)
+    historical_data = MessageMetrics.get_historical_tokens_data(days, domain, mcp_tool)
 
     return {"historical_tokens": historical_data}
 

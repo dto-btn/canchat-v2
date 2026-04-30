@@ -1,12 +1,14 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import Switch from '$lib/components/common/Switch.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import { ariaMessage } from '$lib/stores';
-	import { getContext, createEventDispatcher } from 'svelte';
+	import { createEventDispatcher } from 'svelte';
 
 	const dispatch = createEventDispatcher();
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let admin = false;
 
@@ -26,7 +28,6 @@
 		top_p: null,
 		min_p: null,
 		tfs_z: null,
-		num_ctx: null,
 		num_batch: null,
 		num_keep: null,
 		max_tokens: null,
@@ -713,7 +714,7 @@
 	<div class=" py-0.5 w-full justify-between">
 		<Tooltip
 			content={$i18n.t(
-				'Sets how far back for the model to look back to prevent repetition. (Default: 64, 0 = disabled, -1 = num_ctx)'
+				'Sets how far back for the model to look back to prevent repetition. (Default: 64, 0 = disabled, -1 = full context window)'
 			)}
 			placement="top-start"
 			className="inline-tooltip"
@@ -822,64 +823,6 @@
 						min="0"
 						max="2"
 						step="any"
-					/>
-				</div>
-			</div>
-		{/if}
-	</div>
-
-	<div class=" py-0.5 w-full justify-between">
-		<Tooltip
-			content={$i18n.t(
-				'Sets the size of the context window used to generate the next token. (Default: 2048)'
-			)}
-			placement="top-start"
-			className="inline-tooltip"
-			tooltipID="tooltip-num_keep"
-		>
-			<div class="flex w-full justify-between">
-				<div class=" self-center text-xs font-medium">
-					{$i18n.t('Context Length')}
-				</div>
-
-				<button
-					class="p-1 px-3 text-xs flex rounded transition flex-shrink-0 outline-none"
-					type="button"
-					aria-describedby="tooltip-num_keep"
-					on:click={() => {
-						params.num_ctx = (params?.num_ctx ?? null) === null ? 2048 : null;
-						announceCustomFieldAndSlider(params.num_ctx);
-					}}
-				>
-					{#if (params?.num_ctx ?? null) === null}
-						<span class="ml-2 self-center">{$i18n.t('Default')}</span>
-					{:else}
-						<span class="ml-2 self-center">{$i18n.t('Custom')}</span>
-					{/if}
-				</button>
-			</div>
-		</Tooltip>
-
-		{#if (params?.num_ctx ?? null) !== null}
-			<div class="flex mt-0.5 space-x-2">
-				<div class=" flex-1">
-					<input
-						id="steps-range"
-						type="range"
-						min="-1"
-						max="10240000"
-						step="1"
-						bind:value={params.num_ctx}
-						class="w-full h-2 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
-					/>
-				</div>
-				<div class="">
-					<input
-						bind:value={params.num_ctx}
-						type="number"
-						class=" bg-transparent text-center w-14"
-						min="-1"
-						step="1"
 					/>
 				</div>
 			</div>

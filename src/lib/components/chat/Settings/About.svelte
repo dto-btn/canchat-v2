@@ -1,11 +1,12 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import { WEBUI_BUILD_HASH, WEBUI_VERSION } from '$lib/constants';
 	import { WEBUI_NAME, showChangelog } from '$lib/stores';
-	import { getContext } from 'svelte';
 
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	let version = {
 		current: '',

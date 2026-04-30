@@ -1,13 +1,14 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import { toast } from 'svelte-sonner';
-	import { createEventDispatcher, onMount, getContext } from 'svelte';
+	import { createEventDispatcher, onMount } from 'svelte';
 
 	const dispatch = createEventDispatcher();
 
 	import {
 		getMCPConfig,
 		updateMCPConfig,
-		getMCPURLs,
 		updateMCPURLs,
 		getMCPTools,
 		getBuiltinServers,
@@ -22,7 +23,7 @@
 	} from '$lib/apis/mcp';
 	import { getTools } from '$lib/apis/tools';
 
-	import { user, tools } from '$lib/stores';
+	import { tools } from '$lib/stores';
 
 	import Switch from '$lib/components/common/Switch.svelte';
 	import Spinner from '$lib/components/common/Spinner.svelte';
@@ -30,7 +31,7 @@
 	import Plus from '$lib/components/icons/Plus.svelte';
 	import Modal from '$lib/components/common/Modal.svelte';
 
-	const i18n: any = getContext('i18n');
+	const i18n: any = getI18n();
 
 	// MCP Settings
 	let MCP_BASE_URLS: string[] = [''];
@@ -83,6 +84,24 @@
 		return serverName.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
 	};
 
+	const translateIfKey = (text: string) => ($i18n.exists(text) ? $i18n.t(text) : text);
+
+	const localizeApiError = (rawError: unknown) => {
+		const normalized = String(rawError ?? '').replace(
+			'Network Problem',
+			$i18n.t('Network Problem')
+		);
+		const prefixes = ['MCP: ', 'CrewAI MCP: ', 'OpenAI: ', 'Ollama: '];
+
+		for (const prefix of prefixes) {
+			if (normalized.startsWith(prefix)) {
+				return `${prefix}${translateIfKey(normalized.slice(prefix.length))}`;
+			}
+		}
+
+		return translateIfKey(normalized);
+	};
+
 	// Reactive statement to ensure we always have at least one input field
 	$: {
 		if (MCP_BASE_URLS.length === 0) {
@@ -100,7 +119,7 @@
 				MCP_BASE_URLS: MCP_BASE_URLS,
 				MCP_API_CONFIGS: MCP_API_CONFIGS
 			}).catch((error) => {
-				toast.error(`${error}`);
+				toast.error(localizeApiError(error));
 			});
 			if (res) {
 				toast.success($i18n.t('MCP API settings updated'));
@@ -121,7 +140,7 @@
 
 	const updateMCPURLsHandler = async () => {
 		const res = await updateMCPURLs(localStorage.token, MCP_BASE_URLS).catch((error) => {
-			toast.error(`${error}`);
+			toast.error(localizeApiError(error));
 		});
 
 		if (res) {
@@ -132,7 +151,7 @@
 	const getMCPToolsHandler = async () => {
 		mcpToolsLoading = true;
 		const res = await getMCPTools(localStorage.token).catch((error) => {
-			toast.error(`${error}`);
+			toast.error(localizeApiError(error));
 			return [];
 		});
 
@@ -164,7 +183,7 @@
 
 	const restartBuiltinServerHandler = async (serverName: string) => {
 		const res = await restartBuiltinServer(localStorage.token, serverName).catch((error) => {
-			toast.error(`Failed to restart ${serverName}: ${error}`);
+			toast.error(`Failed to restart ${serverName}: ${localizeApiError(error)}`);
 			return null;
 		});
 
@@ -308,7 +327,7 @@
 				}
 			}
 		} catch (error) {
-			toast.error($i18n.t('Failed to save server: {{error}}', { error }));
+			toast.error($i18n.t('Failed to save server: {{error}}', { error: localizeApiError(error) }));
 		}
 	};
 
@@ -337,7 +356,7 @@
 				}
 			}
 		} catch (error) {
-			toast.error(`Failed to delete server: ${error}`);
+			toast.error(`Failed to delete server: ${localizeApiError(error)}`);
 		}
 	};
 
@@ -350,7 +369,7 @@
 				await getMCPToolsHandler();
 			}
 		} catch (error) {
-			toast.error(`Failed to start server: ${error}`);
+			toast.error(`Failed to start server: ${localizeApiError(error)}`);
 		}
 	};
 
@@ -363,7 +382,7 @@
 				await getMCPToolsHandler();
 			}
 		} catch (error) {
-			toast.error(`Failed to stop server: ${error}`);
+			toast.error(`Failed to stop server: ${localizeApiError(error)}`);
 		}
 	};
 
@@ -376,7 +395,7 @@
 				await getMCPToolsHandler();
 			}
 		} catch (error) {
-			toast.error(`Failed to restart server: ${error}`);
+			toast.error(`Failed to restart server: ${localizeApiError(error)}`);
 		}
 	};
 
@@ -458,8 +477,8 @@
 												{$i18n.t('Provides current time and timezone information')}
 											{:else if server.name === 'news_server'}
 												{$i18n.t('Provides latest news headlines from NewsDesk')}
-											{:else if server.name === 'mpo_sharepoint_server'}
-												{$i18n.t('Provides MPO SharePoint document search and retrieval')}
+											{:else if server.name.endsWith('_sharepoint_server')}
+												{$i18n.t(server.description || 'Built-in MCP server')}
 											{:else}
 												{$i18n.t('Built-in MCP server')}
 											{/if}

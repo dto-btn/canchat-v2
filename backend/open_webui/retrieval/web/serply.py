@@ -2,8 +2,8 @@ import logging
 from typing import Optional
 from urllib.parse import urlencode
 
-import requests
 from open_webui.retrieval.web.main import SearchResult, get_filtered_results
+from open_webui.retrieval.web.utils import request_json_with_timeout
 from open_webui.env import SRC_LOG_LEVELS
 
 log = logging.getLogger(__name__)
@@ -48,10 +48,12 @@ def search_serply(
         "X-Proxy-Location": proxy_location,
     }
 
-    response = requests.request("GET", url, headers=headers)
-    response.raise_for_status()
-
-    json_response = response.json()
+    json_response = request_json_with_timeout(
+        "GET",
+        url,
+        provider_name="Serply search",
+        headers=headers,
+    )
     log.info(f"results from serply search: {json_response}")
 
     results = sorted(

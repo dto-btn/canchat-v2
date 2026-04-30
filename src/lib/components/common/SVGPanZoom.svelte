@@ -1,11 +1,10 @@
 <script lang="ts">
-	import { onMount, getContext } from 'svelte';
-	const i18n = getContext('i18n');
+	import { getI18n } from '$lib/utils/context';
+
+	const i18n = getI18n();
 
 	import panzoom, { type PanZoom } from 'panzoom';
 
-	import DOMPurify from 'dompurify';
-	import DocumentDuplicate from '../icons/DocumentDuplicate.svelte';
 	import { copyToClipboard } from '$lib/utils';
 	import { toast } from 'svelte-sonner';
 	import Tooltip from './Tooltip.svelte';

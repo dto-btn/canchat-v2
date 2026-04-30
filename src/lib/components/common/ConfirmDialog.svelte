@@ -1,6 +1,8 @@
 <script lang="ts">
-	import { onMount, getContext, createEventDispatcher } from 'svelte';
-	const i18n = getContext('i18n');
+	import { getI18n } from '$lib/utils/context';
+
+	import { onMount, createEventDispatcher } from 'svelte';
+	const i18n = getI18n();
 	const dispatch = createEventDispatcher();
 
 	import { fade } from 'svelte/transition';

@@ -1,8 +1,8 @@
 import logging
 from typing import Optional
 
-import requests
 from open_webui.retrieval.web.main import SearchResult, get_filtered_results
+from open_webui.retrieval.web.utils import get_json_with_timeout
 from open_webui.env import SRC_LOG_LEVELS
 
 log = logging.getLogger(__name__)
@@ -64,8 +64,9 @@ def search_searxng(
 
     log.debug(f"searching {query_url}")
 
-    response = requests.get(
+    json_response = get_json_with_timeout(
         query_url,
+        provider_name="SearXNG search",
         headers={
             "User-Agent": "Open WebUI (https://github.com/open-webui/open-webui) RAG Bot",
             "Accept": "text/html",
@@ -75,10 +76,6 @@ def search_searxng(
         },
         params=params,
     )
-
-    response.raise_for_status()  # Raise an exception for HTTP errors.
-
-    json_response = response.json()
     results = json_response.get("results", [])
     sorted_results = sorted(results, key=lambda x: x.get("score", 0), reverse=True)
     if filter_list:

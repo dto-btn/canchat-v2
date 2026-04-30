@@ -15,13 +15,28 @@ const usersData = JSON.parse(fs.readFileSync(usersFile, 'utf-8'));
 
 const adminUser = usersData.users.find((u: any) => u.username === 'admin');
 const standardUsers = usersData.users.filter((u: any) => u.username !== 'admin');
+const requiredAuthFiles = ['admin.json', 'user.json', 'analyst.json', 'globalanalyst.json'];
 
 setup('global setup: seed data & authenticate', async ({ page }) => {
 	const authPage = new AuthPage(page);
 	const adminPage = new AdminPage(page);
 
+	await fs.promises.mkdir(authDir, { recursive: true });
+	const authFilesMissing = requiredAuthFiles.some(
+		(fileName) => !fs.existsSync(path.join(authDir, fileName))
+	);
+
 	await authPage.goto('/auth');
 	const isFirstRun = await authPage.isFirstRunButton.isVisible();
+
+	if (!isFirstRun && authFilesMissing) {
+		console.log('CanChat already initialized. Missing auth files detected.');
+		await authPage.login(adminUser.email, adminUser.password);
+		await saveAuthState(page, 'admin.json');
+		await generateUserAuthFiles(page, authPage, adminPage);
+		console.log('Auth files regenerated.');
+		return;
+	}
 
 	if (!isFirstRun) {
 		console.log('CanChat already initialized. Skipping Global Setup');
@@ -33,17 +48,7 @@ setup('global setup: seed data & authenticate', async ({ page }) => {
 	await seedUserAccounts(page, adminPage);
 	await saveAuthState(page, 'admin.json');
 
-	// Make one model visible
-	await adminPage.navigateToAdminSettings('Settings', 'Connections'); //temporary
-	await adminPage.openModelSettings('chatgpt-4o-');
-	await adminPage.updateModelDescription({
-		en: 'English Description',
-		fr: 'French Description'
-	});
-	await adminPage.updateModelVisibility(adminPage.getTranslation('public'));
-	await adminPage.saveModelSettings();
-	await adminPage.updateChatModel('chatgpt-4o-latest');
-	await adminPage.setDefaultChatModel();
+	await enableAvailableModels(adminPage);
 	await adminPage.signOut();
 
 	await generateUserAuthFiles(page, authPage, adminPage);
@@ -76,20 +81,61 @@ async function seedUserAccounts(page: Page, adminPage: AdminPage) {
 }
 
 async function generateUserAuthFiles(page: Page, authPage: AuthPage, basePage: any) {
+	const browser = page.context().browser();
+
 	for (const user of standardUsers) {
 		console.log(`Authenticating ${user.username}...`);
 
-		await authPage.login(user.email, user.password);
-		await saveAuthState(page, `${user.username}.json`);
-		if (user.username !== 'pending') {
-			await basePage.signOut();
-		} else {
-			await authPage.signOutPendingUser();
-		}
+		// Use a fresh context for each user to prevent state leakage
+		const context = await browser!.newContext();
+		const userPage = await context.newPage();
+		const userAuthPage = new AuthPage(userPage);
+
+		await userAuthPage.goto('/auth');
+		await userAuthPage.login(user.email, user.password);
+
+		await saveAuthState(userPage, `${user.username}.json`);
+
+		await context.close();
 	}
 }
 
 async function saveAuthState(page: Page, fileName: string) {
 	await page.context().storageState({ path: path.join(authDir, fileName) });
 	console.log('Authentication state saved.');
+}
+
+async function enableAvailableModels(adminPage: AdminPage) {
+	console.log('Checking Available Models...');
+	// Make multiple models visible
+	await adminPage.navigateToAdminSettings('Settings', 'Connections');
+
+	const modelsToEnable = [
+		'gpt-5-chat-latest',
+		'gpt-5.1-chat-latest',
+		'gpt-5.2-chat-latest',
+		'gpt-5.3-chat-latest'
+	];
+	let defaultModelSet = false;
+
+	for (const model of modelsToEnable) {
+		try {
+			await adminPage.openModelSettings(model);
+			await adminPage.updateModelDescription({
+				en: `${model} English Description`,
+				fr: `${model} French Description`
+			});
+			await adminPage.updateModelVisibility(adminPage.getTranslation('public'));
+			await adminPage.saveModelSettings();
+
+			if (!defaultModelSet) {
+				await adminPage.updateChatModel(model);
+				await adminPage.setDefaultChatModel();
+				defaultModelSet = true;
+			}
+			console.log(`Successfully enabled model: ${model}`);
+		} catch (error) {
+			console.log(`Skipping model ${model} - not available or failed to enable.`);
+		}
+	}
 }

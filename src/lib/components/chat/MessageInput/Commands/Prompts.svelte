@@ -1,8 +1,9 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import { prompts, user } from '$lib/stores';
 	import { getPrompts } from '$lib/apis/prompts';
 	import {
-		findWordIndices,
 		getUserPosition,
 		getFormattedDate,
 		getFormattedTime,
@@ -10,10 +11,10 @@
 		getUserTimezone,
 		getWeekday
 	} from '$lib/utils';
-	import { tick, getContext } from 'svelte';
+	import { tick } from 'svelte';
 	import { toast } from 'svelte-sonner';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let files;
 

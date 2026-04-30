@@ -1,7 +1,9 @@
-<script>
-	import { getContext, createEventDispatcher, onMount, onDestroy, tick } from 'svelte';
+<script lang="ts">
+	import { getI18n } from '$lib/utils/context';
 
-	const i18n = getContext('i18n');
+	import { createEventDispatcher, onMount, onDestroy, tick } from 'svelte';
+
+	const i18n = getI18n();
 	const dispatch = createEventDispatcher();
 
 	import DOMPurify from 'dompurify';
@@ -28,21 +30,41 @@
 		importChat,
 		updateChatFolderIdById
 	} from '$lib/apis/chats';
+	import { chatId } from '$lib/stores';
 	import ChatItem from './ChatItem.svelte';
 	import FolderMenu from './Folders/FolderMenu.svelte';
 	import DeleteConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 
+	interface Chat {
+		id: string;
+		title: string;
+		[key: string]: any;
+	}
+
+	interface Folder {
+		id: string;
+		name: string;
+		is_expanded: boolean;
+		childrenIds?: string[];
+		items?: {
+			chats?: Chat[];
+		};
+		[key: string]: any;
+	}
+
 	export let open = false;
 
-	export let folders;
-	export let folderId;
+	export let folders: Record<string, Folder> = {};
+	export let folderId: string;
+	export let selectedChatIds: string[] = [];
+	export let showBulkActions = false;
 
 	export let className = '';
 
 	export let parentDragged = false;
 
-	let folderElement;
+	let folderElement: HTMLElement;
 
 	let edit = false;
 
@@ -53,7 +75,7 @@
 
 	let buttonID = `${folderId}`;
 
-	const onDragOver = (e) => {
+	const onDragOver = (e: DragEvent) => {
 		e.preventDefault();
 		e.stopPropagation();
 		if (dragged || parentDragged) {
@@ -62,15 +84,15 @@
 		draggedOver = true;
 	};
 
-	const onDrop = async (e) => {
+	const onDrop = async (e: DragEvent) => {
 		e.preventDefault();
 		e.stopPropagation();
 		if (dragged || parentDragged) {
 			return;
 		}
 
-		if (folderElement.contains(e.target)) {
-			if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+		if (folderElement.contains(e.target as Node)) {
+			if (e.dataTransfer?.items && e.dataTransfer.items.length > 0) {
 				// Iterate over all items in the DataTransferItemList use functional programming
 				for (const item of Array.from(e.dataTransfer.items)) {
 					// If dropped items aren't files, reject them
@@ -80,6 +102,7 @@
 							// Read the JSON file with FileReader
 							const reader = new FileReader();
 							reader.onload = async function (event) {
+								if (!event.target?.result || typeof event.target.result !== 'string') return;
 								try {
 									const fileContent = JSON.parse(event.target.result);
 									open = true;
@@ -99,7 +122,9 @@
 						}
 					} else {
 						// Handle the drag-and-drop data for folders or chats (same as before)
-						const dataTransfer = e.dataTransfer.getData('text/plain');
+						const dataTransfer = e.dataTransfer?.getData('text/plain');
+						if (!dataTransfer) return;
+
 						const data = JSON.parse(dataTransfer);
 						const { type, id, item } = data;
 
@@ -149,7 +174,7 @@
 		}
 	};
 
-	const onDragLeave = (e) => {
+	const onDragLeave = (e: DragEvent) => {
 		e.preventDefault();
 		if (dragged || parentDragged) {
 			return;
@@ -162,34 +187,36 @@
 	dragImage.src =
 		'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 
-	let x;
-	let y;
+	let x: number;
+	let y: number;
 
-	const onDragStart = (event) => {
+	const onDragStart = (event: DragEvent) => {
 		event.stopPropagation();
-		event.dataTransfer.setDragImage(dragImage, 0, 0);
+		if (event.dataTransfer) {
+			event.dataTransfer.setDragImage(dragImage, 0, 0);
 
-		// Set the data to be transferred
-		event.dataTransfer.setData(
-			'text/plain',
-			JSON.stringify({
-				type: 'folder',
-				id: folderId
-			})
-		);
+			// Set the data to be transferred
+			event.dataTransfer.setData(
+				'text/plain',
+				JSON.stringify({
+					type: 'folder',
+					id: folderId
+				})
+			);
+		}
 
 		dragged = true;
 		folderElement.style.opacity = '0.5'; // Optional: Visual cue to show it's being dragged
 	};
 
-	const onDrag = (event) => {
+	const onDrag = (event: DragEvent) => {
 		event.stopPropagation();
 
 		x = event.clientX;
 		y = event.clientY;
 	};
 
-	const onDragEnd = (event) => {
+	const onDragEnd = (event: DragEvent) => {
 		event.stopPropagation();
 
 		folderElement.style.opacity = '1'; // Reset visual cue after drag
@@ -277,9 +304,9 @@
 		);
 	};
 
-	let isExpandedUpdateTimeout;
+	let isExpandedUpdateTimeout: ReturnType<typeof setTimeout>;
 
-	const isExpandedUpdateDebounceHandler = (open) => {
+	const isExpandedUpdateDebounceHandler = (open: boolean) => {
 		clearTimeout(isExpandedUpdateTimeout);
 		isExpandedUpdateTimeout = setTimeout(() => {
 			isExpandedUpdateHandler();
@@ -298,7 +325,7 @@
 		// focus on the input
 		setTimeout(() => {
 			const input = document.getElementById(`folder-${folderId}-input`);
-			input.focus();
+			input?.focus();
 		}, 100);
 	};
 
@@ -444,24 +471,28 @@
 		</div>
 
 		<div slot="content" class="w-full">
-			{#if (folders[folderId]?.childrenIds ?? []).length > 0 || (folders[folderId].items?.chats ?? []).length > 0}
+			{#if (folders[folderId]?.childrenIds ?? []).length > 0 || (folders[folderId]?.items?.chats ?? []).length > 0}
 				<div
 					class="ml-3 pl-1 mt-[1px] flex flex-col overflow-y-auto scrollbar-hidden border-s border-gray-100 dark:border-gray-900"
 				>
 					{#if folders[folderId]?.childrenIds}
-						{@const children = folders[folderId]?.childrenIds
-							.map((id) => folders[id])
-							.sort((a, b) =>
-								a.name.localeCompare(b.name, undefined, {
-									numeric: true,
-									sensitivity: 'base'
-								})
-							)}
+						{@const children =
+							folders[folderId]?.childrenIds
+								?.map((id) => folders[id])
+								.filter((f) => !!f)
+								.sort((a, b) =>
+									a.name.localeCompare(b.name, undefined, {
+										numeric: true,
+										sensitivity: 'base'
+									})
+								) ?? []}
 
 						{#each children as childFolder (`${folderId}-${childFolder.id}`)}
 							<svelte:self
 								{folders}
 								folderId={childFolder.id}
+								{selectedChatIds}
+								{showBulkActions}
 								parentDragged={dragged}
 								on:import={(e) => {
 									dispatch('import', e.detail);
@@ -472,17 +503,35 @@
 								on:change={(e) => {
 									dispatch('change', e.detail);
 								}}
+								on:select={(e) => {
+									dispatch('select', e.detail);
+								}}
+								on:unselect={(e) => {
+									dispatch('unselect', e.detail);
+								}}
 							/>
 						{/each}
 					{/if}
 
 					{#if folders[folderId].items?.chats}
-						{#each folders[folderId].items.chats as chat (chat.id)}
+						{#each folders[folderId].items?.chats ?? [] as chat (chat.id)}
 							<ChatItem
 								id={chat.id}
 								title={chat.title}
+								selected={selectedChatIds.includes(chat.id)}
+								isCurrentChat={$chatId === chat.id}
+								inSelectionMode={showBulkActions}
+								on:select={() => {
+									dispatch('select', chat.id);
+								}}
+								on:unselect={() => {
+									dispatch('unselect', chat.id);
+								}}
 								on:change={(e) => {
 									dispatch('change', e.detail);
+								}}
+								on:tag={(e) => {
+									dispatch('tag', { ...e.detail, chatId: chat.id });
 								}}
 							/>
 						{/each}

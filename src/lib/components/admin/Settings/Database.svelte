@@ -1,15 +1,17 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import fileSaver from 'file-saver';
 	const { saveAs } = fileSaver;
 
-	import { downloadDatabase, downloadLiteLLMConfig } from '$lib/apis/utils';
-	import { onMount, getContext } from 'svelte';
-	import { config, user } from '$lib/stores';
+	import { downloadDatabase } from '$lib/apis/utils';
+	import { onMount } from 'svelte';
+	import { config } from '$lib/stores';
 	import { toast } from 'svelte-sonner';
 	import { getAllUserChats } from '$lib/apis/chats';
 	import { exportConfig, importConfig } from '$lib/apis/configs';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let saveHandler: Function;
 

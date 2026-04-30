@@ -1,10 +1,12 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import TagInput from './Tags/TagInput.svelte';
 	import TagList from './Tags/TagList.svelte';
-	import { getContext, createEventDispatcher } from 'svelte';
+	import { createEventDispatcher } from 'svelte';
 	const dispatch = createEventDispatcher();
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let tags = [];
 </script>

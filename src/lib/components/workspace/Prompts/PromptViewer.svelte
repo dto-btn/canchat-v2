@@ -1,9 +1,11 @@
 <script lang="ts">
-	import { onMount, getContext, tick } from 'svelte';
-	import { user, showSidebar } from '$lib/stores';
+	import { getI18n } from '$lib/utils/context';
+
+	import { onMount, tick } from 'svelte';
+	import { showSidebar } from '$lib/stores';
 	import { goto } from '$app/navigation';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let prompt = null;
 

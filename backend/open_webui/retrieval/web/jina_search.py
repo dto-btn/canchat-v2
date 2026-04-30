@@ -1,7 +1,7 @@
 import logging
 
-import requests
 from open_webui.retrieval.web.main import SearchResult
+from open_webui.retrieval.web.utils import get_json_with_timeout
 from open_webui.env import SRC_LOG_LEVELS
 from yarl import URL
 
@@ -22,9 +22,11 @@ def search_jina(api_key: str, query: str, count: int) -> list[SearchResult]:
     jina_search_endpoint = "https://s.jina.ai/"
     headers = {"Accept": "application/json", "Authorization": f"Bearer {api_key}"}
     url = str(URL(jina_search_endpoint + query))
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()
-    data = response.json()
+    data = get_json_with_timeout(
+        url,
+        provider_name="Jina search",
+        headers=headers,
+    )
 
     results = []
     for result in data["data"][:count]:

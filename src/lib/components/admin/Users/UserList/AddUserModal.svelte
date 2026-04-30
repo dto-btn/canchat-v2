@@ -1,14 +1,15 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import { toast } from 'svelte-sonner';
 	import { createEventDispatcher } from 'svelte';
-	import { onMount, getContext } from 'svelte';
 	import { addUser } from '$lib/apis/auths';
 
 	import { WEBUI_BASE_URL } from '$lib/constants';
 
 	import Modal from '$lib/components/common/Modal.svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 	const dispatch = createEventDispatcher();
 
 	export let show = false;
@@ -107,6 +108,7 @@
 					}
 
 					stopLoading();
+					show = false;
 				};
 
 				reader.readAsText(file);
@@ -114,8 +116,6 @@
 				toast.error($i18n.t('File not found.'));
 			}
 		}
-
-		loading = false;
 	};
 </script>
 

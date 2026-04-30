@@ -1,12 +1,11 @@
 <script lang="ts">
-	import { toast } from 'svelte-sonner';
+	import { getI18n } from '$lib/utils/context';
 
-	import { tick, getContext, onMount, createEventDispatcher } from 'svelte';
+	import { createEventDispatcher } from 'svelte';
 	const dispatch = createEventDispatcher();
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	import { settings } from '$lib/stores';
-	import { copyToClipboard } from '$lib/utils';
 
 	import MultiResponseMessages from './MultiResponseMessages.svelte';
 	import ResponseMessage from './ResponseMessage.svelte';

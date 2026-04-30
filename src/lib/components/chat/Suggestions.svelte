@@ -1,9 +1,11 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import Bolt from '$lib/components/icons/Bolt.svelte';
-	import { onMount, getContext, createEventDispatcher } from 'svelte';
+	import { createEventDispatcher } from 'svelte';
 	import { suggestionCycle } from '$lib/stores/index';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 	const dispatch = createEventDispatcher();
 
 	export let suggestionPrompts = [];

@@ -12,20 +12,34 @@ const getMCPToolDescription = (toolName: string, i18n: any): string => {
 	// Extract the actual function name
 	const actualToolName = extractToolName(toolName);
 
-	// Map tool names to English descriptions (which serve as translation keys)
+	// Static descriptions for well-known tools
 	const toolDescriptions: Record<string, string> = {
 		get_current_time: 'Get current date and time in any timezone',
-		get_top_headlines: 'Get latest news headlines from around the world',
-		analyze_all_documents_for_content: 'Search and retrieve MPO SharePoint documents',
-		get_sharepoint_document_content: 'Search and retrieve MPO SharePoint documents',
-		get_all_documents_comprehensive: 'Search and retrieve MPO SharePoint documents',
-		check_sharepoint_permissions: 'Search and retrieve MPO SharePoint documents'
+		get_top_headlines: 'Get latest news headlines from around the world'
 	};
 
-	const englishDescription = toolDescriptions[actualToolName];
-	if (englishDescription) {
-		const translated = i18n.t(englishDescription);
-		return translated;
+	if (actualToolName in toolDescriptions) {
+		return i18n.t(toolDescriptions[actualToolName]);
+	}
+
+	// Dynamic pattern for department SharePoint tools: {dept}_{action}
+	// e.g. mpo_search_documents_fast, fin_list_folder_contents
+	const spPattern =
+		/^([a-z0-9]+)_(search_documents_fast|list_folder_contents|get_document_by_id|analyze_all_documents_for_content|get_sharepoint_document_content|get_all_documents_comprehensive|check_sharepoint_permissions)$/;
+	const spMatch = actualToolName.match(spPattern);
+	if (spMatch) {
+		const dept = spMatch[1].toUpperCase();
+		const action = spMatch[2];
+		if (action === 'search_documents_fast') {
+			return i18n.t(`Fast search {{dept}} SharePoint documents`, { dept });
+		}
+		if (action === 'list_folder_contents') {
+			return i18n.t(`List files in {{dept}} SharePoint folders`, { dept });
+		}
+		if (action === 'get_document_by_id') {
+			return i18n.t(`Retrieve {{dept}} SharePoint document by ID from search results`, { dept });
+		}
+		return i18n.t(`Search and retrieve {{dept}} SharePoint documents`, { dept });
 	}
 
 	// Fallback to formatted tool name (short and clean)
@@ -38,20 +52,27 @@ export const getMCPToolName = (toolName: string, i18n: any): string => {
 	// Extract the actual function name
 	const actualToolName = extractToolName(toolName);
 
-	// Map tool names to English display names (which serve as translation keys)
+	// Static names for well-known non-SharePoint tools
 	const toolNames: Record<string, string> = {
 		get_current_time: 'MCP: Current Time',
-		get_top_headlines: 'MCP: News Headlines',
-		analyze_all_documents_for_content: 'MCP: MPO SharePoint',
-		get_sharepoint_document_content: 'MCP: MPO SharePoint',
-		get_all_documents_comprehensive: 'MCP: MPO SharePoint',
-		check_sharepoint_permissions: 'MCP: MPO SharePoint'
+		get_top_headlines: 'MCP: News Headlines'
 	};
 
-	const englishName = toolNames[actualToolName];
-	if (englishName) {
-		const translated = i18n.t(englishName);
-		return translated;
+	if (actualToolName in toolNames) {
+		return i18n.t(toolNames[actualToolName]);
+	}
+
+	// Dynamic pattern for department SharePoint tools: {dept}_{action}
+	const spPattern =
+		/^([a-z0-9]+)_(search_documents_fast|list_folder_contents|get_document_by_id|analyze_all_documents_for_content|get_sharepoint_document_content|get_all_documents_comprehensive|check_sharepoint_permissions)$/;
+	const spMatch = actualToolName.match(spPattern);
+	if (spMatch) {
+		const dept = spMatch[1].toUpperCase();
+		const action = spMatch[2];
+		if (action === 'get_document_by_id') {
+			return i18n.t(`MCP: {{dept}} SharePoint (By ID)`, { dept });
+		}
+		return i18n.t(`MCP: {{dept}} SharePoint`, { dept });
 	}
 
 	// Fallback to formatted tool name with MCP prefix
@@ -72,11 +93,27 @@ export const getToolDisplayName = (tool: any, i18n: any): string => {
 
 // Helper function to get tooltip content for tools
 export const getToolTooltipContent = (tool: any, i18n: any): string => {
-	if (tool.isMcp) {
+	// Check both isMcp property and meta.manifest.is_mcp_tool
+	const isMcpTool = tool?.isMcp || tool?.meta?.manifest?.is_mcp_tool || false;
+
+	if (isMcpTool) {
 		// Use originalName (the actual function name) for translation lookup
 		const toolNameForTranslation = tool.meta?.manifest?.original_name || tool.name;
 		const localizedDescription = getMCPToolDescription(toolNameForTranslation, i18n);
 		return localizedDescription;
 	}
-	return tool.originalDescription || '';
+
+	// For non-MCP tools, check if description is JSON
+	const description = tool.originalDescription || tool.meta?.description || '';
+	if (description && description.trim().startsWith('{')) {
+		try {
+			const parsed = JSON.parse(description);
+			// Return the description field from parsed JSON if it exists
+			return parsed.description || '';
+		} catch (e) {
+			// If parsing fails, return as-is
+			return description;
+		}
+	}
+	return description;
 };

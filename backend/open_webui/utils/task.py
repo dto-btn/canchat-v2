@@ -12,7 +12,6 @@ from open_webui.utils.misc import get_last_user_message, get_messages_content
 from open_webui.env import SRC_LOG_LEVELS
 from open_webui.config import DEFAULT_RAG_TEMPLATE
 
-
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["RAG"])
 
@@ -117,6 +116,89 @@ def replace_prompt_variable(template: str, prompt: str) -> str:
     pattern = r"(?i){{prompt}}|{{prompt:start:(\d+)}}|{{prompt:end:(\d+)}}|{{prompt:middletruncate:(\d+)}}"
     template = re.sub(pattern, replacement_function, template)
     return template
+
+
+def extract_title_from_response(resp: dict) -> Optional[str]:
+    """Extract raw content from LLM response."""
+    if not isinstance(resp, dict):
+        return None
+
+    try:
+        choices = resp.get("choices")
+        if isinstance(choices, list) and choices:
+            first = choices[0]
+            if isinstance(first, dict):
+                msg = first.get("message") or first.get("text") or {}
+                if isinstance(msg, dict):
+                    content = msg.get("content", "") or msg.get("text", "")
+                elif isinstance(first.get("text"), str):
+                    content = first.get("text")
+                else:
+                    return None
+                return content.strip() if content else None
+    except Exception:
+        return None
+
+    return None
+
+
+def truncate_title_by_chars(title: str, max_chars: int = 50) -> str:
+    """
+    Truncate title to max_chars while preserving whole words.
+    If truncation would break a word, keeps the whole word even if it slightly exceeds the limit.
+    Preserves leading emoji if present.
+    """
+    if not title or len(title) <= max_chars:
+        return title
+
+    # Check if first token is emoji/non-alphanumeric
+    tokens = title.split()
+    if not tokens:
+        return title
+
+    leading_emoji = []
+    word_tokens = []
+
+    for i, token in enumerate(tokens):
+        if i == 0 and not any(c.isalnum() for c in token):
+            leading_emoji.append(token)
+        else:
+            word_tokens.append(token)
+
+    # Calculate available space for words
+    emoji_part = " ".join(leading_emoji)
+    emoji_length = len(emoji_part) + (
+        1 if emoji_part else 0
+    )  # +1 for space after emoji
+    available_chars = max_chars - emoji_length
+
+    # Build truncated title
+    result_words = []
+    current_length = 0
+
+    for word in word_tokens:
+        word_length = len(word)
+        space_length = 1 if result_words else 0  # Space before word
+
+        # If adding this word would exceed limit
+        if current_length + space_length + word_length > available_chars:
+            # If we have at least one word, stop here
+            if result_words:
+                break
+            # If this is the first word and it's longer than available space,
+            # include it anyway to preserve whole word
+            result_words.append(word)
+            break
+
+        result_words.append(word)
+        current_length += space_length + word_length
+
+    truncated = " ".join(result_words)
+    return (
+        (" ".join(leading_emoji) + " " + truncated).strip()
+        if leading_emoji
+        else truncated
+    )
 
 
 def replace_messages_variable(

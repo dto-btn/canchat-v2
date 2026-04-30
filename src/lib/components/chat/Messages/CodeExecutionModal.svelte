@@ -1,10 +1,11 @@
 <script lang="ts">
-	import { getContext } from 'svelte';
+	import { getI18n } from '$lib/utils/context';
+
 	import CodeBlock from './CodeBlock.svelte';
 	import Modal from '$lib/components/common/Modal.svelte';
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import Badge from '$lib/components/common/Badge.svelte';
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let show = false;
 	export let codeExecution = null;

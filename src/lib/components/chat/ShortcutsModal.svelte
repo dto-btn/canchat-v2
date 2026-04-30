@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { getContext } from 'svelte';
+	import { getI18n } from '$lib/utils/context';
+
 	import Modal from '../common/Modal.svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let show = false;
 </script>

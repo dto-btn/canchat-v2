@@ -14,7 +14,6 @@
 	import { imageGenerations } from '$lib/apis/images';
 	import {
 		copyToClipboard as _copyToClipboard,
-		approximateToHumanReadable,
 		getMessageContentParts,
 		sanitizeResponseContent,
 		createMessagesList,
@@ -46,7 +45,6 @@
 	import LightBlub from '$lib/components/icons/LightBlub.svelte';
 	import IssueModal from '$lib/components/common/IssueModal.svelte';
 	import SuggestionModal from '$lib/components/common/SuggestionModal.svelte';
-	import Modal from '$lib/components/common/Modal.svelte';
 
 	interface MessageType {
 		id: string;
@@ -603,43 +601,80 @@
 				<div class="chat-{message.role} w-full min-w-full markdown-prose">
 					<div>
 						{#if (message?.statusHistory ?? [...(message?.status ? [message?.status] : [])]).length > 0}
-							{@const status = (
-								message?.statusHistory ?? [...(message?.status ? [message?.status] : [])]
-							).at(-1)}
-							{#if !status?.hidden}
+							{@const statusHistory = message?.statusHistory ?? [
+								...(message?.status ? [message?.status] : [])
+							]}
+							{@const status = statusHistory.at(-1)}
+							{@const hasRagContextTruncatedStatus = statusHistory.some(
+								(entry) => entry?.action === 'rag_context_truncated'
+							)}
+							{@const latestWebSearchStatus = [...statusHistory]
+								.reverse()
+								.find((entry) => entry?.action === 'web_search' && entry?.urls)}
+							{@const shouldRenderRagFallbackWebSearchStatus = Boolean(
+								latestWebSearchStatus &&
+								hasRagContextTruncatedStatus &&
+								(status?.hidden || status?.action === 'rag_context_truncated')
+							)}
+							{#if !status?.hidden || shouldRenderRagFallbackWebSearchStatus}
 								<div class="status-description flex items-center gap-2 py-0.5">
-									{#if status?.done === false}
+									{#if !status?.hidden && status?.done === false}
 										<div class="">
 											<Spinner className="size-4" />
 										</div>
 									{/if}
 
-									{#if status?.action === 'web_search' && status?.urls}
-										<WebSearchResults {status}>
+									{#if shouldRenderRagFallbackWebSearchStatus || (status?.action === 'web_search' && status?.urls)}
+										{@const webSearchStatus = shouldRenderRagFallbackWebSearchStatus
+											? latestWebSearchStatus
+											: status}
+										<WebSearchResults status={webSearchStatus}>
 											<div class="flex flex-col justify-center -space-y-0.5">
 												<div
-													class="{status?.done === false
+													class="{webSearchStatus?.done === false
 														? 'shimmer'
 														: ''} text-base line-clamp-1 text-wrap"
 												>
 													<!-- $i18n.t("Generating search query") -->
 													<!-- $i18n.t("No search query generated") -->
-
+													<!-- $i18n.t('Error searching "{{searchQuery}}"') -->
+													<!-- $i18n.t('No search results found for "{{searchQuery}}"') -->
 													<!-- $i18n.t('Searched {{count}} sites') -->
-													{#if status?.description.includes('{{count}}')}
-														{$i18n.t(status?.description, {
-															count: status?.urls.length
+													<!-- $i18n.t('Searched {{count}} sites for "{{searchQuery}}"') -->
+													{#if webSearchStatus?.description.includes('{{count}}') && webSearchStatus?.description.includes('{{searchQuery}}')}
+														{$i18n.t(webSearchStatus?.description, {
+															count: webSearchStatus?.urls.length,
+															searchQuery: webSearchStatus?.query
 														})}
-													{:else if status?.description === 'No search query generated'}
+													{:else if webSearchStatus?.description.includes('{{count}}')}
+														{$i18n.t(webSearchStatus?.description, {
+															count: webSearchStatus?.urls.length
+														})}
+													{:else if webSearchStatus?.description === 'No search query generated'}
 														{$i18n.t('No search query generated')}
-													{:else if status?.description === 'Generating search query'}
+													{:else if webSearchStatus?.description === 'Generating search query'}
 														{$i18n.t('Generating search query')}
 													{:else}
-														{status?.description}
+														{webSearchStatus?.description}
 													{/if}
 												</div>
+												{#if hasRagContextTruncatedStatus}
+													<div
+														class="text-gray-500 dark:text-gray-500 text-base line-clamp-1 text-wrap"
+													>
+														{$i18n.t("Some content was trimmed to fit the model's limit.")}
+													</div>
+												{/if}
 											</div>
 										</WebSearchResults>
+									{:else if status?.action === 'rag_context_truncated'}
+										<div class="flex flex-col justify-center -space-y-0.5">
+											<div
+												class="text-gray-500 dark:text-gray-500 text-base line-clamp-1 text-wrap"
+											>
+												{$i18n.t("Some content was trimmed to fit the model's limit.")}
+											</div>
+										</div>
 									{:else if status?.action === 'knowledge_search'}
 										<div class="flex flex-col justify-center -space-y-0.5">
 											<div
@@ -747,7 +782,7 @@
 									<div>
 										<button
 											id="save-new-message-button"
-											aria-label={$i18n.t('Save as Copy')}
+											aria-label={$i18n.t('Save As Copy')}
 											class=" px-4 py-2 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 border dark:border-gray-700 text-gray-700 dark:text-gray-200 transition rounded-3xl"
 											on:click={() => {
 												saveAsCopyHandler();
@@ -883,28 +918,30 @@
 									>
 										{siblings.indexOf(message.id) + 1}/{siblings.length}
 									</div>
-
-									<button
-										class="self-center p-1 hover:bg-black/5 dark:hover:bg-white/5 dark:hover:text-white hover:text-black rounded-md transition"
-										on:click={() => {
-											showNextMessage(message);
-										}}
-									>
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											fill="none"
-											viewBox="0 0 24 24"
-											stroke="currentColor"
-											stroke-width="2.5"
-											class="size-3.5"
+									<Tooltip content={$i18n.t('Next Response')} placement="bottom">
+										<button
+											aria-label={$i18n.t('Next Response')}
+											class="self-center p-1 hover:bg-black/5 dark:hover:bg-white/5 dark:hover:text-white hover:text-black rounded-md transition"
+											on:click={() => {
+												showNextMessage(message);
+											}}
 										>
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												d="m8.25 4.5 7.5 7.5-7.5 7.5"
-											/>
-										</svg>
-									</button>
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												fill="none"
+												viewBox="0 0 24 24"
+												stroke="currentColor"
+												stroke-width="2.5"
+												class="size-3.5"
+											>
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													d="m8.25 4.5 7.5 7.5-7.5 7.5"
+												/>
+											</svg>
+										</button>
+									</Tooltip>
 								</div>
 							{/if}
 

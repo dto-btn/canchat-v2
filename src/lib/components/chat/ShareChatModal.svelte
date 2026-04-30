@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { getContext, onMount } from 'svelte';
+	import { getI18n } from '$lib/utils/context';
+
 	import { models, config, returnFocusButtonID } from '$lib/stores';
 
 	import { toast } from 'svelte-sonner';
@@ -13,7 +14,7 @@
 
 	let chat = null;
 	let shareUrl = null;
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	const shareLocalChat = async () => {
 		const _chat = chat;

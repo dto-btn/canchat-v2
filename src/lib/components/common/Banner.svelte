@@ -1,11 +1,13 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import type { Banner } from '$lib/types';
-	import { onMount, createEventDispatcher, getContext } from 'svelte';
+	import { onMount, createEventDispatcher } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import DOMPurify from 'dompurify';
 	import { marked } from 'marked';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	const dispatch = createEventDispatcher();
 
@@ -46,7 +48,7 @@
 		}
 	};
 
-	const dismiss = (id) => {
+	const dismiss = (id: string) => {
 		dismissed = true;
 		dispatch('dismiss', id);
 	};
@@ -100,7 +102,7 @@
 					{/if}
 				</div>
 
-				<div class="flex-1 text-xs text-gray-700 dark:text-white">
+				<div class="flex-1 text-xs text-gray-700 dark:text-white banner-content">
 					{@html marked.parse(DOMPurify.sanitize(banner.content))}
 				</div>
 			</div>
@@ -144,3 +146,68 @@
 		</div>
 	{/if}
 {/if}
+
+<style>
+	.banner-content :global(strong) {
+		font-weight: 700;
+	}
+
+	.banner-content :global(em) {
+		font-style: italic;
+	}
+
+	.banner-content :global(a) {
+		text-decoration: underline;
+		font-weight: 600;
+	}
+
+	.banner-content :global(a:hover) {
+		opacity: 0.8;
+	}
+
+	.banner-content :global(p) {
+		display: inline;
+	}
+
+	.banner-content :global(code) {
+		background-color: rgba(0, 0, 0, 0.1);
+		padding: 0.125rem 0.25rem;
+		border-radius: 0.25rem;
+		font-family:
+			ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+			monospace;
+		font-size: 0.875em;
+	}
+
+	:global(.dark) .banner-content :global(code) {
+		background-color: rgba(255, 255, 255, 0.1);
+	}
+
+	.banner-content :global(ul),
+	.banner-content :global(ol) {
+		display: inline;
+		margin: 0;
+		padding: 0;
+		list-style-position: inside;
+	}
+
+	.banner-content :global(li) {
+		display: inline;
+	}
+
+	.banner-content :global(li::after) {
+		content: ' • ';
+		margin: 0 0.25rem;
+	}
+
+	.banner-content :global(li:last-child::after) {
+		content: '';
+		margin: 0;
+	}
+
+	.banner-content :global(blockquote) {
+		display: inline;
+		font-style: italic;
+		opacity: 0.9;
+	}
+</style>

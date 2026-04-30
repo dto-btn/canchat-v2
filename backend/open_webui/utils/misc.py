@@ -1,5 +1,6 @@
 import hashlib
 import re
+import os
 import time
 import uuid
 from datetime import timedelta
@@ -314,7 +315,7 @@ def parse_ollama_modelfile(model_text):
         "mirostat": int,
         "mirostat_eta": float,
         "mirostat_tau": float,
-        "num_ctx": int,
+        "num_ctx": int,  # Kept for Modelfile parsing; user UI control removed
         "repeat_last_n": int,
         "repeat_penalty": float,
         "temperature": float,
@@ -408,3 +409,36 @@ def parse_ollama_modelfile(model_text):
         data["params"]["messages"] = messages
 
     return data
+
+
+def validate_path(
+    path: str | os.PathLike, base_dir: str | os.PathLike | list[str | os.PathLike]
+) -> str:
+    """
+    Validates that a path is within the specified base directory or directories.
+    Supports both strings and ``os.PathLike`` values for ``path`` and ``base_dir``,
+    and performs a safe ancestry check to prevent traversal/prefix edge cases.
+
+    Args:
+        path (str | os.PathLike): The path to validate.
+        base_dir (str | os.PathLike | list[str | os.PathLike]): The base directory
+            or list of base directories.
+
+    Returns:
+        str: The resolved absolute path if valid.
+
+    Raises:
+        ValueError: If the path is outside the allowed base directory/directories.
+    """
+    absolute_path = os.path.abspath(os.fspath(path))
+    if isinstance(base_dir, (str, os.PathLike)):
+        base_dirs = [base_dir]
+    else:
+        base_dirs = base_dir
+    resolved_base_dirs = [os.path.abspath(os.fspath(base)) for base in base_dirs]
+
+    for base in resolved_base_dirs:
+        if os.path.commonpath([absolute_path, base]) == base:
+            return absolute_path
+
+    raise ValueError(f"Path {path} is outside of expected directories: {base_dirs}")

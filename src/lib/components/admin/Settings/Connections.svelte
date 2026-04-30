@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import { toast } from 'svelte-sonner';
-	import { createEventDispatcher, onMount, getContext, tick } from 'svelte';
+	import { createEventDispatcher, onMount } from 'svelte';
 
 	const dispatch = createEventDispatcher();
 
@@ -19,7 +21,7 @@
 	import AddConnectionModal from './Connections/AddConnectionModal.svelte';
 	import OllamaConnection from './Connections/OllamaConnection.svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	const getModels = async () => {
 		const models = await _getModels(localStorage.token);

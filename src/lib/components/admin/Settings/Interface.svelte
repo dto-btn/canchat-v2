@@ -1,11 +1,12 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import { v4 as uuidv4 } from 'uuid';
-	import { toast } from 'svelte-sonner';
 
 	import { getBackendConfig, getTaskConfig, updateTaskConfig } from '$lib/apis';
 	import { setDefaultPromptSuggestions } from '$lib/apis/configs';
-	import { config, models, settings, user } from '$lib/stores';
-	import { createEventDispatcher, onMount, getContext } from 'svelte';
+	import { config, models, user } from '$lib/stores';
+	import { createEventDispatcher, onMount } from 'svelte';
 	import { getLanguages } from '$lib/i18n';
 
 	import { banners as _banners } from '$lib/stores';
@@ -19,7 +20,7 @@
 
 	const dispatch = createEventDispatcher();
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	let taskConfig = {
 		TASK_MODEL: '',

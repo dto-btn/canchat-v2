@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { toast } from 'svelte-sonner';
-	import dayjs from 'dayjs';
+	import { getI18n } from '$lib/utils/context';
 
-	import { onMount, getContext, createEventDispatcher } from 'svelte';
-	const i18n = getContext('i18n');
+	import { toast } from 'svelte-sonner';
+
+	import { createEventDispatcher } from 'svelte';
+	const i18n = getI18n();
 	const dispatch = createEventDispatcher();
 
 	import Modal from '$lib/components/common/Modal.svelte';

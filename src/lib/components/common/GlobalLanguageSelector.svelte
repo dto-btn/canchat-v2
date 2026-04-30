@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { getContext } from 'svelte';
+	import { getI18n } from '$lib/utils/context';
+
 	import Tooltip from './Tooltip.svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	async function toggleLanguage() {
 		const newLocale = $i18n.language === 'en-GB' ? 'fr-CA' : 'en-GB';

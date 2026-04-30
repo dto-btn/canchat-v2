@@ -1,8 +1,10 @@
 <script lang="ts">
-	import { getContext, onMount } from 'svelte';
+	import { getI18n } from '$lib/utils/context';
+
+	import { onMount } from 'svelte';
 	import { formatFileSize, getLineCount } from '$lib/utils';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	import Modal from './Modal.svelte';
 	import XMark from '../icons/XMark.svelte';

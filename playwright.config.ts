@@ -30,7 +30,7 @@ export default defineConfig({
 	/* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
 	use: {
 		/* Base URL to use in actions like `await page.goto('/')`. */
-		baseURL: 'http://localhost:8080',
+		baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8080',
 
 		/* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
 		trace: 'on',
@@ -58,12 +58,14 @@ export default defineConfig({
 			testMatch: /.*\.setup\.ts/
 		},
 
-		// --- Tests Environment ---
+		// --- Chromium Environments (Clipboard Permissions Enabled) ---
 		{
 			name: 'chromium-en',
 			use: {
 				...devices['Desktop Chrome'],
-				locale: 'en-GB'
+				locale: 'en-GB',
+				// Chrome supports direct permission setting
+				permissions: ['clipboard-read', 'clipboard-write']
 			},
 			testDir: './playwright/tests/e2e',
 			dependencies: ['setup']
@@ -73,17 +75,26 @@ export default defineConfig({
 			name: 'chromium-fr',
 			use: {
 				...devices['Desktop Chrome'],
-				locale: 'fr-CA'
+				locale: 'fr-CA',
+				permissions: ['clipboard-read', 'clipboard-write']
 			},
 			testDir: './playwright/tests/e2e',
 			dependencies: ['setup']
 		},
 
+		// --- Firefox Environments (Clipboard Prefs Enabled) ---
 		{
 			name: 'firefox-en',
 			use: {
 				...devices['Desktop Firefox'],
-				locale: 'en-GB'
+				locale: 'en-GB',
+				// Firefox requires prefs, NOT the permissions array
+				launchOptions: {
+					firefoxUserPrefs: {
+						'dom.events.asyncClipboard.readText': true,
+						'dom.events.testing.asyncClipboard': true
+					}
+				}
 			},
 			testDir: './playwright/tests/e2e',
 			dependencies: ['setup']
@@ -93,7 +104,13 @@ export default defineConfig({
 			name: 'firefox-fr',
 			use: {
 				...devices['Desktop Firefox'],
-				locale: 'fr-CA'
+				locale: 'fr-CA',
+				launchOptions: {
+					firefoxUserPrefs: {
+						'dom.events.asyncClipboard.readText': true,
+						'dom.events.testing.asyncClipboard': true
+					}
+				}
 			},
 			testDir: './playwright/tests/e2e',
 			dependencies: ['setup']

@@ -1,4 +1,4 @@
-import { WEBUI_API_BASE_URL, WEBUI_BASE_URL } from '$lib/constants';
+import { WEBUI_BASE_URL } from '$lib/constants';
 
 export const getModels = async (token: string = '', base: boolean = false) => {
 	let error = null;
@@ -24,7 +24,7 @@ export const getModels = async (token: string = '', base: boolean = false) => {
 		throw error;
 	}
 
-	let models = res?.data ?? [];
+	const models = res?.data ?? [];
 	return models;
 };
 
@@ -561,7 +561,7 @@ export const getPipelinesList = async (token: string = '') => {
 		throw error;
 	}
 
-	let pipelines = res?.data ?? [];
+	const pipelines = res?.data ?? [];
 	return pipelines;
 };
 
@@ -704,7 +704,7 @@ export const getPipelines = async (token: string, urlIdx?: string) => {
 		throw error;
 	}
 
-	let pipelines = res?.data ?? [];
+	const pipelines = res?.data ?? [];
 	return pipelines;
 };
 
@@ -854,10 +854,10 @@ export const getBackendConfig = async () => {
 	return res;
 };
 
-export const getChangelog = async () => {
+export const getChangelog = async (locale: string = 'en') => {
 	let error = null;
 
-	const res = await fetch(`${WEBUI_BASE_URL}/api/changelog`, {
+	const res = await fetch(`${WEBUI_BASE_URL}/api/changelog?locale=${encodeURIComponent(locale)}`, {
 		method: 'GET',
 		headers: {
 			'Content-Type': 'application/json'

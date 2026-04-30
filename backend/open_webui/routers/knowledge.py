@@ -1,4 +1,3 @@
-import asyncio
 from typing import List, Optional
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, status, Request
@@ -27,7 +26,6 @@ from open_webui.utils.access_control import has_access, has_permission
 
 from open_webui.env import SRC_LOG_LEVELS
 from open_webui.models.models import Models, ModelForm
-
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["MODELS"])
@@ -249,7 +247,7 @@ class KnowledgeFileIdForm(BaseModel):
 
 
 @router.post("/{id}/file/add", response_model=Optional[KnowledgeFilesResponse])
-def add_file_to_knowledge_by_id(
+async def add_file_to_knowledge_by_id(
     request: Request,
     id: str,
     form_data: KnowledgeFileIdForm,
@@ -283,10 +281,8 @@ def add_file_to_knowledge_by_id(
 
     # Add content to the vector database
     try:
-        asyncio.run(
-            process_file(
-                request, ProcessFileForm(file_id=form_data.file_id, collection_name=id)
-            )
+        await process_file(
+            request, ProcessFileForm(file_id=form_data.file_id, collection_name=id)
         )
     except Exception as e:
         log.debug(e)
@@ -363,10 +359,8 @@ async def update_file_from_knowledge_by_id(
 
     # Add content to the vector database
     try:
-        asyncio.run(
-            process_file(
-                request, ProcessFileForm(file_id=form_data.file_id, collection_name=id)
-            )
+        await process_file(
+            request, ProcessFileForm(file_id=form_data.file_id, collection_name=id)
         )
     except Exception as e:
         raise HTTPException(
@@ -617,7 +611,7 @@ async def reset_knowledge_by_id(id: str, user=Depends(get_verified_user)):
 
 
 @router.post("/{id}/files/batch/add", response_model=Optional[KnowledgeFilesResponse])
-def add_files_to_knowledge_batch(
+async def add_files_to_knowledge_batch(
     request: Request,
     id: str,
     form_data: list[KnowledgeFileIdForm],
@@ -653,12 +647,10 @@ def add_files_to_knowledge_batch(
 
     # Process files
     try:
-        result = asyncio.run(
-            process_files_batch(
-                request=request,
-                form_data=BatchProcessFilesForm(files=files, collection_name=id),
-                user=user,
-            )
+        result = await process_files_batch(
+            request=request,
+            form_data=BatchProcessFilesForm(files=files, collection_name=id),
+            user=user,
         )
     except Exception as e:
         log.error(

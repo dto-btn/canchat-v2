@@ -1,7 +1,8 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import { toast } from 'svelte-sonner';
 	import { DropdownMenu } from 'bits-ui';
-	import { getContext } from 'svelte';
 
 	import fileSaver from 'file-saver';
 	const { saveAs } = fileSaver;
@@ -25,9 +26,8 @@
 	import Clipboard from '$lib/components/icons/Clipboard.svelte';
 	import AdjustmentsHorizontal from '$lib/components/icons/AdjustmentsHorizontal.svelte';
 	import Cube from '$lib/components/icons/Cube.svelte';
-	import { getChatById } from '$lib/apis/chats';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	export let shareEnabled: boolean = false;
 	export let shareHandler: Function;

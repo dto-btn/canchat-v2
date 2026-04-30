@@ -1,7 +1,9 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import { toast } from 'svelte-sonner';
 
-	import { onMount, getContext, createEventDispatcher } from 'svelte';
+	import { onMount, createEventDispatcher } from 'svelte';
 
 	const dispatch = createEventDispatcher();
 
@@ -13,14 +15,11 @@
 		updateEmbeddingConfig,
 		getRerankingConfig,
 		updateRerankingConfig,
-		resetUploadDir,
 		getRAGConfig,
 		updateRAGConfig
 	} from '$lib/apis/retrieval';
 
-	import { knowledge, models } from '$lib/stores';
-	import { getKnowledgeBases } from '$lib/apis/knowledge';
-	import { uploadDir, deleteAllFiles, deleteFileById } from '$lib/apis/files';
+	import { deleteAllFiles } from '$lib/apis/files';
 
 	import ResetUploadDirConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import ResetVectorDBConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
@@ -29,7 +28,7 @@
 	import Switch from '$lib/components/common/Switch.svelte';
 	import Textarea from '$lib/components/common/Textarea.svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	let scanDirLoading = false;
 	let updateEmbeddingModelLoading = false;

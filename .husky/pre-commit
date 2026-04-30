@@ -1,0 +1,6 @@
+npm run format || { echo "Frontend formatting failed"; exit 1; }
+npm run format:backend || { echo "Backend formatting failed"; exit 1; }
+npm run i18n:parse || { echo "i18n parse failed"; exit 1; }
+
+# Re-stage tracked files modified by formatters (-u avoids adding untracked files)
+git add -u

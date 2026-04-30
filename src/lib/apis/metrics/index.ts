@@ -227,10 +227,21 @@ export const getDailyPrompts = async (token: string, domain?: string): Promise<n
 	}
 };
 
-export const getTotalTokens = async (token: string, domain?: string): Promise<number> => {
+export const getTotalTokens = async (
+	token: string,
+	domain?: string,
+	start_date?: string,
+	end_date?: string,
+	mcpTool?: string
+): Promise<number> => {
 	try {
-		const url = domain
-			? `${WEBUI_API_BASE_URL}/metrics/tokens?domain=${encodeURIComponent(domain)}`
+		const params = new URLSearchParams();
+		if (domain) params.append('domain', domain);
+		if (start_date) params.append('start_date', start_date);
+		if (end_date) params.append('end_date', end_date);
+		if (mcpTool) params.append('mcp_tool', mcpTool);
+		const url = params.toString()
+			? `${WEBUI_API_BASE_URL}/metrics/tokens?${params.toString()}`
 			: `${WEBUI_API_BASE_URL}/metrics/tokens`;
 		const res = await fetch(url, {
 			method: 'GET',
@@ -254,10 +265,17 @@ export const getTotalTokens = async (token: string, domain?: string): Promise<nu
 	}
 };
 
-export const getDailyTokens = async (token: string, domain?: string): Promise<number> => {
+export const getDailyTokens = async (
+	token: string,
+	domain?: string,
+	mcpTool?: string
+): Promise<number> => {
 	try {
-		const url = domain
-			? `${WEBUI_API_BASE_URL}/metrics/daily/tokens?domain=${encodeURIComponent(domain)}`
+		const params = new URLSearchParams();
+		if (domain) params.append('domain', domain);
+		if (mcpTool) params.append('mcp_tool', mcpTool);
+		const url = params.toString()
+			? `${WEBUI_API_BASE_URL}/metrics/daily/tokens?${params.toString()}`
 			: `${WEBUI_API_BASE_URL}/metrics/daily/tokens`;
 		const res = await fetch(url, {
 			method: 'GET',
@@ -319,14 +337,15 @@ export const getHistoricalPrompts = async (
 export const getHistoricalTokens = async (
 	token: string,
 	days: number = 7,
-	domain?: string
+	domain?: string,
+	mcpTool?: string
 ): Promise<any[]> => {
 	try {
-		let url = `${WEBUI_API_BASE_URL}/metrics/historical/tokens?days=${days}`;
-
-		if (domain !== null && domain !== undefined) {
-			url += `&domain=${encodeURIComponent(domain)}`;
-		}
+		const params = new URLSearchParams();
+		params.append('days', String(days));
+		if (domain !== null && domain !== undefined) params.append('domain', domain);
+		if (mcpTool !== null && mcpTool !== undefined) params.append('mcp_tool', mcpTool);
+		const url = `${WEBUI_API_BASE_URL}/metrics/historical/tokens?${params.toString()}`;
 
 		const res = await fetch(url, {
 			method: 'GET',
@@ -381,6 +400,28 @@ export const getModels = async (token: string): Promise<string[]> => {
 		return data.models;
 	} catch (err) {
 		throw new Error(err.message || 'An unexpected error occurred');
+	}
+};
+
+export const getMcpProcesses = async (token: string): Promise<string[]> => {
+	try {
+		const res = await fetch(`${WEBUI_API_BASE_URL}/metrics/mcp-processes`, {
+			method: 'GET',
+			headers: {
+				Accept: 'application/json',
+				authorization: `Bearer ${token}`
+			}
+		});
+
+		if (!res.ok) {
+			// Return empty list if endpoint not available or no data
+			return [];
+		}
+		const data = await res.json();
+		return data.mcp_processes || [];
+	} catch (err) {
+		console.error('Error fetching MCP processes:', err);
+		return [];
 	}
 };
 

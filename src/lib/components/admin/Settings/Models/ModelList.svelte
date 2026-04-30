@@ -1,8 +1,10 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
 	import Sortable from 'sortablejs';
 
-	import { createEventDispatcher, getContext, onMount } from 'svelte';
-	const i18n = getContext('i18n');
+	import { onMount } from 'svelte';
+	const i18n = getI18n();
 
 	import { models } from '$lib/stores';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
