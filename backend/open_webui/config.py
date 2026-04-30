@@ -2168,7 +2168,7 @@ BING_SEARCH_V7_SUBSCRIPTION_KEY = PersistentConfig(
 RAG_WEB_SEARCH_RESULT_COUNT = PersistentConfig(
     "RAG_WEB_SEARCH_RESULT_COUNT",
     "rag.web.search.result_count",
-    int(os.getenv("RAG_WEB_SEARCH_RESULT_COUNT", "3")),
+    int(os.getenv("RAG_WEB_SEARCH_RESULT_COUNT", "10")),
 )
 
 RAG_WEB_SEARCH_CONCURRENT_REQUESTS = PersistentConfig(
@@ -2195,13 +2195,13 @@ def _get_positive_int_env(name: str, default: int) -> int:
 RAG_WEB_SEARCH_REQUEST_TIMEOUT = PersistentConfig(
     "RAG_WEB_SEARCH_REQUEST_TIMEOUT",
     "rag.web.search.request_timeout",
-    _get_positive_int_env("RAG_WEB_SEARCH_REQUEST_TIMEOUT", 15),
+    _get_positive_int_env("RAG_WEB_SEARCH_REQUEST_TIMEOUT", 2),
 )
 
 RAG_WEB_SEARCH_TOTAL_TIMEOUT = PersistentConfig(
     "RAG_WEB_SEARCH_TOTAL_TIMEOUT",
     "rag.web.search.total_timeout",
-    _get_positive_int_env("RAG_WEB_SEARCH_TOTAL_TIMEOUT", 120),
+    _get_positive_int_env("RAG_WEB_SEARCH_TOTAL_TIMEOUT", 4),
 )
 
 RAG_WEB_LOADER_ENGINE = PersistentConfig(
