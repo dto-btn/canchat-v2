@@ -13,6 +13,7 @@ export class ChatPage extends BasePage {
 	readonly responseMessageGenerating: Locator;
 	readonly responseSelector: string = '#response-content-container';
 	chatStatusDescription!: Locator;
+	readonly headerNewChatButton: Locator;
 	readonly chatHistoryItems: Locator;
 	readonly searchInput: Locator;
 	readonly clearSearchButton: Locator;
@@ -34,6 +35,7 @@ export class ChatPage extends BasePage {
 		this.responseMessageGenerating = page.locator('.space-y-2');
 		this.responseSelector = '#response-content-container';
 		this.chatStatusDescription = page.locator('.status-description');
+		this.headerNewChatButton = page.locator('#new-chat-button');
 		this.chatHistoryItems = page.locator('#sidebar a[href^="/c/"]');
 		this.searchInput = page.locator('#chat-search input');
 		this.clearSearchButton = page.locator('#clear-search-button');
@@ -89,6 +91,16 @@ export class ChatPage extends BasePage {
 	async newChat() {
 		await this.toggleSidebar(true);
 		await this.sidebarNewChatButton.click();
+		await expect(this.messageInput).toBeVisible();
+	}
+
+	/**
+	 * Starts a new chat session using the header button
+	 */
+	async newChatFromHeader() {
+		await this.toggleSidebar(false);
+		await this.headerNewChatButton.waitFor({ state: 'visible' });
+		await this.headerNewChatButton.click();
 		await expect(this.messageInput).toBeVisible();
 	}
 
@@ -160,6 +172,128 @@ export class ChatPage extends BasePage {
 		);
 
 		await this.waitToSettle(1500);
+	}
+
+	/**
+	 * Opens the model selector dropdown for a specific selector index
+	 */
+	private async openModelSelector(selectorIndex: number = 0): Promise<Locator> {
+		const modelDropdown = this.page.locator(`#model-selector-${selectorIndex}-button`);
+		await modelDropdown.waitFor({ state: 'visible' });
+		await modelDropdown.click();
+		const searchInput = this.page.locator('#model-search-input');
+		await searchInput.waitFor({ state: 'visible' });
+		return searchInput;
+	}
+
+	/**
+	 * Returns the model list items inside the dropdown
+	 */
+	private getModelListItems(): Locator {
+		return this.page
+			.locator('div.max-h-64 button')
+			.filter({ has: this.page.locator('img[alt="Model"]') });
+	}
+
+	/**
+	 * Returns the number of available models in the selector
+	 */
+	async getAvailableModelCount(): Promise<number> {
+		const searchInput = await this.openModelSelector(0);
+		const count = await this.getModelListItems().count();
+		await this.page.keyboard.press('Escape');
+		await searchInput.waitFor({ state: 'hidden' }).catch(() => {});
+		return count;
+	}
+
+	/**
+	 * Returns the number of models matching a search term
+	 */
+	async getFilteredModelCount(selectorIndex: number, searchTerm: string): Promise<number> {
+		const searchInput = await this.openModelSelector(selectorIndex);
+		await searchInput.fill(searchTerm);
+		const count = await this.getModelListItems().count();
+		await this.page.keyboard.press('Escape');
+		await searchInput.waitFor({ state: 'hidden' }).catch(() => {});
+		return count;
+	}
+
+	/**
+	 * Add a model by index using keyboard navigation
+	 * @param selectorIndex The model selector index to target
+	 * @param modelIndex The index of the model in the list (0-based)
+	 */
+	async addModelByIndex(selectorIndex: number, modelIndex: number): Promise<string> {
+		const searchInput = await this.openModelSelector(selectorIndex);
+		await searchInput.fill('');
+		for (let i = 0; i < modelIndex; i += 1) {
+			await this.page.keyboard.press('ArrowDown');
+		}
+		await this.page.keyboard.press('Enter');
+		await searchInput.waitFor({ state: 'hidden' }).catch(() => {});
+		return await this.getSelectedModelLabel(selectorIndex);
+	}
+
+	/**
+	 * Selects a model using a search term
+	 */
+	async selectModelBySearch(selectorIndex: number, searchTerm: string): Promise<string> {
+		const searchInput = await this.openModelSelector(selectorIndex);
+		await searchInput.fill(searchTerm);
+		const modelItems = this.getModelListItems();
+		await modelItems.first().waitFor({ state: 'visible' });
+		await this.page.keyboard.press('Enter');
+		await searchInput.waitFor({ state: 'hidden' }).catch(() => {});
+		return await this.getSelectedModelLabel(selectorIndex);
+	}
+
+	/**
+	 * Returns the selected model label for a given selector index
+	 */
+	async getSelectedModelLabel(selectorIndex: number): Promise<string> {
+		const label = this.page.locator(`#model-selector-${selectorIndex}-button span`).first();
+		await label.waitFor({ state: 'visible' });
+		return (await label.innerText()).trim();
+	}
+
+	/**
+	 * Adds a new model selector (up to 3)
+	 */
+	async clickModelSelector(): Promise<void> {
+		// The label is translated but not the name of the button
+		//const addLabel = this.getTranslation('Add Model');
+		await this.page.getByRole('button', { name: 'Add Model' }).click();
+	}
+
+	/**
+	 * Removes a model selector by index (1 or 2)
+	 */
+	async removeModelSelector(selectorIndex: number): Promise<void> {
+		// The button does not have a proper translation
+		//const removeLabel = this.getTranslation('Remove Model');
+		const removeButton = this.page
+			.getByRole('button', { name: 'Remove Model' })
+			.nth(selectorIndex - 1);
+		await removeButton.click();
+	}
+
+	/**
+	 * Returns the model names of the most recent assistant responses
+	 */
+	async getLastAssistantModelNames(count: number = 1): Promise<string[]> {
+		const assistantMessages = this.page
+			.locator('div[id^="message-"]')
+			.filter({ has: this.page.locator('.chat-assistant') });
+		const total = await assistantMessages.count();
+		const start = Math.max(0, total - count);
+		const names: string[] = [];
+		for (let i = start; i < total; i += 1) {
+			const container = assistantMessages.nth(i);
+			const nameSpan = container.locator('span.line-clamp-1').first();
+			await nameSpan.waitFor({ state: 'visible' });
+			names.push((await nameSpan.innerText()).trim());
+		}
+		return names;
 	}
 
 	/**

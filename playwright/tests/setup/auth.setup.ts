@@ -15,13 +15,28 @@ const usersData = JSON.parse(fs.readFileSync(usersFile, 'utf-8'));
 
 const adminUser = usersData.users.find((u: any) => u.username === 'admin');
 const standardUsers = usersData.users.filter((u: any) => u.username !== 'admin');
+const requiredAuthFiles = ['admin.json', 'user.json', 'analyst.json', 'globalanalyst.json'];
 
 setup('global setup: seed data & authenticate', async ({ page }) => {
 	const authPage = new AuthPage(page);
 	const adminPage = new AdminPage(page);
 
+	await fs.promises.mkdir(authDir, { recursive: true });
+	const authFilesMissing = requiredAuthFiles.some(
+		(fileName) => !fs.existsSync(path.join(authDir, fileName))
+	);
+
 	await authPage.goto('/auth');
 	const isFirstRun = await authPage.isFirstRunButton.isVisible();
+
+	if (!isFirstRun && authFilesMissing) {
+		console.log('CanChat already initialized. Missing auth files detected.');
+		await authPage.login(adminUser.email, adminUser.password);
+		await saveAuthState(page, 'admin.json');
+		await generateUserAuthFiles(page, authPage, adminPage);
+		console.log('Auth files regenerated.');
+		return;
+	}
 
 	if (!isFirstRun) {
 		console.log('CanChat already initialized. Skipping Global Setup');

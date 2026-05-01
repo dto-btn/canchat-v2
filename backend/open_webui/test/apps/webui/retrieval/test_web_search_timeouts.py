@@ -113,7 +113,9 @@ def test_total_timeout_enforcement(monkeypatch):
     """process_web_search should return HTTP 408 when the total web-search budget is exceeded."""
 
     # Simulate search work that outlives the limit
-    def slow_search_web(request, engine, query, request_timeout=None):
+    def slow_search_web(
+        request, engine, query, request_timeout=None, user=None, audit_event_id=None
+    ):
         time.sleep(2)
         return []
 
@@ -168,7 +170,9 @@ def test_remaining_timeout_propagates_to_search_and_loader(monkeypatch):
     captured = {}
 
     # Capture timeout passed to provider search function
-    def fake_search_web(request, engine, query, request_timeout=None):
+    def fake_search_web(
+        request, engine, query, request_timeout=None, user=None, audit_event_id=None
+    ):
         captured["search_timeout"] = request_timeout
         return [SimpleNamespace(link="https://ok.example")]
 
