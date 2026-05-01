@@ -11,6 +11,8 @@
 	import { WEBUI_BASE_URL } from '$lib/constants';
 	import { copyToClipboard, unescapeHtml } from '$lib/utils';
 
+	const sanitizeUrl = (url: string) => url.split('?')[0];
+
 	import Image from '$lib/components/common/Image.svelte';
 	import KatexRenderer from './KatexRenderer.svelte';
 	import Source from './Source.svelte';
@@ -36,14 +38,16 @@
 		{/if}
 	{:else if token.type === 'link'}
 		{#if token.tokens}
-			<a href={token.href} target="_blank" rel="nofollow" title={token.title}>
+			<a href={sanitizeUrl(token.href)} target="_blank" rel="nofollow" title={token.title}>
 				<svelte:self id={`${id}-a`} tokens={token.tokens} {onSourceClick} />
 			</a>
 		{:else}
-			<a href={token.href} target="_blank" rel="nofollow" title={token.title}>{token.text}</a>
+			<a href={sanitizeUrl(token.href)} target="_blank" rel="nofollow" title={token.title}
+				>{token.text}</a
+			>
 		{/if}
 	{:else if token.type === 'image'}
-		<Image src={token.href} alt={token.text} />
+		<Image src={sanitizeUrl(token.href)} alt={token.text} />
 	{:else if token.type === 'strong'}
 		<strong>
 			<svelte:self id={`${id}-strong`} tokens={token.tokens} {onSourceClick} />
