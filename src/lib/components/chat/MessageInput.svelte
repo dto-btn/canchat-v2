@@ -1317,7 +1317,7 @@
 							aria-label="Disclaimer"
 						>
 							{$i18n.t(
-								'Reminder CANchat can make mistakes. Verify the accuracy of information provided by CANchat. All records are transitory. Chats are deleted every 30 days.'
+								'Reminder: CANchat can make mistakes. Verify the accuracy of the information it provides. All records are temporary, and chats are deleted after 30 days of inactivity.'
 							)}
 						</div>
 					</div>
