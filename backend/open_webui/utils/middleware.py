@@ -125,15 +125,15 @@ def sanitize_tool_ids_for_features(
     return tool_ids
 
 
-def fetch_wikipedia_title_and_excerpt(url: str) -> tuple[str, str]:
+def fetch_wikipedia_title_and_excerpt(url: str) -> tuple[str, str, int | None]:
     """
     Fetch the actual title and excerpt from a Wikipedia URL.
-    Returns tuple of (title, excerpt) or falls back to original if fetch fails.
+    Returns tuple of (title, excerpt, status_code) or falls back to original if fetch fails.
     """
     try:
         # Extract the page title from the URL
         if "/wiki/" not in url:
-            return "", ""
+            return "", "", None
 
         page_title = url.split("/wiki/")[-1]
 
@@ -143,7 +143,7 @@ def fetch_wikipedia_title_and_excerpt(url: str) -> tuple[str, str]:
         elif "en.wikipedia.org" in url:
             api_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{page_title}"
         else:
-            return "", ""
+            return "", "", None
 
         # Make request with timeout and proper headers
         headers = {
@@ -156,16 +156,13 @@ def fetch_wikipedia_title_and_excerpt(url: str) -> tuple[str, str]:
             data = response.json()
             title = data.get("title", "")
             extract = data.get("extract", "")
-            return title, extract
+            return title, extract, response.status_code
         else:
-            log.warning(
-                f"Failed to fetch Wikipedia summary for {url}: {response.status_code}"
-            )
-            return "", ""
+            return "", "", response.status_code
 
     except Exception as e:
         log.warning(f"Error fetching Wikipedia summary for {url}: {e}")
-        return "", ""
+        return "", "", None
 
 
 def detect_query_language(query: str) -> str:
@@ -931,8 +928,8 @@ async def chat_wiki_grounding_handler(
 
                 # If we converted to a French URL, try to fetch the French title and content
                 if source_language == "fr" and converted_url != original_url:
-                    french_title, french_excerpt = fetch_wikipedia_title_and_excerpt(
-                        converted_url
+                    french_title, french_excerpt, status_code = (
+                        fetch_wikipedia_title_and_excerpt(converted_url)
                     )
                     if french_title and french_excerpt:
                         # Successfully fetched French content
@@ -947,6 +944,10 @@ async def chat_wiki_grounding_handler(
                         fallback_reason = None
                     else:
                         # French page doesn't exist or failed to fetch - revert to English
+                        if status_code is not None:
+                            log.warning(
+                                f"Failed to fetch the FR Wikipedia summary for {converted_url} reverting to EN: {status_code}"
+                            )
                         title = source.get("title", "")
                         content = (
                             source.get("content", "")[:200] + "..."

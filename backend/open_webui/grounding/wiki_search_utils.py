@@ -33,15 +33,15 @@ def _get_txtai_embeddings():
         )
 
 
-def _get_transformers_pipeline():
-    """Lazy load transformers.pipeline with clear error message"""
+def _get_transformers_translation_components():
+    """Lazy load Transformers translation classes with clear error message"""
     try:
-        from transformers import pipeline
+        from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
-        return pipeline
+        return AutoModelForSeq2SeqLM, AutoTokenizer
     except ImportError:
         raise ImportError(
-            "transformers is required for language detection. "
+            "transformers is required for translation. "
             "Install with: pip install transformers"
         )
 
@@ -263,7 +263,7 @@ class WikiSearchGrounder:
         return True
 
     def _load_translation_model(self) -> bool:
-        """Load HuggingFace translation pipeline"""
+        """Load HuggingFace translation model compatible with Transformers 5+"""
         if self.translation_loaded:
             return True
 
@@ -274,20 +274,32 @@ class WikiSearchGrounder:
             return False
 
         try:
-            pipeline = _get_transformers_pipeline()
-
-            log.info("Loading French-to-English translation pipeline...")
-            # Use a lightweight multilingual translation model
-            self.translator = pipeline(
-                "translation",
-                model="Helsinki-NLP/opus-mt-fr-en",
-                device=-1,  # Use CPU to avoid memory issues
+            AutoModelForSeq2SeqLM, AutoTokenizer = (
+                _get_transformers_translation_components()
             )
+            model_name = "Helsinki-NLP/opus-mt-fr-en"
+
+            log.info("Loading French-to-English translation model...")
+
+            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+            model.eval()
+
+            def translate(text: str) -> str:
+                inputs = tokenizer(text, return_tensors="pt", truncation=True)
+                model_device = next(model.parameters()).device
+                inputs = {key: value.to(model_device) for key, value in inputs.items()}
+                translated_tokens = model.generate(**inputs)
+                return tokenizer.batch_decode(
+                    translated_tokens, skip_special_tokens=True
+                )[0]
+
+            self.translator = translate
             self.translation_loaded = True
-            log.info("HuggingFace translation pipeline loaded successfully")
+            log.info("French-to-English translation model loaded successfully")
             return True
         except Exception as e:
-            log.warning(f"Translation pipeline failed to load: {e}")
+            log.warning(f"Translation model failed to load: {e}")
             return False
 
     def _load_reranker_model(self) -> bool:
@@ -374,9 +386,7 @@ class WikiSearchGrounder:
         try:
             detected_lang = self._detect_language(text)
             if detected_lang == "fr":
-                # The model expects French input
-                translated_result = self.translator(text)
-                translated_text = translated_result[0]["translation_text"]
+                translated_text = self.translator(text)
                 log.info(f"Translated query: '{text}' -> '{translated_text}'")
                 return translated_text
             return text
