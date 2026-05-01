@@ -169,7 +169,7 @@ async def chat_completed(request: Request, form_data: dict, user: Any):
     try:
         data = process_pipeline_outlet_filter(request, data, user, models)
     except Exception as e:
-        return Exception(f"Error: {e}")
+        log.exception("chat_completed pipeline outlet failed")
 
     __event_emitter__ = get_event_emitter(
         {
@@ -278,7 +278,8 @@ async def chat_completed(request: Request, form_data: dict, user: Any):
                 data = outlet(**params)
 
         except Exception as e:
-            return Exception(f"Error: {e}")
+            log.exception(f"chat_completed outlet failed for filter '{filter_id}'")
+            continue
 
     return data
 
