@@ -72,15 +72,14 @@
 		} else if (hasMcpToolsEnabled) {
 			return $i18n.t('Wiki Grounding disabled - MCP tools are active');
 		} else if (wikiGroundingEnabled) {
-			return $i18n.t('Wikipedia Grounding: Context-aware information enhancement enabled');
+			return $i18n.t('Wikipedia Grounding enabled');
 		} else {
-			return $i18n.t('Wikipedia Grounding: Click to enable context-aware information enhancement');
+			return $i18n.t('Wikipedia Grounding: Click to enable');
 		}
 	})();
 
 	let tools = {};
 	let wikiGroundingTooltip;
-	let wikiGroundingButton;
 	let show = false;
 
 	let showImageGeneration = false;
@@ -345,34 +344,11 @@
 					content={tooltipContent}
 					placement="right"
 					className="w-full"
-					tippyOptions={{
-						placement: 'right',
-						offset: [0, 0],
-						flip: false,
-						hideOnClick: false,
-						trigger: 'mouseenter',
-						getReferenceClientRect: () => {
-							const menu = document.querySelector('[data-melt-dropdown-menu][data-state="open"]');
-							if (menu && wikiGroundingButton) {
-								const menuRect = menu.getBoundingClientRect();
-								const buttonRect = wikiGroundingButton.getBoundingClientRect();
-								return {
-									width: 0,
-									height: buttonRect.height,
-									top: buttonRect.top,
-									bottom: buttonRect.bottom,
-									left: menuRect.right,
-									right: menuRect.right
-								};
-							}
-							return { width: 0, height: 0, top: 0, bottom: 0, left: 0, right: 0 };
-						}
-					}}
+					tippyOptions={hoverOnlyTooltipOptions}
 				>
 					<button
 						role="menuitem"
 						aria-label={$i18n.t('Wiki Grounding')}
-						bind:this={wikiGroundingButton}
 						class="flex w-full justify-between gap-2 items-center px-3 py-2 text-sm font-medium cursor-pointer rounded-xl {webSearchEnabled ||
 						hasMcpToolsEnabled
 							? 'opacity-50 cursor-not-allowed'
