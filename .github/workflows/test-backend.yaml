@@ -1,6 +1,7 @@
-name: Python CI
+name: Backend Pytest
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main

@@ -1,6 +1,7 @@
-name: Python CI
+name: Format Backend
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main

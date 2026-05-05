@@ -1,6 +1,7 @@
 name: Security Scan - Trivy
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
