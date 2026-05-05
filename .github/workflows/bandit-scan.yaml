@@ -6,18 +6,21 @@ on:
     - cron: '0 12 * * 1'
   workflow_dispatch:  # Keep manual trigger for testing
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   bandit-scan:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: dev
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
@@ -38,7 +41,7 @@ jobs:
           bandit -r . -c .bandit.yaml -lll -iii -f json -o bandit_report.json || true
 
       - name: Upload JSON report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bandit-json-report
           path: bandit_report.json
