@@ -24,18 +24,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Run Bandit
-        uses: PyCQA/bandit-action@v1
-        continue-on-error: true
-        with:
-          configfile: '.bandit.yaml'
-          severity: 'high'
-          confidence: 'high'
-          skips: 'B101'
-          targets: '.'
-          exclude: 'backend/data/cache'
-
-      - name: Generate JSON report
+      - name: Run Bandit and generate JSON report
         run: |
           pip install --upgrade "bandit"
           bandit -r . -c .bandit.yaml -lll -iii -f json -o bandit_report.json || true
