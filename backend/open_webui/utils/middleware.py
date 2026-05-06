@@ -56,6 +56,10 @@ from open_webui.utils.task import (
 
 from open_webui.grounding.wiki_search_utils import get_wiki_search_grounder
 from open_webui.utils.misc import (
+    extract_openai_message_content,
+    extract_openai_text_content,
+    merge_reasoning_into_content,
+    remove_details_with_reasoning,
     get_message_list,
     add_or_update_system_message,
     get_last_user_message,
@@ -1732,8 +1736,14 @@ async def process_chat_response(
                     },
                 )
 
-            if response.get("choices", [])[0].get("message", {}).get("content"):
-                content = response["choices"][0]["message"]["content"]
+            message = response.get("choices", [])[0].get("message", {})
+            content = extract_openai_message_content(
+                message,
+                include_reasoning=True,
+            )
+
+            if content:
+                response["choices"][0]["message"]["content"] = content
 
                 if content:
                     await event_emitter(
@@ -1846,6 +1856,9 @@ async def process_chat_response(
                 metadata["chat_id"], metadata["message_id"]
             )
             content = message.get("content", "") if message else ""
+            raw_content = remove_details_with_reasoning(content)
+            inline_completed_content = ""
+            inline_rendered_content = raw_content
 
             # Track if metrics have been recorded during streaming
             metrics_recorded = False
@@ -1888,6 +1901,9 @@ async def process_chat_response(
 
                 reasoning_content = ""
                 ongoing_content = ""
+                separate_reasoning_start_time = None
+                separate_reasoning_duration = None
+                separate_reasoning_content = ""
 
                 async for line in response.body_iterator:
                     line = line.decode("utf-8") if isinstance(line, bytes) else line
@@ -1930,24 +1946,34 @@ async def process_chat_response(
                                 },
                             )
                         else:
-                            value = (
-                                data.get("choices", [])[0]
-                                .get("delta", {})
-                                .get("content")
+                            delta = data.get("choices", [])[0].get("delta", {})
+                            value = extract_openai_text_content(delta.get("content"))
+                            separate_reasoning_value = extract_openai_text_content(
+                                delta.get("reasoning_content")
                             )
+                            content_updated = False
+
+                            if separate_reasoning_value:
+                                if separate_reasoning_start_time is None:
+                                    separate_reasoning_start_time = time.time()
+                                separate_reasoning_content += separate_reasoning_value
+                                content_updated = True
 
                             if value:
-                                content = f"{content}{value}"
+                                raw_content = f"{raw_content}{value}"
+                                inline_rendered_content = (
+                                    f"{inline_completed_content}{raw_content}"
+                                )
 
                                 if detect_reasoning:
                                     for tag in reasoning_tags:
                                         start_tag = f"<{tag}>\n"
-                                        end_tag = f"</{tag}>\n"
 
-                                        if start_tag in content:
-                                            # Remove the start tag
-                                            content = content.replace(start_tag, "")
-                                            ongoing_content = content
+                                        if start_tag in raw_content:
+                                            raw_content = raw_content.replace(
+                                                start_tag, ""
+                                            )
+                                            ongoing_content = f"{inline_completed_content}{raw_content}"
 
                                             reasoning_start_time = time.time()
                                             reasoning_content = ""
@@ -1956,8 +1982,7 @@ async def process_chat_response(
                                             break
 
                                     if reasoning_start_time is not None:
-                                        # Remove the last value from the content
-                                        content = content[: -len(value)]
+                                        raw_content = raw_content[: -len(value)]
 
                                         reasoning_content += value
 
@@ -1976,37 +2001,44 @@ async def process_chat_response(
                                                 .strip()
                                             )
 
-                                            if reasoning_content:
-                                                reasoning_display_content = "\n".join(
-                                                    (
-                                                        f"> {line}"
-                                                        if not line.startswith(">")
-                                                        else line
-                                                    )
-                                                    for line in reasoning_content.splitlines()
-                                                )
-
-                                                # Format reasoning with <details> tag
-                                                content = f'{ongoing_content}<details type="reasoning" done="true" duration="{reasoning_duration}">\n<summary>Thought for {reasoning_duration} seconds</summary>\n{reasoning_display_content}\n</details>\n'
-                                            else:
-                                                content = ""
-
+                                            inline_completed_content = (
+                                                f"{ongoing_content}"
+                                                f"{merge_reasoning_into_content('', reasoning_content, done=True, duration=reasoning_duration)}"
+                                            )
+                                            raw_content = ""
+                                            inline_rendered_content = (
+                                                inline_completed_content
+                                            )
                                             reasoning_start_time = None
                                         else:
-                                            reasoning_display_content = "\n".join(
-                                                (
-                                                    f"> {line}"
-                                                    if not line.startswith(">")
-                                                    else line
-                                                )
-                                                for line in reasoning_content.splitlines()
+                                            inline_rendered_content = (
+                                                f"{ongoing_content}"
+                                                f"{merge_reasoning_into_content('', reasoning_content, done=False)}"
                                             )
+                                    else:
+                                        inline_rendered_content = (
+                                            f"{inline_completed_content}{raw_content}"
+                                        )
 
-                                            # Show ongoing thought process
-                                            content = f'{ongoing_content}<details type="reasoning" done="false">\n<summary>Thinking…</summary>\n{reasoning_display_content}\n</details>\n'
+                                if (
+                                    separate_reasoning_start_time is not None
+                                    and separate_reasoning_duration is None
+                                ):
+                                    separate_reasoning_duration = int(
+                                        time.time() - separate_reasoning_start_time
+                                    )
+
+                                content_updated = True
+
+                            if content_updated:
+                                content = merge_reasoning_into_content(
+                                    inline_rendered_content,
+                                    separate_reasoning_content,
+                                    done=separate_reasoning_duration is not None,
+                                    duration=separate_reasoning_duration,
+                                )
 
                                 if ENABLE_REALTIME_CHAT_SAVE:
-                                    # Save message in the database
                                     Chats.upsert_message_to_chat_by_id_and_message_id(
                                         metadata["chat_id"],
                                         metadata["message_id"],
@@ -2031,6 +2063,21 @@ async def process_chat_response(
                             pass
                         else:
                             continue
+
+                if (
+                    separate_reasoning_content
+                    and separate_reasoning_start_time is not None
+                    and separate_reasoning_duration is None
+                ):
+                    separate_reasoning_duration = int(
+                        time.time() - separate_reasoning_start_time
+                    )
+                    content = merge_reasoning_into_content(
+                        inline_rendered_content,
+                        separate_reasoning_content,
+                        done=True,
+                        duration=separate_reasoning_duration,
+                    )
 
                 title = Chats.get_chat_title_by_id(metadata["chat_id"])
                 data = {"done": True, "content": content, "title": title}

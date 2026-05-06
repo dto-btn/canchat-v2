@@ -5,7 +5,7 @@ import time
 import uuid
 from datetime import timedelta
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 
 def get_message_list(messages, message_id):
@@ -71,6 +71,102 @@ def remove_details_with_reasoning(content: str) -> str:
     filtered_content = re.sub(r"\n\s*\n\s*\n+", "\n\n", filtered_content)
 
     return filtered_content.strip()
+
+
+def extract_openai_text_content(content: Any) -> str:
+    """Flatten text-like OpenAI/LiteLLM payloads into a plain string."""
+    if content is None:
+        return ""
+
+    if isinstance(content, str):
+        return content
+
+    if isinstance(content, list):
+        parts = [extract_openai_text_content(item) for item in content]
+        return "".join(part for part in parts if part)
+
+    if isinstance(content, dict):
+        for key in ("text", "content", "value", "delta"):
+            value = extract_openai_text_content(content.get(key))
+            if value:
+                return value
+
+        if content.get("type") == "reasoning":
+            return extract_openai_text_content(content.get("summary"))
+
+    return ""
+
+
+def format_reasoning_details(
+    reasoning_content: str, done: bool = True, duration: Optional[int] = None
+) -> str:
+    """Render reasoning content using the UI"""
+    reasoning_content = reasoning_content.strip()
+    if not reasoning_content:
+        return ""
+
+    reasoning_display_content = "\n".join(
+        line if line.startswith(">") else f"> {line}"
+        for line in reasoning_content.splitlines()
+    )
+
+    attributes = [f'type="reasoning"', f'done="{"true" if done else "false"}"']
+    if done and duration is not None:
+        attributes.append(f'duration="{duration}"')
+
+    summary = (
+        f"Thought for {duration} seconds"
+        if done and duration is not None
+        else "Thinking…"
+    )
+
+    return (
+        f'<details {" ".join(attributes)}>\n'
+        f"<summary>{summary}</summary>\n"
+        f"{reasoning_display_content}\n"
+        f"</details>\n"
+    )
+
+
+def merge_reasoning_into_content(
+    content: Optional[str],
+    reasoning_content: Any,
+    done: bool = True,
+    duration: Optional[int] = None,
+) -> str:
+    """Prepend reasoning details to assistant content when separate reasoning exists."""
+    content = content or ""
+    reasoning_text = extract_openai_text_content(reasoning_content).strip()
+    if not reasoning_text:
+        return content
+
+    reasoning_details = format_reasoning_details(reasoning_text, done, duration)
+    return f"{reasoning_details}{content}" if content else reasoning_details
+
+
+def extract_openai_message_content(
+    message: Optional[dict],
+    include_reasoning: bool = False,
+    reasoning_done: bool = True,
+    reasoning_duration: Optional[int] = None,
+) -> Optional[str]:
+    """Extract assistant-visible text from chat-style response payloads."""
+    if not isinstance(message, dict):
+        return None
+
+    content = extract_openai_text_content(message.get("content"))
+    if not content:
+        content = extract_openai_text_content(message.get("text"))
+
+    if include_reasoning:
+        content = merge_reasoning_into_content(
+            content,
+            message.get("reasoning_content"),
+            done=reasoning_done,
+            duration=reasoning_duration,
+        )
+
+    return content if content else None
 
 
 def get_content_from_message(
@@ -175,12 +271,20 @@ def openai_chat_message_template(model: str):
 
 
 def openai_chat_chunk_message_template(
-    model: str, message: Optional[str] = None, usage: Optional[dict] = None
+    model: str,
+    message: Optional[str] = None,
+    usage: Optional[dict] = None,
+    reasoning_content: Optional[str] = None,
 ) -> dict:
     template = openai_chat_message_template(model)
     template["object"] = "chat.completion.chunk"
-    if message:
-        template["choices"][0]["delta"] = {"content": message}
+    if message or reasoning_content:
+        delta = {}
+        if message:
+            delta["content"] = message
+        if reasoning_content:
+            delta["reasoning_content"] = reasoning_content
+        template["choices"][0]["delta"] = delta
     else:
         template["choices"][0]["finish_reason"] = "stop"
 
@@ -190,12 +294,18 @@ def openai_chat_chunk_message_template(
 
 
 def openai_chat_completion_message_template(
-    model: str, message: Optional[str] = None, usage: Optional[dict] = None
+    model: str,
+    message: Optional[str] = None,
+    usage: Optional[dict] = None,
+    reasoning_content: Optional[str] = None,
 ) -> dict:
     template = openai_chat_message_template(model)
     template["object"] = "chat.completion"
-    if message is not None:
-        template["choices"][0]["message"] = {"content": message, "role": "assistant"}
+    if message is not None or reasoning_content:
+        assistant_message = {"content": message or "", "role": "assistant"}
+        if reasoning_content:
+            assistant_message["reasoning_content"] = reasoning_content
+        template["choices"][0]["message"] = assistant_message
     template["choices"][0]["finish_reason"] = "stop"
 
     if usage:
