@@ -88,6 +88,7 @@ from open_webui.config import (
     ENABLE_WIKIPEDIA_GROUNDING_RERANKER,
     RAG_WEB_SEARCH_REQUEST_TIMEOUT,
     RAG_WEB_SEARCH_TOTAL_TIMEOUT,
+    RAG_WEB_SEARCH_TARGET_PAGE_RETRIEVAL,
 )
 from open_webui.env import (
     SRC_LOG_LEVELS,
@@ -103,7 +104,7 @@ log.setLevel(SRC_LOG_LEVELS["RAG"])
 SEARCH_ENGINE_RESULT_COUNT_CAPS = {
     "google_pse": 10,
 }
-SEARCH_BACKFILL_EXTRA_RESULTS = 5
+
 
 ##########################################
 #
@@ -419,6 +420,7 @@ async def get_rag_config(request: Request, user=Depends(get_admin_user)):
                 "bing_search_v7_subscription_key": request.app.state.config.BING_SEARCH_V7_SUBSCRIPTION_KEY,
                 "result_count": request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
                 "concurrent_requests": request.app.state.config.RAG_WEB_SEARCH_CONCURRENT_REQUESTS,
+                "target_page_retrieval": request.app.state.config.RAG_WEB_SEARCH_TARGET_PAGE_RETRIEVAL,
             },
             "wikipedia_grounding": {
                 "enabled": request.app.state.config.ENABLE_WIKIPEDIA_GROUNDING,
@@ -472,6 +474,7 @@ class WebSearchConfig(BaseModel):
     bing_search_v7_subscription_key: Optional[str] = None
     result_count: Optional[int] = None
     concurrent_requests: Optional[int] = None
+    target_page_retrieval: Optional[int] = None
 
 
 class WebConfig(BaseModel):
@@ -591,6 +594,9 @@ async def update_rag_config(
         request.app.state.config.RAG_WEB_SEARCH_CONCURRENT_REQUESTS = (
             form_data.web.search.concurrent_requests
         )
+        request.app.state.config.RAG_WEB_SEARCH_TARGET_PAGE_RETRIEVAL = (
+            form_data.web.search.target_page_retrieval
+        )
 
     # Wikipedia grounding configuration (simple boolean like MCP)
     if form_data.enable_wikipedia_grounding is not None:
@@ -648,6 +654,7 @@ async def update_rag_config(
                 "bing_search_v7_subscription_key": request.app.state.config.BING_SEARCH_V7_SUBSCRIPTION_KEY,
                 "result_count": request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
                 "concurrent_requests": request.app.state.config.RAG_WEB_SEARCH_CONCURRENT_REQUESTS,
+                "target_page_retrieval": request.app.state.config.RAG_WEB_SEARCH_TARGET_PAGE_RETRIEVAL,
             },
             "wikipedia_grounding": {
                 "enabled": request.app.state.config.ENABLE_WIKIPEDIA_GROUNDING,
@@ -1199,7 +1206,8 @@ def search_web(
     engine: str,
     query: str,
     request_timeout: Optional[int] = None,
-    result_count_override: Optional[int] = None,
+    user=None,
+    audit_event_id: Optional[str] = None,
 ) -> list[SearchResult]:
     """Search the web using a search engine and return the results as a list of SearchResult objects.
     Will look for a search engine API key in environment variables in the following order:
@@ -1220,14 +1228,27 @@ def search_web(
         query (str): The query to search for
         request_timeout (Optional[int]): Optional per-request timeout override in seconds.
             If not provided, providers use the configured default request timeout.
-        result_count_override (Optional[int]): Optional override for number of search
-            results requested from upstream provider.
+        user: The authenticated user who triggered the search (for audit logging).
+                audit_event_id: audit event ID
     """
-    result_count = (
-        result_count_override
-        if result_count_override is not None
-        else request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT
-    )
+
+    with web_search_audit_scope(
+        engine=engine,
+        query=query,
+        result_count_requested=request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+        domain_filter_list=request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
+        user=user,
+        event_id=audit_event_id,
+    ) as dispatch_ctx:
+        results = _dispatch_search(request, engine, query, request_timeout)
+        log_web_search_result(dispatch_ctx=dispatch_ctx, results=results)
+        return results
+
+
+def _dispatch_search(
+    request: Request, engine: str, query: str, request_timeout: Optional[int] = None
+) -> list[SearchResult]:
+    """Internal dispatcher — routes to the correct search provider."""
 
     # TODO: add playwright to search the web
     if engine == "searxng":
@@ -1235,7 +1256,7 @@ def search_web(
             return search_searxng(
                 request.app.state.config.SEARXNG_QUERY_URL,
                 query,
-                result_count,
+                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
             )
         else:
@@ -1249,7 +1270,7 @@ def search_web(
                 request.app.state.config.GOOGLE_PSE_API_KEY,
                 request.app.state.config.GOOGLE_PSE_ENGINE_ID,
                 query,
-                result_count,
+                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
                 request_timeout=request_timeout,
             )
@@ -1262,7 +1283,7 @@ def search_web(
             return search_brave(
                 request.app.state.config.BRAVE_SEARCH_API_KEY,
                 query,
-                result_count,
+                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
                 request_timeout=request_timeout,
             )
@@ -1273,7 +1294,7 @@ def search_web(
             return search_kagi(
                 request.app.state.config.KAGI_SEARCH_API_KEY,
                 query,
-                result_count,
+                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
             )
         else:
@@ -1283,7 +1304,7 @@ def search_web(
             return search_mojeek(
                 request.app.state.config.MOJEEK_SEARCH_API_KEY,
                 query,
-                result_count,
+                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
             )
         else:
@@ -1293,7 +1314,7 @@ def search_web(
             return search_serpstack(
                 request.app.state.config.SERPSTACK_API_KEY,
                 query,
-                result_count,
+                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
                 https_enabled=request.app.state.config.SERPSTACK_HTTPS,
             )
@@ -1304,7 +1325,7 @@ def search_web(
             return search_serper(
                 request.app.state.config.SERPER_API_KEY,
                 query,
-                result_count,
+                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
             )
         else:
@@ -1314,7 +1335,7 @@ def search_web(
             return search_serply(
                 request.app.state.config.SERPLY_API_KEY,
                 query,
-                result_count,
+                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
             )
         else:
@@ -1322,7 +1343,7 @@ def search_web(
     elif engine == "duckduckgo":
         return search_duckduckgo(
             query,
-            result_count,
+            request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
             request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
         )
     elif engine == "tavily":
@@ -1330,7 +1351,7 @@ def search_web(
             return search_tavily(
                 request.app.state.config.TAVILY_API_KEY,
                 query,
-                result_count,
+                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
             )
         else:
             raise Exception("No TAVILY_API_KEY found in environment variables")
@@ -1340,7 +1361,7 @@ def search_web(
                 request.app.state.config.SEARCHAPI_API_KEY,
                 request.app.state.config.SEARCHAPI_ENGINE,
                 query,
-                result_count,
+                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
             )
         else:
@@ -1349,7 +1370,7 @@ def search_web(
         return search_jina(
             request.app.state.config.JINA_API_KEY,
             query,
-            result_count,
+            request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
         )
     elif engine == "bing":
         return search_bing(
@@ -1357,7 +1378,7 @@ def search_web(
             request.app.state.config.BING_SEARCH_V7_ENDPOINT,
             str(DEFAULT_LOCALE),
             query,
-            result_count,
+            request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
             request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
         )
     else:
@@ -1372,30 +1393,22 @@ class SearchForm(BaseModel):
 async def process_web_search(
     request: Request, form_data: SearchForm, user=Depends(get_verified_user)
 ):
-    def get_positive_int(value, default: int = 1) -> int:
-        try:
-            parsed = int(value)
-            if parsed > 0:
-                return parsed
-        except (TypeError, ValueError):
-            pass
-        return default
 
     total_timeout = RAG_WEB_SEARCH_TOTAL_TIMEOUT.value
     request_timeout_cap = RAG_WEB_SEARCH_REQUEST_TIMEOUT.value
     search_engine = request.app.state.config.RAG_WEB_SEARCH_ENGINE
-    target_count = get_positive_int(
-        request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT
-    )
-    planned_count = target_count + SEARCH_BACKFILL_EXTRA_RESULTS
     provider_cap = SEARCH_ENGINE_RESULT_COUNT_CAPS.get(search_engine)
+    result_count = request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT
     effective_search_count = (
-        min(planned_count, provider_cap) if provider_cap is not None else planned_count
+        min(result_count, provider_cap) if provider_cap is not None else result_count
     )
-    max_workers = get_positive_int(
-        request.app.state.config.RAG_WEB_SEARCH_CONCURRENT_REQUESTS
-    )
+
+    search_result_count = request.app.state.config.RAG_WEB_SEARCH_TARGET_PAGE_RETRIEVAL
+    max_workers = request.app.state.config.RAG_WEB_SEARCH_CONCURRENT_REQUESTS
     start_time = time.monotonic()
+    audit_event_id = new_web_search_event_id()
+    loaded_docs: list[Document] = []
+    loaded_urls: list[str] = []
     ranked_loaded_docs: list[tuple[int, str, list[Document]]] = []
     attempted_url_count = 0
 
@@ -1417,10 +1430,10 @@ async def process_web_search(
         loaded_url_set = set()
 
         for _, url, url_docs in sorted(ranked_docs, key=lambda x: x[0]):
-            if len(docs) >= target_count:
+            if len(docs) >= search_result_count:
                 break
             for doc in url_docs:
-                if len(docs) >= target_count:
+                if len(docs) >= search_result_count:
                     break
                 if not hasattr(doc, "metadata") or doc.metadata is None:
                     doc.metadata = {}
@@ -1485,21 +1498,23 @@ async def process_web_search(
             "loaded_count": len(docs),
         }
 
+    docs = []
+    urls = []
+
     try:
         async with asyncio.timeout(total_timeout):
             try:
                 request_timeout = get_capped_request_timeout()
                 log.debug(
-                    "[process_web_search] query='%s', engine='%s', target_count=%s, "
-                    "backfill_extra=%s, effective_search_count=%s, max_workers=%s",
+                    "[process_web_search] query='%s', engine='%s', "
+                    "search_result_count=%s, effective_search_count=%s, max_workers=%s",
                     form_data.query,
                     search_engine,
-                    target_count,
-                    SEARCH_BACKFILL_EXTRA_RESULTS,
+                    search_result_count,
                     effective_search_count,
                     max_workers,
                 )
-                if provider_cap is not None and effective_search_count < planned_count:
+                if provider_cap is not None and effective_search_count < result_count:
                     log.debug(
                         "[process_web_search] applied provider result cap for engine='%s': %s",
                         search_engine,
@@ -1511,7 +1526,8 @@ async def process_web_search(
                     search_engine,
                     form_data.query,
                     request_timeout,
-                    effective_search_count,
+                    user,
+                    audit_event_id,
                 )
             except TimeoutError:
                 raise
@@ -1524,6 +1540,8 @@ async def process_web_search(
                 )
 
             log.debug(f"[process_web_search] web_results: {web_results}")
+
+            content_load_start = time.monotonic()
 
             try:
                 ranked_urls = []
@@ -1564,31 +1582,39 @@ async def process_web_search(
                             return index, url, []
 
                 ranked_loaded_docs = []
-                pending_tasks = set()
+                pending_tasks: set[asyncio.Task] = set()
                 attempted_url_count = 0
                 next_index_to_schedule = 0
-                initial_parallelism = min(max_workers, target_count, len(ranked_urls))
 
-                def schedule_next_url(index: int):
+                def schedule_next_url(index: int) -> bool:
                     nonlocal attempted_url_count
+                    if index >= len(ranked_urls):
+                        return False
                     task = asyncio.create_task(
                         load_single_url(index, ranked_urls[index])
                     )
                     pending_tasks.add(task)
                     attempted_url_count += 1
+                    return True
 
                 try:
+                    initial_parallelism = min(
+                        max_workers, search_result_count, len(ranked_urls)
+                    )
                     for index in range(initial_parallelism):
                         schedule_next_url(index)
                         next_index_to_schedule = index + 1
 
-                    while pending_tasks and len(ranked_loaded_docs) < target_count:
-                        done_tasks, pending_tasks = await asyncio.wait(
+                    while (
+                        pending_tasks and len(ranked_loaded_docs) < search_result_count
+                    ):
+                        done_tasks, _ = await asyncio.wait(
                             pending_tasks,
                             return_when=asyncio.FIRST_COMPLETED,
                         )
 
                         for task in done_tasks:
+                            pending_tasks.discard(task)
                             try:
                                 index, url, url_docs = task.result()
                             except (TimeoutError, asyncio.TimeoutError):
@@ -1603,25 +1629,34 @@ async def process_web_search(
                             if url_docs:
                                 ranked_loaded_docs.append((index, url, url_docs))
 
-                        while len(ranked_loaded_docs) + len(
-                            pending_tasks
-                        ) < target_count and next_index_to_schedule < len(ranked_urls):
-                            schedule_next_url(next_index_to_schedule)
+                        slots_available = (
+                            search_result_count
+                            - len(ranked_loaded_docs)
+                            - len(pending_tasks)
+                        )
+                        while (
+                            slots_available > 0
+                            and next_index_to_schedule < len(ranked_urls)
+                            and len(pending_tasks) < max_workers
+                        ):
+                            if not schedule_next_url(next_index_to_schedule):
+                                break
                             next_index_to_schedule += 1
+                            slots_available -= 1
                 finally:
                     if pending_tasks:
-                        for task in pending_tasks:
+                        for task in list(pending_tasks):
                             task.cancel()
                         await asyncio.gather(*pending_tasks, return_exceptions=True)
 
                 docs, urls = build_ranked_output(ranked_loaded_docs)
 
                 log.debug(
-                    "[process_web_search] attempted_urls=%s, loaded_docs=%s, returned_urls=%s, target_count=%s",
+                    "[process_web_search] attempted_urls=%s, loaded_docs=%s, returned_urls=%s, search_result_count=%s",
                     attempted_url_count,
                     len(docs),
                     len(urls),
-                    target_count,
+                    search_result_count,
                 )
                 return await finalize_search_result(docs, urls)
             except (TimeoutError, asyncio.TimeoutError):

@@ -2177,6 +2177,12 @@ RAG_WEB_SEARCH_CONCURRENT_REQUESTS = PersistentConfig(
     int(os.getenv("RAG_WEB_SEARCH_CONCURRENT_REQUESTS", "10")),
 )
 
+RAG_WEB_SEARCH_TARGET_PAGE_RETRIEVAL = PersistentConfig(
+    "RAG_WEB_SEARCH_TARGET_PAGE_RETRIEVAL",
+    "rag.web.search.target_page_retrieval",
+    int(os.getenv("RAG_WEB_SEARCH_TARGET_PAGE_RETRIEVAL", "10")),
+)
+
 
 def _get_positive_int_env(name: str, default: int) -> int:
     raw_value = os.getenv(name, str(default))

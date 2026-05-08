@@ -330,7 +330,18 @@
 								required
 							/>
 						</div>
+						<div class="w-full">
+							<div class=" self-center text-xs font-medium mb-1">
+								{$i18n.t('Target Page Retrieval Count')}
+							</div>
 
+							<input
+								class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
+								placeholder={$i18n.t('Target Page Retrieval Count')}
+								bind:value={webConfig.search.target_page_retrieval}
+								required
+							/>
+						</div>
 						<div class="w-full">
 							<div class=" self-center text-xs font-medium mb-1">
 								{$i18n.t('Concurrent Requests')}

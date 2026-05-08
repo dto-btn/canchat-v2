@@ -1250,6 +1250,7 @@
 	"Tags Generation Prompt": "Invite de génération d'étiquettes",
 	"Tail free sampling is used to reduce the impact of less probable tokens from the output. A higher value (e.g., 2.0) will reduce the impact more, while a value of 1.0 disables this setting. (default: 1)": "L’échantillonnage sans queue est utilisé pour réduire l’impact des jetons moins probables sur la sortie. Une valeur plus élevée (par exemple, 2.0) réduira davantage l'impact, tandis qu'une valeur de 1.0 désactive ce réglage. (par défaut : 1)",
 	"Tap to interrupt": "Appuyez pour interrompre",
+	"Target Page Retrieval Count": "Nombre de récupérations de la page cible",
 	"Tavily API Key": "Clé API Tavily",
 	"Tell us more:": "Dites-nous en plus à ce sujet : ",
 	"Temperature": "Température",
