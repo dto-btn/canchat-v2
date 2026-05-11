@@ -2090,6 +2090,16 @@ BRAVE_SEARCH_API_KEY = PersistentConfig(
     os.getenv("BRAVE_SEARCH_API_KEY", ""),
 )
 
+BRAVE_SEARCH_PARAMETERS = PersistentConfig(
+    "BRAVE_SEARCH_PARAMETERS",
+    "rag.web.search.brave_search_parameters",
+    os.getenv(
+        "BRAVE_SEARCH_PARAMETERS",
+        "offset=20;country=ca;safesearch=strict;text_decorations=true;result_filter=web;extra_snippets=false",
+    ),
+)
+
+
 KAGI_SEARCH_API_KEY = PersistentConfig(
     "KAGI_SEARCH_API_KEY",
     "rag.web.search.kagi_search_api_key",
