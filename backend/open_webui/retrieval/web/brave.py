@@ -4,6 +4,7 @@ import validators
 from open_webui.retrieval.web.main import SearchResult, get_filtered_results
 from open_webui.retrieval.web.utils import get_json_with_timeout
 from open_webui.env import SRC_LOG_LEVELS
+from open_webui.utils.settings import get_user_locale, get_search_lang
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["RAG"])
@@ -50,14 +51,9 @@ def search_brave(
     }
     params = {"q": query, "count": count}
 
-    # Check if UI is set to english or french and set the search_lang parameter accordingly
-    if user and user.settings:
-        ui_settings = user.settings.ui or {}
-        language = ui_settings.get("language", "")
-        if language == "fr":
-            params["search_lang"] = "fr"
-        elif language == "en" or not language:
-            params["search_lang"] = "en"
+    # Set search language based on user locale preference
+    locale = get_user_locale(user)
+    params["search_lang"] = get_search_lang(locale)
 
     if additional_params:
         params.update(parse_params(additional_params))

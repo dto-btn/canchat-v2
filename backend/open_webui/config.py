@@ -2095,7 +2095,7 @@ BRAVE_SEARCH_PARAMETERS = PersistentConfig(
     "rag.web.search.brave_search_parameters",
     os.getenv(
         "BRAVE_SEARCH_PARAMETERS",
-        "offset=20;country=ca;safesearch=strict;text_decorations=true;result_filter=web;extra_snippets=false",
+        "country=ca;safesearch=strict;text_decorations=true;result_filter=web;extra_snippets=false",
     ),
 )
 
