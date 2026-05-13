@@ -124,7 +124,15 @@ def test_total_timeout_enforcement(monkeypatch):
 
     request = SimpleNamespace(
         app=SimpleNamespace(
-            state=SimpleNamespace(config=SimpleNamespace(RAG_WEB_SEARCH_ENGINE="brave"))
+            state=SimpleNamespace(
+                config=SimpleNamespace(
+                    RAG_WEB_SEARCH_ENGINE="brave",
+                    RAG_WEB_SEARCH_RESULT_COUNT=5,
+                    RAG_WEB_SEARCH_CONCURRENT_REQUESTS=2,
+                    BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL=True,
+                    RAG_WEB_SEARCH_TARGET_PAGE_RETRIEVAL=True,
+                )
+            )
         )
     )
     form_data = retrieval.SearchForm(query="slow query")
@@ -203,6 +211,8 @@ def test_remaining_timeout_propagates_to_search_and_loader(monkeypatch):
                     ENABLE_RAG_WEB_LOADER_SSL_VERIFICATION=True,
                     RAG_WEB_SEARCH_CONCURRENT_REQUESTS=2,
                     BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL=True,
+                    RAG_WEB_SEARCH_RESULT_COUNT=5,
+                    RAG_WEB_SEARCH_TARGET_PAGE_RETRIEVAL=True,
                 )
             )
         )

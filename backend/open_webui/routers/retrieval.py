@@ -1658,6 +1658,18 @@ async def process_web_search(
                     len(urls),
                     search_result_count,
                 )
+
+                content_load_ms = round((time.monotonic() - content_load_start) * 1000)
+                log_web_search_content_load(
+                    event_id=audit_event_id,
+                    urls=urls,
+                    docs_loaded=len(docs),
+                    latency_ms=content_load_ms,
+                    bypass_embedding=request.app.state.config.BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL,
+                    collection_name=None,
+                    engine=request.app.state.config.RAG_WEB_SEARCH_ENGINE,
+                )
+
                 return await finalize_search_result(docs, urls)
             except (TimeoutError, asyncio.TimeoutError):
                 raise
@@ -1668,6 +1680,8 @@ async def process_web_search(
                     urls=urls,
                     docs_loaded=0,
                     latency_ms=content_load_ms,
+                    bypass_embedding=request.app.state.config.BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL,
+                    collection_name=None,
                     engine=request.app.state.config.RAG_WEB_SEARCH_ENGINE,
                     error=e,
                 )
@@ -1679,12 +1693,22 @@ async def process_web_search(
     except (TimeoutError, asyncio.TimeoutError):
         docs, urls = build_ranked_output(ranked_loaded_docs)
         if len(docs) > 0:
+            content_load_ms = round((time.monotonic() - content_load_start) * 1000)
             log.warning(
                 "[process_web_search] timed out after %ss for query='%s'; returning partial results (loaded_docs=%s, attempted_urls=%s)",
                 total_timeout,
                 form_data.query,
                 len(docs),
                 attempted_url_count,
+            )
+            log_web_search_content_load(
+                event_id=audit_event_id,
+                urls=urls,
+                docs_loaded=len(docs),
+                latency_ms=content_load_ms,
+                bypass_embedding=request.app.state.config.BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL,
+                collection_name=None,
+                engine=request.app.state.config.RAG_WEB_SEARCH_ENGINE,
             )
             return await finalize_search_result(docs, urls)
 
