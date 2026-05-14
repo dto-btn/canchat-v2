@@ -184,7 +184,10 @@ class TestAuths(AbstractPostgresTest):
         assert rotated_session.token_hash != initial_session.token_hash
 
     def test_refresh_rejects_tampered_refresh_token(self):
-        from open_webui.utils.auth import get_password_hash, get_refresh_token_session_id
+        from open_webui.utils.auth import (
+            get_password_hash,
+            get_refresh_token_session_id,
+        )
 
         self.auths.insert_new_auth(
             email="john.doe@openwebui.com",
@@ -213,7 +216,10 @@ class TestAuths(AbstractPostgresTest):
         assert RefreshSessions.get_active_session_by_id(refresh_session_id) is None
 
     def test_signout_revokes_refresh_session(self):
-        from open_webui.utils.auth import get_password_hash, get_refresh_token_session_id
+        from open_webui.utils.auth import (
+            get_password_hash,
+            get_refresh_token_session_id,
+        )
 
         self.auths.insert_new_auth(
             email="john.doe@openwebui.com",
@@ -240,7 +246,10 @@ class TestAuths(AbstractPostgresTest):
         assert self.fast_api_client.cookies.get(WEBUI_REFRESH_TOKEN_COOKIE_NAME) is None
 
     def test_signout_revokes_refresh_session_with_tampered_token(self):
-        from open_webui.utils.auth import get_password_hash, get_refresh_token_session_id
+        from open_webui.utils.auth import (
+            get_password_hash,
+            get_refresh_token_session_id,
+        )
 
         self.auths.insert_new_auth(
             email="john.doe@openwebui.com",
