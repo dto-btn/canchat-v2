@@ -1,9 +1,8 @@
 import re
 import uuid
-import time
-import datetime
 import logging
 from aiohttp import ClientSession
+from datetime import timedelta
 
 from open_webui.models.auths import (
     AddUserForm,
@@ -19,31 +18,35 @@ from open_webui.models.auths import (
 )
 from open_webui.models.auths_table import Auths
 from open_webui.models.users import Users
+from open_webui.models.refresh_sessions_table import RefreshSessions
 
 from open_webui.constants import ERROR_MESSAGES, WEBHOOK_MESSAGES
 from open_webui.env import (
     WEBUI_AUTH,
+    WEBUI_REFRESH_TOKEN_COOKIE_NAME,
     WEBUI_AUTH_TRUSTED_EMAIL_HEADER,
     WEBUI_AUTH_TRUSTED_NAME_HEADER,
-    WEBUI_SESSION_COOKIE_SAME_SITE,
-    WEBUI_SESSION_COOKIE_SECURE,
     SRC_LOG_LEVELS,
 )
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse, Response
 from open_webui.config import (
     OPENID_PROVIDER_URL,
-    ENABLE_OAUTH_SIGNUP,
 )
 from pydantic import BaseModel
-from open_webui.utils.misc import parse_duration, validate_email_format
+from open_webui.utils.misc import validate_email_format
 from open_webui.utils.auth import (
+    clear_legacy_auth_cookie,
     create_api_key,
     create_token,
+    get_access_token_expiration,
     get_admin_user,
     get_verified_user,
     get_current_user,
     get_password_hash,
+    get_refresh_token_session_id,
+    issue_tokens_for_user,
+    verify_refresh_token,
 )
 from open_webui.utils.webhook import post_webhook
 from open_webui.utils.access_control import get_permissions
@@ -69,35 +72,69 @@ class SessionUserResponse(Token, UserResponse):
     permissions: Optional[dict] = None
 
 
+def _get_client_ip(request: Request) -> Optional[str]:
+    return request.client.host if request.client else None
+
+
+def _get_access_token_expiration(
+    request: Request,
+) -> tuple[Optional[timedelta], Optional[int]]:
+    return get_access_token_expiration(
+        request.app.state.config.ACCESS_TOKEN_EXPIRES_IN
+    )
+
+
+def _issue_tokens_for_user(
+    request: Request,
+    response: Response,
+    user_id: str,
+    current_refresh_session_id: Optional[str] = None,
+) -> tuple[str, Optional[int]]:
+    return issue_tokens_for_user(
+        user_id=user_id,
+        response=response,
+        access_token_expires_in=request.app.state.config.ACCESS_TOKEN_EXPIRES_IN,
+        refresh_token_expires_in=request.app.state.config.REFRESH_TOKEN_EXPIRES_IN,
+        current_refresh_session_id=current_refresh_session_id,
+        meta={
+            "ip": _get_client_ip(request),
+            "user_agent": request.headers.get("user-agent"),
+        },
+    )
+
+
+def _get_active_refresh_session(refresh_token: str):
+    try:
+        refresh_session_id = get_refresh_token_session_id(refresh_token)
+    except ValueError as exc:
+        raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_REFRESH_TOKEN) from exc
+
+    refresh_session = RefreshSessions.get_active_session_by_id(refresh_session_id)
+    if refresh_session is None:
+        raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_REFRESH_TOKEN)
+
+    return refresh_session
+
+
+def _revoke_and_reject_refresh_session(refresh_session_id: str):
+    RefreshSessions.revoke_session_by_id(refresh_session_id)
+    raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_REFRESH_TOKEN)
+
+
 @router.get("/", response_model=SessionUserResponse)
 async def get_session_user(
     request: Request, response: Response, user=Depends(get_current_user)
 ):
-    expires_delta = parse_duration(request.app.state.config.JWT_EXPIRES_IN)
-    expires_at = None
-    if expires_delta:
-        expires_at = int(time.time()) + int(expires_delta.total_seconds())
-
-    token = create_token(
-        data={"id": user.id},
-        expires_delta=expires_delta,
-    )
-
-    datetime_expires_at = (
-        datetime.datetime.fromtimestamp(expires_at, datetime.timezone.utc)
-        if expires_at
-        else None
-    )
-
-    # Set the cookie token
-    response.set_cookie(
-        key="token",
-        value=token,
-        expires=datetime_expires_at,
-        httponly=True,  # Ensures the cookie is not accessible via JavaScript
-        samesite=WEBUI_SESSION_COOKIE_SAME_SITE,
-        secure=WEBUI_SESSION_COOKIE_SECURE,
-    )
+    refresh_token = request.cookies.get(WEBUI_REFRESH_TOKEN_COOKIE_NAME)
+    if refresh_token:
+        clear_legacy_auth_cookie(response)
+        expires_delta, expires_at = _get_access_token_expiration(request)
+        token = create_token(
+            data={"id": user.id},
+            expires_delta=expires_delta,
+        )
+    else:
+        token, expires_at = _issue_tokens_for_user(request, response, user.id)
 
     user_permissions = get_permissions(
         user.id, request.app.state.config.USER_PERMISSIONS
@@ -278,19 +315,7 @@ async def ldap_auth(request: Request, response: Response, form_data: LdapForm):
             user = Auths.authenticate_user_by_trusted_header(mail)
 
             if user:
-                token = create_token(
-                    data={"id": user.id},
-                    expires_delta=parse_duration(
-                        request.app.state.config.JWT_EXPIRES_IN
-                    ),
-                )
-
-                # Set the cookie token
-                response.set_cookie(
-                    key="token",
-                    value=token,
-                    httponly=True,  # Ensures the cookie is not accessible via JavaScript
-                )
+                token, _ = _issue_tokens_for_user(request, response, user.id)
 
                 return {
                     "token": token,
@@ -359,30 +384,8 @@ async def signin(request: Request, response: Response, form_data: SigninForm):
         user = Auths.authenticate_user(form_data.email.lower(), form_data.password)
 
     if user:
-        expires_delta = parse_duration(request.app.state.config.JWT_EXPIRES_IN)
-        expires_at = None
-        if expires_delta:
-            expires_at = int(time.time()) + int(expires_delta.total_seconds())
-
-        token = create_token(
-            data={"id": user.id},
-            expires_delta=expires_delta,
-        )
-
-        datetime_expires_at = (
-            datetime.datetime.fromtimestamp(expires_at, datetime.timezone.utc)
-            if expires_at
-            else None
-        )
-
-        # Set the cookie token
-        response.set_cookie(
-            key="token",
-            value=token,
-            expires=datetime_expires_at,
-            httponly=True,  # Ensures the cookie is not accessible via JavaScript
-            samesite=WEBUI_SESSION_COOKIE_SAME_SITE,
-            secure=WEBUI_SESSION_COOKIE_SECURE,
+        access_token, expires_at_access_token = _issue_tokens_for_user(
+            request, response, user.id
         )
 
         user_permissions = get_permissions(
@@ -390,9 +393,9 @@ async def signin(request: Request, response: Response, form_data: SigninForm):
         )
 
         return {
-            "token": token,
+            "token": access_token,
             "token_type": "Bearer",
-            "expires_at": expires_at,
+            "expires_at": expires_at_access_token,
             "id": user.id,
             "email": user.email,
             "name": user.name,
@@ -455,31 +458,7 @@ async def signup(request: Request, response: Response, form_data: SignupForm):
         )
 
         if user:
-            expires_delta = parse_duration(request.app.state.config.JWT_EXPIRES_IN)
-            expires_at = None
-            if expires_delta:
-                expires_at = int(time.time()) + int(expires_delta.total_seconds())
-
-            token = create_token(
-                data={"id": user.id},
-                expires_delta=expires_delta,
-            )
-
-            datetime_expires_at = (
-                datetime.datetime.fromtimestamp(expires_at, datetime.timezone.utc)
-                if expires_at
-                else None
-            )
-
-            # Set the cookie token
-            response.set_cookie(
-                key="token",
-                value=token,
-                expires=datetime_expires_at,
-                httponly=True,  # Ensures the cookie is not accessible via JavaScript
-                samesite=WEBUI_SESSION_COOKIE_SAME_SITE,
-                secure=WEBUI_SESSION_COOKIE_SECURE,
-            )
+            token, expires_at = _issue_tokens_for_user(request, response, user.id)
 
             if request.app.state.config.WEBHOOK_URL:
                 post_webhook(
@@ -516,31 +495,89 @@ async def signup(request: Request, response: Response, form_data: SignupForm):
 
 @router.get("/signout")
 async def signout(request: Request, response: Response):
-    response.delete_cookie("token")
+    refresh_token = request.cookies.get(WEBUI_REFRESH_TOKEN_COOKIE_NAME)
+    if refresh_token:
+        try:
+            refresh_session = _get_active_refresh_session(refresh_token)
+            RefreshSessions.revoke_session_by_id(refresh_session.id)
+        except HTTPException:
+            pass
 
-    if ENABLE_OAUTH_SIGNUP.value:
-        oauth_id_token = request.cookies.get("oauth_id_token")
-        if oauth_id_token:
-            try:
-                async with ClientSession() as session:
-                    async with session.get(OPENID_PROVIDER_URL.value) as resp:
-                        if resp.status == 200:
-                            openid_data = await resp.json()
-                            logout_url = openid_data.get("end_session_endpoint")
-                            if logout_url:
-                                response.delete_cookie("oauth_id_token")
-                                return RedirectResponse(
-                                    url=f"{logout_url}?id_token_hint={oauth_id_token}"
-                                )
-                        else:
-                            raise HTTPException(
-                                status_code=resp.status,
-                                detail="Failed to fetch OpenID configuration",
+    clear_legacy_auth_cookie(response)
+    response.delete_cookie(WEBUI_REFRESH_TOKEN_COOKIE_NAME)
+    response.delete_cookie("oauth_id_token")
+    response.delete_cookie("oauth_access_token")
+
+    oauth_id_token = request.cookies.get("oauth_id_token")
+    if oauth_id_token:
+        try:
+            async with ClientSession() as session:
+                async with session.get(OPENID_PROVIDER_URL.value) as resp:
+                    if resp.status == 200:
+                        openid_data = await resp.json()
+                        logout_url = openid_data.get("end_session_endpoint")
+                        if logout_url:
+                            redirect_response = RedirectResponse(
+                                url=f"{logout_url}?id_token_hint={oauth_id_token}"
                             )
-            except Exception as e:
-                raise HTTPException(status_code=500, detail=str(e))
+                            clear_legacy_auth_cookie(redirect_response)
+                            redirect_response.delete_cookie(
+                                WEBUI_REFRESH_TOKEN_COOKIE_NAME
+                            )
+                            redirect_response.delete_cookie("oauth_id_token")
+                            redirect_response.delete_cookie("oauth_access_token")
+                            return redirect_response
+                    else:
+                        raise HTTPException(
+                            status_code=resp.status,
+                            detail="Failed to fetch OpenID configuration",
+                        )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
     return {"status": True}
+
+
+############################
+# Refresh Token
+############################
+
+@router.post("/refresh", response_model=SessionUserResponse)
+async def refresh_token(request: Request, response: Response):
+    refresh_token = request.cookies.get(WEBUI_REFRESH_TOKEN_COOKIE_NAME)
+    if not refresh_token:
+        raise HTTPException(400, detail=ERROR_MESSAGES.MISSING_REFRESH_TOKEN)
+
+    refresh_session = _get_active_refresh_session(refresh_token)
+    if not verify_refresh_token(refresh_token, refresh_session.token_hash):
+        _revoke_and_reject_refresh_session(refresh_session.id)
+
+    user = Users.get_user_by_id(refresh_session.user_id)
+    if not user:
+        _revoke_and_reject_refresh_session(refresh_session.id)
+
+    access_token, expires_at_access_token = _issue_tokens_for_user(
+        request,
+        response,
+        user.id,
+        current_refresh_session_id=refresh_session.id,
+    )
+
+    user_permissions = get_permissions(
+        user.id, request.app.state.config.USER_PERMISSIONS
+    )
+
+    return {
+        "token": access_token,
+        "token_type": "Bearer",
+        "expires_at": expires_at_access_token,
+        "id": user.id,
+        "email": user.email,
+        "name": user.name,
+        "role": user.role,
+        "profile_image_url": user.profile_image_url,
+        "permissions": user_permissions,
+    }
 
 
 ############################
