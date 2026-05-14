@@ -31,13 +31,11 @@ from open_webui.config import (
     OAUTH_ADMIN_ROLES,
     OAUTH_ALLOWED_DOMAINS,
     WEBHOOK_URL,
-    JWT_EXPIRES_IN,
     AppConfig,
 )
 from open_webui.constants import ERROR_MESSAGES, WEBHOOK_MESSAGES
 from open_webui.env import WEBUI_SESSION_COOKIE_SAME_SITE, WEBUI_SESSION_COOKIE_SECURE
-from open_webui.utils.misc import parse_duration
-from open_webui.utils.auth import get_password_hash, create_token
+from open_webui.utils.auth import get_password_hash, issue_tokens_for_user
 from open_webui.utils.webhook import post_webhook
 
 log = logging.getLogger(__name__)
@@ -57,7 +55,6 @@ auth_manager_config.OAUTH_ALLOWED_ROLES = OAUTH_ALLOWED_ROLES
 auth_manager_config.OAUTH_ADMIN_ROLES = OAUTH_ADMIN_ROLES
 auth_manager_config.OAUTH_ALLOWED_DOMAINS = OAUTH_ALLOWED_DOMAINS
 auth_manager_config.WEBHOOK_URL = WEBHOOK_URL
-auth_manager_config.JWT_EXPIRES_IN = JWT_EXPIRES_IN
 
 
 class OAuthManager:
@@ -306,11 +303,6 @@ class OAuthManager:
                     status.HTTP_403_FORBIDDEN, detail=ERROR_MESSAGES.ACCESS_PROHIBITED
                 )
 
-        jwt_token = create_token(
-            data={"id": user.id},
-            expires_delta=parse_duration(auth_manager_config.JWT_EXPIRES_IN),
-        )
-
         if auth_manager_config.ENABLE_OAUTH_GROUP_MANAGEMENT and user.role != "admin":
             self.update_user_groups(
                 user=user,
@@ -318,19 +310,21 @@ class OAuthManager:
                 default_permissions=request.app.state.config.USER_PERMISSIONS,
             )
 
-        # Set the cookie token
-        response.set_cookie(
-            key="token",
-            value=jwt_token,
-            httponly=True,  # Ensures the cookie is not accessible via JavaScript
-            samesite=WEBUI_SESSION_COOKIE_SAME_SITE,
-            secure=WEBUI_SESSION_COOKIE_SECURE,
+        access_token, _ = issue_tokens_for_user(
+            user_id=user.id,
+            response=response,
+            access_token_expires_in=request.app.state.config.ACCESS_TOKEN_EXPIRES_IN,
+            refresh_token_expires_in=request.app.state.config.REFRESH_TOKEN_EXPIRES_IN,
+            meta={
+                "ip": request.client.host if request.client else None,
+                "user_agent": request.headers.get("user-agent"),
+            },
         )
 
-        if ENABLE_OAUTH_SIGNUP.value:
-            oauth_id_token = token.get("id_token")
-            oauth_access_token = token.get("access_token")
+        oauth_id_token = token.get("id_token")
+        oauth_access_token = token.get("access_token")
 
+        if oauth_id_token:
             response.set_cookie(
                 key="oauth_id_token",
                 value=oauth_id_token,
@@ -339,17 +333,17 @@ class OAuthManager:
                 secure=WEBUI_SESSION_COOKIE_SECURE,
             )
 
-            # Store access token for SharePoint OBO flow
-            if oauth_access_token:
-                response.set_cookie(
-                    key="oauth_access_token",
-                    value=oauth_access_token,
-                    httponly=True,
-                    samesite=WEBUI_SESSION_COOKIE_SAME_SITE,
-                    secure=WEBUI_SESSION_COOKIE_SECURE,
-                )
-        # Redirect back to the frontend with the JWT token
-        redirect_url = f"{request.base_url}auth#token={jwt_token}"
+        # Store access token for SharePoint OBO flow
+        if oauth_access_token:
+            response.set_cookie(
+                key="oauth_access_token",
+                value=oauth_access_token,
+                httponly=True,
+                samesite=WEBUI_SESSION_COOKIE_SAME_SITE,
+                secure=WEBUI_SESSION_COOKIE_SECURE,
+            )
+
+        redirect_url = f"{request.base_url}auth#token={access_token}"
         return RedirectResponse(url=redirect_url, headers=response.headers)
 
 

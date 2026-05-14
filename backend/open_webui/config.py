@@ -356,6 +356,24 @@ JWT_EXPIRES_IN = PersistentConfig(
     "JWT_EXPIRES_IN", "auth.jwt_expiry", os.environ.get("JWT_EXPIRES_IN", "-1")
 )
 
+ACCESS_TOKEN_EXPIRES_IN = PersistentConfig(
+    "ACCESS_TOKEN_EXPIRES_IN",
+    "auth.access_token_expiry",
+    os.environ.get("ACCESS_TOKEN_EXPIRES_IN", "5m"),
+)
+
+REFRESH_TOKEN_EXPIRES_IN = PersistentConfig(
+    "REFRESH_TOKEN_EXPIRES_IN",
+    "auth.refresh_token_expiry",
+    os.environ.get("REFRESH_TOKEN_EXPIRES_IN", "7d"),
+)
+
+REFRESH_TOKEN_ROTATION_ENABLED = PersistentConfig(
+    "REFRESH_TOKEN_ROTATION_ENABLED",
+    "auth.refresh_token_rotation",
+    os.environ.get("REFRESH_TOKEN_ROTATION_ENABLED", "True").lower() == "true",
+)
+
 ####################################
 # OAuth config
 ####################################

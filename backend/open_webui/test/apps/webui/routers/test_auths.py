@@ -1,5 +1,7 @@
 from open_webui.test.util.abstract_integration_test import AbstractPostgresTest
 from open_webui.test.util.mock_user import mock_webui_user
+from open_webui.env import WEBUI_REFRESH_TOKEN_COOKIE_NAME
+from open_webui.models.refresh_sessions_table import RefreshSessions
 
 
 class TestAuths(AbstractPostgresTest):
@@ -38,6 +40,8 @@ class TestAuths(AbstractPostgresTest):
         }
         for key, value in expected.items():
             assert response.json()[key] == value
+        assert response.cookies.get(WEBUI_REFRESH_TOKEN_COOKIE_NAME) is not None
+        assert response.cookies.get("token") is None
 
     def test_update_profile(self):
         from open_webui.utils.auth import get_password_hash
@@ -110,6 +114,8 @@ class TestAuths(AbstractPostgresTest):
         assert data["profile_image_url"] == "/user.png"
         assert data["token"] is not None and len(data["token"]) > 0
         assert data["token_type"] == "Bearer"
+        assert response.cookies.get(WEBUI_REFRESH_TOKEN_COOKIE_NAME) is not None
+        assert response.cookies.get("token") is None
 
     def test_signup(self):
         response = self.fast_api_client.post(
@@ -129,6 +135,140 @@ class TestAuths(AbstractPostgresTest):
         assert data["profile_image_url"] == "/user.png"
         assert data["token"] is not None and len(data["token"]) > 0
         assert data["token_type"] == "Bearer"
+        assert response.cookies.get(WEBUI_REFRESH_TOKEN_COOKIE_NAME) is not None
+        assert response.cookies.get("token") is None
+
+    def test_refresh_rotates_refresh_session(self):
+        from open_webui.utils.auth import get_password_hash, parse_refresh_token
+
+        user = self.auths.insert_new_auth(
+            email="john.doe@openwebui.com",
+            password=get_password_hash("password"),
+            name="John Doe",
+            profile_image_url="/user.png",
+            role="user",
+        )
+
+        signin_response = self.fast_api_client.post(
+            self.create_url("/signin"),
+            json={"email": "john.doe@openwebui.com", "password": "password"},
+        )
+        assert signin_response.status_code == 200
+
+        initial_refresh_token = signin_response.cookies.get(
+            WEBUI_REFRESH_TOKEN_COOKIE_NAME
+        )
+        initial_session_id, initial_refresh_secret = parse_refresh_token(
+            initial_refresh_token
+        )
+        initial_session = RefreshSessions.get_active_session_by_id(initial_session_id)
+        assert initial_session is not None
+
+        response = self.fast_api_client.post(self.create_url("/refresh"))
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == user.id
+        assert data["token"] is not None and len(data["token"]) > 0
+
+        rotated_refresh_token = response.cookies.get(WEBUI_REFRESH_TOKEN_COOKIE_NAME)
+        assert rotated_refresh_token is not None
+        rotated_session_id, rotated_refresh_secret = parse_refresh_token(
+            rotated_refresh_token
+        )
+
+        assert rotated_session_id == initial_session_id
+        assert rotated_refresh_secret != initial_refresh_secret
+
+        rotated_session = RefreshSessions.get_active_session_by_id(rotated_session_id)
+        assert rotated_session is not None
+        assert rotated_session.token_hash != initial_session.token_hash
+
+    def test_refresh_rejects_tampered_refresh_token(self):
+        from open_webui.utils.auth import get_password_hash, get_refresh_token_session_id
+
+        self.auths.insert_new_auth(
+            email="john.doe@openwebui.com",
+            password=get_password_hash("password"),
+            name="John Doe",
+            profile_image_url="/user.png",
+            role="user",
+        )
+
+        signin_response = self.fast_api_client.post(
+            self.create_url("/signin"),
+            json={"email": "john.doe@openwebui.com", "password": "password"},
+        )
+        assert signin_response.status_code == 200
+
+        refresh_token = signin_response.cookies.get(WEBUI_REFRESH_TOKEN_COOKIE_NAME)
+        refresh_session_id = get_refresh_token_session_id(refresh_token)
+
+        self.fast_api_client.cookies.set(
+            WEBUI_REFRESH_TOKEN_COOKIE_NAME,
+            f"{refresh_session_id}.tampered-refresh-secret",
+        )
+
+        response = self.fast_api_client.post(self.create_url("/refresh"))
+        assert response.status_code == 400
+        assert RefreshSessions.get_active_session_by_id(refresh_session_id) is None
+
+    def test_signout_revokes_refresh_session(self):
+        from open_webui.utils.auth import get_password_hash, get_refresh_token_session_id
+
+        self.auths.insert_new_auth(
+            email="john.doe@openwebui.com",
+            password=get_password_hash("password"),
+            name="John Doe",
+            profile_image_url="/user.png",
+            role="user",
+        )
+
+        signin_response = self.fast_api_client.post(
+            self.create_url("/signin"),
+            json={"email": "john.doe@openwebui.com", "password": "password"},
+        )
+        assert signin_response.status_code == 200
+
+        refresh_token = signin_response.cookies.get(WEBUI_REFRESH_TOKEN_COOKIE_NAME)
+        refresh_session_id = get_refresh_token_session_id(refresh_token)
+        assert RefreshSessions.get_active_session_by_id(refresh_session_id) is not None
+
+        response = self.fast_api_client.get(self.create_url("/signout"))
+        assert response.status_code == 200
+        assert response.json() == {"status": True}
+        assert RefreshSessions.get_active_session_by_id(refresh_session_id) is None
+        assert self.fast_api_client.cookies.get(WEBUI_REFRESH_TOKEN_COOKIE_NAME) is None
+
+    def test_signout_revokes_refresh_session_with_tampered_token(self):
+        from open_webui.utils.auth import get_password_hash, get_refresh_token_session_id
+
+        self.auths.insert_new_auth(
+            email="john.doe@openwebui.com",
+            password=get_password_hash("password"),
+            name="John Doe",
+            profile_image_url="/user.png",
+            role="user",
+        )
+
+        signin_response = self.fast_api_client.post(
+            self.create_url("/signin"),
+            json={"email": "john.doe@openwebui.com", "password": "password"},
+        )
+        assert signin_response.status_code == 200
+
+        refresh_token = signin_response.cookies.get(WEBUI_REFRESH_TOKEN_COOKIE_NAME)
+        refresh_session_id = get_refresh_token_session_id(refresh_token)
+
+        self.fast_api_client.cookies.set(
+            WEBUI_REFRESH_TOKEN_COOKIE_NAME,
+            f"{refresh_session_id}.tampered-refresh-secret",
+        )
+
+        response = self.fast_api_client.get(self.create_url("/signout"))
+        assert response.status_code == 200
+        assert response.json() == {"status": True}
+        assert RefreshSessions.get_active_session_by_id(refresh_session_id) is None
+        assert self.fast_api_client.cookies.get(WEBUI_REFRESH_TOKEN_COOKIE_NAME) is None
 
     def test_add_user(self):
         with mock_webui_user():

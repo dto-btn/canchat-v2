@@ -201,6 +201,9 @@ from open_webui.config import (
     ADMIN_EMAIL,
     SHOW_ADMIN_DETAILS,
     JWT_EXPIRES_IN,
+    ACCESS_TOKEN_EXPIRES_IN,
+    REFRESH_TOKEN_EXPIRES_IN,
+    REFRESH_TOKEN_ROTATION_ENABLED,
     ENABLE_SIGNUP,
     ENABLE_LOGIN_FORM,
     ENABLE_API_KEY,
@@ -315,6 +318,7 @@ from open_webui.utils.access_control import has_access
 from open_webui.utils.auth import (
     decode_token,
     get_admin_user,
+    get_legacy_auth_token,
     get_verified_user,
 )
 from open_webui.utils.oauth import oauth_manager
@@ -611,6 +615,9 @@ app.state.config.ENABLE_API_KEY_ENDPOINT_RESTRICTIONS = (
 app.state.config.API_KEY_ALLOWED_ENDPOINTS = API_KEY_ALLOWED_ENDPOINTS
 
 app.state.config.JWT_EXPIRES_IN = JWT_EXPIRES_IN
+app.state.config.ACCESS_TOKEN_EXPIRES_IN = ACCESS_TOKEN_EXPIRES_IN
+app.state.config.REFRESH_TOKEN_EXPIRES_IN = REFRESH_TOKEN_EXPIRES_IN
+app.state.config.REFRESH_TOKEN_ROTATION_ENABLED = REFRESH_TOKEN_ROTATION_ENABLED
 
 app.state.config.SHOW_ADMIN_DETAILS = SHOW_ADMIN_DETAILS
 app.state.config.ADMIN_EMAIL = ADMIN_EMAIL
@@ -1308,8 +1315,8 @@ async def list_tasks_endpoint(user=Depends(get_verified_user)):
 @app.get("/api/config")
 async def get_app_config(request: Request):
     user = None
-    if "token" in request.cookies:
-        token = request.cookies.get("token")
+    token = get_legacy_auth_token(request)
+    if token:
         try:
             data = decode_token(token)
         except Exception as e:

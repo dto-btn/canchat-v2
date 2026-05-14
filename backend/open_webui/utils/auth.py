@@ -1,4 +1,5 @@
 import logging
+import secrets
 import uuid
 import jwt
 
@@ -6,11 +7,18 @@ from datetime import UTC, datetime, timedelta
 from typing import Optional, Union
 
 from open_webui.models.users import UserModel, Users
+from open_webui.models.refresh_sessions_table import RefreshSessions
 
 from open_webui.constants import ERROR_MESSAGES
-from open_webui.env import WEBUI_SECRET_KEY
+from open_webui.env import (
+    WEBUI_REFRESH_TOKEN_COOKIE_NAME,
+    WEBUI_REFRESH_TOKEN_COOKIE_SAME_SITE,
+    WEBUI_REFRESH_TOKEN_COOKIE_SECURE,
+    WEBUI_SECRET_KEY,
+)
+from open_webui.utils.misc import parse_duration
 
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, HTTPException, Request, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from passlib.context import CryptContext
 
@@ -19,6 +27,8 @@ logging.getLogger("passlib").setLevel(logging.ERROR)
 
 SESSION_SECRET = WEBUI_SECRET_KEY
 ALGORITHM = "HS256"
+REFRESH_TOKEN_SEPARATOR = "."
+LEGACY_AUTH_TOKEN_COOKIE_NAME = "token"
 
 ##############
 # Auth Utils
@@ -38,7 +48,7 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 
-def create_token(data: dict, expires_delta: Union[timedelta, None] = None) -> str:
+def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None) -> str:
     payload = data.copy()
 
     if expires_delta:
@@ -49,12 +59,172 @@ def create_token(data: dict, expires_delta: Union[timedelta, None] = None) -> st
     return encoded_jwt
 
 
-def decode_token(token: str) -> Optional[dict]:
+def decode_access_token(token: str) -> Optional[dict]:
     try:
         decoded = jwt.decode(token, SESSION_SECRET, algorithms=[ALGORITHM])
         return decoded
     except Exception:
         return None
+
+
+def parse_refresh_token(refresh_token: str) -> tuple[str, str]:
+    try:
+        refresh_session_id, refresh_token_secret = refresh_token.split(
+            REFRESH_TOKEN_SEPARATOR, 1
+        )
+    except ValueError as exc:
+        raise ValueError(ERROR_MESSAGES.INVALID_TOKEN) from exc
+
+    if not refresh_session_id or not refresh_token_secret:
+        raise ValueError(ERROR_MESSAGES.INVALID_TOKEN)
+
+    return refresh_session_id, refresh_token_secret
+
+
+def get_refresh_token_session_id(refresh_token: str) -> str:
+    refresh_session_id, _ = parse_refresh_token(refresh_token)
+    return refresh_session_id
+
+
+def hash_refresh_token(refresh_token: str) -> str:
+    _, refresh_token_secret = parse_refresh_token(refresh_token)
+    return pwd_context.hash(refresh_token_secret)
+
+
+def verify_refresh_token(
+    refresh_token: str, refresh_token_hash: Optional[str]
+) -> bool:
+    if not refresh_token_hash:
+        return False
+
+    try:
+        _, refresh_token_secret = parse_refresh_token(refresh_token)
+    except ValueError:
+        return False
+
+    try:
+        return pwd_context.verify(refresh_token_secret, refresh_token_hash)
+    except Exception:
+        return False
+
+
+def create_refresh_token(session_id: Optional[str] = None) -> tuple[str, str, str]:
+    refresh_session_id = session_id or str(uuid.uuid4())
+    refresh_token_secret = secrets.token_urlsafe(32)
+    refresh_token = (
+        f"{refresh_session_id}{REFRESH_TOKEN_SEPARATOR}{refresh_token_secret}"
+    )
+    refresh_token_hash = hash_refresh_token(refresh_token)
+    return refresh_session_id, refresh_token, refresh_token_hash
+
+
+def create_token(data: dict, expires_delta: Union[timedelta, None] = None) -> str:
+    return create_access_token(data, expires_delta)
+
+
+def decode_token(token: str) -> Optional[dict]:
+    return decode_access_token(token)
+
+
+def get_access_token_expiration(
+    access_token_expires_in: str,
+) -> tuple[Optional[timedelta], Optional[int]]:
+    expires_delta_access_token = parse_duration(access_token_expires_in)
+    expires_at_access_token = None
+    if expires_delta_access_token:
+        expires_at_access_token = int(datetime.now(UTC).timestamp()) + int(
+            expires_delta_access_token.total_seconds()
+        )
+
+    return expires_delta_access_token, expires_at_access_token
+
+
+def get_refresh_token_expiration(refresh_token_expires_in: str) -> tuple[timedelta, int]:
+    expires_delta_refresh_token = parse_duration(refresh_token_expires_in)
+    if expires_delta_refresh_token is None:
+        raise HTTPException(
+            status_code=500,
+            detail="Refresh token expiry must be finite.",
+        )
+
+    expires_at_refresh_token = int(datetime.now(UTC).timestamp()) + int(
+        expires_delta_refresh_token.total_seconds()
+    )
+    return expires_delta_refresh_token, expires_at_refresh_token
+
+
+def clear_legacy_auth_cookie(response: Response):
+    response.delete_cookie(LEGACY_AUTH_TOKEN_COOKIE_NAME)
+
+
+def set_refresh_token_cookie(
+    response: Response, refresh_token: str, expires_at_refresh_token: int
+):
+    datetime_expires_at_refresh = datetime.fromtimestamp(
+        expires_at_refresh_token, UTC
+    )
+
+    response.set_cookie(
+        key=WEBUI_REFRESH_TOKEN_COOKIE_NAME,
+        value=refresh_token,
+        expires=datetime_expires_at_refresh,
+        httponly=True,
+        samesite=WEBUI_REFRESH_TOKEN_COOKIE_SAME_SITE,
+        secure=WEBUI_REFRESH_TOKEN_COOKIE_SECURE,
+    )
+
+
+def issue_tokens_for_user(
+    user_id: str,
+    response: Response,
+    access_token_expires_in: str,
+    refresh_token_expires_in: str,
+    current_refresh_session_id: Optional[str] = None,
+    meta: Optional[dict] = None,
+) -> tuple[str, Optional[int]]:
+    expires_delta_access_token, expires_at_access_token = get_access_token_expiration(
+        access_token_expires_in
+    )
+    _, expires_at_refresh_token = get_refresh_token_expiration(
+        refresh_token_expires_in
+    )
+
+    access_token = create_token(
+        data={"id": user_id},
+        expires_delta=expires_delta_access_token,
+    )
+    refresh_session_id, refresh_token, refresh_token_hash = create_refresh_token(
+        current_refresh_session_id
+    )
+
+    if current_refresh_session_id is not None:
+        refresh_session = RefreshSessions.rotate_session_token(
+            current_refresh_session_id,
+            refresh_token_hash,
+            expires_at_refresh_token,
+        )
+    else:
+        refresh_session = RefreshSessions.create_session(
+            user_id=user_id,
+            token_hash=refresh_token_hash,
+            expires_at=expires_at_refresh_token,
+            session_id=refresh_session_id,
+            meta=meta,
+        )
+
+    if refresh_session is None:
+        if current_refresh_session_id is not None:
+            raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_REFRESH_TOKEN)
+
+        raise HTTPException(500, detail=ERROR_MESSAGES.DEFAULT())
+
+    clear_legacy_auth_cookie(response)
+    set_refresh_token_cookie(response, refresh_token, expires_at_refresh_token)
+    return access_token, expires_at_access_token
+
+
+def get_legacy_auth_token(request: Request) -> Optional[str]:
+    return request.cookies.get(LEGACY_AUTH_TOKEN_COOKIE_NAME)
 
 
 def extract_token_from_auth_header(auth_header: str):
@@ -83,8 +253,10 @@ def get_current_user(
     if auth_token is not None:
         token = auth_token.credentials
 
-    if token is None and "token" in request.cookies:
-        token = request.cookies.get("token")
+    if token is None:
+        # Temporary rollout fallback for legacy browser sessions that still rely
+        # on the old access-token cookie.
+        token = get_legacy_auth_token(request)
 
     if token is None:
         raise HTTPException(status_code=403, detail="Not authenticated")
