@@ -79,9 +79,7 @@ def _get_client_ip(request: Request) -> Optional[str]:
 def _get_access_token_expiration(
     request: Request,
 ) -> tuple[Optional[timedelta], Optional[int]]:
-    return get_access_token_expiration(
-        request.app.state.config.ACCESS_TOKEN_EXPIRES_IN
-    )
+    return get_access_token_expiration(request.app.state.config.ACCESS_TOKEN_EXPIRES_IN)
 
 
 def _issue_tokens_for_user(
@@ -541,6 +539,7 @@ async def signout(request: Request, response: Response):
 ############################
 # Refresh Token
 ############################
+
 
 @router.post("/refresh", response_model=SessionUserResponse)
 async def refresh_token(request: Request, response: Response):

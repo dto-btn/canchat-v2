@@ -47,7 +47,9 @@ class TestRefreshSessions(AbstractPostgresTest):
         _, mismatched_refresh_token, _ = create_refresh_token(
             session_id=refresh_session_id
         )
-        assert verify_refresh_token(mismatched_refresh_token, refresh_token_hash) is False
+        assert (
+            verify_refresh_token(mismatched_refresh_token, refresh_token_hash) is False
+        )
 
         with pytest.raises(ValueError):
             parse_refresh_token("invalid-refresh-token")
@@ -79,10 +81,15 @@ class TestRefreshSessions(AbstractPostgresTest):
             expires_at=int(time.time()) + 3600,
         )
 
-        assert self.refresh_sessions.get_active_session_by_id(refresh_session.id) is not None
+        assert (
+            self.refresh_sessions.get_active_session_by_id(refresh_session.id)
+            is not None
+        )
 
         assert self.refresh_sessions.revoke_session_by_id(refresh_session.id) is True
-        assert self.refresh_sessions.get_active_session_by_id(refresh_session.id) is None
+        assert (
+            self.refresh_sessions.get_active_session_by_id(refresh_session.id) is None
+        )
 
     def test_rotate_refresh_session_token(self):
         refresh_session = self.refresh_sessions.create_session(

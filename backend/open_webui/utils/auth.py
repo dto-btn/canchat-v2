@@ -48,7 +48,9 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 
-def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None) -> str:
+def create_access_token(
+    data: dict, expires_delta: Union[timedelta, None] = None
+) -> str:
     payload = data.copy()
 
     if expires_delta:
@@ -91,9 +93,7 @@ def hash_refresh_token(refresh_token: str) -> str:
     return pwd_context.hash(refresh_token_secret)
 
 
-def verify_refresh_token(
-    refresh_token: str, refresh_token_hash: Optional[str]
-) -> bool:
+def verify_refresh_token(refresh_token: str, refresh_token_hash: Optional[str]) -> bool:
     if not refresh_token_hash:
         return False
 
@@ -139,7 +139,9 @@ def get_access_token_expiration(
     return expires_delta_access_token, expires_at_access_token
 
 
-def get_refresh_token_expiration(refresh_token_expires_in: str) -> tuple[timedelta, int]:
+def get_refresh_token_expiration(
+    refresh_token_expires_in: str,
+) -> tuple[timedelta, int]:
     expires_delta_refresh_token = parse_duration(refresh_token_expires_in)
     if expires_delta_refresh_token is None:
         raise HTTPException(
@@ -160,9 +162,7 @@ def clear_legacy_auth_cookie(response: Response):
 def set_refresh_token_cookie(
     response: Response, refresh_token: str, expires_at_refresh_token: int
 ):
-    datetime_expires_at_refresh = datetime.fromtimestamp(
-        expires_at_refresh_token, UTC
-    )
+    datetime_expires_at_refresh = datetime.fromtimestamp(expires_at_refresh_token, UTC)
 
     response.set_cookie(
         key=WEBUI_REFRESH_TOKEN_COOKIE_NAME,
@@ -185,9 +185,7 @@ def issue_tokens_for_user(
     expires_delta_access_token, expires_at_access_token = get_access_token_expiration(
         access_token_expires_in
     )
-    _, expires_at_refresh_token = get_refresh_token_expiration(
-        refresh_token_expires_in
-    )
+    _, expires_at_refresh_token = get_refresh_token_expiration(refresh_token_expires_in)
 
     access_token = create_token(
         data={"id": user_id},
