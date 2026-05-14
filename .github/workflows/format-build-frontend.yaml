@@ -1,6 +1,7 @@
 name: Frontend Build
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -10,16 +11,19 @@ on:
       - main
       - dev
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   build:
     name: 'Format & Build Frontend'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22' # Or specify any other version you want to use
 

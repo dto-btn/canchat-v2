@@ -11,6 +11,7 @@
 
 name: SBOM compare
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -20,6 +21,9 @@ on:
     branches:
       - main
       - dev
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 permissions:
     actions: read

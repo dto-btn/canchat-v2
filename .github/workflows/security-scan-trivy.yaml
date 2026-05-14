@@ -1,6 +1,7 @@
 name: Security Scan - Trivy
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -10,12 +11,15 @@ on:
       - main
       - dev
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   build:
     name: 'Scan - Trivy'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # The first call to the action will invoke setup-trivy and install trivy
       - name: Generate Trivy Vulnerability Report
@@ -28,7 +32,7 @@ jobs:
           exit-code: 0
 
       - name: Upload Vulnerability Scan Results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: trivy-report
           path: trivy-report.json

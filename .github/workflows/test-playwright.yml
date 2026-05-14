@@ -17,6 +17,7 @@ on:
       - completed
  
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
   REGISTRY: ghcr.io
  
 jobs:
@@ -41,15 +42,15 @@ jobs:
  
     steps:      
       - name: Checkout CANChat-V2
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
  
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
  
       - name: Log in to the GitHub Container registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -144,27 +145,9 @@ jobs:
  
       - name: Upload Report
         id: upload_report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
           name: playwright-report-${{ steps.timestamps.outputs.timestamp }}
           path: ./playwright-report/
           retention-days: 30
- 
-      - name: Create results summary
-        uses: daun/playwright-report-summary@v3
-        if: ${{ !cancelled() }}
-        id: playwright_summary
-        with:
-          report-file: ./playwright-report/results.json
-          create-comment: false
- 
-      - name: Output test summary to action
-        if: ${{ !cancelled() }}
-        run: |
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "# Playwright Report" >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.playwright_summary.outputs.summary }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "[Download Playwright Report](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/${{ steps.upload_report.outputs.artifact-id }})"  >> $GITHUB_STEP_SUMMARY
