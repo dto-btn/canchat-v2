@@ -2020,14 +2020,6 @@ async def process_chat_response(
                                             f"{inline_completed_content}{raw_content}"
                                         )
 
-                                if (
-                                    separate_reasoning_start_time is not None
-                                    and separate_reasoning_duration is None
-                                ):
-                                    separate_reasoning_duration = int(
-                                        time.time() - separate_reasoning_start_time
-                                    )
-
                                 content_updated = True
 
                             if content_updated:
@@ -2078,6 +2070,15 @@ async def process_chat_response(
                         done=True,
                         duration=separate_reasoning_duration,
                     )
+
+                    if ENABLE_REALTIME_CHAT_SAVE:
+                        Chats.upsert_message_to_chat_by_id_and_message_id(
+                            metadata["chat_id"],
+                            metadata["message_id"],
+                            {
+                                "content": content,
+                            },
+                        )
 
                 title = Chats.get_chat_title_by_id(metadata["chat_id"])
                 data = {"done": True, "content": content, "title": title}
