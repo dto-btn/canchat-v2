@@ -114,11 +114,14 @@ def format_reasoning_details(
     if done and duration is not None:
         attributes.append(f'duration="{duration}"')
 
-    summary = (
-        f"Thought for {duration} seconds"
-        if done and duration is not None
-        else "Thinking…"
-    )
+    if done:
+        summary = (
+            f"Thought for {duration} seconds"
+            if duration is not None
+            else "Thought process"
+        )
+    else:
+        summary = "Thinking…"
 
     return (
         f'<details {" ".join(attributes)}>\n'
