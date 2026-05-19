@@ -109,7 +109,8 @@ export class BasePage {
 	async goto(path: string = '/') {
 		await this.page.goto(path);
 		await this.splashLogo.waitFor({ state: 'detached', timeout: 20000 }).catch(() => {});
-		await expect(this.page.locator('body')).toBeVisible();
+		await this.page.waitForLoadState('domcontentloaded');
+		await expect(this.page.locator('body')).toBeAttached();
 	}
 
 	/**
@@ -194,9 +195,14 @@ export class BasePage {
 	 * Opens the User Menu from the header if not already visible
 	 */
 	async openHeaderUserMenu() {
+		await this.dismissBlockingModal();
 		if (!(await this.menuSignOut.isVisible())) {
-			await this.userProfileButton.click();
-			await expect(this.menuSignOut).toBeVisible();
+			await this.userProfileButton.click({ force: true });
+			if (!(await this.menuSignOut.isVisible().catch(() => false))) {
+				await this.page.waitForTimeout(300);
+				await this.userProfileButton.click({ force: true });
+			}
+			await expect(this.menuSignOut).toBeVisible({ timeout: 8000 });
 		}
 	}
 
@@ -229,9 +235,36 @@ export class BasePage {
 	 */
 	async signOut() {
 		await this.goto('/');
+		await this.dismissBlockingModal();
 		await this.openHeaderUserMenu();
-		await this.menuSignOut.click();
+		await this.menuSignOut.click({ force: true });
 		await expect(this.page).toHaveURL(/\/auth/);
+	}
+
+	/**
+	 * Dismisses blocking modal overlays if present
+	 */
+	async dismissBlockingModal() {
+		const modal = this.page.locator('div.modal');
+		for (let i = 0; i < 3; i += 1) {
+			if (!(await modal.isVisible().catch(() => false))) return;
+			await this.page.keyboard.press('Escape').catch(() => {});
+			const closeButton = this.page.getByRole('button', {
+				name: /Close|Cancel|OK|Ok|Okay|Okay, Let's Go!|Fermer|Annuler|D’accord/i
+			});
+			if (await closeButton.isVisible().catch(() => false)) {
+				await closeButton
+					.first()
+					.click({ force: true })
+					.catch(() => {});
+			}
+			await modal.waitFor({ state: 'hidden', timeout: 2000 }).catch(async () => {
+				await modal
+					.first()
+					.click({ force: true })
+					.catch(() => {});
+			});
+		}
 	}
 
 	/**

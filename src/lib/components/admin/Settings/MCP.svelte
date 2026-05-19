@@ -477,10 +477,8 @@
 												{$i18n.t('Provides current time and timezone information')}
 											{:else if server.name === 'news_server'}
 												{$i18n.t('Provides latest news headlines from NewsDesk')}
-											{:else if server.name === 'mpo_sharepoint_server'}
-												{$i18n.t('Provides MPO SharePoint document search and retrieval')}
-											{:else if server.name === 'pmo_sharepoint_server'}
-												{$i18n.t('Provides PMO SharePoint document search and retrieval')}
+											{:else if server.name.endsWith('_sharepoint_server')}
+												{$i18n.t(server.description || 'Built-in MCP server')}
 											{:else}
 												{$i18n.t('Built-in MCP server')}
 											{/if}

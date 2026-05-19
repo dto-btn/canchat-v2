@@ -662,7 +662,7 @@
 													<div
 														class="text-gray-500 dark:text-gray-500 text-base line-clamp-1 text-wrap"
 													>
-														{$i18n.t("Some search results were trimmed to fit the model's limit.")}
+														{$i18n.t("Some content was trimmed to fit the model's limit.")}
 													</div>
 												{/if}
 											</div>
@@ -672,7 +672,7 @@
 											<div
 												class="text-gray-500 dark:text-gray-500 text-base line-clamp-1 text-wrap"
 											>
-												{$i18n.t("Some search results were trimmed to fit the model's limit.")}
+												{$i18n.t("Some content was trimmed to fit the model's limit.")}
 											</div>
 										</div>
 									{:else if status?.action === 'knowledge_search'}

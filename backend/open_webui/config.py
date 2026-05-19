@@ -1172,7 +1172,6 @@ DEFAULT_USER_PERMISSIONS = {
     "mcp": {
         "time_server": False,
         "news_server": False,
-        "mpo_sharepoint_server": False,
     },
 }
 

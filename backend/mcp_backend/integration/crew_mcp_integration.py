@@ -5,6 +5,8 @@ Simple integration using MCPServerAdapter with stdio transport for FastMCP time 
 """
 
 import os
+import re
+import sys
 import logging
 from pathlib import Path
 from pydantic import BaseModel
@@ -26,8 +28,9 @@ CREW_VERBOSE = os.getenv("CREW_VERBOSE", "false").lower() == "true"
 # Module-level MCP server adapters - initialized once and reused
 _time_server_adapter = None
 _news_server_adapter = None
-_mpo_sharepoint_server_adapter = None
-_pmo_sharepoint_server_adapter = None
+# Department SharePoint adapters keyed by uppercase dept name (e.g. "MPO", "PMO").
+# Populated dynamically at startup from *_sharepoint_server.py scripts.
+_sharepoint_adapters: dict = {}
 _adapters_initialized = False
 
 
@@ -83,17 +86,43 @@ class CrewMCPManager:
         self.news_server_path = (
             self.backend_dir / "mcp_backend" / "servers" / "fastmcp_news_server.py"
         )
-        # SharePoint server paths - use new multi-department implementation
-        self.mpo_sharepoint_server_path = (
-            self.backend_dir / "mcp_backend" / "servers" / "mpo_sharepoint_server.py"
-        )
-        # SharePoint server paths - use new multi-department implementation
-        self.pmo_sharepoint_server_path = (
-            self.backend_dir / "mcp_backend" / "servers" / "pmo_sharepoint_server.py"
-        )
+        # Discover SharePoint server scripts dynamically.
+        # Any *_sharepoint_server.py in the servers directory is a department server.
+        self._sharepoint_server_paths = self._discover_sharepoint_servers()
 
         # User token for OBO flow (delegate access)
         self.user_jwt_token = None
+
+    def _discover_sharepoint_servers(self) -> dict:
+        """Read SHAREPOINT_DEPARTMENTS env var to determine active departments.
+
+        Returns a dict mapping uppercase department key → Path to the generic
+        server script, e.g. {"MPO": Path(".../generic_sharepoint_server_multi_dept.py")}
+
+        ADDING A NEW SHAREPOINT DEPARTMENT — zero code changes required here.
+        Add the prefix to the SHAREPOINT_DEPARTMENTS env var (comma-separated)
+        and set the {DEPT}_SHP_* environment variables. No application files
+        need to be created or modified.
+        """
+        generic_server_path = (
+            self.backend_dir
+            / "mcp_backend"
+            / "servers"
+            / "generic_sharepoint_server_multi_dept.py"
+        )
+        departments_env = os.getenv("SHAREPOINT_DEPARTMENTS", "")
+        result = {}
+        for dept in departments_env.split(","):
+            dept = dept.strip().upper()
+            if dept:
+                result[dept] = generic_server_path
+                logger.info(f"Configured SharePoint department: {dept}")
+        if not result:
+            logger.warning(
+                "SHAREPOINT_DEPARTMENTS is not set — SharePoint CrewAI crews will be unavailable. "
+                "Set SHAREPOINT_DEPARTMENTS=MPO,PMO (comma-separated) to enable SharePoint integration."
+            )
+        return result
 
     def set_user_token(self, token: str):
         """Set the user's JWT token for OBO authentication"""
@@ -110,7 +139,7 @@ class CrewMCPManager:
 
     def initialize_mcp_adapters(self):
         """Initialize all MCP server adapters once at startup"""
-        global _time_server_adapter, _news_server_adapter, _mpo_sharepoint_server_adapter, _pmo_sharepoint_server_adapter, _adapters_initialized
+        global _time_server_adapter, _news_server_adapter, _sharepoint_adapters, _adapters_initialized
 
         if _adapters_initialized:
             logger.info("MCP adapters already initialized, skipping...")
@@ -121,7 +150,7 @@ class CrewMCPManager:
         # Initialize Time Server
         try:
             time_server_params = StdioServerParameters(
-                command="python",
+                command=sys.executable,
                 args=[str(self.time_server_path)],
                 env=dict(os.environ),  # Pass environment variables
             )
@@ -135,7 +164,7 @@ class CrewMCPManager:
         # Initialize News Server
         try:
             news_server_params = StdioServerParameters(
-                command="python",
+                command=sys.executable,
                 args=[str(self.news_server_path)],
                 env=dict(os.environ),  # Pass environment variables
             )
@@ -146,74 +175,54 @@ class CrewMCPManager:
             logger.error(f"❌ Failed to initialize News server: {e}")
             _news_server_adapter = None
 
-        # Initialize MPO SharePoint Server - always try to initialize
-        try:
-            mpo_sharepoint_params = StdioServerParameters(
-                command="python",
-                args=[str(self.mpo_sharepoint_server_path)],
-                env=dict(
-                    os.environ
-                ),  # Pass environment variables so .env vars are available
-            )
-            adapter = MCPServerAdapter(mpo_sharepoint_params)
-            _mpo_sharepoint_server_adapter = (
-                adapter.__enter__()
-            )  # Get the tools from __enter__()
-            logger.info("✅ MPO SharePoint server adapter initialized")
-        except Exception as e:
-            logger.error(f"❌ Failed to initialize MPO SharePoint server: {e}")
-            logger.error(
-                f"   This is expected in local dev without MPO_SHP_* environment variables"
-            )
-            _mpo_sharepoint_server_adapter = None
-
-        # Initialize PMO SharePoint Server - always try to initialize
-        try:
-            pmo_sharepoint_params = StdioServerParameters(
-                command="python",
-                args=[str(self.pmo_sharepoint_server_path)],
-                env=dict(
-                    os.environ
-                ),  # Pass environment variables so .env vars are available
-            )
-            adapter = MCPServerAdapter(pmo_sharepoint_params)
-            _pmo_sharepoint_server_adapter = (
-                adapter.__enter__()
-            )  # Get the tools from __enter__()
-            logger.info("✅ PMO SharePoint server adapter initialized")
-        except Exception as e:
-            logger.error(f"❌ Failed to initialize PMO SharePoint server: {e}")
-            logger.error(
-                f"   This is expected in local dev without PMO_SHP_* environment variables"
-            )
-            _pmo_sharepoint_server_adapter = None
+        # Initialize SharePoint servers for all configured departments
+        for dept_key, server_path in self._sharepoint_server_paths.items():
+            try:
+                params = StdioServerParameters(
+                    command=sys.executable,
+                    args=[str(server_path), dept_key],
+                    env={
+                        key: value
+                        for key, value in os.environ.items()
+                        if key.startswith("SHP_") or key.startswith(f"{dept_key}_SHP_")
+                    },  # Pass global and department specific environment variables
+                )
+                adapter = MCPServerAdapter(params)
+                _sharepoint_adapters[dept_key] = adapter.__enter__()
+                logger.info(f"✅ {dept_key} SharePoint server adapter initialized")
+            except Exception as e:
+                logger.error(
+                    f"❌ Failed to initialize {dept_key} SharePoint server: {e}"
+                )
+                _sharepoint_adapters[dept_key] = None
 
         _adapters_initialized = True
 
         # Report initialization status
-        initialized_count = sum(
-            [
-                _time_server_adapter is not None,
-                _news_server_adapter is not None,
-                _mpo_sharepoint_server_adapter is not None,
-                _pmo_sharepoint_server_adapter is not None,
-            ]
+        sp_ok = sum(1 for v in _sharepoint_adapters.values() if v is not None)
+        initialized_count = (
+            sum(
+                [
+                    _time_server_adapter is not None,
+                    _news_server_adapter is not None,
+                ]
+            )
+            + sp_ok
         )
+        total = 2 + len(self._sharepoint_server_paths)
         logger.info(
-            f"🎉 MCP server initialization complete: {initialized_count}/4 adapters initialized"
+            f"🎉 MCP server initialization complete: {initialized_count}/{total} adapters initialized"
         )
 
     def cleanup_mcp_adapters(self):
         """Cleanup all MCP server adapters on shutdown"""
-        global _time_server_adapter, _news_server_adapter, _mpo_sharepoint_server_adapter, _pmo_sharepoint_server_adapter, _adapters_initialized
+        global _time_server_adapter, _news_server_adapter, _sharepoint_adapters, _adapters_initialized
 
         logger.info("🧹 Cleaning up MCP server adapters...")
 
         for adapter_name, adapter in [
             ("Time", _time_server_adapter),
             ("News", _news_server_adapter),
-            ("MPO SharePoint", _mpo_sharepoint_server_adapter),
-            ("PMO SharePoint", _pmo_sharepoint_server_adapter),
         ]:
             if adapter is not None:
                 try:
@@ -222,10 +231,19 @@ class CrewMCPManager:
                 except Exception as e:
                     logger.error(f"❌ Error cleaning up {adapter_name} adapter: {e}")
 
+        for dept_key, adapter in _sharepoint_adapters.items():
+            if adapter is not None:
+                try:
+                    adapter.__exit__(None, None, None)
+                    logger.info(f"✅ {dept_key} SharePoint server adapter cleaned up")
+                except Exception as e:
+                    logger.error(
+                        f"❌ Error cleaning up {dept_key} SharePoint adapter: {e}"
+                    )
+
         _time_server_adapter = None
         _news_server_adapter = None
-        _mpo_sharepoint_server_adapter = None
-        _pmo_sharepoint_server_adapter = None
+        _sharepoint_adapters.clear()
         _adapters_initialized = False
 
         logger.info("🎉 All MCP server adapters cleaned up")
@@ -387,45 +405,54 @@ class CrewMCPManager:
             logger.error(f"Error in CrewAI MCP news integration: {e}")
             raise
 
-    def run_mpo_sharepoint_crew(
-        self, query: str = "Search SharePoint documents"
-    ) -> str:
+    def run_sharepoint_crew(
+        self, department: str, query: str = "Search SharePoint documents"
+    ) -> tuple[str, dict[str, int]]:
         """
-        Run a CrewAI crew with MCP SharePoint server tools (MPO SharePoint only)
+        Run a CrewAI crew with MCP SharePoint server tools for a given department.
 
         Args:
-            query:  The SharePoint-related query to process
+            department: Department key, e.g. "MPO" or "PMO".  Case-insensitive.
+            query: The SharePoint-related query to process.
 
         Returns:
-            The crew's response
+            (result_str, token_usage) tuple.
         """
-        if not self.mpo_sharepoint_server_path.exists():
+        dept_key = department.upper()
+        dept_lower = dept_key.lower()
+
+        server_path = self._sharepoint_server_paths.get(dept_key)
+        if not server_path or not server_path.exists():
             raise FileNotFoundError(
-                f"MPO SharePoint server not found at {self.mpo_sharepoint_server_path}"
+                f"{dept_key} SharePoint server not found at {server_path}"
             )
 
         logger.info(f"Starting CrewAI MCP SharePoint integration for query: {query}")
-        logger.info(f"Using MPO SharePoint server:  {self.mpo_sharepoint_server_path}")
-
-        # **CRITICAL FIX: Initialize adapter with current environment containing USER_JWT_TOKEN**
+        logger.info(f"Using {dept_key} SharePoint server: {server_path}")
         logger.info(
             "🔄 Initializing fresh SharePoint adapter with user token from environment"
         )
 
         try:
             # Create adapter with current environment (includes USER_JWT_TOKEN set by set_user_token())
-            mpo_sharepoint_params = StdioServerParameters(
-                command="python",
-                args=[str(self.mpo_sharepoint_server_path)],
-                env=dict(os.environ),  # Fresh environment snapshot with USER_JWT_TOKEN
+            sharepoint_params = StdioServerParameters(
+                command=sys.executable,
+                args=[str(server_path), dept_key],
+                env={
+                    key: value
+                    for key, value in os.environ.items()
+                    if key.startswith("SHP_")
+                    or key.startswith(f"{dept_key}_SHP_")
+                    or key == "USER_JWT_TOKEN"
+                },  # Fresh environment snapshot with USER_JWT_TOKEN
             )
 
             # Use context manager for automatic cleanup
-            adapter = MCPServerAdapter(mpo_sharepoint_params)
+            adapter = MCPServerAdapter(sharepoint_params)
             mcp_tools = adapter.__enter__()  # Get the tools from adapter
 
             logger.info(
-                f"✅ SharePoint adapter initialized with {len(list(mcp_tools))} tools"
+                f"✅ {dept_key} SharePoint adapter initialized with {len(list(mcp_tools))} tools"
             )
             logger.info(
                 f"Available MCP SharePoint tools: {[tool.name for tool in mcp_tools]}"
@@ -438,12 +465,12 @@ class CrewMCPManager:
             sharepoint_agent = Agent(
                 role="SharePoint Document Specialist",
                 goal="Find and retrieve relevant information from SharePoint using FAST search or list files in specific folders",
-                backstory="""I am a SharePoint document specialist who uses the Microsoft Graph Search API for lightning-fast document searches and folder listings.
+                backstory=f"""I am a SharePoint document specialist who uses the Microsoft Graph Search API for lightning-fast document searches and folder listings.
 
     🚨 CRITICAL RULES:
-    1. For LISTING/COUNTING files in a specific folder → Use mpo_list_folder_contents
-    2. For SEARCHING content across documents → Use mpo_search_documents_fast
-    3. If search snippet doesn't have the complete answer, use mpo_get_document_by_id to get full content
+    1. For LISTING/COUNTING files in a specific folder → Use {dept_lower}_list_folder_contents
+    2. For SEARCHING content across documents → Use {dept_lower}_search_documents_fast
+    3. If search snippet doesn't have the complete answer, use {dept_lower}_get_document_by_id to get full content
     4. NEVER answer from training data - ONLY from SharePoint results
     5. If no documents found, say so - don't make up answers
     
@@ -466,15 +493,15 @@ class CrewMCPManager:
     🔍 STEP 1 - DETERMINE REQUEST TYPE:
     
     A) If asking to LIST/COUNT files in a SPECIFIC FOLDER (keywords: "list", "show files", "count", "how many files", "in the folder", "in folder"):
-       → Use mpo_list_folder_contents
+       → Use {dept_lower}_list_folder_contents
        → Extract folder name from query (e.g., "Canchat Demo", "Documents/Reports")
-       → Call: mpo_list_folder_contents(folder_path="<folder_name>")
+       → Call: {dept_lower}_list_folder_contents(folder_path="<folder_name>")
        → If successful: Return the list of files found
-       → If folder not found: FALLBACK to mpo_search_documents_fast(query="<folder_name>", limit=10) to find documents
+       → If folder not found: FALLBACK to {dept_lower}_search_documents_fast(query="<folder_name>", limit=10) to find documents
     
     B) If asking for CONTENT/INFORMATION ABOUT something (keywords: "tell me about", "what is", "explain", "information about", "details on"):
-       → STEP 1: Use mpo_search_documents_fast
-         • Call: mpo_search_documents_fast(query="{query}", limit=10)
+       → STEP 1: Use {dept_lower}_search_documents_fast
+         • Call: {dept_lower}_search_documents_fast(query="{query}", limit=10)
        
        → STEP 2: Analyze results:
          • If ANY FILES found (is_folder=false): GO TO STEP 3
@@ -482,28 +509,28 @@ class CrewMCPManager:
        
        → STEP 3: Process FILES:
          • If file has useful summary: Extract and respond
-         • If need full content: Use mpo_get_document_by_id(web_url=..., item_id=...)
+         • If need full content: Use {dept_lower}_get_document_by_id(web_url=..., item_id=...)
          • DONE - provide answer to user
        
        → STEP 4: MANDATORY REFINED SEARCH (when only folders found):
-         • Try search with hyphenated version: mpo_search_documents_fast(query="Budget-2025", limit=10)
-         • If no files, try: mpo_search_documents_fast(query="Budget 2025 pdf", limit=10)
-         • If files found: Use mpo_get_document_by_id to retrieve content
+         • Try search with hyphenated version: {dept_lower}_search_documents_fast(query="Budget-2025", limit=10)
+         • If no files, try: {dept_lower}_search_documents_fast(query="Budget 2025 pdf", limit=10)
+         • If files found: Use {dept_lower}_get_document_by_id to retrieve content
          • If still no files after 2 refined searches: Tell user no document files found, only folders exist
        
-       → NEVER try to retrieve folder content with mpo_get_document_by_id
+       → NEVER try to retrieve folder content with {dept_lower}_get_document_by_id
 
     🚨 ABSOLUTE RULES:
     - For "Tell me about X" queries: Prioritize finding DOCUMENT CONTENT, not folder structure
     - Search returns folders + files: Use the FILES first, ignore folders unless no files exist
     - Search returns ONLY folders: Try refined search with specific terms before listing folder contents
-    - Only use mpo_get_document_by_id for actual FILES (is_folder=false)
+    - Only use {dept_lower}_get_document_by_id for actual FILES (is_folder=false)
     - Do NOT retry the same tool with same input more than once
     - Include document names and sources in your final answer
     - If you get an error suggesting to use search, DO IT - don't give up
     - If you receive a permission/access denied error (🔒), STOP and tell the user they don't have access
     - Do NOT say "no information found" when it's actually a permissions issue
-    - 404 errors on folders mean you tried to get a folder as a document - use mpo_list_folder_contents instead
+    - 404 errors on folders mean you tried to get a folder as a document - use {dept_lower}_list_folder_contents instead
                 """,
                 expected_output="""A DIRECT, CONCISE answer to the user's question without showing any reasoning process.
 
@@ -537,13 +564,13 @@ class CrewMCPManager:
             )
 
             # Execute the crew
-            logger.info("Executing CrewAI SharePoint crew...")
+            logger.info(f"Executing CrewAI {dept_key} SharePoint crew...")
             result = sharepoint_crew.kickoff()
 
             # Cleanup adapter
             try:
                 adapter.__exit__(None, None, None)
-                logger.info("✅ Cleaned up SharePoint adapter")
+                logger.info(f"✅ Cleaned up {dept_key} SharePoint adapter")
             except Exception as e:
                 logger.warning(f"Failed to cleanup adapter: {e}")
 
@@ -552,198 +579,9 @@ class CrewMCPManager:
 
         except Exception as e:
             error_msg = str(e)
-            logger.error(f"Error in CrewAI MCP SharePoint integration: {error_msg}")
-
-            # Provide specific error messages based on the type of failure
-            if (
-                "Authentication" in error_msg
-                or "access token" in error_msg
-                or "401" in error_msg
-            ):
-                return (
-                    "SharePoint access failed due to authentication issues. This may be because:\n\n"
-                    + "1. You're in a local development environment where OAuth2 proxy is not configured\n"
-                    + "2. Your authentication token has expired\n"
-                    + "3. You don't have the necessary SharePoint permissions\n\n"
-                    + "For local development, SharePoint integration requires deployment to environments with proper OAuth2 configuration (dev/staging/production).",
-                    {},
-                )
-            elif "No documents found" in error_msg or "no results" in error_msg:
-                return (
-                    "I searched the available SharePoint documents but could not find information related to your query. The documents may not contain this information, or it might be located in a different location.",
-                    {},
-                )
-            else:
-                return (
-                    f"I encountered an issue while searching SharePoint documents: {error_msg}. Please try rephrasing your query or contact support if the problem persists.",
-                    {},
-                )
-
-    def run_pmo_sharepoint_crew(
-        self, query: str = "Search SharePoint documents"
-    ) -> str:
-        """
-        Run a CrewAI crew with MCP SharePoint server tools (PMO SharePoint only)
-
-        Args:
-            query:  The SharePoint-related query to process
-
-        Returns:
-            The crew's response
-        """
-        if not self.pmo_sharepoint_server_path.exists():
-            raise FileNotFoundError(
-                f"PMO SharePoint server not found at {self.pmo_sharepoint_server_path}"
+            logger.error(
+                f"Error in CrewAI MCP {dept_key} SharePoint integration: {error_msg}"
             )
-
-        logger.info(f"Starting CrewAI MCP SharePoint integration for query: {query}")
-        logger.info(f"Using PMO SharePoint server:  {self.pmo_sharepoint_server_path}")
-        # **CRITICAL FIX: Initialize adapter with current environment containing USER_JWT_TOKEN**
-        logger.info(
-            "🔄 Initializing fresh SharePoint adapter with user token from environment"
-        )
-
-        try:
-            # Create adapter with current environment (includes USER_JWT_TOKEN set by set_user_token())
-            pmo_sharepoint_params = StdioServerParameters(
-                command="python",
-                args=[str(self.pmo_sharepoint_server_path)],
-                env=dict(os.environ),  # Fresh environment snapshot with USER_JWT_TOKEN
-            )
-
-            # Use context manager for automatic cleanup
-            adapter = MCPServerAdapter(pmo_sharepoint_params)
-            mcp_tools = adapter.__enter__()  # Get the tools from adapter
-
-            logger.info(
-                f"✅ SharePoint adapter initialized with {len(list(mcp_tools))} tools"
-            )
-            logger.info(
-                f"Available MCP SharePoint tools: {[tool.name for tool in mcp_tools]}"
-            )
-
-            # Create Azure OpenAI LLM
-            llm = self.get_azure_llm_config()
-
-            # Create SharePoint specialist agent with MCP tools
-            sharepoint_agent = Agent(
-                role="SharePoint Document Specialist",
-                goal="Find and retrieve relevant information from SharePoint using FAST search or list files in specific folders",
-                backstory="""I am a SharePoint document specialist who uses the Microsoft Graph Search API for lightning-fast document searches and folder listings.
-
-    🚨 CRITICAL RULES:
-    1. For LISTING/COUNTING files in a specific folder → Use pmo_list_folder_contents
-    2. For SEARCHING content across documents → Use pmo_search_documents_fast
-    3. If search snippet doesn't have the complete answer, use pmo_get_document_by_id to get full content
-    4. NEVER answer from training data - ONLY from SharePoint results
-    5. If no documents found, say so - don't make up answers
-    
-    RESPONSE FORMAT:
-    - Provide ONLY the final answer extracted from SharePoint
-    - Do NOT show your reasoning process ("Thought:", "Action:", etc.)
-    - Include document name and source when applicable
-    - Be direct and concise""",
-                tools=mcp_tools,
-                llm=llm,
-                verbose=CREW_VERBOSE,
-                max_iter=5,
-                allow_delegation=False,
-            )
-
-            # Create SharePoint task with smart routing
-            sharepoint_task = Task(
-                description=f"""Retrieve information from SharePoint for: {query}
-
-    🔍 STEP 1 - DETERMINE REQUEST TYPE:
-    
-    A) If asking to LIST/COUNT files in a SPECIFIC FOLDER (keywords: "list", "show files", "count", "how many files", "in the folder", "in folder"):
-       → Use pmo_list_folder_contents
-       → Extract folder name from query (e.g., "Canchat Demo", "Documents/Reports")
-       → Call: pmo_list_folder_contents(folder_path="<folder_name>")
-       → If successful: Return the list of files found
-       → If folder not found: FALLBACK to pmo_search_documents_fast(query="<folder_name>", limit=10) to find documents
-    
-    B) If asking for CONTENT/INFORMATION ABOUT something (keywords: "tell me about", "what is", "explain", "information about", "details on"):
-       → STEP 1: Use pmo_search_documents_fast
-         • Call: pmo_search_documents_fast(query="{query}", limit=10)
-       
-       → STEP 2: Analyze results:
-         • If ANY FILES found (is_folder=false): GO TO STEP 3
-         • If ONLY folders found (all is_folder=true): GO TO STEP 4
-       
-       → STEP 3: Process FILES:
-         • If file has useful summary: Extract and respond
-         • If need full content: Use pmo_get_document_by_id(web_url=..., item_id=...)
-         • DONE - provide answer to user
-       
-       → STEP 4: MANDATORY REFINED SEARCH (when only folders found):
-         • Try search with hyphenated version: pmo_search_documents_fast(query="Budget-2025", limit=10)
-         • If no files, try: pmo_search_documents_fast(query="Budget 2025 pdf", limit=10)
-         • If files found: Use pmo_get_document_by_id to retrieve content
-         • If still no files after 2 refined searches: Tell user no document files found, only folders exist
-       
-       → NEVER try to retrieve folder content with pmo_get_document_by_id
-
-    🚨 ABSOLUTE RULES:
-    - For "Tell me about X" queries: Prioritize finding DOCUMENT CONTENT, not folder structure
-    - Search returns folders + files: Use the FILES first, ignore folders unless no files exist
-    - Search returns ONLY folders: Try refined search with specific terms before listing folder contents
-    - Only use pmo_get_document_by_id for actual FILES (is_folder=false)
-    - Do NOT retry the same tool with same input more than once
-    - Include document names and sources in your final answer
-    - If you get an error suggesting to use search, DO IT - don't give up
-    - If you receive a permission/access denied error (🔒), STOP and tell the user they don't have access
-    - Do NOT say "no information found" when it's actually a permissions issue
-    - 404 errors on folders mean you tried to get a folder as a document - use pmo_list_folder_contents instead
-                """,
-                expected_output="""A DIRECT, CONCISE answer to the user's question without showing any reasoning process.
-
-    FORMAT REQUIREMENTS:
-    - Start immediately with the answer (NO "Thought:", "Action:", or process explanations)
-    - Extract the key information from the search results
-    - Include document name and source for credibility
-    - Keep response focused on what was asked
-    - Maximum 2-3 sentences unless more detail is specifically requested
-
-    EXAMPLE RESPONSES:
-    - Success: "Canada's new high-speed railway is proposed to span approximately 1,000 km, according to the document '2025-12-05-Alto-Letter to MPO.pdf' from the Major Projects Office."
-    - Permission Error: "You do not have permission to access the requested documents. Please contact your SharePoint administrator for access."
-    - Not Found: "No documents found matching your query in accessible SharePoint locations."
-
-    AVOID:  
-    - Showing reasoning ("Thought:", "I will use tool X")
-    - Dumping entire document contents
-    - Being overly verbose
-    - Including process descriptions
-    - Saying "no information found" when it's a permissions issue""",
-                agent=sharepoint_agent,
-            )
-
-            # Create and execute crew
-            sharepoint_crew = Crew(
-                agents=[sharepoint_agent],
-                tasks=[sharepoint_task],
-                process=Process.sequential,
-                verbose=CREW_VERBOSE,
-            )
-
-            # Execute the crew
-            logger.info("Executing CrewAI SharePoint crew...")
-            result = sharepoint_crew.kickoff()
-
-            # Cleanup adapter
-            try:
-                adapter.__exit__(None, None, None)
-                logger.info("✅ Cleaned up SharePoint adapter")
-            except Exception as e:
-                logger.warning(f"Failed to cleanup adapter: {e}")
-
-            token_usage = _extract_token_usage(result)
-            return str(result), token_usage
-
-        except Exception as e:
-            error_msg = str(e)
-            logger.error(f"Error in CrewAI MCP SharePoint integration: {error_msg}")
 
             # Provide specific error messages based on the type of failure
             if (
@@ -772,27 +610,19 @@ class CrewMCPManager:
 
     def run_intelligent_crew(self, query: str, selected_tools: list = None) -> tuple:
         """
-        Intelligent router crew that analyzes the query and makes smart routing decisions
-        to coordinate with appropriate specialist agents (time, news, etc.) based on the
-        user's actual needs and intent, not keywords.
+        Route a query to the appropriate specialist crew based on selected_tools.
 
         Args:
-            query: The query to process
-            selected_tools: List of tool IDs selected by the user (optional)
+            query: The query to process.
+            selected_tools: List of tool IDs selected by the user (optional).
 
         Returns:
-            A 3-tuple of (result_str, token_usage_dict, mcp_process_name) where:
-            - result_str: the crew's text response
-            - token_usage_dict: dict with prompt_tokens, completion_tokens, total_tokens
-            - mcp_process_name: the MCP server/process that handled the query (or None)
+            A 3-tuple of (result_str, token_usage_dict, mcp_process_name).
         """
         logger.info(f"Starting intelligent router for query: {query}")
         logger.info(f"Selected tools: {selected_tools}")
 
         try:
-            # Create Azure OpenAI LLM
-            llm = self.get_azure_llm_config()
-
             # Determine available specialists based on selected tools
             available_specialists = []
             if selected_tools:
@@ -803,23 +633,23 @@ class CrewMCPManager:
                     for tool in selected_tools
                 ):
                     available_specialists.append("NEWS")
-                if any(
-                    "mcp_mpo_sharepoint_server" in tool.lower()
-                    for tool in selected_tools
-                ):
-                    available_specialists.append("MPO_SHAREPOINT")
-                if any(
-                    "mcp_pmo_sharepoint_server" in tool.lower()
-                    for tool in selected_tools
-                ):
-                    available_specialists.append("PMO_SHAREPOINT")
+                # Detect any department SharePoint server dynamically.
+                # Tool IDs follow the pattern "mcp_{dept}_sharepoint_server_*".
+                for tool in selected_tools:
+                    m = re.match(r"mcp_([a-z0-9]+)_sharepoint_server", tool.lower())
+                    if m:
+                        dept = m.group(1).upper()
+                        specialist_key = f"{dept}_SHAREPOINT"
+                        if specialist_key not in available_specialists:
+                            available_specialists.append(specialist_key)
             else:
-                # If no tools selected, all specialists are available
+                # If no tools selected, only non-SharePoint specialists are available by default
                 available_specialists = ["TIME", "NEWS"]
 
             logger.info(f"Available specialists: {available_specialists}")
 
-            # FAST PATH: If user explicitly selected tools for a single specialist, skip router overhead
+            # FAST PATH: If user explicitly selected tools for a single specialist,
+            # skip router overhead and go straight to the specialist crew.
             if len(available_specialists) == 1:
                 specialist = available_specialists[0]
                 logger.info(
@@ -832,36 +662,37 @@ class CrewMCPManager:
                 elif specialist == "NEWS":
                     result_str, token_usage = self.run_news_crew(query)
                     return result_str, token_usage, "news_server"
-                elif specialist == "MPO_SHAREPOINT":
-                    result_str, token_usage = self.run_mpo_sharepoint_crew(query)
-                    return result_str, token_usage, "mpo_sharepoint_server"
-                elif specialist == "PMO_SHAREPOINT":
-                    result_str, token_usage = self.run_pmo_sharepoint_crew(query)
-                    return result_str, token_usage, "pmo_sharepoint_server"
+                elif specialist.endswith("_SHAREPOINT"):
+                    dept = specialist[: -len("_SHAREPOINT")]
+                    result_str, token_usage = self.run_sharepoint_crew(dept, query)
+                    return result_str, token_usage, f"{dept.lower()}_sharepoint_server"
 
-            # Multiple specialists - simple routing logic
+            # Multiple specialists - simple priority routing
             logger.info("Multiple specialists available - using simple routing")
 
-            # For multi-specialist queries, just default to first available
-            # In practice, the FAST PATH handles 99% of real queries
             if "TIME" in available_specialists:
                 result_str, token_usage = self.run_time_crew(query)
                 return result_str, token_usage, "time_server"
             elif "NEWS" in available_specialists:
                 result_str, token_usage = self.run_news_crew(query)
                 return result_str, token_usage, "news_server"
-            elif "MPO_SHAREPOINT" in available_specialists:
-                result_str, token_usage = self.run_mpo_sharepoint_crew(query)
-                return result_str, token_usage, "mpo_sharepoint_server"
-            elif "PMO_SHAREPOINT" in available_specialists:
-                result_str, token_usage = self.run_pmo_sharepoint_crew(query)
-                return result_str, token_usage, "pmo_sharepoint_server"
             else:
-                return (
-                    "I apologize, but I was unable to process your request at this time.",
-                    {},
-                    None,
-                )
+                # Route to the first available SharePoint specialist
+                for specialist in available_specialists:
+                    if specialist.endswith("_SHAREPOINT"):
+                        dept = specialist[: -len("_SHAREPOINT")]
+                        result_str, token_usage = self.run_sharepoint_crew(dept, query)
+                        return (
+                            result_str,
+                            token_usage,
+                            f"{dept.lower()}_sharepoint_server",
+                        )
+
+            return (
+                "I apologize, but I was unable to process your request at this time.",
+                {},
+                None,
+            )
 
         except Exception as e:
             logger.error(f"Error in intelligent routing: {e}")
@@ -869,35 +700,39 @@ class CrewMCPManager:
             logger.info("Using emergency fallback routing...")
 
             if selected_tools:
-                # Use selected tools to determine routing
                 has_time = any("time" in tool.lower() for tool in selected_tools)
                 has_news = any(
                     "news" in tool.lower() or "headline" in tool.lower()
                     for tool in selected_tools
                 )
 
-                if has_time and not has_news:
-                    logger.info("Emergency fallback: TIME only")
+                if has_time:
+                    logger.info("Emergency fallback: TIME")
                     result_str, token_usage = self.run_time_crew(query)
                     return result_str, token_usage, "time_server"
-                elif has_news and not has_time:
-                    logger.info("Emergency fallback: NEWS only")
+                elif has_news:
+                    logger.info("Emergency fallback: NEWS")
                     result_str, token_usage = self.run_news_crew(query)
                     return result_str, token_usage, "news_server"
-                elif has_time and has_news:
-                    # Both selected - default to time (or could be news, doesn't matter)
-                    logger.info("Emergency fallback: TIME (both selected)")
-                    result_str, token_usage = self.run_time_crew(query)
-                    return result_str, token_usage, "time_server"
                 else:
-                    logger.info("Emergency fallback: TIME (default)")
-                    result_str, token_usage = self.run_time_crew(query)
-                    return result_str, token_usage, "time_server"
-            else:
-                # No tools selected - default to time
-                logger.info("Emergency fallback: TIME (no tools selected)")
-                result_str, token_usage = self.run_time_crew(query)
-                return result_str, token_usage, "time_server"
+                    # Try SharePoint fallback
+                    for tool in selected_tools:
+                        m = re.match(r"mcp_([a-z0-9]+)_sharepoint_server", tool.lower())
+                        if m:
+                            dept = m.group(1).upper()
+                            logger.info(f"Emergency fallback: {dept} SHAREPOINT")
+                            result_str, token_usage = self.run_sharepoint_crew(
+                                dept, query
+                            )
+                            return (
+                                result_str,
+                                token_usage,
+                                f"{dept.lower()}_sharepoint_server",
+                            )
+
+            logger.info("Emergency fallback: TIME (default)")
+            result_str, token_usage = self.run_time_crew(query)
+            return result_str, token_usage, "time_server"
 
     def _combine_specialist_responses(
         self, responses: list, original_query: str
@@ -931,23 +766,22 @@ class CrewMCPManager:
         """Get all available MCP servers dynamically"""
         servers = {}
 
-        # Define known servers (using MPO SharePoint, not generic SharePoint)
+        # Add any other fastmcp_*.py servers discovered in the servers directory
+        servers_dir = self.backend_dir / "mcp_backend" / "servers"
+        for server_file in servers_dir.glob("fastmcp_*.py"):
+            server_name = server_file.stem
+            servers[server_name] = server_file
+            logger.info(f"Discovered additional MCP server: {server_name}")
+
+        # Fixed known servers
         known_servers = {
             "time_server": self.time_server_path,
             "news_server": self.news_server_path,
-            "mpo_sharepoint_server": self.mpo_sharepoint_server_path,
-            "pmo_sharepoint_server": self.pmo_sharepoint_server_path,
         }
+        # Dynamically discovered SharePoint servers
+        for dept_key, path in self._sharepoint_server_paths.items():
+            known_servers[f"{dept_key.lower()}_sharepoint_server"] = path
 
-        # Add any other fastmcp_*.py servers found in the backend directory
-        servers_dir = self.backend_dir / "mcp_backend" / "servers"
-        for server_file in servers_dir.glob("fastmcp_*.py"):
-            server_name = server_file.stem  # Remove .py extension
-            if server_name not in known_servers:
-                servers[server_name] = server_file
-                logger.info(f"Discovered additional MCP server: {server_name}")
-
-        # Add known servers
         servers.update(known_servers)
 
         # Filter to only existing servers
@@ -955,18 +789,16 @@ class CrewMCPManager:
 
     def get_available_tools(self) -> list:
         """Get list of available MCP tools from all initialized adapters"""
-        global _time_server_adapter, _news_server_adapter, _mpo_sharepoint_server_adapter, _pmo_sharepoint_server_adapter
+        global _time_server_adapter, _news_server_adapter, _sharepoint_adapters
 
         all_tools = []
 
-        # Only expose the 3 official tools: time, news, and MPO SharePoint
-        # The adapters already contain the tools from __enter__()
         adapters = {
             "time_server": _time_server_adapter,
             "news_server": _news_server_adapter,
-            "mpo_sharepoint_server": _mpo_sharepoint_server_adapter,
-            "pmo_sharepoint_server": _pmo_sharepoint_server_adapter,
         }
+        for dept_key, adapter in _sharepoint_adapters.items():
+            adapters[f"{dept_key.lower()}_sharepoint_server"] = adapter
 
         for server_name, tools in adapters.items():
             if tools is not None:

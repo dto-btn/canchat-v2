@@ -439,17 +439,13 @@ async def get_builtin_servers(request: Request, user=Depends(get_admin_user)):
         server_names = request.app.state.mcp_manager.get_server_names()
         servers = []
 
-        # Only include actual built-in servers
-        builtin_server_names = [
-            "time_server",
-            "news_server",
-            "mpo_sharepoint_server",
-            "pmo_sharepoint_server",
-        ]
-
         for name in server_names:
-            if name not in builtin_server_names:
-                continue  # Skip non-built-in servers
+            # Only expose built-in servers (time, news, and any *_sharepoint_server)
+            if not (
+                name in ("time_server", "news_server")
+                or name.endswith("_sharepoint_server")
+            ):
+                continue
 
             status = request.app.state.mcp_manager.get_server_status(name)
             config = request.app.state.mcp_manager.server_configs.get(name, {})
@@ -483,10 +479,14 @@ def get_server_display_name(name: str) -> str:
     display_names = {
         "time_server": "MCP: Current Time",
         "news_server": "MCP: News Headlines",
-        "mpo_sharepoint_server": "MCP: MPO SharePoint",
-        "pmo_sharepoint_server": "MCP: PMO SharePoint",
     }
-    return display_names.get(name, name.replace("_", " ").title())
+    if name in display_names:
+        return display_names[name]
+    # Dynamic SharePoint servers: {dept}_sharepoint_server → "MCP: {DEPT} SharePoint"
+    if name.endswith("_sharepoint_server"):
+        dept = name[: -len("_sharepoint_server")].upper()
+        return f"MCP: {dept} SharePoint"
+    return name.replace("_", " ").title()
 
 
 def get_server_description(name: str) -> str:
@@ -494,10 +494,14 @@ def get_server_description(name: str) -> str:
     descriptions = {
         "time_server": "Provides current time and timezone information",
         "news_server": "Provides latest news headlines from NewsDesk",
-        "mpo_sharepoint_server": "Provides MPO SharePoint document search and retrieval",
-        "pmo_sharepoint_server": "Provides PMO SharePoint document search and retrieval",
     }
-    return descriptions.get(name, f"Built-in MCP server: {name}")
+    if name in descriptions:
+        return descriptions[name]
+    # Dynamic SharePoint servers
+    if name.endswith("_sharepoint_server"):
+        dept = name[: -len("_sharepoint_server")].upper()
+        return f"Provides {dept} SharePoint document search and retrieval"
+    return f"Built-in MCP server: {name}"
 
 
 @router.post("/servers/builtin/{server_name}/restart")
@@ -506,14 +510,11 @@ async def restart_builtin_server(
 ):
     """Restart a built-in MCP server"""
     try:
-        # Check if this is a valid built-in server
-        builtin_server_names = [
-            "time_server",
-            "news_server",
-            "mpo_sharepoint_server",
-            "pmo_sharepoint_server",
-        ]
-        if server_name not in builtin_server_names:
+        # Validate that this is a built-in server
+        if not (
+            server_name in ("time_server", "news_server")
+            or server_name.endswith("_sharepoint_server")
+        ):
             raise HTTPException(
                 status_code=404, detail=f"Built-in server '{server_name}' not found"
             )

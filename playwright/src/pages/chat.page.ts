@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import { BasePage, type Language } from './base.page';
 import { type Page, type Locator, expect } from '@playwright/test';
 
@@ -11,6 +13,7 @@ export class ChatPage extends BasePage {
 	readonly responseMessageGenerating: Locator;
 	readonly responseSelector: string = '#response-content-container';
 	chatStatusDescription!: Locator;
+	readonly headerNewChatButton: Locator;
 	readonly chatHistoryItems: Locator;
 	readonly searchInput: Locator;
 	readonly clearSearchButton: Locator;
@@ -32,6 +35,7 @@ export class ChatPage extends BasePage {
 		this.responseMessageGenerating = page.locator('.space-y-2');
 		this.responseSelector = '#response-content-container';
 		this.chatStatusDescription = page.locator('.status-description');
+		this.headerNewChatButton = page.locator('#new-chat-button');
 		this.chatHistoryItems = page.locator('#sidebar a[href^="/c/"]');
 		this.searchInput = page.locator('#chat-search input');
 		this.clearSearchButton = page.locator('#clear-search-button');
@@ -46,6 +50,10 @@ export class ChatPage extends BasePage {
 
 		this.updateLanguage(lang);
 	}
+
+	// ===================================================
+	// Chat Helpers
+	// ===================================================
 
 	/**
 	 * Override to update Chat-specific locators
@@ -83,6 +91,16 @@ export class ChatPage extends BasePage {
 	async newChat() {
 		await this.toggleSidebar(true);
 		await this.sidebarNewChatButton.click();
+		await expect(this.messageInput).toBeVisible();
+	}
+
+	/**
+	 * Starts a new chat session using the header button
+	 */
+	async newChatFromHeader() {
+		await this.toggleSidebar(false);
+		await this.headerNewChatButton.waitFor({ state: 'visible' });
+		await this.headerNewChatButton.click();
 		await expect(this.messageInput).toBeVisible();
 	}
 
@@ -157,6 +175,128 @@ export class ChatPage extends BasePage {
 	}
 
 	/**
+	 * Opens the model selector dropdown for a specific selector index
+	 */
+	private async openModelSelector(selectorIndex: number = 0): Promise<Locator> {
+		const modelDropdown = this.page.locator(`#model-selector-${selectorIndex}-button`);
+		await modelDropdown.waitFor({ state: 'visible' });
+		await modelDropdown.click();
+		const searchInput = this.page.locator('#model-search-input');
+		await searchInput.waitFor({ state: 'visible' });
+		return searchInput;
+	}
+
+	/**
+	 * Returns the model list items inside the dropdown
+	 */
+	private getModelListItems(): Locator {
+		return this.page
+			.locator('div.max-h-64 button')
+			.filter({ has: this.page.locator('img[alt="Model"]') });
+	}
+
+	/**
+	 * Returns the number of available models in the selector
+	 */
+	async getAvailableModelCount(): Promise<number> {
+		const searchInput = await this.openModelSelector(0);
+		const count = await this.getModelListItems().count();
+		await this.page.keyboard.press('Escape');
+		await searchInput.waitFor({ state: 'hidden' }).catch(() => {});
+		return count;
+	}
+
+	/**
+	 * Returns the number of models matching a search term
+	 */
+	async getFilteredModelCount(selectorIndex: number, searchTerm: string): Promise<number> {
+		const searchInput = await this.openModelSelector(selectorIndex);
+		await searchInput.fill(searchTerm);
+		const count = await this.getModelListItems().count();
+		await this.page.keyboard.press('Escape');
+		await searchInput.waitFor({ state: 'hidden' }).catch(() => {});
+		return count;
+	}
+
+	/**
+	 * Add a model by index using keyboard navigation
+	 * @param selectorIndex The model selector index to target
+	 * @param modelIndex The index of the model in the list (0-based)
+	 */
+	async addModelByIndex(selectorIndex: number, modelIndex: number): Promise<string> {
+		const searchInput = await this.openModelSelector(selectorIndex);
+		await searchInput.fill('');
+		for (let i = 0; i < modelIndex; i += 1) {
+			await this.page.keyboard.press('ArrowDown');
+		}
+		await this.page.keyboard.press('Enter');
+		await searchInput.waitFor({ state: 'hidden' }).catch(() => {});
+		return await this.getSelectedModelLabel(selectorIndex);
+	}
+
+	/**
+	 * Selects a model using a search term
+	 */
+	async selectModelBySearch(selectorIndex: number, searchTerm: string): Promise<string> {
+		const searchInput = await this.openModelSelector(selectorIndex);
+		await searchInput.fill(searchTerm);
+		const modelItems = this.getModelListItems();
+		await modelItems.first().waitFor({ state: 'visible' });
+		await this.page.keyboard.press('Enter');
+		await searchInput.waitFor({ state: 'hidden' }).catch(() => {});
+		return await this.getSelectedModelLabel(selectorIndex);
+	}
+
+	/**
+	 * Returns the selected model label for a given selector index
+	 */
+	async getSelectedModelLabel(selectorIndex: number): Promise<string> {
+		const label = this.page.locator(`#model-selector-${selectorIndex}-button span`).first();
+		await label.waitFor({ state: 'visible' });
+		return (await label.innerText()).trim();
+	}
+
+	/**
+	 * Adds a new model selector (up to 3)
+	 */
+	async clickModelSelector(): Promise<void> {
+		// The label is translated but not the name of the button
+		//const addLabel = this.getTranslation('Add Model');
+		await this.page.getByRole('button', { name: 'Add Model' }).click();
+	}
+
+	/**
+	 * Removes a model selector by index (1 or 2)
+	 */
+	async removeModelSelector(selectorIndex: number): Promise<void> {
+		// The button does not have a proper translation
+		//const removeLabel = this.getTranslation('Remove Model');
+		const removeButton = this.page
+			.getByRole('button', { name: 'Remove Model' })
+			.nth(selectorIndex - 1);
+		await removeButton.click();
+	}
+
+	/**
+	 * Returns the model names of the most recent assistant responses
+	 */
+	async getLastAssistantModelNames(count: number = 1): Promise<string[]> {
+		const assistantMessages = this.page
+			.locator('div[id^="message-"]')
+			.filter({ has: this.page.locator('.chat-assistant') });
+		const total = await assistantMessages.count();
+		const start = Math.max(0, total - count);
+		const names: string[] = [];
+		for (let i = start; i < total; i += 1) {
+			const container = assistantMessages.nth(i);
+			const nameSpan = container.locator('span.line-clamp-1').first();
+			await nameSpan.waitFor({ state: 'visible' });
+			names.push((await nameSpan.innerText()).trim());
+		}
+		return names;
+	}
+
+	/**
 	 * Retrieves the chat status description displayed above the answer
 	 * Example is wiki grounding "Enhanced with 5 ressources"
 	 */
@@ -165,12 +305,13 @@ export class ChatPage extends BasePage {
 	}
 
 	/**
-	 * Retrieves the text content of the most recent chat bubble
+	 * Retrieves the full text content of the most recent chat assistant response bubble
 	 */
 	async getLastMessageText(): Promise<string> {
-		await expect(this.responseMessages.last()).toBeVisible();
-		await expect(this.responseMessageGenerating).not.toBeVisible();
-		return await this.responseMessages.last().innerText();
+		const lastContainer = this.page.locator('#response-content-container').last();
+		await expect(lastContainer).toBeVisible();
+		await this.waitForGeneration();
+		return await lastContainer.innerText();
 	}
 
 	/**
@@ -386,6 +527,10 @@ export class ChatPage extends BasePage {
 		await copyBtn.click({ force: true });
 	}
 
+	// ===================================================
+	// Chat (Answer) Helpers
+	// ===================================================
+
 	/**
 	 * Prepares to interact with answer buttons by scrolling and hovering
 	 */
@@ -544,6 +689,37 @@ export class ChatPage extends BasePage {
 	}
 
 	/**
+	 * Stops generation by clicking the Stop button
+	 */
+	async stopGeneration(): Promise<void> {
+		await this.stopGenerationButton.click();
+		await this.waitToSettle(500);
+	}
+
+	/**
+	 * Clicks the continue response button
+	 */
+	async continueResponse(): Promise<void> {
+		const label = this.getTranslation('Continue Response');
+		await this.clickAnswerButton(label);
+		await this.page.waitForTimeout(3000);
+		await this.waitForGeneration();
+	}
+
+	/**
+	 * Clicks regenerate button for the last answer
+	 */
+	async regenerateAnswer(): Promise<void> {
+		const label = this.getTranslation('Regenerate');
+		await this.clickAnswerButton(label);
+		await this.waitForGeneration();
+	}
+
+	// ===================================================
+	// Feedback Modal Helpers
+	// ===================================================
+
+	/**
 	 * Clicks thumbs up (good response) button
 	 */
 	async clickGoodResponse(): Promise<void> {
@@ -619,32 +795,9 @@ export class ChatPage extends BasePage {
 		await this.waitToSettle(500);
 	}
 
-	/**
-	 * Stops generation by clicking the Stop button
-	 */
-	async stopGeneration(): Promise<void> {
-		await this.stopGenerationButton.click();
-		await this.waitToSettle(500);
-	}
-
-	/**
-	 * Clicks the continue response button
-	 */
-	async continueResponse(): Promise<void> {
-		const label = this.getTranslation('Continue Response');
-		await this.clickAnswerButton(label);
-		await this.page.waitForTimeout(3000);
-		await this.waitForGeneration();
-	}
-
-	/**
-	 * Clicks regenerate button for the last answer
-	 */
-	async regenerateAnswer(): Promise<void> {
-		const label = this.getTranslation('Regenerate');
-		await this.clickAnswerButton(label);
-		await this.waitForGeneration();
-	}
+	// ===================================================
+	// Report an Issue Modal Helpers
+	// ===================================================
 
 	/**
 	 * Opens the Report Issue modal
@@ -707,6 +860,10 @@ export class ChatPage extends BasePage {
 		await this.waitToSettle(300);
 	}
 
+	// ===================================================
+	// Suggestion Modal Helpers
+	// ===================================================
+
 	/**
 	 * Opens the Suggestion Box modal
 	 */
@@ -759,6 +916,10 @@ export class ChatPage extends BasePage {
 		await this.page.getByRole('button', { name: cancelLabel }).click();
 		await this.waitToSettle(300);
 	}
+
+	// ===================================================
+	// Sidebar Helpers
+	// ===================================================
 
 	/**
 	 * Clicks on a chat history item by title or content
@@ -835,6 +996,289 @@ export class ChatPage extends BasePage {
 		const source = this.chatHistoryItems.filter({ hasText: chatTitle }).first();
 		const target = this.page.locator('div').filter({ hasText: folderName }).first();
 		await source.dragTo(target);
+		await this.waitToSettle(500);
+	}
+
+	// ===================================================
+	// Web Search Helpers
+	// ===================================================
+
+	/**
+	 * Enables the Web Search tool via the More menu
+	 */
+	async enableWebSearch() {
+		await this.toggleChatTool(this.getTranslation('Web Search'), true);
+	}
+
+	/**
+	 * Returns the web search status container rendered above the response message.
+	 */
+	getWebSearchQuery(): Locator {
+		return this.page.locator('div.status-description');
+	}
+
+	/**
+	 * Expands the web search accordion (Collapsible component inside WebSearchResults.svelte)
+	 * to reveal the list of searched URLs.
+	 */
+	async expandWebSearchAccordion() {
+		const trigger = this.page.locator('div.status-description .cursor-pointer').last();
+		await trigger.waitFor({ state: 'visible' });
+		await trigger.click();
+		// Wait for the slide-in transition to finish
+		await this.waitToSettle(500);
+	}
+
+	/**
+	 * Returns all anchor links rendered inside the expanded web search accordion.
+	 */
+	getWebSearchLinks(): Locator {
+		return this.page.locator('div.status-description a[href][target="_blank"]');
+	}
+
+	/**
+	 * Returns locators for inline citations embedded in the response text.
+	 */
+	getInlineCitations(): Locator {
+		const lastResponse = this.page.locator('#response-content-container').last();
+		return lastResponse.locator('button[class*="translate-y-[2px]"], a[href][target="_blank"]');
+	}
+
+	/**
+	 * Returns locators for source citation chips rendered below a response by Citations.svelte.
+	 */
+	getBottomCitations(): Locator {
+		return this.page.locator('button[id^="source-"]');
+	}
+
+	/**
+	 * Clicks a source citation chip and returns the CitationsModal locator (div.modal).
+	 * @param index The index of the citation chip to click (0-indexed)
+	 */
+	async clickBottomCitation(index: number = 0): Promise<Locator> {
+		const citations = this.page.locator('button[id^="source-"]');
+		await citations.nth(index).click();
+		await this.waitToSettle(500);
+		return this.page.locator('div.modal').last();
+	}
+
+	// ===================================================
+	// File Item Modal Helpers
+	// ===================================================
+
+	/**
+	 * Clicks an uploaded file to open the FileItemModal.
+	 * @param index The index of the file chip to click (0-indexed)
+	 */
+	async clickUploadedFileChip(index: number = 0): Promise<void> {
+		const removeLabel = this.getTranslation('Remove File');
+		const fileChip = this.page
+			.locator(`button:has(button[aria-label="${removeLabel}"])`)
+			.nth(index);
+		await fileChip.waitFor({ state: 'visible' });
+		await fileChip.click({ position: { x: 40, y: 25 } });
+		await this.waitToSettle(500);
+	}
+
+	/**
+	 * In the open FileItemModal, enables the "Using Entire Document" toggle so the full
+	 * file content is injected as context instead of using segmented RAG retrieval.
+	 */
+	async enableFileFullContent(): Promise<void> {
+		const usingEntireDoc = this.getTranslation('Using Entire Document');
+		const switchEl = this.page.locator('[role="switch"]');
+		await switchEl.waitFor({ state: 'visible' });
+		const isChecked = (await switchEl.getAttribute('data-state')) === 'checked';
+		if (!isChecked) {
+			await switchEl.click();
+		}
+		await expect(this.page.getByText(usingEntireDoc)).toBeVisible();
+		await this.waitToSettle(300);
+	}
+
+	/**
+	 * Closes the FileItemModal by clicking the X button in the modal header.
+	 */
+	async closeFileItemModal(): Promise<void> {
+		const closeBtn = this.page.locator('div.flex.items-start.justify-between button').first();
+		await closeBtn.waitFor({ state: 'visible' });
+		await closeBtn.click();
+		await this.waitToSettle(300);
+	}
+
+	// ===================================================
+	// Document Upload Helpers
+	// ===================================================
+
+	/**
+	 * Returns a locator for the upload spinner (spinning circle on file items)
+	 */
+	get uploadSpinner(): Locator {
+		return this.page.locator('.spinner_ajPY');
+	}
+
+	/**
+	 * Returns a locator for image thumbnails attached to the current prompt.
+	 */
+	get imageThumbnails(): Locator {
+		return this.page.locator('img[alt="input"]');
+	}
+
+	/**
+	 * Checks if the upload progress spinner is currently visible on any file item
+	 * @returns true if a spinning circle is visible, false otherwise
+	 */
+	async isUploadSpinnerVisible(): Promise<boolean> {
+		try {
+			await expect(async () => {
+				let anyVisible = false;
+				for (const spinner of await this.uploadSpinner.all()) {
+					if (await spinner.isVisible()) {
+						anyVisible = true;
+						break;
+					}
+				}
+				expect(anyVisible).toBe(true);
+			}).toPass({ timeout: 10000 });
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
+	/**
+	 * Waits for all upload spinners to disappear
+	 * @param timeout Maximum time to wait (default: 60s)
+	 */
+	async waitForUploadSpinnerToDisappear(timeout: number = 60000): Promise<void> {
+		await expect(async () => {
+			for (const spinner of await this.uploadSpinner.all()) {
+				await expect(spinner).toBeHidden();
+			}
+		}).toPass({ timeout });
+	}
+
+	/**
+	 * Waits for at least one image thumbnail to appear in the prompt area.
+	 * @param timeout Maximum time to wait (default: 10s)
+	 */
+	async waitForImageThumbnailToAppear(timeout: number = 10000): Promise<void> {
+		await this.imageThumbnails.first().waitFor({ state: 'visible', timeout });
+	}
+
+	/**
+	 * Unified wait for upload completion that handles both images and documents.
+	 * - For images, wait for a thumbnail to appear
+	 * - For documents, wait for the upload spinner to disappear
+	 * @param type 'image' to wait for thumbnail, 'document' to wait for spinner, 'auto' to detect
+	 * @param timeout Maximum time to wait (default: 60s)
+	 */
+	async waitForUploadComplete(
+		type: 'image' | 'document' | 'auto' = 'auto',
+		timeout: number = 60000
+	): Promise<void> {
+		if (type === 'image') {
+			await this.waitForImageThumbnailToAppear(timeout);
+		} else if (type === 'document') {
+			await this.waitForUploadSpinnerToDisappear(timeout);
+		} else {
+			// Auto-detect wait for either a new image or spinners to clear
+			const hasSpinners = (await this.uploadSpinner.count()) > 0;
+			if (hasSpinners) {
+				await this.waitForUploadSpinnerToDisappear(timeout);
+			} else {
+				// No spinners means either an image was added or upload hasn't started yet
+				await this.waitForImageThumbnailToAppear(Math.min(timeout, 10000));
+			}
+		}
+	}
+
+	/**
+	 * Returns the number of files attached to the current prompt.
+	 * Counts both document dismiss buttons and image thumbnails
+	 */
+	async getUploadedFileCount(): Promise<number> {
+		const removeLabel = this.getTranslation('Remove File');
+		const documentCount = await this.page.locator(`button[aria-label="${removeLabel}"]`).count();
+		const imageCount = await this.imageThumbnails.count();
+		return documentCount + imageCount;
+	}
+
+	/**
+	 * Removes a specific uploaded file from the prompt area.
+	 * Handles both document items and image thumbnails
+	 * @param index The index of the file to remove
+	 */
+	async removeUploadedFile(index: number = 0) {
+		const removeLabel = this.getTranslation('Remove File');
+		const documentDismissButtons = this.page.locator(`button[aria-label="${removeLabel}"]`);
+		const documentCount = await documentDismissButtons.count();
+
+		if (index < documentCount) {
+			// Remove a document file item
+			await documentDismissButtons.nth(index).click();
+		} else {
+			// Remove an image thumbnail (index adjusted for documents)
+			const imageIndex = index - documentCount;
+			const imageContainer = this.imageThumbnails
+				.nth(imageIndex)
+				.locator('xpath=ancestor::div[contains(@class,"relative")][contains(@class,"group")]');
+			await imageContainer.hover();
+			await imageContainer.locator('button').click();
+		}
+		await this.waitToSettle(500);
+	}
+
+	/**
+	 * Uploads multiple files via the 'More' menu
+	 * @param filePaths Array of file paths
+	 */
+	async uploadMultipleFiles(filePaths: string[]) {
+		const fileChooserPromise = this.page.waitForEvent('filechooser');
+
+		await this.page.getByLabel('More').click();
+		await this.page.getByText(this.getTranslation('Upload Files')).click();
+
+		const fileChooser = await fileChooserPromise;
+		await fileChooser.setFiles(filePaths);
+	}
+
+	/**
+	 * Simulates file upload via drag and drop
+	 * @param filePath Path to the file to upload
+	 */
+	async uploadFileViaDragDrop(filePath: string) {
+		const buffer = fs.readFileSync(filePath);
+		const fileName = path.basename(filePath);
+		const mimeType = fileName.endsWith('.txt') ? 'text/plain' : 'application/octet-stream';
+		const base64Str = buffer.toString('base64');
+
+		// Wait for the drop target to be visible before dispatching the event
+		const dropTarget = this.page.locator('#chat-container');
+		await dropTarget.waitFor({ state: 'visible', timeout: 5000 });
+
+		await this.page.evaluate(
+			async ({ base64, name, mime }) => {
+				const dt = new DataTransfer();
+				const res = await fetch(`data:${mime};base64,${base64}`);
+				const blob = await res.blob();
+				const file = new File([blob], name, { type: mime });
+				dt.items.add(file);
+
+				const container = document.getElementById('chat-container');
+				if (!container) {
+					throw new Error('Drop target #chat-container not found');
+				}
+				const dropEvent = new DragEvent('drop', {
+					bubbles: true,
+					cancelable: true,
+					dataTransfer: dt
+				});
+				container.dispatchEvent(dropEvent);
+			},
+			{ base64: base64Str, name: fileName, mime: mimeType }
+		);
+
 		await this.waitToSettle(500);
 	}
 }

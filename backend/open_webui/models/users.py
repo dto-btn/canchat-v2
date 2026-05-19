@@ -7,10 +7,12 @@ from open_webui.internal.db import JSONField, get_db
 from open_webui.models.base import Base
 from open_webui.models.chats import Chats
 from open_webui.models.groups import Groups
+from open_webui.models.domains import Domain
+from open_webui.models.message_metrics import MessageMetric
 
 
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import BigInteger, Column, String, Text
+from sqlalchemy import BigInteger, Column, String, Text, and_, case, func, or_
 
 # Add logger for the users module
 logger = getLogger(__name__)
@@ -438,6 +440,73 @@ class UsersTable:
         except Exception as e:
             logger.error(f"Failed to get range metrics: {e}")
             return {"total_users": 0, "active_users": 0}
+
+    def get_users_count_by_domain(
+        self,
+        start_timestamp: int,
+        end_timestamp: int,
+        domain: Optional[str] = None,
+    ) -> list[dict[str, str | int | None]]:
+        """Return total and active user counts grouped by domain for a date range."""
+        with get_db() as db:
+            total_condition = User.created_at < end_timestamp
+            active_condition = and_(
+                User.last_active_at >= start_timestamp,
+                User.last_active_at < end_timestamp,
+            )
+
+            query = db.query(
+                User.domain,
+                Domain.description.label("description"),
+                func.sum(case((total_condition, 1), else_=0)).label("total_users"),
+                func.sum(case((active_condition, 1), else_=0)).label("active_users"),
+            ).select_from(User)
+
+            query = query.filter(or_(total_condition, active_condition))
+
+            if domain:
+                query = query.filter(User.domain == domain)
+
+            rows = (
+                query.outerjoin(Domain, User.domain == Domain.domain)
+                .group_by(User.domain, Domain.description)
+                .all()
+            )
+
+        return [
+            {
+                "domain": domain,
+                "department": description,
+                "total_users": total_users or 0,
+                "active_users": active_users or 0,
+            }
+            for domain, description, total_users, active_users in rows
+        ]
+
+    def get_prompt_users_by_domain(
+        self,
+        start_timestamp: int,
+        end_timestamp: int,
+        domain: Optional[str] = None,
+    ) -> dict[str, int]:
+        """Return a mapping of domain -> distinct prompt user count."""
+        with get_db() as db:
+            query = db.query(
+                MessageMetric.user_domain.label("domain"),
+                func.count(func.distinct(MessageMetric.user_id)).label(
+                    "prompt_user_count"
+                ),
+            ).filter(
+                MessageMetric.created_at >= start_timestamp,
+                MessageMetric.created_at < end_timestamp,
+            )
+
+            if domain:
+                query = query.filter(MessageMetric.user_domain == domain)
+
+            rows = query.group_by(MessageMetric.user_domain).all()
+
+        return {user_domain: count for user_domain, count in rows}
 
 
 Users = UsersTable()

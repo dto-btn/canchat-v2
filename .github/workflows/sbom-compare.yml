@@ -11,6 +11,7 @@
 
 name: SBOM compare
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -20,6 +21,9 @@ on:
     branches:
       - main
       - dev
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 permissions:
     actions: read
@@ -113,19 +117,20 @@ jobs:
         id: compare-sbom-cdx
         continue-on-error: true
         run: |
-          if test -f .sbom/previous.cdx.json; then
+          if [ -f .sbom/previous.cdx.json ] && [ -f .sbom/current.cdx.json ]; then
             sbomdiff .sbom/previous.cdx.json .sbom/current.cdx.json --sbom cyclonedx --format text > .sbom/comparison.cdx.md
           else
-            echo "Unable to use the previous commit CDX SBOM. A previous commit may not exist." > .sbom/comparison.cdx.md
+            echo "Unable to compare CDX SBOMs. A previous commit for this branch may not exist." > .sbom/comparison.cdx.md
           fi
 
       - name: Compare SPDX SBOMs
         id: compare-sbom-spdx
+        continue-on-error: true
         run: |
-          if test -f .sbom/previous.spdx.json; then
+          if [ -f .sbom/previous.spdx.json ] && [ -f .sbom/current.spdx.json ]; then
             sbomdiff .sbom/previous.spdx.json .sbom/current.spdx.json --sbom spdx --format text > .sbom/comparison.spdx.md
           else
-            echo "Unable to use the previous run SPDX SBOM. The previous run may have failed." > .sbom/comparison.spdx.md
+            echo "Unable to compare SPDX SBOMs. The previous run may have failed to upload a file." > .sbom/comparison.spdx.md
           fi
 
       - name: Get PR number

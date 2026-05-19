@@ -24,14 +24,21 @@
 		exportMetricsData,
 		getExportLogs
 	} from '$lib/apis/metrics';
+	import { getUserByDomain } from '$lib/apis/users';
 	import { Chart, registerables } from 'chart.js';
 	import { user } from '$lib/stores';
 	import QuestionMarkCircle from '$lib/components/icons/QuestionMarkCircle.svelte';
 	import { autoFormatNumber } from '$lib/utils';
+	import Spinner from '../common/Spinner.svelte';
+	import ChartDataLabels from 'chartjs-plugin-datalabels';
 
 	// Replace date-fns with native date formatting
 	function formatDate(date) {
 		return date.toISOString().split('T')[0]; // Returns YYYY-MM-DD format
+	}
+
+	function toEpoch(dateString: string): number {
+		return Math.floor(new Date(dateString).getTime() / 1000);
 	}
 
 	// Helper function to get minimum end date (at least one day after start date)
@@ -57,8 +64,57 @@
 		updateRangeMetrics();
 	}
 
+	function getYAxisSubLabel(item: { domain?: string; department?: string }): string {
+		return item.domain &&
+			item.department &&
+			(selectedDomain == null ||
+				selectedDomain === item.domain ||
+				selectedDomain === 'All' ||
+				selectedDomain === 'Tous')
+			? `${item.department}`
+			: '';
+	}
+
+	const yAxisSubLabelPlugin = {
+		id: 'yAxisSubLabel',
+		afterDraw: (chart: {
+			canvas?: { id?: string };
+			ctx: CanvasRenderingContext2D;
+			chartArea?: { left: number };
+			scales?: { y?: { getPixelForTick: (index: number) => number } };
+		}) => {
+			if (chart.canvas?.id !== 'departmentUsageChart') {
+				return;
+			}
+
+			const yScale = chart.scales?.y;
+			const labels = departmentUsageData.map((item) => getYAxisSubLabel(item));
+			const ctx = chart.ctx;
+			const isDark = document.documentElement.classList.contains('dark');
+			const color = isDark ? '#9ca3af' : '#6b7280';
+			const fontSize = 11;
+			const offsetY = 18;
+
+			ctx.save();
+			ctx.textAlign = 'right';
+			ctx.textBaseline = 'top';
+			ctx.fillStyle = color;
+			ctx.font = `${fontSize}px sans-serif`;
+
+			labels.forEach((text, index) => {
+				if (!text) return;
+				const y = yScale.getPixelForTick(index) + offsetY;
+				// Position at the left edge of the chart's plotting area with a small padding
+				const x = (chart.chartArea?.left ?? 0) - 12;
+				ctx.fillText(text, x, y);
+			});
+
+			ctx.restore();
+		}
+	};
+
 	// Register all Chart.js components
-	Chart.register(...registerables);
+	Chart.register(...registerables, ChartDataLabels, yAxisSubLabelPlugin);
 
 	const i18n = getI18n();
 	let unsubscribe: () => void;
@@ -86,6 +142,7 @@
 	// Loading states
 	let isLoadingTokensData = false;
 	let isLoadingTokensChart = false;
+	let isLoadingDepartmentChart: boolean = false;
 
 	// Model specific metrics
 	let modelPrompts: number = 0,
@@ -98,6 +155,7 @@
 		dailyTokensChart: any;
 	let modelPromptsChart: any;
 	let interPromptLatencyChart: any;
+	let userByDepartmentChart: any;
 
 	// Chart data
 	let enrolledUsersData: any[] = [];
@@ -106,8 +164,9 @@
 	let dailyTokensData: any[] = [];
 	let modelPromptsData: any[] = [];
 	let interPromptLatencyData: any = { bins: [], counts: [], total_latencies: 0 };
+	let departmentUsageData: any[] = [];
 
-	// For chart options
+	// For chart options (shared by all charts except department)
 	const chartOptions = {
 		responsive: true,
 		maintainAspectRatio: false,
@@ -117,12 +176,15 @@
 				labels: {
 					color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#1f2937'
 				},
-				onClick: null, // Disable the default click behavior
-				onHover: null // Also disable hover state changes
+				onClick: null,
+				onHover: null
 			},
 			tooltip: {
-				mode: 'index',
+				mode: 'nearest',
 				intersect: false
+			},
+			datalabels: {
+				display: false
 			}
 		},
 		scales: {
@@ -147,6 +209,112 @@
 						: 'rgba(0, 0, 0, 0.1)'
 				}
 			}
+		},
+		hover: {
+			mode: 'nearest',
+			intersect: true
+		}
+	};
+
+	// Department chart options (horizontal bar with datalabels, legend descriptions, xTop mirror, wider y-axis)
+	const deptChartOptions = {
+		responsive: true,
+		maintainAspectRatio: false,
+		indexAxis: 'y' as const,
+		plugins: {
+			legend: {
+				display: true,
+				labels: {
+					color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#1f2937',
+					font: { size: 14 },
+					generateLabels: (c) => {
+						const items = Chart.defaults.plugins.legend.labels.generateLabels(c);
+						return items.map((i) => {
+							i.text = `${i.text} ${i.text === $i18n.t('Last Active Users') ? $i18n.t('(Users whose last recorded activity was during the selected period)') : i.text === $i18n.t('Active Users') ? $i18n.t('(Users who prompted during selected period)') : $i18n.t('(All enrolled users to date)')}`;
+							return i;
+						});
+					}
+				},
+				onClick: null
+			},
+			tooltip: {
+				mode: 'nearest',
+				intersect: true,
+				titleFont: { size: 14 },
+				bodyFont: { size: 14 }
+			},
+			datalabels: {
+				display: true,
+				color: document.documentElement.classList.contains('dark') ? '#ffffff' : '#1f2937',
+				anchor: 'end' as const,
+				align: 'right' as const,
+				offset: 6,
+				formatter: (value) => (value === 0 ? null : value),
+				font: {
+					weight: 'bold' as const,
+					size: 14
+				}
+			}
+		},
+		scales: {
+			x: {
+				type: 'linear' as const,
+				position: 'bottom' as const,
+				offset: false,
+				beginAtZero: true,
+				ticks: {
+					color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#1f2937',
+					font: { size: 14 }
+				},
+				grid: {
+					drawOnChartArea: false,
+					color: document.documentElement.classList.contains('dark')
+						? 'rgba(255, 255, 255, 0.1)'
+						: 'rgba(0, 0, 0, 0.1)'
+				}
+			},
+			xTop: {
+				type: 'linear' as const,
+				position: 'top' as const,
+				offset: false,
+				beginAtZero: true,
+				afterBuildTicks: (axis) => {
+					const bottomAxis = axis.chart?.scales?.x;
+					if (!bottomAxis) return;
+					axis.min = bottomAxis.min;
+					axis.max = bottomAxis.max;
+					axis.ticks = [...bottomAxis.ticks];
+				},
+				ticks: {
+					color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#1f2937',
+					font: { size: 14 }
+				},
+				grid: {
+					drawOnChartArea: false,
+					color: document.documentElement.classList.contains('dark')
+						? 'rgba(255, 255, 255, 0.1)'
+						: 'rgba(0, 0, 0, 0.1)'
+				}
+			},
+			y: {
+				beginAtZero: true,
+				afterFit: (scale) => {
+					scale.width = 330;
+				},
+				ticks: {
+					color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#1f2937',
+					font: { size: 14 }
+				},
+				grid: {
+					color: document.documentElement.classList.contains('dark')
+						? 'rgba(255, 255, 255, 0.1)'
+						: 'rgba(0, 0, 0, 0.1)'
+				}
+			}
+		},
+		hover: {
+			mode: 'nearest' as const,
+			intersect: true
 		}
 	};
 
@@ -154,17 +322,35 @@
 	function updateChartThemeColors() {
 		const isDark = document.documentElement.classList.contains('dark');
 		const textColor = isDark ? '#e5e7eb' : '#1f2937';
+		const labelColor = isDark ? '#ffffff' : '#1f2937';
 		const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
 
-		// Update chart options
+		// Update shared chart options
 		chartOptions.plugins.legend.labels.color = textColor;
 		chartOptions.scales.x.ticks.color = textColor;
 		chartOptions.scales.x.grid.color = gridColor;
 		chartOptions.scales.y.ticks.color = textColor;
 		chartOptions.scales.y.grid.color = gridColor;
 
-		// Update existing charts with new theme colors
-		const charts = [
+		// Update department chart options
+		deptChartOptions.plugins.legend.labels.color = textColor;
+		deptChartOptions.plugins.datalabels.color = labelColor;
+		deptChartOptions.plugins.datalabels.font = { weight: 'bold', size: 14 };
+		deptChartOptions.plugins.legend.labels.font = { size: 14 };
+		deptChartOptions.plugins.tooltip.titleFont = { size: 14 };
+		deptChartOptions.plugins.tooltip.bodyFont = { size: 14 };
+		deptChartOptions.scales.x.ticks.color = textColor;
+		deptChartOptions.scales.x.ticks.font = { size: 14 };
+		deptChartOptions.scales.x.grid.color = gridColor;
+		deptChartOptions.scales.xTop.ticks.color = textColor;
+		deptChartOptions.scales.xTop.ticks.font = { size: 14 };
+		deptChartOptions.scales.xTop.grid.color = gridColor;
+		deptChartOptions.scales.y.ticks.color = textColor;
+		deptChartOptions.scales.y.ticks.font = { size: 14 };
+		deptChartOptions.scales.y.grid.color = gridColor;
+
+		// Update standard charts (no xTop, no datalabels)
+		const standardCharts = [
 			enrolledUsersChart,
 			dailyActiveUsersChart,
 			dailyPromptsChart,
@@ -172,7 +358,7 @@
 			modelPromptsChart,
 			interPromptLatencyChart
 		];
-		charts.forEach((chart) => {
+		standardCharts.forEach((chart) => {
 			if (chart) {
 				chart.options.plugins.legend.labels.color = textColor;
 				chart.options.scales.x.ticks.color = textColor;
@@ -182,6 +368,28 @@
 				chart.update();
 			}
 		});
+
+		// Update department chart (has xTop + datalabels)
+		if (userByDepartmentChart) {
+			userByDepartmentChart.options.plugins.datalabels.color = labelColor;
+			if (!userByDepartmentChart.options.plugins.datalabels.font)
+				userByDepartmentChart.options.plugins.datalabels.font = {};
+			userByDepartmentChart.options.plugins.datalabels.font.size = 14;
+			userByDepartmentChart.options.plugins.legend.labels.color = textColor;
+			userByDepartmentChart.options.plugins.legend.labels.font = { size: 14 };
+			userByDepartmentChart.options.scales.x.ticks.color = textColor;
+			userByDepartmentChart.options.scales.x.ticks.font = { size: 14 };
+			userByDepartmentChart.options.scales.x.grid.color = gridColor;
+			userByDepartmentChart.options.scales.xTop.ticks.color = textColor;
+			userByDepartmentChart.options.scales.xTop.ticks.font = { size: 14 };
+			userByDepartmentChart.options.scales.xTop.grid.color = gridColor;
+			userByDepartmentChart.options.scales.y.ticks.color = textColor;
+			userByDepartmentChart.options.scales.y.ticks.font = { size: 14 };
+			userByDepartmentChart.options.scales.y.grid.color = gridColor;
+			userByDepartmentChart.options.plugins.tooltip.titleFont = { size: 14 };
+			userByDepartmentChart.options.plugins.tooltip.bodyFont = { size: 14 };
+			userByDepartmentChart.update();
+		}
 	}
 
 	// Update chart labels function
@@ -194,7 +402,12 @@
 			dailyActiveUsersChart.data.datasets[0].label = $i18n.t('Daily Active Users');
 			dailyActiveUsersChart.update();
 		}
-
+		if (userByDepartmentChart) {
+			userByDepartmentChart.data.datasets[0].label = $i18n.t('Active Users');
+			userByDepartmentChart.data.datasets[1].label = $i18n.t('Last Active Users');
+			userByDepartmentChart.data.datasets[2].label = $i18n.t('Total Users');
+			userByDepartmentChart.update();
+		}
 		if (dailyPromptsChart) {
 			dailyPromptsChart.data.datasets[0].label = $i18n.t('Daily Prompts');
 			dailyPromptsChart.update();
@@ -300,6 +513,7 @@
 				console.error('Error fetching summary metrics:', err);
 			} finally {
 				isLoadingTokensData = false;
+				isLoadingDepartmentChart = false;
 			}
 
 			// Load model-specific data if a model is selected
@@ -319,8 +533,9 @@
 			// Calculate days from date range
 			const days = calculateDaysFromDateRange(startDate, endDate);
 
-			// Set loading state for tokens chart
+			// Set loading state for charts
 			isLoadingTokensChart = true;
+			isLoadingDepartmentChart = true;
 
 			// Fetch historical data for charts
 			try {
@@ -328,6 +543,12 @@
 				dailyActiveUsersData = await getHistoricalDailyUsers(
 					localStorage.token,
 					days,
+					updatedDomain
+				);
+				departmentUsageData = await getUserByDomain(
+					localStorage.token,
+					toEpoch(startDate),
+					toEpoch(endDate),
 					updatedDomain
 				);
 				dailyPromptsData = await getHistoricalPrompts(localStorage.token, days, updatedDomain);
@@ -358,6 +579,7 @@
 				console.error('Error fetching historical data:', err);
 			} finally {
 				isLoadingTokensChart = false;
+				isLoadingDepartmentChart = false;
 			}
 
 			// Initialize charts with the data
@@ -436,6 +658,55 @@
 					options: chartOptions
 				});
 			}
+		}
+
+		// Department usage chart
+		const departmentChartId = 'departmentUsageChart';
+		const departmentCanvas = document.getElementById(departmentChartId);
+		const departmentCtx = departmentCanvas?.getContext('2d');
+		if (departmentCtx) {
+			if (userByDepartmentChart) {
+				userByDepartmentChart.destroy();
+			}
+
+			// Calculate dynamic height: 60px per department + padding
+			const chartHeight = Math.max(300, departmentUsageData.length * 100);
+			if (departmentCanvas) {
+				departmentCanvas.style.height = `${chartHeight}px`;
+			}
+
+			userByDepartmentChart = new Chart(departmentCtx, {
+				type: 'bar',
+				data: {
+					labels: departmentUsageData.map((item) => item.domain),
+					datasets: [
+						{
+							label: $i18n.t('Active Users'),
+							data: departmentUsageData.map((item) => item.prompt_users),
+							borderColor: '#45d9d4',
+							backgroundColor: '#45d9d4',
+							borderWidth: 2
+						},
+						{
+							label: $i18n.t('Last Active Users'),
+							data: departmentUsageData.map((item) => item.active_users),
+							borderColor: '#1115d9',
+							backgroundColor: '#1115d9',
+							borderWidth: 2
+						},
+						{
+							label: $i18n.t('Total Users'),
+							data: departmentUsageData.map((item) => item.total_users),
+							borderColor: '#393947',
+							backgroundColor: '#393947',
+							borderWidth: 2
+						}
+					]
+				},
+				options: deptChartOptions
+			});
+			// Set translated labels after chart creation
+			updateChartLabels();
 		}
 
 		// Prompts chart - for both overview and prompts tabs
@@ -696,7 +967,7 @@
 		}
 	}
 
-	onMount(async () => {
+	onMount(() => {
 		try {
 			// Subscribe to language changes
 			unsubscribe = i18n.subscribe(() => {
@@ -721,39 +992,41 @@
 				attributeFilter: ['class']
 			});
 
-			domains = await getDomains(localStorage.token);
-
 			// For analyst role, automatically select their domain and don't allow changing it
 			if (isAnalyst && $user?.email) {
 				selectedDomain = $user.email.split('@')[1];
 			}
 
-			// Get models based on user role
-			models = await getModels(localStorage.token);
-
 			// Load MCP processes for the MCP toggle/process filter on the Tokens tab
-			try {
-				mcpProcesses = await getMcpProcesses(localStorage.token);
-			} catch (mcpErr) {
-				console.warn('Could not load MCP processes:', mcpErr);
-				mcpProcesses = [];
-			}
+			(async () => {
+				try {
+					mcpProcesses = await getMcpProcesses(localStorage.token);
+				} catch (mcpErr) {
+					console.warn('Could not load MCP processes:', mcpErr);
+					mcpProcesses = [];
+				}
+			})();
 
 			// Note: For analysts, the models list shows all available models
 			// but the actual metrics data will be filtered by domain in the API calls
 			// This allows analysts to see what models are available for selection
 
-			// Set the first model as the selected model if available
-			if (models.length > 0) {
-				selectedModel = models[0];
-			}
-
-			await updateCharts(selectedDomain, selectedModel);
-			updateRangeMetrics(); // Load initial range metrics
-
-			// Mark component as loaded
-			componentLoaded = true;
-
+			(async () => {
+				try {
+					domains = await getDomains(localStorage.token);
+					models = await getModels(localStorage.token);
+					// Set the first model as the selected model if available
+					if (models.length > 0) {
+						selectedModel = models[0];
+					}
+					await updateCharts(selectedDomain, selectedModel);
+					updateRangeMetrics(); // Load initial range metrics
+					componentLoaded = true;
+				} catch (error) {
+					console.error('Error initializing charts:', error);
+					componentLoaded = true;
+				}
+			})();
 			// Store the observer in a variable for cleanup
 			return () => observer.disconnect();
 		} catch (error) {
@@ -772,6 +1045,7 @@
 		// Clean up charts
 		if (enrolledUsersChart) enrolledUsersChart.destroy();
 		if (dailyActiveUsersChart) dailyActiveUsersChart.destroy();
+		if (userByDepartmentChart) userByDepartmentChart.destroy();
 		if (dailyPromptsChart) dailyPromptsChart.destroy();
 		if (dailyTokensChart) dailyTokensChart.destroy();
 		if (modelPromptsChart) modelPromptsChart.destroy();
@@ -1245,6 +1519,25 @@
 								<canvas id="usersOverTimeChart"></canvas>
 							</div>
 						</div>
+					</div>
+					<div class="grid grid-cols-1 gap-6 mb-6">
+						{#if isLoadingDepartmentChart}
+							<div class="flex flex-col items-center text-center space-y-3">
+								<Spinner className="size-8" />
+								<div class="text-lg font-semibold dark:text-gray-200">
+									{$i18n.t('Loading department usage...')}
+								</div>
+							</div>
+						{:else}
+							<div class="bg-white shadow-lg rounded-lg p-4 dark:bg-gray-800">
+								<h5 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
+									{$i18n.t('User Statistics By Department')}
+								</h5>
+								<div>
+									<canvas id="departmentUsageChart"></canvas>
+								</div>
+							</div>
+						{/if}
 					</div>
 				</div>
 

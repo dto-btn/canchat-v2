@@ -355,16 +355,16 @@ async def _get_sharepoint_document_content_impl(
             # Suppress any parsing logs
             import logging
 
-            mpo_logger = logging.getLogger("MPO-SharePoint")
-            original_level = mpo_logger.level
-            mpo_logger.setLevel(logging.ERROR)  # Suppress extraction logs
+            dept_logger = logging.getLogger(f"{config.department_prefix}-SharePoint")
+            original_level = dept_logger.level
+            dept_logger.setLevel(logging.ERROR)  # Suppress extraction logs
 
             try:
                 parsed_content = await parse_document_content_embedded(
                     file_content, file_name
                 )
             finally:
-                mpo_logger.setLevel(original_level)  # Restore log level
+                dept_logger.setLevel(original_level)  # Restore log level
 
             return {
                 "status": "success",
@@ -780,7 +780,7 @@ async def _list_folder_contents_impl(
                         "message": f"Folder '{folder_path}' not found in configured SharePoint site '{config.site_url}' or any other accessible location. The folder may not exist or you may not have permission to access it.",
                         "folder_path": folder_path,
                         "organization": config.org_name,
-                        "hint": "Try using mpo_search_documents_fast to search for documents by content instead of folder name.",
+                        "hint": "Try using the search tool to find documents by content instead of folder name.",
                     }
 
             # If still not successful, return error
@@ -1071,8 +1071,8 @@ async def _get_document_by_id_impl(
     """
     Retrieve document content using web URL and item ID from search results.
 
-    Use this when mpo_get_sharepoint_document_content fails because the document
-    is in a location outside the main SharePoint site.
+    Use this when the document is in a location outside the main SharePoint site
+    and {dept}_get_sharepoint_document_content fails.
 
     Args:
         web_url: The webUrl field from search results
@@ -1355,11 +1355,13 @@ async def _analyze_documents_parallel_ultra_fast(
                 import logging
 
                 oauth_logger = logging.getLogger("sharepoint_oauth")
-                mpo_logger = logging.getLogger("MPO-SharePoint")
+                dept_logger = logging.getLogger(
+                    f"{config.department_prefix}-SharePoint"
+                )
                 original_level_oauth = oauth_logger.level
-                original_level_mpo = mpo_logger.level
+                original_level_dept = dept_logger.level
                 oauth_logger.setLevel(logging.ERROR)  # Suppress OAuth logs
-                mpo_logger.setLevel(logging.ERROR)  # Suppress MPO logs
+                dept_logger.setLevel(logging.ERROR)  # Suppress dept logs
 
                 try:
                     content_result = await _get_sharepoint_document_content_impl(
@@ -1374,7 +1376,7 @@ async def _analyze_documents_parallel_ultra_fast(
                 finally:
                     # Restore original log levels
                     oauth_logger.setLevel(original_level_oauth)
-                    mpo_logger.setLevel(original_level_mpo)
+                    dept_logger.setLevel(original_level_dept)
 
             if not content and filename_score == 0:
                 return None
@@ -1923,3 +1925,21 @@ def run_department_server(department_prefix: str):
 
     logger.info(f"🚀 Starting {department_prefix} SharePoint MCP Server")
     mcp.run(transport="stdio")
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Generic SharePoint MCP Server — pass department prefix as argument."
+    )
+    parser.add_argument(
+        "department",
+        help="Department prefix, e.g. MPO, PMO, FIN",
+    )
+    _args = parser.parse_args()
+    logging.basicConfig(
+        level=logging.INFO,
+        format=f"%(asctime)s - {_args.department.upper()}-SharePoint - %(levelname)s - %(message)s",
+    )
+    run_department_server(_args.department)

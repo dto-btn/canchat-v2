@@ -1,9 +1,13 @@
 name: Release
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
   release:
@@ -11,7 +15,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Check for changes in package.json
         run: |
@@ -24,7 +28,7 @@ jobs:
         id: get_version
         run: |
           VERSION=$(jq -r '.version' package.json)
-          echo "::set-output name=version::$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Extract latest CHANGELOG entry
         id: changelog
@@ -35,10 +39,10 @@ jobs:
           CHANGELOG_ESCAPED=$(echo "$CHANGELOG_CONTENT" | sed ':a;N;$!ba;s/\n/%0A/g')
           echo "Extracted latest release notes from CHANGELOG.md and CHANGELOG-FR.md:" 
           echo -e "$CHANGELOG_CONTENT" 
-          echo "::set-output name=content::$CHANGELOG_ESCAPED"
+          echo "content=$CHANGELOG_ESCAPED" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub release
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -53,7 +57,7 @@ jobs:
             console.log(`Created release ${release.data.html_url}`)
 
       - name: Upload package to GitHub release
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: package
           path: |
@@ -63,7 +67,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         
       - name: Trigger Docker build workflow
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             github.rest.actions.createWorkflowDispatch({

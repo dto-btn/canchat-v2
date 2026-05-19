@@ -53,9 +53,7 @@
 		},
 		mcp: {
 			time_server: false,
-			news_server: false,
-			mpo_sharepoint_server: false,
-			pmo_sharepoint_server: false
+			news_server: false
 		}
 	};
 	export let userIds = [];
