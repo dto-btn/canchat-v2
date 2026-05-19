@@ -5,6 +5,28 @@ Tous les changements notables apportés à ce projet seront documentés dans ce 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage sémantique](https://semver.org/lang/fr/spec/v2.0.0.html).
 
+## [0.5.7-ccv2-1.15.0] - 2026-05-19
+
+### Added
+
+- \*\*🧪 Tests E2E Playwright : Ajout d'une couverture de tests exhaustive pour le téléversement de documents et les flux d'authentification.
+- \*\*📝 Journalisation de la recherche web : Ajout d'une journalisation de diagnostic améliorée pour les opérations de recherche web.
+
+### Changed
+
+- \*\*🏢 Intégration MCP SharePoint : Refonte de l'intégration pour prendre entièrement en charge les configurations multi-départements.
+- \*\*📦 Dépendances de sécurité : Mise à jour de plusieurs dépendances pour corriger des problèmes de vulnérabilités connus.
+- \*\*📈 Tableau de bord de l'espace de travail : Mise à jour du tableau de bord d'utilisation dans la section de l'espace de travail.
+- \*\*🎨 Logo CANChat : Mise à jour du logo principal de l'application.
+- \*\*🔗 Liens de recherche web : Modification du routage des liens afin que les résultats de la recherche web ne pointent plus directement vers Google.
+- \*\*🏷️ Étiquette de suppression de chat : Mise à jour de l'étiquette de l'interface utilisateur concernant la suppression automatique des chats après 30 jours d'inactivité.
+
+### Fixed
+
+- \*\*🧹 Assainissement Markdown : Correction d'un problème empêchant l'assainissement adéquat du contenu markdown.
+- \*\*📱 Interface d'ancrage Wikipédia : Correction d'un bogue d'affichage affectant l'étiquette d'ancrage Wikipédia sur les petits écrans.
+- \*\*🧠 Affichage du modèle de réflexion : Correction de problèmes de rendu avec l'affichage du processus de réflexion du modèle.
+
 ## [0.5.7-ccv2-1.14.0] - 2026-03-23
 
 ### Ajouté

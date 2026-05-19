@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.7-ccv2-1.15.0] - 2026-05-19
+
+### Added
+
+- \*\*🧪 Playwright E2E Tests: Added comprehensive test coverage around document upload and authentication flows.
+- \*\*📝 Web Search Logging: Added enhanced diagnostic logging around web search operations.
+
+### Changed
+
+- \*\*🏢 MCP SharePoint Integration: Refactored the integration to fully support multi-department configurations.
+- \*\*📦 Security Dependencies: Updated multiple dependency requirements to patch known vulnerability issues.
+- \*\*📈 Workspace Dashboard: Updated the usage dashboard within the workspace section.
+- \*\*🎨 CANChat Logo: Updated the main application logo.
+- \*\*🔗 Web Search Links: Modified link routing so web search results no longer point directly to Google.
+- \*\*🏷️ Chat Deletion Label: Updated the UI label pertaining to automatic chat deletion after 30 days of inactivity.
+
+### Fixed
+
+- \*\*🧹 Markdown Sanitization: Fixed an issue preventing proper sanitization of markdown content.
+- \*\*📱 Wikipedia Grounding UI: Fixed a display bug affecting the Wikipedia grounding label on smaller screen sizes.
+- \*\*🧠 Thinking Model Display: Fixed rendering issues with the display of the model's thought process.
+
 ## [0.5.7-ccv2-1.14.0] - 2026-03-23
 
 ### Added
