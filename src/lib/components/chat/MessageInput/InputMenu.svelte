@@ -66,6 +66,10 @@
 	export let onClose: Function;
 
 	// Reactive statement for tooltip content
+	// IMPORTANT: Keep these tooltip strings short. Long strings overflowed the message input bar
+	// in the activated-state pill — this was the issue fixed in chat-1714 (e.g.
+	// 'Wikipedia Grounding: Context-aware information enhancement enabled' was too long).
+	// https://dsai.atlassian.net/browse/CHAT-1714
 	$: tooltipContent = (() => {
 		if (webSearchEnabled) {
 			return $i18n.t('Wiki Grounding disabled - Web Search is active');
@@ -228,6 +232,10 @@
 									<div class="flex flex-col items-start min-w-0 flex-1">
 										<div class="text-sm font-medium leading-tight">
 											{#if tools[toolId].isMcp}
+												<!-- IMPORTANT: getMCPToolName() output must stay short. A long name will overflow
+											     the activated-state pill in the message input bar (see chat-1714).
+											     Use getToolTooltipContent() for the full descriptive text. 
+												 https://dsai.atlassian.net/browse/CHAT-1714 -->
 												{getMCPToolName(tools[toolId].originalName, $i18n)}
 											{:else}
 												{tools[toolId].name}
