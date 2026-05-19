@@ -1745,71 +1745,70 @@ async def process_chat_response(
             if content:
                 response["choices"][0]["message"]["content"] = content
 
-                if content:
-                    await event_emitter(
-                        {
-                            "type": "chat:completion",
-                            "data": response,
-                        }
-                    )
+                await event_emitter(
+                    {
+                        "type": "chat:completion",
+                        "data": response,
+                    }
+                )
 
-                    title = Chats.get_chat_title_by_id(metadata["chat_id"])
+                title = Chats.get_chat_title_by_id(metadata["chat_id"])
 
-                    await event_emitter(
-                        {
-                            "type": "chat:completion",
-                            "data": {
-                                "done": True,
-                                "content": content,
-                                "title": title,
-                            },
-                        }
-                    )
-
-                    # Save message in the database
-                    Chats.upsert_message_to_chat_by_id_and_message_id(
-                        metadata["chat_id"],
-                        metadata["message_id"],
-                        {
+                await event_emitter(
+                    {
+                        "type": "chat:completion",
+                        "data": {
+                            "done": True,
                             "content": content,
+                            "title": title,
                         },
-                    )
+                    }
+                )
 
-                    # Send a webhook notification if the user is not active
-                    if get_active_status_by_user_id(user.id) is None:
-                        webhook_url = Users.get_user_webhook_url_by_id(user.id)
-                        if webhook_url:
-                            post_webhook(
-                                webhook_url,
-                                f"{title} - {request.app.state.config.WEBUI_URL}/c/{metadata['chat_id']}\n\n{content}",
-                                {
-                                    "action": "chat",
-                                    "message": content,
-                                    "title": title,
-                                    "url": f"{request.app.state.config.WEBUI_URL}/c/{metadata['chat_id']}",
-                                },
-                            )
+                # Save message in the database
+                Chats.upsert_message_to_chat_by_id_and_message_id(
+                    metadata["chat_id"],
+                    metadata["message_id"],
+                    {
+                        "content": content,
+                    },
+                )
 
-                    # Send sources events after completion is done
-                    for event in events:
-                        if "sources" in event:
-                            await event_emitter(
-                                {
-                                    "type": "chat:completion",
-                                    "data": event,
-                                }
-                            )
+                # Send a webhook notification if the user is not active
+                if get_active_status_by_user_id(user.id) is None:
+                    webhook_url = Users.get_user_webhook_url_by_id(user.id)
+                    if webhook_url:
+                        post_webhook(
+                            webhook_url,
+                            f"{title} - {request.app.state.config.WEBUI_URL}/c/{metadata['chat_id']}\n\n{content}",
+                            {
+                                "action": "chat",
+                                "message": content,
+                                "title": title,
+                                "url": f"{request.app.state.config.WEBUI_URL}/c/{metadata['chat_id']}",
+                            },
+                        )
 
-                            # Save sources in the database
-                            Chats.upsert_message_to_chat_by_id_and_message_id(
-                                metadata["chat_id"],
-                                metadata["message_id"],
-                                {
-                                    **event,
-                                },
-                            )
+                # Send sources events after completion is done
+                for event in events:
+                    if "sources" in event:
+                        await event_emitter(
+                            {
+                                "type": "chat:completion",
+                                "data": event,
+                            }
+                        )
 
-                    await background_tasks_handler()
+                        # Save sources in the database
+                        Chats.upsert_message_to_chat_by_id_and_message_id(
+                            metadata["chat_id"],
+                            metadata["message_id"],
+                            {
+                                **event,
+                            },
+                        )
+
+                await background_tasks_handler()
 
             # Record metrics for non-streaming response
             model_used = (
