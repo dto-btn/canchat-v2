@@ -48,7 +48,12 @@ from functools import lru_cache
 sys.path.insert(0, str(Path(__file__).parent))
 
 try:
-    from sharepoint_oauth_client import SharePointOAuthClient
+    try:
+        from .sharepoint_oauth_client import SharePointOAuthClient
+    except ImportError:
+        from sharepoint_oauth_client import (
+            SharePointOAuthClient,
+        )  # noqa: DEP001 - local module, standalone script fallback
     from fastmcp import FastMCP
 
     mcp = FastMCP("Generic SharePoint Server - Multi-Department")
