@@ -66,21 +66,23 @@
 	export let onClose: Function;
 
 	// Reactive statement for tooltip content
+	// IMPORTANT: Keep these tooltip strings short. Long strings overflowed the message input bar
+	// in the activated-state pill — this was the issue fixed in chat-1714 (e.g.
+	// 'Wikipedia Grounding: Context-aware information enhancement enabled' was too long).
 	$: tooltipContent = (() => {
 		if (webSearchEnabled) {
 			return $i18n.t('Wiki Grounding disabled - Web Search is active');
 		} else if (hasMcpToolsEnabled) {
 			return $i18n.t('Wiki Grounding disabled - MCP tools are active');
 		} else if (wikiGroundingEnabled) {
-			return $i18n.t('Wikipedia Grounding: Context-aware information enhancement enabled');
+			return $i18n.t('Wikipedia Grounding enabled');
 		} else {
-			return $i18n.t('Wikipedia Grounding: Click to enable context-aware information enhancement');
+			return $i18n.t('Wikipedia Grounding: Click to enable');
 		}
 	})();
 
 	let tools = {};
 	let wikiGroundingTooltip;
-	let wikiGroundingButton;
 	let show = false;
 
 	let showImageGeneration = false;
@@ -229,6 +231,10 @@
 									<div class="flex flex-col items-start min-w-0 flex-1">
 										<div class="text-sm font-medium leading-tight">
 											{#if tools[toolId].isMcp}
+												<!-- IMPORTANT: getMCPToolName() output must stay short. A long name will overflow
+											     the activated-state pill in the message input bar (see chat-1714).
+											     Use getToolTooltipContent() for the full descriptive text. 
+												-->
 												{getMCPToolName(tools[toolId].originalName, $i18n)}
 											{:else}
 												{tools[toolId].name}
@@ -345,34 +351,11 @@
 					content={tooltipContent}
 					placement="right"
 					className="w-full"
-					tippyOptions={{
-						placement: 'right',
-						offset: [0, 0],
-						flip: false,
-						hideOnClick: false,
-						trigger: 'mouseenter',
-						getReferenceClientRect: () => {
-							const menu = document.querySelector('[data-melt-dropdown-menu][data-state="open"]');
-							if (menu && wikiGroundingButton) {
-								const menuRect = menu.getBoundingClientRect();
-								const buttonRect = wikiGroundingButton.getBoundingClientRect();
-								return {
-									width: 0,
-									height: buttonRect.height,
-									top: buttonRect.top,
-									bottom: buttonRect.bottom,
-									left: menuRect.right,
-									right: menuRect.right
-								};
-							}
-							return { width: 0, height: 0, top: 0, bottom: 0, left: 0, right: 0 };
-						}
-					}}
+					tippyOptions={hoverOnlyTooltipOptions}
 				>
 					<button
 						role="menuitem"
 						aria-label={$i18n.t('Wiki Grounding')}
-						bind:this={wikiGroundingButton}
 						class="flex w-full justify-between gap-2 items-center px-3 py-2 text-sm font-medium cursor-pointer rounded-xl {webSearchEnabled ||
 						hasMcpToolsEnabled
 							? 'opacity-50 cursor-not-allowed'
