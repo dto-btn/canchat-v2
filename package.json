@@ -1,6 +1,6 @@
 {
 	"name": "open-webui",
-	"version": "0.5.7-ccv2-1.14.0",
+	"version": "0.5.7-ccv2-1.15.0",
 	"private": true,
 	"scripts": {
 		"start": "npm run backend:check && bash -c 'env $(grep -v '^#' '${ENV_FILE:-.env}'| xargs) backend/start.sh'",
