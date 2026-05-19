@@ -8,8 +8,13 @@ from open_webui.utils.misc import (
 def convert_response_ollama_to_openai(ollama_response: dict) -> dict:
     model = ollama_response.get("model", "ollama")
     message_content = ollama_response.get("message", {}).get("content", "")
+    message_thinking = ollama_response.get("message", {}).get("thinking", "")
 
-    response = openai_chat_completion_message_template(model, message_content)
+    response = openai_chat_completion_message_template(
+        model,
+        message_content,
+        reasoning_content=message_thinking,
+    )
     return response
 
 
@@ -19,6 +24,7 @@ async def convert_streaming_response_ollama_to_openai(ollama_streaming_response)
 
         model = data.get("model", "ollama")
         message_content = data.get("message", {}).get("content", "")
+        message_thinking = data.get("message", {}).get("thinking", "")
         done = data.get("done", False)
 
         usage = None
@@ -108,7 +114,10 @@ async def convert_streaming_response_ollama_to_openai(ollama_streaming_response)
             }
 
         data = openai_chat_chunk_message_template(
-            model, message_content if not done else None, usage
+            model,
+            message_content if not done else None,
+            usage,
+            reasoning_content=message_thinking if not done else None,
         )
 
         line = f"data: {json.dumps(data)}\n\n"
