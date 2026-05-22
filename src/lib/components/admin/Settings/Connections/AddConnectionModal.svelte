@@ -206,7 +206,10 @@
 										required
 										on:invalid={(e) =>
 											e.target.setCustomValidity($i18n.t('This field is required'))}
+<<<<<<< HEAD
 										on:input={(e) => e.target.setCustomValidity('')}
+=======
+>>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
 									/>
 								</div>
 							</div>

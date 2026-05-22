@@ -274,7 +274,10 @@
 								bind:value={STT_OPENAI_API_BASE_URL}
 								required
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+<<<<<<< HEAD
 								on:input={(e) => e.target.setCustomValidity('')}
+=======
+>>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
 							/>
 
 							<SensitiveInput placeholder={$i18n.t('API Key')} bind:value={STT_OPENAI_API_KEY} />
@@ -433,7 +436,10 @@
 								bind:value={TTS_OPENAI_API_BASE_URL}
 								required
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+<<<<<<< HEAD
 								on:input={(e) => e.target.setCustomValidity('')}
+=======
+>>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
 							/>
 
 							<SensitiveInput placeholder={$i18n.t('API Key')} bind:value={TTS_OPENAI_API_KEY} />
@@ -449,7 +455,10 @@
 								bind:value={TTS_API_KEY}
 								required
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+<<<<<<< HEAD
 								on:input={(e) => e.target.setCustomValidity('')}
+=======
+>>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
 							/>
 						</div>
 					</div>
@@ -463,7 +472,10 @@
 								bind:value={TTS_API_KEY}
 								required
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+<<<<<<< HEAD
 								on:input={(e) => e.target.setCustomValidity('')}
+=======
+>>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
 							/>
 							<input
 								class="flex-1 w-full rounded-lg py-2 pl-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
@@ -472,7 +484,10 @@
 								bind:value={TTS_AZURE_SPEECH_REGION}
 								required
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+<<<<<<< HEAD
 								on:input={(e) => e.target.setCustomValidity('')}
+=======
+>>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
 							/>
 						</div>
 					</div>

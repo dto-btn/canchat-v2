@@ -445,7 +445,10 @@
 									bind:value={name}
 									required
 									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+<<<<<<< HEAD
 									aria-label={$i18n.t('Model Name')}
+=======
+>>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
 								/>
 							</div>
 						</div>
@@ -459,7 +462,10 @@
 									disabled={edit}
 									required
 									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+<<<<<<< HEAD
 									aria-label={$i18n.t('Model ID')}
+=======
+>>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
 								/>
 							</div>
 						</div>
@@ -492,7 +498,10 @@
 									}}
 									required
 									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+<<<<<<< HEAD
 									aria-label={$i18n.t('Base Model (From)')}
+=======
+>>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
 								>
 									<option value={null} class=" text-gray-900"
 										>{$i18n.t('Select a base model')}</option

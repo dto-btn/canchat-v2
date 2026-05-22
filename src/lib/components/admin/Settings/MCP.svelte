@@ -958,8 +958,11 @@
 								bind:value={serverForm.name}
 								required
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+<<<<<<< HEAD
 								on:input={(e) => e.target.setCustomValidity('')}
 								aria-label={$i18n.t('Server Name')}
+=======
+>>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
 							/>
 						</div>
 
@@ -1000,8 +1003,11 @@
 								bind:value={serverForm.transport}
 								required
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+<<<<<<< HEAD
 								on:input={(e) => e.target.setCustomValidity('')}
 								aria-label={$i18n.t('Transport Type')}
+=======
+>>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
 							>
 								<option value="stdio">{$i18n.t('Standard I/O (stdio)')}</option>
 								<option value="sse">{$i18n.t('Server-Sent Events (SSE)')}</option>
@@ -1024,8 +1030,11 @@
 									bind:value={serverForm.command}
 									required
 									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+<<<<<<< HEAD
 									on:input={(e) => e.target.setCustomValidity('')}
 									aria-label={$i18n.t('Command')}
+=======
+>>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
 								/>
 							</div>
 
@@ -1064,8 +1073,11 @@
 										required
 										on:invalid={(e) =>
 											e.target.setCustomValidity($i18n.t('This field is required'))}
+<<<<<<< HEAD
 										on:input={(e) => e.target.setCustomValidity('')}
 										aria-label={$i18n.t('URL')}
+=======
+>>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
 									/>
 								</div>
 

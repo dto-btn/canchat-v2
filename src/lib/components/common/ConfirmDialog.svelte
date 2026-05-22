@@ -136,7 +136,10 @@
 								class="w-full mt-2 rounded-lg px-4 py-2 text-sm dark:text-gray-300 dark:bg-gray-900 outline-none resize-none"
 								rows="3"
 								required
+<<<<<<< HEAD
 								aria-label={inputPlaceholder ? inputPlaceholder : $i18n.t('Enter your message')}
+=======
+>>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 							/>
 						{/if}

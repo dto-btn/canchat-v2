@@ -80,7 +80,10 @@
 										placeholder={$i18n.t('Group Name')}
 										autocomplete="off"
 										required
+<<<<<<< HEAD
 										aria-label={$i18n.t('Group Name')}
+=======
+>>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
 										on:invalid={(e) =>
 											e.target.setCustomValidity($i18n.t('This field is required'))}
 									/>

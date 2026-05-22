@@ -507,7 +507,10 @@
 																	required
 																	on:invalid={(e) =>
 																		e.target.setCustomValidity($i18n.t('This field is required'))}
+<<<<<<< HEAD
 																	aria-label={valves_spec.properties[property].title}
+=======
+>>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
 																/>
 															{/if}
 														</div>

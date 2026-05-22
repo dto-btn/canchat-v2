@@ -874,7 +874,10 @@
 											required
 											on:invalid={(e) =>
 												e.target.setCustomValidity($i18n.t('This field is required'))}
+<<<<<<< HEAD
 											on:input={(e) => e.target.setCustomValidity('')}
+=======
+>>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
 											hidden
 											aria-label={$i18n.t('Upload a GGUF model')}
 										/>
@@ -904,7 +907,10 @@
 											required
 											on:invalid={(e) =>
 												e.target.setCustomValidity($i18n.t('This field is required'))}
+<<<<<<< HEAD
 											on:input={(e) => e.target.setCustomValidity('')}
+=======
+>>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
 											bind:value={modelFileUrl}
 											placeholder={$i18n.t('Type Hugging Face Resolve (Download) URL')}
 											aria-label={$i18n.t('Type Hugging Face Resolve (Download) URL')}

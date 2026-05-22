@@ -112,7 +112,10 @@
 							placeholder={$i18n.t('Select an engine')}
 							required
 							on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+<<<<<<< HEAD
 							aria-label={$i18n.t('Web Search Engine')}
+=======
+>>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
 						>
 							<option disabled selected value="">{$i18n.t('Select an engine')}</option>
 							{#each webSearchEngines as engine}
@@ -336,7 +339,10 @@
 								bind:value={webConfig.search.result_count}
 								required
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+<<<<<<< HEAD
 								aria-label={$i18n.t('Search Result Count')}
+=======
+>>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
 							/>
 						</div>
 
@@ -351,7 +357,10 @@
 								bind:value={webConfig.search.concurrent_requests}
 								required
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+<<<<<<< HEAD
 								aria-label={$i18n.t('Concurrent Requests')}
+=======
+>>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
 							/>
 						</div>
 					</div>
