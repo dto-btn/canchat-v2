@@ -304,6 +304,7 @@
 									class="w-fit rounded-xl py-2 px-4 text-xs bg-transparent outline-none"
 									bind:value={banner.type}
 									required
+									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 								>
 									{#if banner.type == ''}
 										<option value="" selected disabled class="text-gray-900"
@@ -324,6 +325,7 @@
 									class="w-fit rounded-xl py-2 px-4 text-xs bg-transparent outline-none"
 									bind:value={banner.lang}
 									required
+									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 								>
 									{#if banner.lang == ''}
 										<option value="" selected disabled class="text-gray-900"

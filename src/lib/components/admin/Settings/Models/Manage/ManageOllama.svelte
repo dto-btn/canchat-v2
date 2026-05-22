@@ -865,6 +865,8 @@
 											on:change={() => {}}
 											accept=".gguf,.safetensors"
 											required
+											on:invalid={(e) =>
+												e.target.setCustomValidity($i18n.t('This field is required'))}
 											hidden
 										/>
 
@@ -891,6 +893,8 @@
 												: ''}"
 											type="url"
 											required
+											on:invalid={(e) =>
+												e.target.setCustomValidity($i18n.t('This field is required'))}
 											bind:value={modelFileUrl}
 											placeholder={$i18n.t('Type Hugging Face Resolve (Download) URL')}
 										/>

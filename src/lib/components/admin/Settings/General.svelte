@@ -282,6 +282,7 @@
 								<input
 									class="w-full bg-transparent outline-none py-0.5"
 									required
+									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 									placeholder={$i18n.t('Enter server label')}
 									bind:value={LDAP_SERVER.label}
 								/>
@@ -296,6 +297,7 @@
 								<input
 									class="w-full bg-transparent outline-none py-0.5"
 									required
+									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 									placeholder={$i18n.t('Enter server host')}
 									bind:value={LDAP_SERVER.host}
 								/>
@@ -330,6 +332,8 @@
 									<input
 										class="w-full bg-transparent outline-none py-0.5"
 										required
+										on:invalid={(e) =>
+											e.target.setCustomValidity($i18n.t('This field is required'))}
 										placeholder={$i18n.t('Enter Application DN')}
 										bind:value={LDAP_SERVER.app_dn}
 									/>
@@ -359,6 +363,8 @@
 									<input
 										class="w-full bg-transparent outline-none py-0.5"
 										required
+										on:invalid={(e) =>
+											e.target.setCustomValidity($i18n.t('This field is required'))}
 										placeholder={$i18n.t('Example: mail')}
 										bind:value={LDAP_SERVER.attribute_for_mail}
 									/>
@@ -379,6 +385,8 @@
 									<input
 										class="w-full bg-transparent outline-none py-0.5"
 										required
+										on:invalid={(e) =>
+											e.target.setCustomValidity($i18n.t('This field is required'))}
 										placeholder={$i18n.t('Example: sAMAccountName or uid or userPrincipalName')}
 										bind:value={LDAP_SERVER.attribute_for_username}
 									/>
@@ -394,6 +402,8 @@
 									<input
 										class="w-full bg-transparent outline-none py-0.5"
 										required
+										on:invalid={(e) =>
+											e.target.setCustomValidity($i18n.t('This field is required'))}
 										placeholder={$i18n.t('Example: ou=users,dc=foo,dc=example')}
 										bind:value={LDAP_SERVER.search_base}
 									/>
@@ -438,6 +448,8 @@
 										<input
 											class="w-full bg-transparent outline-none py-0.5"
 											required
+											on:invalid={(e) =>
+												e.target.setCustomValidity($i18n.t('This field is required'))}
 											placeholder={$i18n.t('Enter certificate path')}
 											bind:value={LDAP_SERVER.certificate_path}
 										/>

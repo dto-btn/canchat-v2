@@ -110,6 +110,7 @@
 							bind:value={webConfig.search.engine}
 							placeholder={$i18n.t('Select an engine')}
 							required
+							on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 						>
 							<option disabled selected value="">{$i18n.t('Select an engine')}</option>
 							{#each webSearchEngines as engine}
@@ -328,6 +329,7 @@
 								placeholder={$i18n.t('Search Result Count')}
 								bind:value={webConfig.search.result_count}
 								required
+								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 							/>
 						</div>
 
@@ -341,6 +343,7 @@
 								placeholder={$i18n.t('Concurrent Requests')}
 								bind:value={webConfig.search.concurrent_requests}
 								required
+								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 							/>
 						</div>
 					</div>

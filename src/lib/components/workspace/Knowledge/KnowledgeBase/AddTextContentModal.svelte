@@ -63,6 +63,7 @@
 								bind:value={name}
 								placeholder={$i18n.t('Title')}
 								required
+								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 							/>
 						</div>
 					</div>

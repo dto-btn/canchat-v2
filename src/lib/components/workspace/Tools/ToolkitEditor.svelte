@@ -222,6 +222,7 @@ class Tools:
 									placeholder={$i18n.t('Tool Name')}
 									bind:value={name}
 									required
+									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 								/>
 							</Tooltip>
 						</div>
@@ -257,6 +258,7 @@ class Tools:
 									bind:value={id}
 									required
 									disabled={edit}
+									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 								/>
 							</Tooltip>
 						{/if}
@@ -272,6 +274,7 @@ class Tools:
 								placeholder={$i18n.t('Tool Description')}
 								bind:value={meta.description}
 								required
+								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 							/>
 						</Tooltip>
 					</div>

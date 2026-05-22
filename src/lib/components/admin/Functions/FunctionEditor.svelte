@@ -322,6 +322,7 @@ class Pipe:
 									placeholder={$i18n.t('Function Name')}
 									bind:value={name}
 									required
+									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 								/>
 							</Tooltip>
 						</div>
@@ -344,6 +345,7 @@ class Pipe:
 									placeholder={$i18n.t('Function ID')}
 									bind:value={id}
 									required
+									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 									disabled={edit}
 								/>
 							</Tooltip>
@@ -360,6 +362,7 @@ class Pipe:
 								placeholder={$i18n.t('Function Description')}
 								bind:value={meta.description}
 								required
+								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 							/>
 						</Tooltip>
 					</div>

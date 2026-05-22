@@ -122,6 +122,7 @@
 							bind:value={title}
 							placeholder={$i18n.t('Name your prompt')}
 							required
+							on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 						/>
 					</div>
 				</div>
@@ -137,6 +138,7 @@
 								bind:value={command}
 								placeholder={$i18n.t('Command trigger')}
 								required
+								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 								disabled={edit}
 							/>
 						</div>
@@ -154,6 +156,7 @@
 							bind:value={content}
 							rows={4}
 							required
+							on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 						/>
 						<div class="mt-2 text-xs text-gray-400 dark:text-gray-500">
 							ⓘ {$i18n.t('Format your variables using brackets like this:')}
