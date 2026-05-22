@@ -500,6 +500,8 @@
 																	bind:value={valves[property]}
 																	autocomplete="off"
 																	required
+																	on:invalid={(e) =>
+																		e.target.setCustomValidity($i18n.t('This field is required'))}
 																/>
 															{/if}
 														</div>

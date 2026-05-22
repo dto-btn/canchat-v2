@@ -502,6 +502,7 @@
 								rows="10"
 								bind:value={config.comfyui.COMFYUI_WORKFLOW}
 								required
+								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 							/>
 						{/if}
 
@@ -563,6 +564,8 @@
 													placeholder="Key"
 													bind:value={node.key}
 													required
+													on:invalid={(e) =>
+														e.target.setCustomValidity($i18n.t('This field is required'))}
 												/>
 											</Tooltip>
 										</div>
@@ -598,6 +601,7 @@
 								placeholder={$i18n.t('API Base URL')}
 								bind:value={config.openai.OPENAI_API_BASE_URL}
 								required
+								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 							/>
 
 							<SensitiveInput
@@ -625,6 +629,8 @@
 											bind:value={imageGenerationConfig.MODEL}
 											placeholder="Select a model"
 											required
+											on:invalid={(e) =>
+												e.target.setCustomValidity($i18n.t('This field is required'))}
 										/>
 
 										<datalist id="model-list">
@@ -649,6 +655,7 @@
 									placeholder={$i18n.t('Enter Image Size (e.g. 512x512)')}
 									bind:value={imageGenerationConfig.IMAGE_SIZE}
 									required
+									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 								/>
 							</Tooltip>
 						</div>
@@ -665,6 +672,7 @@
 									placeholder={$i18n.t('Enter Number of Steps (e.g. 50)')}
 									bind:value={imageGenerationConfig.IMAGE_STEPS}
 									required
+									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 								/>
 							</Tooltip>
 						</div>

@@ -937,6 +937,7 @@
 								placeholder={$i18n.t('Enter a name for this server')}
 								bind:value={serverForm.name}
 								required
+								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 							/>
 						</div>
 
@@ -975,6 +976,7 @@
 								class="w-full rounded-lg py-2 px-3 text-sm dark:text-gray-300 dark:bg-gray-850 outline-none border border-gray-300 dark:border-gray-600 focus:border-purple-500 dark:focus:border-purple-400"
 								bind:value={serverForm.transport}
 								required
+								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 							>
 								<option value="stdio">{$i18n.t('Standard I/O (stdio)')}</option>
 								<option value="sse">{$i18n.t('Server-Sent Events (SSE)')}</option>
@@ -996,6 +998,7 @@
 									placeholder={$i18n.t('e.g., python, node, /path/to/executable')}
 									bind:value={serverForm.command}
 									required
+									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 								/>
 							</div>
 
@@ -1031,6 +1034,8 @@
 										placeholder={`e.g.) "http://localhost:3000"`}
 										bind:value={serverForm.url}
 										required
+										on:invalid={(e) =>
+											e.target.setCustomValidity($i18n.t('This field is required'))}
 									/>
 								</div>
 

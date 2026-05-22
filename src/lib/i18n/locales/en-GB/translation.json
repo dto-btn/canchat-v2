@@ -1284,6 +1284,7 @@
 	"This ensures that your valuable chats are securely saved to your backend database. Thank you!": "",
 	"This feature will be available in a future update.": "",
 	"This feature will provide detailed breakdowns by model, cost analysis, and usage trends to help manage your AI budget effectively.": "",
+	"This field is required": "",
 	"This option controls how many tokens are preserved when refreshing the context. For example, if set to 2, the last 2 tokens of the chat context will be retained. Preserving context can help maintain the continuity of a chat, but it may reduce the ability to respond to new topics. (Default: 24)": "",
 	"This option sets the maximum number of tokens the model can generate in its response. Increasing this limit allows the model to provide longer answers, but it may also increase the likelihood of unhelpful or irrelevant content being generated.  (Default: 128)": "",
 	"This option will delete all existing files in the collection and replace them with newly uploaded files.": "",

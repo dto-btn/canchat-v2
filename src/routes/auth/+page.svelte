@@ -249,6 +249,8 @@
 												autocomplete="name"
 												placeholder={$i18n.t('Enter Your Full Name')}
 												required
+												on:invalid={(e) =>
+													e.target.setCustomValidity($i18n.t('This field is required'))}
 											/>
 										</div>
 									{/if}
@@ -264,6 +266,8 @@
 												name="username"
 												placeholder={$i18n.t('Enter Your Username')}
 												required
+												on:invalid={(e) =>
+													e.target.setCustomValidity($i18n.t('This field is required'))}
 											/>
 										</div>
 									{:else}
@@ -277,6 +281,8 @@
 												name="email"
 												placeholder={$i18n.t('Enter Your Email')}
 												required
+												on:invalid={(e) =>
+													e.target.setCustomValidity($i18n.t('This field is required'))}
 											/>
 										</div>
 									{/if}
@@ -292,6 +298,8 @@
 											autocomplete="current-password"
 											name="current-password"
 											required
+											on:invalid={(e) =>
+												e.target.setCustomValidity($i18n.t('This field is required'))}
 										/>
 									</div>
 								</div>

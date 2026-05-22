@@ -152,6 +152,7 @@
 						bind:value={description}
 						rows="4"
 						required
+						on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 						placeholder={$i18n.t('Please describe what happened')}
 						class="w-full resize-none rounded-lg py-2 px-4 text-sm bg-gray-100 dark:text-gray-300 dark:bg-gray-850 border border-gray-200 dark:border-gray-700 outline-none focus:ring-1 focus:ring-gray-300 dark:focus:ring-gray-700"
 					></textarea>
@@ -166,6 +167,7 @@
 						bind:value={stepsToReproduce}
 						rows="4"
 						required
+						on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 						placeholder={$i18n.t('Please list the steps to reproduce this issue')}
 						class="w-full resize-none rounded-lg py-2 px-4 text-sm bg-gray-100 dark:text-gray-300 dark:bg-gray-850 border border-gray-200 dark:border-gray-700 outline-none focus:ring-1 focus:ring-gray-300 dark:focus:ring-gray-700"
 					></textarea>

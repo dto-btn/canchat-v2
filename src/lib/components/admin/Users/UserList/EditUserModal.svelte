@@ -149,6 +149,7 @@
 									bind:value={_user.email}
 									autocomplete="off"
 									required
+									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 									disabled={_user.id == sessionUser.id}
 								/>
 							</div>
@@ -164,6 +165,7 @@
 									bind:value={_user.name}
 									autocomplete="off"
 									required
+									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 								/>
 							</div>
 						</div>

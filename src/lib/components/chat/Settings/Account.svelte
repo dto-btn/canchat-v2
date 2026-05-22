@@ -239,6 +239,7 @@
 							type="text"
 							bind:value={name}
 							required
+							on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 						/>
 					</div>
 				</div>

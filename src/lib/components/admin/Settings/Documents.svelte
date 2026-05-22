@@ -321,6 +321,7 @@
 						placeholder={$i18n.t('API Base URL')}
 						bind:value={OpenAIUrl}
 						required
+						on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 					/>
 
 					<SensitiveInput placeholder={$i18n.t('API Key')} bind:value={OpenAIKey} />
@@ -332,6 +333,7 @@
 						placeholder={$i18n.t('API Base URL')}
 						bind:value={OllamaUrl}
 						required
+						on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 					/>
 
 					<SensitiveInput
@@ -415,6 +417,7 @@
 							bind:value={embeddingModel}
 							placeholder={$i18n.t('Set embedding model')}
 							required
+							on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 						/>
 					</div>
 				</div>

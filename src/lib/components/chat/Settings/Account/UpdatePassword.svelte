@@ -68,6 +68,7 @@
 						placeholder={$i18n.t('Enter your current password')}
 						autocomplete="current-password"
 						required
+						on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 					/>
 				</div>
 			</div>
@@ -83,6 +84,7 @@
 						placeholder={$i18n.t('Enter your new password')}
 						autocomplete="new-password"
 						required
+						on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 					/>
 				</div>
 			</div>
@@ -98,6 +100,7 @@
 						placeholder={$i18n.t('Confirm your new password')}
 						autocomplete="off"
 						required
+						on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 					/>
 				</div>
 			</div>

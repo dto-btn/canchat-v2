@@ -22,6 +22,7 @@
 				placeholder={$i18n.t('Group Name')}
 				autocomplete="off"
 				required
+				on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 			/>
 		</div>
 	</div>

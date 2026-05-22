@@ -253,6 +253,8 @@
 										placeholder={$i18n.t('Model Name')}
 										autocomplete="off"
 										required
+										on:invalid={(e) =>
+											e.target.setCustomValidity($i18n.t('This field is required'))}
 									/>
 								</div>
 							</div>
@@ -269,6 +271,8 @@
 										autocomplete="off"
 										required
 										disabled={edit}
+										on:invalid={(e) =>
+											e.target.setCustomValidity($i18n.t('This field is required'))}
 									/>
 								</div>
 							</div>

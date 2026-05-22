@@ -186,6 +186,8 @@
 										bind:value={_user.role}
 										placeholder={$i18n.t('Enter Your Role')}
 										required
+										on:invalid={(e) =>
+											e.target.setCustomValidity($i18n.t('This field is required'))}
 									>
 										<option value="pending"> {$i18n.t('pending')} </option>
 										<option value="user"> {$i18n.t('user')} </option>
@@ -207,6 +209,8 @@
 										placeholder={$i18n.t('Enter Your Full Name')}
 										autocomplete="off"
 										required
+										on:invalid={(e) =>
+											e.target.setCustomValidity($i18n.t('This field is required'))}
 									/>
 								</div>
 							</div>
@@ -223,6 +227,8 @@
 										bind:value={_user.email}
 										placeholder={$i18n.t('Enter Your Email')}
 										required
+										on:invalid={(e) =>
+											e.target.setCustomValidity($i18n.t('This field is required'))}
 									/>
 								</div>
 							</div>

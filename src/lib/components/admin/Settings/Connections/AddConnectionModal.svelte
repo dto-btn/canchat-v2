@@ -203,6 +203,8 @@
 										placeholder={$i18n.t('API Base URL')}
 										autocomplete="off"
 										required
+										on:invalid={(e) =>
+											e.target.setCustomValidity($i18n.t('This field is required'))}
 									/>
 								</div>
 							</div>
