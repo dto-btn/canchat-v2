@@ -24,25 +24,13 @@
 			<div class="m-auto pb-44 flex flex-col justify-center">
 				<div class="max-w-md">
 					<div class="text-center text-2xl font-medium z-50">
-						{$i18n.t('{{webUIName}} Backend Required', { webUIName: $WEBUI_NAME })}
+						{$i18n.t('Service Unavailable')}
 					</div>
 
 					<div class=" mt-4 text-center text-sm w-full">
 						{$i18n.t(
-							"Oops! You're using an unsupported method (frontend only). Please serve the WebUI from the backend."
+							'There was an issue accessing CANChat, please verify your network connectivity.'
 						)}
-
-						<br class=" " />
-						<br class=" " />
-						<a
-							class=" font-semibold underline"
-							href="https://github.com/open-webui/open-webui#how-to-install-"
-							target="_blank">{$i18n.t('See readme.md for instructions')}</a
-						>
-						{$i18n.t('or')}
-						<a class=" font-semibold underline" href="https://discord.gg/5rJgQTnV4s" target="_blank"
-							>{$i18n.t('join our Discord for help.')}</a
-						>
 					</div>
 
 					<div class=" mt-6 mx-auto relative group w-fit">
