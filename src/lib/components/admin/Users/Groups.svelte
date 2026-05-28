@@ -20,6 +20,7 @@
 	import AddGroupModal from './Groups/AddGroupModal.svelte';
 	import { createNewGroup, getGroups } from '$lib/apis/groups';
 	import { getUserDefaultPermissions, updateUserDefaultPermissions } from '$lib/apis/users';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -69,23 +70,23 @@
 	let showDefaultPermissionsModal = false;
 
 	const setGroups = async () => {
-		groups = await getGroups(localStorage.token);
+		groups = await getGroups(getRequestToken());
 	};
 
 	const addGroupHandler = async (group) => {
-		const res = await createNewGroup(localStorage.token, group).catch((error) => {
+		const res = await createNewGroup(getRequestToken(), group).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
 
 		if (res) {
 			toast.success($i18n.t('Group created successfully'));
-			groups = await getGroups(localStorage.token);
+			groups = await getGroups(getRequestToken());
 		}
 	};
 
 	const updateDefaultPermissionsHandler = async (group) => {
-		const res = await updateUserDefaultPermissions(localStorage.token, group.permissions).catch(
+		const res = await updateUserDefaultPermissions(getRequestToken(), group.permissions).catch(
 			(error) => {
 				toast.error(`${error}`);
 				return null;
@@ -94,7 +95,7 @@
 
 		if (res) {
 			toast.success($i18n.t('Default permissions updated successfully'));
-			defaultPermissions = await getUserDefaultPermissions(localStorage.token);
+			defaultPermissions = await getUserDefaultPermissions(getRequestToken());
 		}
 	};
 
@@ -103,7 +104,7 @@
 			await goto('/');
 		} else {
 			await setGroups();
-			defaultPermissions = await getUserDefaultPermissions(localStorage.token);
+			defaultPermissions = await getUserDefaultPermissions(getRequestToken());
 		}
 		loaded = true;
 
@@ -124,7 +125,7 @@
 			// Refresh the groups data to get the accurate user list
 			// This ensures we have the correct user IDs and count
 			try {
-				groups = await getGroups(localStorage.token);
+				groups = await getGroups(getRequestToken());
 			} catch (error) {
 				console.error('Failed to refresh groups after membership update:', error);
 				// Fallback: just update the count if we can't fetch fresh data

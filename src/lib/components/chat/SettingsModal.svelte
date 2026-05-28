@@ -17,6 +17,7 @@
 	import Chats from './Settings/Chats.svelte';
 	import User from '../icons/User.svelte';
 	import Search from '../icons/Search.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -289,11 +290,11 @@
 	const saveSettings = async (updated) => {
 		await settings.set({ ...$settings, ...updated });
 		await models.set(await getModels());
-		await updateUserSettings(localStorage.token, { ui: $settings });
+		await updateUserSettings(getRequestToken(), { ui: $settings });
 	};
 
 	const getModels = async () => {
-		return await _getModels(localStorage.token);
+		return await _getModels(getRequestToken());
 	};
 
 	let selectedTab = 'general';

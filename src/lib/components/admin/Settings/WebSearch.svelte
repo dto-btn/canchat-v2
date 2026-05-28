@@ -7,6 +7,7 @@
 	import { onMount } from 'svelte';
 	import SensitiveInput from '$lib/components/common/SensitiveInput.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -34,7 +35,7 @@
 	let youtubeProxyUrl = '';
 
 	const submitHandler = async () => {
-		const res = await updateRAGConfig(localStorage.token, {
+		const res = await updateRAGConfig(getRequestToken(), {
 			web: webConfig,
 			youtube: {
 				language: youtubeLanguage.split(',').map((lang) => lang.trim()),
@@ -45,7 +46,7 @@
 	};
 
 	onMount(async () => {
-		const res = await getRAGConfig(localStorage.token);
+		const res = await getRAGConfig(getRequestToken());
 
 		if (res) {
 			webConfig = res.web;

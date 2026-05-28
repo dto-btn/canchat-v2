@@ -17,6 +17,7 @@
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import UnarchiveAllConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import DeleteConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 	const i18n = getI18n();
 
 	export let show = false;
@@ -32,26 +33,26 @@
 	let filteredChatList = [];
 
 	const unarchiveChatHandler = async (chatId) => {
-		const res = await archiveChatById(localStorage.token, chatId).catch((error) => {
+		const res = await archiveChatById(getRequestToken(), chatId).catch((error) => {
 			toast.error(`${error}`);
 		});
 		if (res) {
 			toast.success($i18n.t('Chat unarchived'));
 		}
 
-		chats = await getArchivedChatList(localStorage.token);
+		chats = await getArchivedChatList(getRequestToken());
 		dispatch('change');
 	};
 
 	const deleteChatHandler = async (chatId) => {
-		const res = await deleteChatById(localStorage.token, chatId).catch((error) => {
+		const res = await deleteChatById(getRequestToken(), chatId).catch((error) => {
 			toast.error(`${error}`);
 		});
 		if (res) {
 			toast.success($i18n.t('Chat deleted'));
 		}
 
-		chats = await getArchivedChatList(localStorage.token);
+		chats = await getArchivedChatList(getRequestToken());
 	};
 
 	const confirmDeleteChat = (chat) => {
@@ -63,19 +64,19 @@
 	const unarchiveAllHandler = async () => {
 		let res = null;
 		for (const chat of chats) {
-			res = await archiveChatById(localStorage.token, chat.id).catch((error) => {
+			res = await archiveChatById(getRequestToken(), chat.id).catch((error) => {
 				toast.error(`${error}`);
 			});
 		}
 		if (res) {
 			toast.success($i18n.t('All archived chat unarchived'));
 		}
-		chats = await getArchivedChatList(localStorage.token);
+		chats = await getArchivedChatList(getRequestToken());
 	};
 
 	$: if (show) {
 		(async () => {
-			chats = await getArchivedChatList(localStorage.token);
+			chats = await getArchivedChatList(getRequestToken());
 		})();
 	}
 	$: filteredChatList = chats.filter(

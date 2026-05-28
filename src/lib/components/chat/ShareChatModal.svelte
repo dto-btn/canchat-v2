@@ -9,6 +9,7 @@
 
 	import Modal from '../common/Modal.svelte';
 	import Link from '../icons/Link.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	export let chatId;
 
@@ -19,9 +20,9 @@
 	const shareLocalChat = async () => {
 		const _chat = chat;
 
-		const sharedChat = await shareChatById(localStorage.token, chatId);
+		const sharedChat = await shareChatById(getRequestToken(), chatId);
 		shareUrl = `${window.location.origin}/s/${sharedChat.id}`;
-		chat = await getChatById(localStorage.token, chatId);
+		chat = await getChatById(getRequestToken(), chatId);
 
 		return shareUrl;
 	};
@@ -66,7 +67,7 @@
 	$: if (show) {
 		(async () => {
 			if (chatId) {
-				const _chat = await getChatById(localStorage.token, chatId);
+				const _chat = await getChatById(getRequestToken(), chatId);
 				if (isDifferentChat(_chat)) {
 					chat = _chat;
 				}
@@ -117,10 +118,10 @@
 						<button
 							class="underline"
 							on:click={async () => {
-								const res = await deleteSharedChatById(localStorage.token, chatId);
+								const res = await deleteSharedChatById(getRequestToken(), chatId);
 
 								if (res) {
-									chat = await getChatById(localStorage.token, chatId);
+									chat = await getChatById(getRequestToken(), chatId);
 								}
 							}}
 							>{$i18n.t('delete this link')}

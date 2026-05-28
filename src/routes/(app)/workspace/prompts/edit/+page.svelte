@@ -12,17 +12,18 @@
 	import { page } from '$app/stores';
 
 	import PromptEditor from '$lib/components/workspace/Prompts/PromptEditor.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	let prompt = null;
 	const onSubmit = async (_prompt) => {
-		const prompt = await updatePromptByCommand(localStorage.token, _prompt).catch((error) => {
+		const prompt = await updatePromptByCommand(getRequestToken(), _prompt).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
 
 		if (prompt) {
 			toast.success($i18n.t('Prompt updated successfully'));
-			await prompts.set(await getPrompts(localStorage.token));
+			await prompts.set(await getPrompts(getRequestToken()));
 			await goto('/workspace/prompts');
 		}
 	};
@@ -33,7 +34,7 @@
 			// Ensure proper command format before sending to the API
 			const sanitizedCommand = command.replace(/\//g, '');
 
-			const _prompt = await getPromptByCommand(localStorage.token, sanitizedCommand).catch(
+			const _prompt = await getPromptByCommand(getRequestToken(), sanitizedCommand).catch(
 				(error) => {
 					toast.error(`${error}`);
 					return null;

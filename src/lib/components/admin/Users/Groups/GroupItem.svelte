@@ -13,6 +13,7 @@
 	import GlobeAlt from '$lib/components/icons/GlobeAlt.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import GroupModal from './EditGroupModal.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	export let users = [];
 	export let group = {
@@ -25,7 +26,7 @@
 	let showEdit = false;
 
 	const updateHandler = async (_group) => {
-		const res = await updateGroupById(localStorage.token, group.id, _group).catch((error) => {
+		const res = await updateGroupById(getRequestToken(), group.id, _group).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
@@ -37,7 +38,7 @@
 	};
 
 	const deleteHandler = async () => {
-		const res = await deleteGroupById(localStorage.token, group.id).catch((error) => {
+		const res = await deleteGroupById(getRequestToken(), group.id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});

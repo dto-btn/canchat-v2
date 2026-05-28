@@ -1,3 +1,5 @@
+"""Persistence helpers for opaque refresh-token sessions."""
+
 import time
 import uuid
 from typing import Optional
@@ -7,6 +9,8 @@ from open_webui.models.refresh_sessions import RefreshSession, RefreshSessionMod
 
 
 class RefreshSessionsTable:
+    """CRUD helpers for refresh sessions backed by the database table."""
+
     def create_session(
         self,
         user_id: str,
@@ -82,26 +86,46 @@ class RefreshSessionsTable:
             return refresh_session.token_hash if refresh_session else None
 
     def rotate_session_token(
-        self, session_id: str, token_hash: str, expires_at: int
+        self,
+        session_id: str,
+        token_hash: str,
+        expires_at: int,
+        current_token_hash: Optional[str] = None,
     ) -> Optional[RefreshSessionModel]:
         current_time = int(time.time())
 
         with get_db() as db:
+            query = (
+                db.query(RefreshSession)
+                .filter(RefreshSession.id == session_id)
+                .filter(RefreshSession.revoked_at.is_(None))
+                .filter(RefreshSession.expires_at > current_time)
+            )
+
+            if current_token_hash is not None:
+                # Compare-and-swap rotation. If another request already won the
+                # refresh race, return None instead of overwriting its token.
+                query = query.filter(RefreshSession.token_hash == current_token_hash)
+
+            updated = query.update(
+                {
+                    "token_hash": token_hash,
+                    "expires_at": expires_at,
+                    "updated_at": current_time,
+                },
+                synchronize_session=False,
+            )
+            if updated == 0:
+                return None
+
+            db.commit()
+
             refresh_session = (
                 db.query(RefreshSession).filter(RefreshSession.id == session_id).first()
             )
-            if (
-                not refresh_session
-                or refresh_session.revoked_at is not None
-                or refresh_session.expires_at <= current_time
-            ):
+            if not refresh_session:
                 return None
 
-            refresh_session.token_hash = token_hash
-            refresh_session.expires_at = expires_at
-            refresh_session.updated_at = current_time
-
-            db.commit()
             db.refresh(refresh_session)
 
             return RefreshSessionModel.model_validate(refresh_session)

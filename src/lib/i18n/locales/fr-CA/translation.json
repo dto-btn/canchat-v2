@@ -708,6 +708,7 @@
 	"JSON Preview": "Aperçu JSON",
 	"July": "Juillet",
 	"June": "Juin",
+	"Access Token Expiration": "Expiration du jeton d'acces",
 	"JWT Expiration": "Expiration du jeton JWT",
 	"Kagi Search API Key": "Clé API de recherche Kagi",
 	"Keep Alive": "Rester connecté",

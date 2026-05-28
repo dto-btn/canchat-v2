@@ -7,6 +7,7 @@
 	import Tooltip from '../common/Tooltip.svelte';
 
 	import { updateUserSettings } from '$lib/apis/users';
+	import { getRequestToken } from '$lib/services/auth';
 	const i18n = getI18n();
 
 	export let selectedModels = [''];
@@ -21,7 +22,7 @@
 			return;
 		}
 		settings.set({ ...$settings, models: selectedModels });
-		await updateUserSettings(localStorage.token, { ui: $settings });
+		await updateUserSettings(getRequestToken(), { ui: $settings });
 
 		toast.success($i18n.t('Default model updated'));
 	};

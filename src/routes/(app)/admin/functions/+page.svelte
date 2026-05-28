@@ -4,11 +4,12 @@
 
 	import { getFunctions } from '$lib/apis/functions';
 	import Functions from '$lib/components/admin/Functions.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	onMount(async () => {
 		await Promise.all([
 			(async () => {
-				functions.set(await getFunctions(localStorage.token));
+				functions.set(await getFunctions(getRequestToken()));
 			})()
 		]);
 	});

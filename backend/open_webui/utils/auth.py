@@ -1,10 +1,12 @@
+"""Helpers for access-token issuance, refresh cookies, and user resolution."""
+
 import logging
 import secrets
 import uuid
 import jwt
 
 from datetime import UTC, datetime, timedelta
-from typing import Optional, Union
+from typing import Literal, NamedTuple, Optional, Union
 
 from open_webui.models.users import UserModel, Users
 from open_webui.models.refresh_sessions_table import RefreshSessions
@@ -15,6 +17,7 @@ from open_webui.env import (
     WEBUI_REFRESH_TOKEN_COOKIE_SAME_SITE,
     WEBUI_REFRESH_TOKEN_COOKIE_SECURE,
     WEBUI_SECRET_KEY,
+    SRC_LOG_LEVELS,
 )
 from open_webui.utils.misc import parse_duration
 
@@ -23,6 +26,9 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from passlib.context import CryptContext
 
 logging.getLogger("passlib").setLevel(logging.ERROR)
+
+log = logging.getLogger(__name__)
+log.setLevel(SRC_LOG_LEVELS["MAIN"])
 
 
 SESSION_SECRET = WEBUI_SECRET_KEY
@@ -36,6 +42,45 @@ LEGACY_AUTH_TOKEN_COOKIE_NAME = "token"
 
 bearer_security = HTTPBearer(auto_error=False)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+AuthSource = Literal["bearer", "legacy_cookie", "api_key"]
+
+
+class ResolvedAuthContext(NamedTuple):
+    # Callers use the source to enforce rollout-specific behavior, such as only
+    # allowing legacy-cookie bootstrap on the migration endpoint.
+    user: UserModel
+    token: str
+    source: AuthSource
+
+
+def log_auth_event(
+    event: str,
+    *,
+    level: Literal["debug", "info", "warning", "error"] = "info",
+    **details,
+):
+    logger = getattr(log, level, log.info)
+    detail_parts = [
+        f"{key}={value!r}"
+        for key, value in sorted(details.items())
+        if value is not None
+    ]
+    message = f"[auth] {event}"
+    if detail_parts:
+        message += " | " + " ".join(detail_parts)
+    logger(message)
+
+
+def seconds_until(
+    expires_at: Optional[int], current_time: Optional[int] = None
+) -> Optional[int]:
+    if expires_at is None:
+        return None
+
+    reference_time = current_time if current_time is not None else int(datetime.now(UTC).timestamp())
+    return expires_at - reference_time
 
 
 def verify_password(plain_password, hashed_password):
@@ -163,6 +208,7 @@ def set_refresh_token_cookie(
     response: Response, refresh_token: str, expires_at_refresh_token: int
 ):
     datetime_expires_at_refresh = datetime.fromtimestamp(expires_at_refresh_token, UTC)
+    refresh_session_id = get_refresh_token_session_id(refresh_token)
 
     response.set_cookie(
         key=WEBUI_REFRESH_TOKEN_COOKIE_NAME,
@@ -172,6 +218,12 @@ def set_refresh_token_cookie(
         samesite=WEBUI_REFRESH_TOKEN_COOKIE_SAME_SITE,
         secure=WEBUI_REFRESH_TOKEN_COOKIE_SECURE,
     )
+    log_auth_event(
+        "refresh-cookie-set",
+        refresh_session_id=refresh_session_id,
+        refresh_expires_at=expires_at_refresh_token,
+        refresh_remaining_seconds=seconds_until(expires_at_refresh_token),
+    )
 
 
 def issue_tokens_for_user(
@@ -180,26 +232,64 @@ def issue_tokens_for_user(
     access_token_expires_in: str,
     refresh_token_expires_in: str,
     current_refresh_session_id: Optional[str] = None,
+    current_refresh_expires_at: Optional[int] = None,
+    current_refresh_token_hash: Optional[str] = None,
     meta: Optional[dict] = None,
 ) -> tuple[str, Optional[int]]:
+    current_time = int(datetime.now(UTC).timestamp())
     expires_delta_access_token, expires_at_access_token = get_access_token_expiration(
         access_token_expires_in
     )
-    _, expires_at_refresh_token = get_refresh_token_expiration(refresh_token_expires_in)
 
     access_token = create_token(
         data={"id": user_id},
         expires_delta=expires_delta_access_token,
     )
+
+    log_auth_event(
+        "access-token-issued",
+        user_id=user_id,
+        access_token_expires_at=expires_at_access_token,
+        access_token_remaining_seconds=seconds_until(
+            expires_at_access_token, current_time
+        ),
+    )
+
+    clear_legacy_auth_cookie(response)
+
+    if (
+        current_refresh_session_id is not None
+        and current_refresh_expires_at is not None
+        and expires_delta_access_token is not None
+    ):
+        current_time = int(datetime.now(UTC).timestamp())
+        # Avoid rotating the refresh cookie on every access-token mint when the
+        # current session still outlives the next access token window.
+        if current_refresh_expires_at > current_time + int(
+            expires_delta_access_token.total_seconds()
+        ):
+            log_auth_event(
+                "refresh-session-reused",
+                user_id=user_id,
+                refresh_session_id=current_refresh_session_id,
+                refresh_expires_at=current_refresh_expires_at,
+                refresh_remaining_seconds=seconds_until(
+                    current_refresh_expires_at, current_time
+                ),
+            )
+            return access_token, expires_at_access_token
+
+    _, expires_at_refresh_token = get_refresh_token_expiration(refresh_token_expires_in)
     refresh_session_id, refresh_token, refresh_token_hash = create_refresh_token(
         current_refresh_session_id
     )
 
     if current_refresh_session_id is not None:
         refresh_session = RefreshSessions.rotate_session_token(
-            current_refresh_session_id,
-            refresh_token_hash,
-            expires_at_refresh_token,
+            session_id=current_refresh_session_id,
+            token_hash=refresh_token_hash,
+            expires_at=expires_at_refresh_token,
+            current_token_hash=current_refresh_token_hash,
         )
     else:
         refresh_session = RefreshSessions.create_session(
@@ -212,11 +302,34 @@ def issue_tokens_for_user(
 
     if refresh_session is None:
         if current_refresh_session_id is not None:
+            log_auth_event(
+                "refresh-session-rotation-failed",
+                level="warning",
+                user_id=user_id,
+                refresh_session_id=current_refresh_session_id,
+            )
             raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_REFRESH_TOKEN)
 
+        log_auth_event(
+            "refresh-session-create-failed",
+            level="error",
+            user_id=user_id,
+            refresh_session_id=refresh_session_id,
+        )
         raise HTTPException(500, detail=ERROR_MESSAGES.DEFAULT())
 
-    clear_legacy_auth_cookie(response)
+    log_auth_event(
+        "refresh-session-rotated"
+        if current_refresh_session_id is not None
+        else "refresh-session-created",
+        user_id=user_id,
+        refresh_session_id=refresh_session_id,
+        refresh_expires_at=expires_at_refresh_token,
+        refresh_remaining_seconds=seconds_until(
+            expires_at_refresh_token, current_time
+        ),
+    )
+
     set_refresh_token_cookie(response, refresh_token, expires_at_refresh_token)
     return access_token, expires_at_access_token
 
@@ -242,22 +355,30 @@ def get_http_authorization_cred(auth_header: str):
         raise ValueError(ERROR_MESSAGES.INVALID_TOKEN)
 
 
-def get_current_user(
+def resolve_current_user(
     request: Request,
-    auth_token: HTTPAuthorizationCredentials = Depends(bearer_security),
-) -> UserModel:
+    auth_token: Optional[HTTPAuthorizationCredentials] = None,
+    require_auth: bool = True,
+) -> Optional[ResolvedAuthContext]:
+    """Resolve bearer, legacy-cookie, or API-key auth and return the winning source."""
     token = None
+    auth_source: Optional[AuthSource] = None
 
     if auth_token is not None:
         token = auth_token.credentials
+        auth_source = "bearer"
 
     if token is None:
         # Temporary rollout fallback for legacy browser sessions that still rely
         # on the old access-token cookie.
         token = get_legacy_auth_token(request)
+        if token is not None:
+            auth_source = "legacy_cookie"
 
     if token is None:
-        raise HTTPException(status_code=403, detail="Not authenticated")
+        if require_auth:
+            raise HTTPException(status_code=403, detail="Not authenticated")
+        return None
 
     # auth by api key
     if token.startswith("sk-"):
@@ -279,7 +400,8 @@ def get_current_user(
                     status.HTTP_403_FORBIDDEN, detail=ERROR_MESSAGES.API_KEY_NOT_ALLOWED
                 )
 
-        return get_current_user_by_api_key(token)
+        user = get_current_user_by_api_key(token)
+        return ResolvedAuthContext(user=user, token=token, source="api_key")
 
     # auth by jwt token
     try:
@@ -297,14 +419,38 @@ def get_current_user(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=ERROR_MESSAGES.INVALID_TOKEN,
             )
-        else:
-            Users.update_user_last_active_by_id(user.id)
-        return user
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=ERROR_MESSAGES.UNAUTHORIZED,
+
+        Users.update_user_last_active_by_id(user.id)
+        return ResolvedAuthContext(
+            user=user,
+            token=token,
+            source=auth_source or "bearer",
         )
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail=ERROR_MESSAGES.UNAUTHORIZED,
+    )
+
+
+def get_current_user(
+    request: Request,
+    auth_token: HTTPAuthorizationCredentials = Depends(bearer_security),
+) -> UserModel:
+    resolved_auth = resolve_current_user(request, auth_token, require_auth=True)
+    return resolved_auth.user
+
+
+def get_current_user_optional(
+    request: Request,
+    auth_token: HTTPAuthorizationCredentials = Depends(bearer_security),
+) -> Optional[UserModel]:
+    try:
+        resolved_auth = resolve_current_user(request, auth_token, require_auth=False)
+    except HTTPException:
+        return None
+
+    return resolved_auth.user if resolved_auth else None
 
 
 def get_current_user_by_api_key(api_key: str):

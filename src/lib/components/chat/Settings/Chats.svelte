@@ -7,6 +7,7 @@
 	import { goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -22,24 +23,24 @@
 
 	const archiveAllChatsHandler = async () => {
 		await goto('/');
-		await archiveAllChats(localStorage.token).catch((error) => {
+		await archiveAllChats(getRequestToken()).catch((error) => {
 			toast.error(`${error}`);
 		});
 
 		currentChatPage.set(1);
-		await chats.set(await getChatList(localStorage.token, $currentChatPage));
+		await chats.set(await getChatList(getRequestToken(), $currentChatPage));
 		scrollPaginationEnabled.set(true);
 		toast.success($i18n.t('Archiving all chats'));
 	};
 
 	const deleteAllChatsHandler = async () => {
 		await goto('/');
-		await deleteAllChats(localStorage.token).catch((error) => {
+		await deleteAllChats(getRequestToken()).catch((error) => {
 			toast.error(`${error}`);
 		});
 
 		currentChatPage.set(1);
-		await chats.set(await getChatList(localStorage.token, $currentChatPage));
+		await chats.set(await getChatList(getRequestToken(), $currentChatPage));
 		scrollPaginationEnabled.set(true);
 		toast.success($i18n.t('Deleting all chats'));
 	};

@@ -25,6 +25,7 @@
 		temporaryChatEnabled,
 		isLastActiveTab,
 		isApp,
+		appData,
 		appInfo
 	} from '$lib/stores';
 	import { goto } from '$app/navigation';
@@ -32,7 +33,15 @@
 	import { Toaster, toast } from 'svelte-sonner';
 
 	import { getBackendConfig } from '$lib/apis';
-	import { getSessionUser } from '$lib/apis/auths';
+	import { installApiFetchInterceptor } from '$lib/apis/client';
+	import {
+		bootstrapAuthSession,
+		clearAuthState,
+		getAccessTokenValue,
+		hydrateAuthState,
+		isAuthFailure
+	} from '$lib/services/auth';
+	import { accessToken } from '$lib/stores/auth';
 
 	import '../tailwind.css';
 	import '../app.css';
@@ -46,11 +55,15 @@
 	import NotificationToast from '$lib/components/NotificationToast.svelte';
 	import AppSidebar from '$lib/components/app/AppSidebar.svelte';
 
+	// Initial interceptor attachment to ensure all fetch calls are covered
+	installApiFetchInterceptor();
+
 	setContext('i18n', i18n);
 
 	const bc = new BroadcastChannel('active-tab-channel');
 
 	let loaded = false;
+	let authRecoveryRedirectInFlight = false;
 
 	let message = '';
 
@@ -64,6 +77,42 @@
 
 	const BREAKPOINT = 768;
 
+	$: if ($socket) {
+		// Always update the token sent with every request
+		$socket.auth = $accessToken ? { token: $accessToken } : {};
+
+		if ($accessToken) {
+			// Ensure socket is connected if we have a token
+			if (!$socket.connected) {
+				$socket.connect();
+			}
+		} else if ($socket.connected) {
+			// If no token present, disconnect the socket to prevent unauthorized access
+			$socket.disconnect();
+		}
+	}
+
+	const recoverFromLostAuth = async () => {
+		if (authRecoveryRedirectInFlight) {
+			return;
+		}
+
+		authRecoveryRedirectInFlight = true;
+		clearAuthState();
+		await user.set(undefined);
+
+		if ($page.url.pathname !== '/auth') {
+			await goto('/auth');
+		}
+	};
+
+	$: if (loaded && $user !== undefined && !$accessToken) {
+		recoverFromLostAuth().finally(() => {
+			authRecoveryRedirectInFlight = false;
+		});
+	}
+
+	/** @param {boolean} enableWebsocket */
 	const setupSocket = async (enableWebsocket) => {
 		const _socket = io(`${WEBUI_BASE_URL}` || undefined, {
 			reconnection: true,
@@ -72,7 +121,8 @@
 			randomizationFactor: 0.5,
 			path: '/ws/socket.io',
 			transports: enableWebsocket ? ['websocket'] : ['polling', 'websocket'],
-			auth: { token: localStorage.token }
+			auth: { token: getAccessTokenValue() },
+			autoConnect: false
 		});
 
 		await socket.set(_socket);
@@ -83,6 +133,11 @@
 
 		_socket.on('connect', () => {
 			console.log('connected', _socket.id);
+
+			const token = getAccessTokenValue();
+			if (token) {
+				_socket.emit('user-join', { auth: { token } });
+			}
 		});
 
 		_socket.on('reconnect_attempt', (attempt) => {
@@ -115,7 +170,7 @@
 			if (data.deleted_count > 0) {
 				try {
 					// Update main chat list
-					const updatedChats = await getChatList(localStorage.token, $currentChatPage);
+					const updatedChats = await getChatList(undefined, $currentChatPage);
 					chats.set(updatedChats);
 
 					// Check if current chat was deleted and redirect if necessary
@@ -136,10 +191,14 @@
 				}
 			}
 		});
+
+		_socket.on('chat-events', chatEventHandler);
+		_socket.on('channel-events', channelEventHandler);
 	};
 
+	/** @param {any} event */
 	const chatEventHandler = async (event) => {
-		const chat = $page.url.pathname.includes(`/c/${event.chat_id}`);
+		const _chat = $page.url.pathname.includes(`/c/${event.chat_id}`);
 
 		let isFocused = document.visibilityState !== 'visible';
 		if (window.electronAPI) {
@@ -183,13 +242,14 @@
 				}
 			} else if (type === 'chat:title') {
 				currentChatPage.set(1);
-				await chats.set(await getChatList(localStorage.token, $currentChatPage));
+				await chats.set(await getChatList(undefined, $currentChatPage));
 			} else if (type === 'chat:tags') {
-				tags.set(await getAllTags(localStorage.token));
+				tags.set(await getAllTags());
 			}
 		}
 	};
 
+	/** @param {any} event */
 	const channelEventHandler = async (event) => {
 		if (event.data?.type === 'typing') {
 			return;
@@ -238,163 +298,167 @@
 		}
 	};
 
-	onMount(async () => {
-		if (window?.electronAPI) {
-			const info = await window.electronAPI.send({
-				type: 'app:info'
-			});
+	onMount(() => {
+		let onResize = () => {};
+		let handleVisibilityChange = () => {};
 
-			if (info) {
-				isApp.set(true);
-				appInfo.set(info);
-
-				const data = await window.electronAPI.send({
-					type: 'app:data'
-				});
-
-				if (data) {
-					appData.set(data);
-				}
-			}
-		}
-
-		// Listen for messages on the BroadcastChannel
-		bc.onmessage = (event) => {
-			if (event.data === 'active') {
-				isLastActiveTab.set(false); // Another tab became active
-			}
-		};
-
-		// Set yourself as the last active tab when this tab is focused
-		const handleVisibilityChange = () => {
-			if (document.visibilityState === 'visible') {
-				isLastActiveTab.set(true); // This tab is now the active tab
-				bc.postMessage('active'); // Notify other tabs that this tab is active
-			}
-		};
-
-		// Add event listener for visibility state changes
-		document.addEventListener('visibilitychange', handleVisibilityChange);
-
-		// Call visibility change handler initially to set state on load
-		handleVisibilityChange();
-
-		theme.set(localStorage.theme);
-
-		mobile.set(window.innerWidth < BREAKPOINT);
-		const onResize = () => {
-			if (window.innerWidth < BREAKPOINT) {
-				mobile.set(true);
-			} else {
-				mobile.set(false);
-			}
-		};
-
-		window.addEventListener('resize', onResize);
-
-		let backendConfig = null;
-		try {
-			backendConfig = await getBackendConfig();
-		} catch (error) {
-			console.error('Error loading backend config:', error);
-		}
-		// Initialize i18n even if we didn't get a backend config,
-		// so `/error` can show something that's not `undefined`.
-
-		initI18n();
-		if (!localStorage.locale) {
-			const languages = await getLanguages();
-			const browserLanguages = navigator.languages
-				? navigator.languages
-				: [navigator.language || navigator.userLanguage];
-			const lang = backendConfig.default_locale
-				? backendConfig.default_locale
-				: bestMatchingLanguage(languages, browserLanguages, 'en-GB');
-			$i18n.changeLanguage(lang);
-		}
-
-		if (backendConfig) {
-			// Save Backend Status to Store
-			await config.set(backendConfig);
-			await WEBUI_NAME.set(backendConfig.name);
-
-			if ($config) {
-				await setupSocket($config.features?.enable_websocket ?? true);
-
-				if (localStorage.token) {
-					// Get Session User Info
-					const sessionUser = await getSessionUser(localStorage.token).catch((error) => {
-						toast.error(`${error}`);
-						return null;
+		const initializeLayout = async () => {
+			try {
+				if (window?.electronAPI) {
+					const info = await window.electronAPI.send({
+						type: 'app:info'
 					});
 
-					if (sessionUser) {
-						// Save Session User to Store
-						$socket.emit('user-join', { auth: { token: sessionUser.token } });
+					if (info) {
+						isApp.set(true);
+						appInfo.set(info);
 
-						$socket?.on('chat-events', chatEventHandler);
-						$socket?.on('channel-events', channelEventHandler);
+						const data = await window.electronAPI.send({
+							type: 'app:data'
+						});
 
-						await user.set(sessionUser);
-						await config.set(await getBackendConfig());
+						if (data) {
+							appData.set(data);
+						}
+					}
+				}
 
-						// Initialize user timezone detection
+				bc.onmessage = (event) => {
+					if (event.data === 'active') {
+						isLastActiveTab.set(false);
+					}
+				};
+
+				handleVisibilityChange = () => {
+					if (document.visibilityState === 'visible') {
+						isLastActiveTab.set(true);
+						bc.postMessage('active');
+					}
+				};
+
+				document.addEventListener('visibilitychange', handleVisibilityChange);
+				handleVisibilityChange();
+
+				theme.set(localStorage.theme);
+
+				mobile.set(window.innerWidth < BREAKPOINT);
+				onResize = () => {
+					if (window.innerWidth < BREAKPOINT) {
+						mobile.set(true);
+					} else {
+						mobile.set(false);
+					}
+				};
+
+				window.addEventListener('resize', onResize);
+
+				const persistedAccessToken = hydrateAuthState();
+
+				let backendConfig = null;
+				try {
+					backendConfig = await getBackendConfig();
+				} catch (error) {
+					console.error('Error loading backend config:', error);
+				}
+
+				initI18n(backendConfig?.default_locale);
+				if (!localStorage.locale) {
+					const languages = await getLanguages();
+					const browserLanguages = navigator.languages?.length
+						? navigator.languages
+						: [navigator.language];
+					const lang = backendConfig?.default_locale
+						? backendConfig.default_locale
+						: bestMatchingLanguage(languages, browserLanguages, 'en-GB');
+					$i18n.changeLanguage(lang);
+				}
+
+				if (!backendConfig) {
+					await goto('/error');
+					return;
+				}
+
+				await config.set(backendConfig);
+				await WEBUI_NAME.set(backendConfig.name);
+
+				await setupSocket(backendConfig.features?.enable_websocket ?? true);
+
+				let sessionUser = null;
+				try {
+					sessionUser = await bootstrapAuthSession(persistedAccessToken);
+				} catch (error) {
+					if (!isAuthFailure(error)) {
+						console.error('Error restoring browser session:', error);
+					}
+				}
+
+				if (sessionUser) {
+					await user.set(sessionUser);
+
+					const accessToken = getAccessTokenValue();
+					if (accessToken) {
 						const { timezoneService } = await import('$lib/services/timezone');
-						await timezoneService.initializeUserTimezone(sessionUser.token).catch((error) => {
+						await timezoneService.initializeUserTimezone(accessToken).catch((error) => {
 							console.warn('Failed to initialize timezone:', error);
 						});
-					} else {
-						// Redirect Invalid Session User to /auth Page
-						localStorage.removeItem('token');
-						await goto('/auth');
+					}
+
+					if ($page.url.pathname === '/auth') {
+						await goto('/');
 					}
 				} else {
-					// Don't redirect if we're already on the auth page
-					// Needed because we pass in tokens from OAuth logins via URL fragments
+					clearAuthState();
+					await user.set(undefined);
+
 					if ($page.url.pathname !== '/auth') {
 						await goto('/auth');
 					}
 				}
-			}
-		} else {
-			// Redirect to /error when Backend Not Detected
-			await goto(`/error`);
-		}
+			} catch (error) {
+				console.error('Error initializing layout:', error);
+				clearAuthState();
+				await user.set(undefined);
+				await goto('/error');
+			} finally {
+				await tick();
 
-		await tick();
+				if (
+					document.documentElement.classList.contains('her') &&
+					document.getElementById('progress-bar')
+				) {
+					loadingProgress.subscribe((value) => {
+						const progressBar = document.getElementById('progress-bar');
 
-		if (
-			document.documentElement.classList.contains('her') &&
-			document.getElementById('progress-bar')
-		) {
-			loadingProgress.subscribe((value) => {
-				const progressBar = document.getElementById('progress-bar');
+						if (progressBar) {
+							progressBar.style.width = `${value}%`;
+						}
+					});
 
-				if (progressBar) {
-					progressBar.style.width = `${value}%`;
+					await loadingProgress.set(100);
+
+					document.getElementById('splash-screen')?.remove();
+
+					const audio = new Audio(`/audio/greeting.mp3`);
+					const playAudio = () => {
+						audio.play();
+						document.removeEventListener('click', playAudio);
+					};
+
+					document.addEventListener('click', playAudio);
+				} else {
+					document.getElementById('splash-screen')?.remove();
 				}
-			});
 
-			await loadingProgress.set(100);
+				loaded = true;
+			}
+		};
 
-			document.getElementById('splash-screen')?.remove();
-
-			const audio = new Audio(`/audio/greeting.mp3`);
-			const playAudio = () => {
-				audio.play();
-				document.removeEventListener('click', playAudio);
-			};
-
-			document.addEventListener('click', playAudio);
-
-			loaded = true;
-		} else {
-			document.getElementById('splash-screen')?.remove();
-			loaded = true;
-		}
+		initializeLayout();
 
 		return () => {
 			window.removeEventListener('resize', onResize);
+			document.removeEventListener('visibilitychange', handleVisibilityChange);
+			bc.onmessage = null;
 		};
 	});
 </script>
@@ -433,7 +497,6 @@
 	richColors
 	position="top-right"
 	toastOptions={{
-		ariaLabel: $i18n.t('notification'),
 		classes: {
 			error: '!bg-white !text-red-600 !border-red-600',
 			success: '!bg-white !text-green-700 !border-green-700',

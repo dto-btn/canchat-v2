@@ -10,6 +10,7 @@
 	import Messages from './Messages.svelte';
 	import { onDestroy, onMount, tick } from 'svelte';
 	import { toast } from 'svelte-sonner';
+	import { getRequestToken } from '$lib/services/auth';
 
 	export let threadId = null;
 	export let channel = null;
@@ -40,7 +41,7 @@
 		typingUsersTimeout = {};
 
 		if (channel) {
-			messages = await getChannelThreadMessages(localStorage.token, channel.id, threadId);
+			messages = await getChannelThreadMessages(getRequestToken(), channel.id, threadId);
 
 			if (messages.length < 50) {
 				top = true;
@@ -122,7 +123,7 @@
 			return;
 		}
 
-		const res = await sendMessage(localStorage.token, channel.id, {
+		const res = await sendMessage(getRequestToken(), channel.id, {
 			parent_id: threadId,
 			content: content,
 			data: data
@@ -180,7 +181,7 @@
 				thread={true}
 				onLoad={async () => {
 					const newMessages = await getChannelThreadMessages(
-						localStorage.token,
+						getRequestToken(),
 						channel.id,
 						threadId,
 						messages.length

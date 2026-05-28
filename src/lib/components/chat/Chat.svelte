@@ -72,6 +72,7 @@
 	import ChatControls from './ChatControls.svelte';
 	import EventConfirmDialog from '../common/ConfirmDialog.svelte';
 	import Placeholder from './Placeholder.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	export let chatIdProp = '';
 
@@ -217,7 +218,7 @@
 
 	const setToolIds = async () => {
 		if (!$tools) {
-			tools.set(await getTools(localStorage.token));
+			tools.set(await getTools(getRequestToken()));
 		}
 
 		if (selectedModels.length !== 1) {
@@ -303,10 +304,10 @@
 				} else if (type === 'chat:title') {
 					chatTitle.set(data);
 					currentChatPage.set(1);
-					await chats.set(await getChatList(localStorage.token, $currentChatPage));
+					await chats.set(await getChatList(getRequestToken(), $currentChatPage));
 				} else if (type === 'chat:tags') {
-					chat = await getChatById(localStorage.token, $chatId);
-					allTags.set(await getAllTags(localStorage.token));
+					chat = await getChatById(getRequestToken(), $chatId);
+					allTags.set(await getAllTags(getRequestToken()));
 				} else if (type === 'message') {
 					message.content += data.content;
 				} else if (type === 'replace') {
@@ -542,7 +543,7 @@
 			}
 
 			// Upload file to server
-			const uploadedFile = await uploadFile(localStorage.token, file);
+			const uploadedFile = await uploadFile(getRequestToken(), file);
 
 			if (!uploadedFile) {
 				throw new Error('Server returned null response for file upload');
@@ -580,7 +581,7 @@
 
 		try {
 			files = [...files, fileItem];
-			const res = await processWeb(localStorage.token, '', url);
+			const res = await processWeb(getRequestToken(), '', url);
 
 			if (res) {
 				fileItem.status = 'uploaded';
@@ -612,7 +613,7 @@
 
 		try {
 			files = [...files, fileItem];
-			const res = await processYoutubeVideo(localStorage.token, url);
+			const res = await processYoutubeVideo(getRequestToken(), url);
 
 			if (res) {
 				fileItem.status = 'uploaded';
@@ -753,7 +754,7 @@
 			$models.map((m) => m.id).includes(modelId) ? modelId : ''
 		);
 
-		const userSettings = await getUserSettings(localStorage.token);
+		const userSettings = await getUserSettings(getRequestToken());
 
 		if (userSettings) {
 			settings.set(userSettings.ui);
@@ -766,13 +767,13 @@
 
 	const loadChat = async () => {
 		chatId.set(chatIdProp);
-		chat = await getChatById(localStorage.token, $chatId).catch(async (error) => {
+		chat = await getChatById(getRequestToken(), $chatId).catch(async (error) => {
 			await goto('/');
 			return null;
 		});
 
 		if (chat) {
-			tags = await getTagsById(localStorage.token, $chatId).catch(async (error) => {
+			tags = await getTagsById(getRequestToken(), $chatId).catch(async (error) => {
 				return [];
 			});
 
@@ -790,7 +791,7 @@
 
 				chatTitle.set(chatContent.title);
 
-				const userSettings = await getUserSettings(localStorage.token);
+				const userSettings = await getUserSettings(getRequestToken());
 
 				if (userSettings) {
 					await settings.set(userSettings.ui);
@@ -837,7 +838,7 @@
 	};
 
 	const chatCompletedHandler = async (chatId, modelId, responseMessageId, messages) => {
-		const res = await chatCompleted(localStorage.token, {
+		const res = await chatCompleted(getRequestToken(), {
 			model: modelId,
 			messages: messages.map((m) => ({
 				id: m.id,
@@ -877,7 +878,7 @@
 
 		if ($chatId == chatId) {
 			if (!$temporaryChatEnabled) {
-				chat = await updateChatById(localStorage.token, chatId, {
+				chat = await updateChatById(getRequestToken(), chatId, {
 					models: selectedModels,
 					messages: messages,
 					history: history,
@@ -886,7 +887,7 @@
 				});
 
 				currentChatPage.set(1);
-				await chats.set(await getChatList(localStorage.token, $currentChatPage));
+				await chats.set(await getChatList(getRequestToken(), $currentChatPage));
 			}
 		}
 	};
@@ -894,7 +895,7 @@
 	const chatActionHandler = async (chatId, actionId, modelId, responseMessageId, event = null) => {
 		const messages = createMessagesList(responseMessageId);
 
-		const res = await chatAction(localStorage.token, actionId, {
+		const res = await chatAction(getRequestToken(), actionId, {
 			model: modelId,
 			messages: messages.map((m) => ({
 				id: m.id,
@@ -929,7 +930,7 @@
 
 		if ($chatId == chatId) {
 			if (!$temporaryChatEnabled) {
-				chat = await updateChatById(localStorage.token, chatId, {
+				chat = await updateChatById(getRequestToken(), chatId, {
 					models: selectedModels,
 					messages: messages,
 					history: history,
@@ -938,7 +939,7 @@
 				});
 
 				currentChatPage.set(1);
-				await chats.set(await getChatList(localStorage.token, $currentChatPage));
+				await chats.set(await getChatList(getRequestToken(), $currentChatPage));
 			}
 		}
 	};
@@ -1487,7 +1488,7 @@
 								if ($chatId && !$temporaryChatEnabled) {
 									const messages = createMessagesList(responseMessageId);
 
-									chat = await updateChatById(localStorage.token, $chatId, {
+									chat = await updateChatById(getRequestToken(), $chatId, {
 										models: selectedModels,
 										messages: messages,
 										history: history,
@@ -1496,7 +1497,7 @@
 									});
 
 									currentChatPage.set(1);
-									await chats.set(await getChatList(localStorage.token, $currentChatPage));
+									await chats.set(await getChatList(getRequestToken(), $currentChatPage));
 								}
 
 								// Don't call chatCompletedHandler for CrewAI responses to avoid 400 error
@@ -1522,7 +1523,7 @@
 							await tick();
 							if ($chatId && !$temporaryChatEnabled) {
 								const messages = createMessagesList(responseMessageId);
-								chat = await updateChatById(localStorage.token, $chatId, {
+								chat = await updateChatById(getRequestToken(), $chatId, {
 									models: selectedModels,
 									messages: messages,
 									history: history,
@@ -1550,7 +1551,7 @@
 		);
 
 		currentChatPage.set(1);
-		chats.set(await getChatList(localStorage.token, $currentChatPage));
+		chats.set(await getChatList(getRequestToken(), $currentChatPage));
 	};
 
 	const sendPromptSocket = async (model, responseMessageId, _chatId) => {
@@ -1599,7 +1600,7 @@
 								params?.system ?? $settings?.system ?? '',
 								$user.name,
 								$settings?.userLocation
-									? await getAndUpdateUserLocation(localStorage.token)
+									? await getAndUpdateUserLocation(getRequestToken())
 									: undefined,
 								userTimezone
 							);
@@ -1643,7 +1644,7 @@
 
 		// Regular OpenAI completion
 		const res = await generateOpenAIChatCompletion(
-			localStorage.token,
+			getRequestToken(),
 			{
 				stream: stream,
 				model: model.id,
@@ -1760,7 +1761,7 @@
 
 	const stopResponse = () => {
 		if (taskId) {
-			const res = stopTask(localStorage.token, taskId).catch((error) => {
+			const res = stopTask(getRequestToken(), taskId).catch((error) => {
 				return null;
 			});
 
@@ -1854,7 +1855,7 @@
 
 		try {
 			const [res, controller] = await generateMoACompletion(
-				localStorage.token,
+				getRequestToken(),
 				message.model,
 				history.messages[message.parentId].content,
 				responses
@@ -1891,7 +1892,7 @@
 
 	const initChatHandler = async () => {
 		if (!$temporaryChatEnabled) {
-			chat = await createNewChat(localStorage.token, {
+			chat = await createNewChat(getRequestToken(), {
 				id: $chatId,
 				title: $i18n.t('New Chat'),
 				models: selectedModels,
@@ -1904,7 +1905,7 @@
 			});
 
 			currentChatPage.set(1);
-			await chats.set(await getChatList(localStorage.token, $currentChatPage));
+			await chats.set(await getChatList(getRequestToken(), $currentChatPage));
 			await chatId.set(chat.id);
 
 			window.history.replaceState(history.state, '', `/c/${chat.id}`);
@@ -1917,7 +1918,7 @@
 	const saveChatHandler = async (_chatId) => {
 		if ($chatId == _chatId) {
 			if (!$temporaryChatEnabled) {
-				chat = await updateChatById(localStorage.token, _chatId, {
+				chat = await updateChatById(getRequestToken(), _chatId, {
 					models: selectedModels,
 					history: history,
 					messages: createMessagesList(history.currentId),
@@ -1926,7 +1927,7 @@
 				});
 
 				currentChatPage.set(1);
-				await chats.set(await getChatList(localStorage.token, $currentChatPage));
+				await chats.set(await getChatList(getRequestToken(), $currentChatPage));
 			}
 		}
 	};
