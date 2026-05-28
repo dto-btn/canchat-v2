@@ -316,9 +316,8 @@ from open_webui.utils.middleware import process_chat_payload, process_chat_respo
 from open_webui.utils.access_control import has_access
 
 from open_webui.utils.auth import (
-    decode_token,
     get_admin_user,
-    get_legacy_auth_token,
+    get_current_user_optional,
     get_verified_user,
 )
 from open_webui.utils.oauth import oauth_manager
@@ -1313,20 +1312,7 @@ async def list_tasks_endpoint(user=Depends(get_verified_user)):
 
 
 @app.get("/api/config")
-async def get_app_config(request: Request):
-    user = None
-    token = get_legacy_auth_token(request)
-    if token:
-        try:
-            data = decode_token(token)
-        except Exception as e:
-            log.debug(e)
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token",
-            )
-        if data is not None and "id" in data:
-            user = Users.get_user_by_id(data["id"])
+async def get_app_config(request: Request, user=Depends(get_current_user_optional)):
 
     onboarding = False
     if user is None:

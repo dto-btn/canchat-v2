@@ -8,6 +8,7 @@
 	import { getVoices as _getVoices } from '$lib/apis/audio';
 
 	import Switch from '$lib/components/common/Switch.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 	const dispatch = createEventDispatcher();
 
 	const i18n = getI18n();
@@ -40,7 +41,7 @@
 				}
 			}, 100);
 		} else {
-			const res = await _getVoices(localStorage.token).catch((e) => {
+			const res = await _getVoices(getRequestToken()).catch((e) => {
 				toast.error(e);
 			});
 

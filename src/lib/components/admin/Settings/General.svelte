@@ -15,6 +15,7 @@
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -42,7 +43,7 @@
 
 	const updateLdapServerHandler = async () => {
 		if (!ENABLE_LDAP) return;
-		const res = await updateLdapServer(localStorage.token, LDAP_SERVER).catch((error) => {
+		const res = await updateLdapServer(getRequestToken(), LDAP_SERVER).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
@@ -52,8 +53,8 @@
 	};
 
 	const updateHandler = async () => {
-		webhookUrl = await updateWebhookUrl(localStorage.token, webhookUrl);
-		const res = await updateAdminConfig(localStorage.token, adminConfig);
+		webhookUrl = await updateWebhookUrl(getRequestToken(), webhookUrl);
+		const res = await updateAdminConfig(getRequestToken(), adminConfig);
 		await updateLdapServerHandler();
 
 		if (res) {
@@ -66,18 +67,18 @@
 	onMount(async () => {
 		await Promise.all([
 			(async () => {
-				adminConfig = await getAdminConfig(localStorage.token);
+				adminConfig = await getAdminConfig(getRequestToken());
 			})(),
 
 			(async () => {
-				webhookUrl = await getWebhookUrl(localStorage.token);
+				webhookUrl = await getWebhookUrl(getRequestToken());
 			})(),
 			(async () => {
-				LDAP_SERVER = await getLdapServer(localStorage.token);
+				LDAP_SERVER = await getLdapServer(getRequestToken());
 			})()
 		]);
 
-		const ldapConfig = await getLdapConfig(localStorage.token);
+		const ldapConfig = await getLdapConfig(getRequestToken());
 		ENABLE_LDAP = ldapConfig.ENABLE_LDAP;
 	});
 </script>
@@ -206,7 +207,9 @@
 
 				<div class=" w-full justify-between">
 					<div class="flex w-full justify-between">
-						<div class=" self-center text-xs font-medium">{$i18n.t('JWT Expiration')}</div>
+						<div class=" self-center text-xs font-medium">
+							{$i18n.t('Access Token Expiration')}
+						</div>
 					</div>
 
 					<div class="flex mt-2 space-x-2">
@@ -214,7 +217,7 @@
 							class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 							type="text"
 							placeholder={`e.g.) "30m","1h", "10d". `}
-							bind:value={adminConfig.JWT_EXPIRES_IN}
+							bind:value={adminConfig.ACCESS_TOKEN_EXPIRES_IN}
 						/>
 					</div>
 
@@ -266,7 +269,7 @@
 						<Switch
 							bind:state={ENABLE_LDAP}
 							on:change={async () => {
-								updateLdapConfig(localStorage.token, ENABLE_LDAP);
+								updateLdapConfig(getRequestToken(), ENABLE_LDAP);
 							}}
 						/>
 					</div>

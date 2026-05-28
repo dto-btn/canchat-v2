@@ -8,10 +8,11 @@
 	import { page } from '$app/stores';
 
 	import { getBackendConfig } from '$lib/apis';
-	import { ldapUserSignIn, getSessionUser, userSignIn, userSignUp } from '$lib/apis/auths';
+	import { ldapUserSignIn, userSignIn, userSignUp } from '$lib/apis/auths';
+	import { bootstrapAuthSession, getAccessTokenValue, setAuthSession } from '$lib/services/auth';
 
 	import { WEBUI_BASE_URL } from '$lib/constants';
-	import { WEBUI_NAME, config, user, socket } from '$lib/stores';
+	import { WEBUI_NAME, config, user } from '$lib/stores';
 
 	import { generateInitialsImage } from '$lib/utils';
 
@@ -19,10 +20,17 @@
 	import OnBoarding from '$lib/components/OnBoarding.svelte';
 
 	const i18n = getI18n();
+	const getAuthFeatures = () => /** @type {any} */ ($config?.features ?? {});
+	const hasLdapEnabled = () => Boolean(getAuthFeatures().enable_ldap);
+	const hasLoginFormEnabled = () => Boolean(getAuthFeatures().enable_login_form);
+	const hasSignupEnabled = () => Boolean(getAuthFeatures().enable_signup);
+	const hasTrustedHeaderAuth = () => Boolean(getAuthFeatures().auth_trusted_header);
+	const hasAuthDisabled = () => getAuthFeatures().auth === false;
+	const hasOnboardingEnabled = () => Boolean(/** @type {any} */ ($config ?? {}).onboarding);
 
 	let loaded = false;
 
-	let mode = $config?.features.enable_ldap ? 'ldap' : 'signin';
+	let mode = hasLdapEnabled() ? 'ldap' : 'signin';
 
 	let name = '';
 	let email = '';
@@ -30,22 +38,26 @@
 
 	let ldapUsername = '';
 
+	/** @param {import('$lib/stores').SessionUser | null | undefined} sessionUser */
 	const setSessionUser = async (sessionUser) => {
 		if (sessionUser) {
 			toast.success($i18n.t(`You're now logged in.`));
-			if (sessionUser.token) {
-				localStorage.token = sessionUser.token;
+			setAuthSession(sessionUser);
+			await user.set(sessionUser);
+
+			const backendConfig = await getBackendConfig();
+			if (backendConfig) {
+				await config.set(backendConfig);
 			}
 
-			$socket.emit('user-join', { auth: { token: sessionUser.token } });
-			await user.set(sessionUser);
-			await config.set(await getBackendConfig());
-
 			// Initialize user timezone detection after successful authentication
-			const { timezoneService } = await import('$lib/services/timezone');
-			await timezoneService.initializeUserTimezone(sessionUser.token).catch((error) => {
-				console.warn('Failed to initialize timezone during login:', error);
-			});
+			const accessToken = getAccessTokenValue();
+			if (accessToken) {
+				const { timezoneService } = await import('$lib/services/timezone');
+				await timezoneService.initializeUserTimezone(accessToken).catch((error) => {
+					console.warn('Failed to initialize timezone during login:', error);
+				});
+			}
 
 			goto('/');
 		}
@@ -102,14 +114,13 @@
 		if (!token) {
 			return;
 		}
-		const sessionUser = await getSessionUser(token).catch((error) => {
+		const sessionUser = await bootstrapAuthSession(token).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
 		if (!sessionUser) {
 			return;
 		}
-		localStorage.token = token;
 		await setSessionUser(sessionUser);
 	};
 
@@ -122,10 +133,10 @@
 		await checkOauthCallback();
 
 		loaded = true;
-		if (($config?.features.auth_trusted_header ?? false) || $config?.features.auth === false) {
+		if (hasTrustedHeaderAuth() || hasAuthDisabled()) {
 			await signInHandler();
 		} else {
-			onboarding = $config?.onboarding ?? false;
+			onboarding = hasOnboardingEnabled();
 		}
 	});
 </script>
@@ -140,7 +151,7 @@
 	bind:show={onboarding}
 	getStartedHandler={() => {
 		onboarding = false;
-		mode = $config?.features.enable_ldap ? 'ldap' : 'signup';
+		mode = hasLdapEnabled() ? 'ldap' : 'signup';
 	}}
 />
 
@@ -167,7 +178,7 @@
 			class="fixed bg-transparent min-h-screen w-full flex justify-center font-primary z-50 text-black dark:text-white"
 		>
 			<div class="w-full sm:max-w-md px-10 min-h-screen flex flex-col text-center">
-				{#if ($config?.features.auth_trusted_header ?? false) || $config?.features.auth === false}
+				{#if hasTrustedHeaderAuth() || hasAuthDisabled()}
 					<div class=" my-auto pb-10 w-full">
 						<div
 							class="flex items-center justify-center gap-3 text-xl sm:text-2xl text-center font-semibold dark:text-gray-200"
@@ -192,7 +203,7 @@
 						>
 							<div class="mb-1">
 								<h2 class=" text-2xl font-medium">
-									{#if $config?.onboarding ?? false}
+									{#if hasOnboardingEnabled()}
 										{$i18n.t(`Get started with {{WEBUI_NAME}}`, { WEBUI_NAME: $WEBUI_NAME })}
 									{:else if mode === 'ldap'}
 										{$i18n.t(`Sign in to {{WEBUI_NAME}} with LDAP`, { WEBUI_NAME: $WEBUI_NAME })}
@@ -203,7 +214,7 @@
 									{/if}
 								</h2>
 
-								{#if $config?.onboarding ?? false}
+								{#if hasOnboardingEnabled()}
 									<div class=" mt-1 text-xs font-medium text-gray-500">
 										ⓘ {$WEBUI_NAME}
 										{$i18n.t(
@@ -213,7 +224,7 @@
 								{/if}
 							</div>
 
-							{#if $config?.features.enable_login_form || $config?.features.enable_ldap}
+							{#if hasLoginFormEnabled() || hasLdapEnabled()}
 								<div class="flex flex-col mt-4">
 									{#if mode === 'signup'}
 										<div class="mb-2">
@@ -273,7 +284,7 @@
 								</div>
 							{/if}
 							<div class="mt-5">
-								{#if $config?.features.enable_login_form || $config?.features.enable_ldap}
+								{#if hasLoginFormEnabled() || hasLdapEnabled()}
 									{#if mode === 'ldap'}
 										<button
 											class="bg-gray-700/5 hover:bg-gray-700/10 dark:bg-gray-100/5 dark:hover:bg-gray-100/10 dark:text-gray-300 dark:hover:text-white transition w-full rounded-full font-medium text-sm py-2.5"
@@ -288,12 +299,12 @@
 										>
 											{mode === 'signin'
 												? $i18n.t('Sign in')
-												: ($config?.onboarding ?? false)
+												: hasOnboardingEnabled()
 													? $i18n.t('Create Admin Account')
 													: $i18n.t('Create Account')}
 										</button>
 
-										{#if $config?.features.enable_signup && !($config?.onboarding ?? false)}
+										{#if hasSignupEnabled() && !hasOnboardingEnabled()}
 											<div class=" mt-4 text-sm text-center">
 												{mode === 'signin'
 													? $i18n.t("Don't have an account?")
@@ -322,7 +333,7 @@
 						{#if Object.keys($config?.oauth?.providers ?? {}).length > 0}
 							<div class="inline-flex items-center justify-center w-full">
 								<hr class="w-32 h-px my-4 border-0 dark:bg-gray-100/10 bg-gray-700/10" />
-								{#if $config?.features.enable_login_form || $config?.features.enable_ldap}
+								{#if hasLoginFormEnabled() || hasLdapEnabled()}
 									<span
 										class="px-3 text-sm font-medium text-gray-900 dark:text-white bg-transparent"
 										>{$i18n.t('or')}</span
@@ -430,14 +441,13 @@
 							</div>
 						{/if}
 
-						{#if $config?.features.enable_ldap && $config?.features.enable_login_form}
+						{#if hasLdapEnabled() && hasLoginFormEnabled()}
 							<div class="mt-2">
 								<button
 									class="flex justify-center items-center text-xs w-full text-center underline"
 									type="button"
 									on:click={() => {
-										if (mode === 'ldap')
-											mode = ($config?.onboarding ?? false) ? 'signup' : 'signin';
+										if (mode === 'ldap') mode = hasOnboardingEnabled() ? 'signup' : 'signin';
 										else mode = 'ldap';
 									}}
 								>

@@ -17,6 +17,7 @@
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import Switch from '$lib/components/common/Switch.svelte';
 	import Textarea from '$lib/components/common/Textarea.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const dispatch = createEventDispatcher();
 
@@ -42,24 +43,24 @@
 	let bannerTypes: string[] = ['Info', 'Warning', 'Error', 'Success'];
 
 	const updateInterfaceHandler = async () => {
-		taskConfig = await updateTaskConfig(localStorage.token, taskConfig);
+		taskConfig = await updateTaskConfig(getRequestToken(), taskConfig);
 
-		promptSuggestions = await setDefaultPromptSuggestions(localStorage.token, promptSuggestions);
+		promptSuggestions = await setDefaultPromptSuggestions(getRequestToken(), promptSuggestions);
 		await updateBanners();
 
 		await config.set(await getBackendConfig());
 	};
 
 	onMount(async () => {
-		taskConfig = await getTaskConfig(localStorage.token);
+		taskConfig = await getTaskConfig(getRequestToken());
 
 		promptSuggestions = $config?.default_prompt_suggestions;
-		banners = await getBanners(localStorage.token);
+		banners = await getBanners(getRequestToken());
 		languages = await getLanguages();
 	});
 
 	const updateBanners = async () => {
-		_banners.set(await setBanners(localStorage.token, banners));
+		_banners.set(await setBanners(getRequestToken(), banners));
 	};
 </script>
 

@@ -1,4 +1,5 @@
 import { WEBUI_API_BASE_URL } from '$lib/constants';
+import { apiJson } from '$lib/apis/client';
 
 type PromptItem = {
 	command: string;
@@ -165,34 +166,13 @@ export const getPromptsCount = async (token: string = '', search?: string) => {
 
 // Legacy functions for backward compatibility (now calling original endpoints)
 export const getPromptsLegacy = async (token: string = '') => {
-	let error = null;
-
-	const res = await fetch(`${WEBUI_API_BASE_URL}/prompts/`, {
+	return apiJson(`${WEBUI_API_BASE_URL}/prompts/`, {
 		method: 'GET',
+		token,
 		headers: {
-			Accept: 'application/json',
-			'Content-Type': 'application/json',
-			authorization: `Bearer ${token}`
+			Accept: 'application/json'
 		}
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.then((json) => {
-			return json;
-		})
-		.catch((err) => {
-			error = err.detail;
-			console.log(err);
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
+	});
 };
 
 export const getPromptListLegacy = async (token: string = '') => {

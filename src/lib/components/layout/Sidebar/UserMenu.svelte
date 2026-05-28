@@ -11,11 +11,13 @@
 		activeUserIds,
 		USAGE_POOL,
 		mobile,
-		showSidebar
+		showSidebar,
+		user
 	} from '$lib/stores';
 	import { fade } from 'svelte/transition';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import { userSignOut } from '$lib/apis/auths';
+	import { clearAuthState, endLogout, startLogout } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -28,7 +30,7 @@
 
 	const dispatch = createEventDispatcher();
 
-	const changeFocus = async (elementId) => {
+	const changeFocus = async (elementId: string) => {
 		setTimeout(() => {
 			document.getElementById(elementId)?.focus();
 		}, 10);
@@ -188,10 +190,18 @@
 			<DropdownMenu.Item
 				class="flex rounded-md py-2 px-3 w-full hover:bg-gray-50 dark:hover:bg-gray-800 transition"
 				on:click={async () => {
-					await userSignOut();
-					localStorage.removeItem('token');
-					location.href = '/auth';
-					show = false;
+					startLogout();
+
+					try {
+						await userSignOut();
+						clearAuthState();
+						await user.set(undefined);
+						location.href = '/auth';
+						show = false;
+					} catch (error) {
+						endLogout();
+						throw error;
+					}
 				}}
 			>
 				<div class=" self-center mr-3">
@@ -216,7 +226,7 @@
 				<div class=" self-center truncate">{$i18n.t('Sign Out')}</div>
 			</DropdownMenu.Item>
 
-			{#if $activeUserIds?.length > 0}
+			{#if ($activeUserIds?.length ?? 0) > 0}
 				<hr class=" border-gray-50 dark:border-gray-850 my-1 p-0" />
 
 				<Tooltip

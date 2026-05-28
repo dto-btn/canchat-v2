@@ -19,6 +19,7 @@
 	import Loader from '../common/Loader.svelte';
 	import Spinner from '../common/Spinner.svelte';
 	import { addReaction, deleteMessage, removeReaction, updateMessage } from '$lib/apis/channels';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -101,7 +102,7 @@
 				onDelete={() => {
 					messages = messages.filter((m) => m.id !== message.id);
 
-					const res = deleteMessage(localStorage.token, message.channel_id, message.id).catch(
+					const res = deleteMessage(getRequestToken(), message.channel_id, message.id).catch(
 						(error) => {
 							toast.error(`${error}`);
 							return null;
@@ -116,7 +117,7 @@
 						return m;
 					});
 
-					const res = updateMessage(localStorage.token, message.channel_id, message.id, {
+					const res = updateMessage(getRequestToken(), message.channel_id, message.id, {
 						content: content
 					}).catch((error) => {
 						toast.error(`${error}`);
@@ -150,7 +151,7 @@
 						});
 
 						const res = removeReaction(
-							localStorage.token,
+							getRequestToken(),
 							message.channel_id,
 							message.id,
 							name
@@ -179,7 +180,7 @@
 							return m;
 						});
 
-						const res = addReaction(localStorage.token, message.channel_id, message.id, name).catch(
+						const res = addReaction(getRequestToken(), message.channel_id, message.id, name).catch(
 							(error) => {
 								toast.error(`${error}`);
 								return null;

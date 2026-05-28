@@ -18,6 +18,7 @@
 
 	import type { Writable } from 'svelte/store';
 	import type { i18n as i18nType } from 'i18next';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getContext<Writable<i18nType>>('i18n');
 
@@ -50,7 +51,7 @@
 		if (TTS_ENGINE === '') {
 			models = [];
 		} else {
-			const res = await _getModels(localStorage.token).catch((e) => {
+			const res = await _getModels(getRequestToken()).catch((e) => {
 				toast.error(e);
 			});
 
@@ -72,7 +73,7 @@
 				}
 			}, 100);
 		} else {
-			const res = await _getVoices(localStorage.token).catch((e) => {
+			const res = await _getVoices(getRequestToken()).catch((e) => {
 				toast.error(e);
 			});
 
@@ -84,7 +85,7 @@
 	};
 
 	const updateConfigHandler = async () => {
-		const res = await updateAudioConfig(localStorage.token, {
+		const res = await updateAudioConfig(getRequestToken(), {
 			tts: {
 				OPENAI_API_BASE_URL: TTS_OPENAI_API_BASE_URL,
 				OPENAI_API_KEY: TTS_OPENAI_API_KEY,
@@ -118,7 +119,7 @@
 	};
 
 	onMount(async () => {
-		const res = await getAudioConfig(localStorage.token);
+		const res = await getAudioConfig(getRequestToken());
 
 		if (res) {
 			TTS_OPENAI_API_BASE_URL = res.tts.OPENAI_API_BASE_URL;

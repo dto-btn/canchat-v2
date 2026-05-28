@@ -12,6 +12,7 @@
 	import Knowledge from './Commands/Knowledge.svelte';
 	import Models from './Commands/Models.svelte';
 	import Spinner from '$lib/components/common/Spinner.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	export let prompt = '';
 	export let files = [];
@@ -45,7 +46,7 @@
 				// The global store should maintain the full dataset for compatibility
 			})(),
 			(async () => {
-				knowledge.set(await getKnowledgeBases(localStorage.token));
+				knowledge.set(await getKnowledgeBases(getRequestToken()));
 			})()
 		]);
 		loading = false;

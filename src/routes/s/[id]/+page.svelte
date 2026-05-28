@@ -17,6 +17,7 @@
 	import { getUserById } from '$lib/apis/users';
 	import { getModels } from '$lib/apis';
 	import { toast } from 'svelte-sonner';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -60,15 +61,15 @@
 	//////////////////////////
 
 	const loadSharedChat = async () => {
-		await models.set(await getModels(localStorage.token));
+		await models.set(await getModels(getRequestToken()));
 		await chatId.set($page.params.id);
-		chat = await getChatByShareId(localStorage.token, $chatId).catch(async (error) => {
+		chat = await getChatByShareId(getRequestToken(), $chatId).catch(async (error) => {
 			await goto('/');
 			return null;
 		});
 
 		if (chat) {
-			user = await getUserById(localStorage.token, chat.user_id).catch((error) => {
+			user = await getUserById(getRequestToken(), chat.user_id).catch((error) => {
 				console.error(error);
 				return null;
 			});
@@ -104,7 +105,7 @@
 	const cloneSharedChat = async () => {
 		if (!chat) return;
 
-		const res = await cloneSharedChatById(localStorage.token, chat.id).catch((error) => {
+		const res = await cloneSharedChatById(getRequestToken(), chat.id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});

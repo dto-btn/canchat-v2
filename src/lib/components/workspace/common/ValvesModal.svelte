@@ -13,6 +13,7 @@
 	import { getToolValvesById, getToolValvesSpecById, updateToolValvesById } from '$lib/apis/tools';
 	import Spinner from '../../common/Spinner.svelte';
 	import Valves from '$lib/components/common/Valves.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 	const dispatch = createEventDispatcher();
@@ -42,11 +43,11 @@
 			let res = null;
 
 			if (type === 'tool') {
-				res = await updateToolValvesById(localStorage.token, id, valves).catch((error) => {
+				res = await updateToolValvesById(getRequestToken(), id, valves).catch((error) => {
 					toast.error(`${error}`);
 				});
 			} else if (type === 'function') {
-				res = await updateFunctionValvesById(localStorage.token, id, valves).catch((error) => {
+				res = await updateFunctionValvesById(getRequestToken(), id, valves).catch((error) => {
 					toast.error(`${error}`);
 				});
 			}
@@ -66,11 +67,11 @@
 		valvesSpec = null;
 
 		if (type === 'tool') {
-			valves = await getToolValvesById(localStorage.token, id);
-			valvesSpec = await getToolValvesSpecById(localStorage.token, id);
+			valves = await getToolValvesById(getRequestToken(), id);
+			valvesSpec = await getToolValvesSpecById(getRequestToken(), id);
 		} else if (type === 'function') {
-			valves = await getFunctionValvesById(localStorage.token, id);
-			valvesSpec = await getFunctionValvesSpecById(localStorage.token, id);
+			valves = await getFunctionValvesById(getRequestToken(), id);
+			valvesSpec = await getFunctionValvesSpecById(getRequestToken(), id);
 		}
 
 		if (!valves) {

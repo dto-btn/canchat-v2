@@ -1,352 +1,105 @@
 import { WEBUI_API_BASE_URL } from '$lib/constants';
+import { apiJson, apiVoid, type ApiRequestOptions } from '$lib/apis/client';
+import type { SessionUser } from '$lib/stores';
 
-export const getAdminDetails = async (token: string) => {
-	let error = null;
+const authsUrl = (path: string = '') => `${WEBUI_API_BASE_URL}/auths${path}`;
 
-	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/admin/details`, {
-		method: 'GET',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${token}`
-		}
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
-			error = err.detail;
-			return null;
-		});
+const authJson = <T = unknown>(path: string, options: ApiRequestOptions = {}) =>
+	apiJson<T>(authsUrl(path), options);
 
-	if (error) {
-		throw error;
-	}
+const authJsonBody = <T = unknown>(
+	path: string,
+	body: unknown,
+	options: ApiRequestOptions = {}
+) => authJson<T>(path, { ...options, body: JSON.stringify(body) });
 
-	return res;
+// Cookie-backed auth endpoints still rely on the browser session cookie.
+const authSessionJson = <T = unknown>(path: string, options: ApiRequestOptions = {}) =>
+	authJson<T>(path, { credentials: 'include', ...options });
+
+const authSessionJsonBody = <T = unknown>(
+	path: string,
+	body: unknown,
+	options: ApiRequestOptions = {}
+) => authSessionJson<T>(path, { ...options, body: JSON.stringify(body) });
+
+const authSessionVoid = (path: string, options: ApiRequestOptions = {}) =>
+	apiVoid(authsUrl(path), { credentials: 'include', ...options });
+
+const readApiKey = async (method: 'GET' | 'POST', token: string) => {
+	const response = await authJson<{ api_key?: string }>('/api_key', { method, token });
+	return response?.api_key;
 };
 
-export const getAdminConfig = async (token: string) => {
-	let error = null;
+export const getAdminDetails = async (token: string) =>
+	authJson('/admin/details', { method: 'GET', token });
 
-	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/admin/config`, {
-		method: 'GET',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${token}`
-		}
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
-			error = err.detail;
-			return null;
-		});
+export const getAdminConfig = async (token: string) =>
+	authJson('/admin/config', { method: 'GET', token });
 
-	if (error) {
-		throw error;
-	}
+export const updateAdminConfig = async (token: string, body: object) =>
+	authJsonBody('/admin/config', body, { method: 'POST', token });
 
-	return res;
-};
+export const getSessionUser = async (token: string = ''): Promise<SessionUser | null> =>
+	authSessionJson<SessionUser>('/', { method: 'GET', token });
 
-export const updateAdminConfig = async (token: string, body: object) => {
-	let error = null;
-
-	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/admin/config`, {
+export const ldapUserSignIn = async (
+	user: string,
+	password: string
+): Promise<SessionUser | null> =>
+	authSessionJsonBody<SessionUser>('/ldap', { user, password }, {
 		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${token}`
-		},
-		body: JSON.stringify(body)
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
-			error = err.detail;
-			return null;
-		});
+		includeAuth: false,
+		retryOnUnauthorized: false
+	});
 
-	if (error) {
-		throw error;
-	}
+export const getLdapConfig = async (token: string = '') =>
+	authJson('/admin/config/ldap', { method: 'GET', token });
 
-	return res;
-};
+export const updateLdapConfig = async (token: string = '', enable_ldap: boolean) =>
+	authJsonBody('/admin/config/ldap', { enable_ldap }, { method: 'POST', token });
 
-export const getSessionUser = async (token: string) => {
-	let error = null;
+export const getLdapServer = async (token: string = '') =>
+	authJson('/admin/config/ldap/server', { method: 'GET', token });
 
-	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/`, {
-		method: 'GET',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${token}`
-		},
-		credentials: 'include'
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
-			error = err.detail;
-			return null;
-		});
+export const updateLdapServer = async (token: string = '', body: object) =>
+	authSessionJsonBody('/admin/config/ldap/server', body, { method: 'POST', token });
 
-	if (error) {
-		throw error;
-	}
-
-	return res;
-};
-
-export const ldapUserSignIn = async (user: string, password: string) => {
-	let error = null;
-
-	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/ldap`, {
+export const accessTokenRefresh = async (token: string = ''): Promise<SessionUser | null> =>
+	authSessionJson<SessionUser>('/refresh', {
 		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json'
-		},
-		credentials: 'include',
-		body: JSON.stringify({
-			user: user,
-			password: password
-		})
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
+		token,
+		retryOnUnauthorized: false
+	});
 
-			error = err.detail;
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
-};
-
-export const getLdapConfig = async (token: string = '') => {
-	let error = null;
-
-	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/admin/config/ldap`, {
-		method: 'GET',
-		headers: {
-			'Content-Type': 'application/json',
-			...(token && { authorization: `Bearer ${token}` })
-		}
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
-			error = err.detail;
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
-};
-
-export const updateLdapConfig = async (token: string = '', enable_ldap: boolean) => {
-	let error = null;
-
-	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/admin/config/ldap`, {
+export const userSignIn = async (
+	email: string,
+	password: string
+): Promise<SessionUser | null> =>
+	authSessionJsonBody<SessionUser>('/signin', { email, password }, {
 		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			...(token && { authorization: `Bearer ${token}` })
-		},
-		body: JSON.stringify({
-			enable_ldap: enable_ldap
-		})
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
-			error = err.detail;
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
-};
-
-export const getLdapServer = async (token: string = '') => {
-	let error = null;
-
-	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/admin/config/ldap/server`, {
-		method: 'GET',
-		headers: {
-			'Content-Type': 'application/json',
-			...(token && { authorization: `Bearer ${token}` })
-		}
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
-			error = err.detail;
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
-};
-
-export const updateLdapServer = async (token: string = '', body: object) => {
-	let error = null;
-
-	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/admin/config/ldap/server`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			...(token && { authorization: `Bearer ${token}` })
-		},
-		body: JSON.stringify(body)
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
-			error = err.detail;
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
-};
-
-export const userSignIn = async (email: string, password: string) => {
-	let error = null;
-
-	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/signin`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json'
-		},
-		credentials: 'include',
-		body: JSON.stringify({
-			email: email,
-			password: password
-		})
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
-
-			error = err.detail;
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
-};
+		includeAuth: false,
+		retryOnUnauthorized: false
+	});
 
 export const userSignUp = async (
 	name: string,
 	email: string,
 	password: string,
 	profile_image_url: string
-) => {
-	let error = null;
-
-	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/signup`, {
+): Promise<SessionUser | null> =>
+	authSessionJsonBody<SessionUser>('/signup', { name, email, password, profile_image_url }, {
 		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json'
-		},
-		credentials: 'include',
-		body: JSON.stringify({
-			name: name,
-			email: email,
-			password: password,
-			profile_image_url: profile_image_url
-		})
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
-			error = err.detail;
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
-};
+		includeAuth: false,
+		retryOnUnauthorized: false
+	});
 
 export const userSignOut = async () => {
-	let error = null;
-
-	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/signout`, {
+	await authSessionVoid('/signout', {
 		method: 'GET',
-		headers: {
-			'Content-Type': 'application/json'
-		},
-		credentials: 'include'
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res;
-		})
-		.catch((err) => {
-			console.log(err);
-			error = err.detail;
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
+		includeAuth: false,
+		retryOnUnauthorized: false
+	});
 };
 
 export const addUser = async (
@@ -355,340 +108,43 @@ export const addUser = async (
 	email: string,
 	password: string,
 	role: string = 'pending'
-) => {
-	let error = null;
+) => authJsonBody('/add', { name, email, password, role }, { method: 'POST', token });
 
-	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/add`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			...(token && { authorization: `Bearer ${token}` })
-		},
-		body: JSON.stringify({
-			name: name,
-			email: email,
-			password: password,
-			role: role
-		})
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
-			error = err.detail;
-			return null;
-		});
+export const updateUserProfile = async (token: string, name: string, profileImageUrl: string) =>
+	authJsonBody(
+		'/update/profile',
+		{ name, profile_image_url: profileImageUrl },
+		{ method: 'POST', token }
+	);
 
-	if (error) {
-		throw error;
-	}
+export const updateUserPassword = async (token: string, password: string, newPassword: string) =>
+	authJsonBody(
+		'/update/password',
+		{ password, new_password: newPassword },
+		{ method: 'POST', token }
+	);
 
-	return res;
-};
+export const getSignUpEnabledStatus = async (token: string) =>
+	authJson('/signup/enabled', { method: 'GET', token });
 
-export const updateUserProfile = async (token: string, name: string, profileImageUrl: string) => {
-	let error = null;
+export const getDefaultUserRole = async (token: string) =>
+	authJson('/signup/user/role', { method: 'GET', token });
 
-	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/update/profile`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			...(token && { authorization: `Bearer ${token}` })
-		},
-		body: JSON.stringify({
-			name: name,
-			profile_image_url: profileImageUrl
-		})
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
-			error = err.detail;
-			return null;
-		});
+export const updateDefaultUserRole = async (token: string, role: string) =>
+	authJsonBody('/signup/user/role', { role }, { method: 'POST', token });
 
-	if (error) {
-		throw error;
-	}
+export const toggleSignUpEnabledStatus = async (token: string) =>
+	authJson('/signup/enabled/toggle', { method: 'GET', token });
 
-	return res;
-};
+export const getJWTExpiresDuration = async (token: string) =>
+	authJson('/token/expires', { method: 'GET', token });
 
-export const updateUserPassword = async (token: string, password: string, newPassword: string) => {
-	let error = null;
+export const updateJWTExpiresDuration = async (token: string, duration: string) =>
+	authJsonBody('/token/expires/update', { duration }, { method: 'POST', token });
 
-	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/update/password`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			...(token && { authorization: `Bearer ${token}` })
-		},
-		body: JSON.stringify({
-			password: password,
-			new_password: newPassword
-		})
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
-			error = err.detail;
-			return null;
-		});
+export const createAPIKey = async (token: string) => readApiKey('POST', token);
 
-	if (error) {
-		throw error;
-	}
+export const getAPIKey = async (token: string) => readApiKey('GET', token);
 
-	return res;
-};
-
-export const getSignUpEnabledStatus = async (token: string) => {
-	let error = null;
-
-	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/signup/enabled`, {
-		method: 'GET',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${token}`
-		}
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
-			error = err.detail;
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
-};
-
-export const getDefaultUserRole = async (token: string) => {
-	let error = null;
-
-	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/signup/user/role`, {
-		method: 'GET',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${token}`
-		}
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
-			error = err.detail;
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
-};
-
-export const updateDefaultUserRole = async (token: string, role: string) => {
-	let error = null;
-
-	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/signup/user/role`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${token}`
-		},
-		body: JSON.stringify({
-			role: role
-		})
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
-			error = err.detail;
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
-};
-
-export const toggleSignUpEnabledStatus = async (token: string) => {
-	let error = null;
-
-	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/signup/enabled/toggle`, {
-		method: 'GET',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${token}`
-		}
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
-			error = err.detail;
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
-};
-
-export const getJWTExpiresDuration = async (token: string) => {
-	let error = null;
-
-	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/token/expires`, {
-		method: 'GET',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${token}`
-		}
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
-			error = err.detail;
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
-};
-
-export const updateJWTExpiresDuration = async (token: string, duration: string) => {
-	let error = null;
-
-	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/token/expires/update`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${token}`
-		},
-		body: JSON.stringify({
-			duration: duration
-		})
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
-			error = err.detail;
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
-};
-
-export const createAPIKey = async (token: string) => {
-	let error = null;
-
-	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/api_key`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${token}`
-		}
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
-			error = err.detail;
-			return null;
-		});
-	if (error) {
-		throw error;
-	}
-	return res.api_key;
-};
-
-export const getAPIKey = async (token: string) => {
-	let error = null;
-
-	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/api_key`, {
-		method: 'GET',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${token}`
-		}
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
-			error = err.detail;
-			return null;
-		});
-	if (error) {
-		throw error;
-	}
-	return res.api_key;
-};
-
-export const deleteAPIKey = async (token: string) => {
-	let error = null;
-
-	const res = await fetch(`${WEBUI_API_BASE_URL}/auths/api_key`, {
-		method: 'DELETE',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${token}`
-		}
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
-			error = err.detail;
-			return null;
-		});
-	if (error) {
-		throw error;
-	}
-	return res;
-};
+export const deleteAPIKey = async (token: string) =>
+	authJson('/api_key', { method: 'DELETE', token });

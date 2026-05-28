@@ -3,6 +3,7 @@
 
 	import { toast } from 'svelte-sonner';
 	import { updateUserPassword } from '$lib/apis/auths';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -13,7 +14,7 @@
 
 	const updatePasswordHandler = async () => {
 		if (newPassword === newPasswordConfirm) {
-			const res = await updateUserPassword(localStorage.token, currentPassword, newPassword).catch(
+			const res = await updateUserPassword(getRequestToken(), currentPassword, newPassword).catch(
 				(error) => {
 					toast.error(`${error}`);
 					return null;

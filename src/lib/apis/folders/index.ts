@@ -1,64 +1,27 @@
 import { WEBUI_API_BASE_URL } from '$lib/constants';
+import { apiJson } from '$lib/apis/client';
 
-export const createNewFolder = async (token: string, name: string) => {
-	let error = null;
-
-	const res = await fetch(`${WEBUI_API_BASE_URL}/folders/`, {
+export const createNewFolder = async (token: string = '', name: string) => {
+	return apiJson(`${WEBUI_API_BASE_URL}/folders/`, {
 		method: 'POST',
+		token,
 		headers: {
-			Accept: 'application/json',
-			'Content-Type': 'application/json',
-			authorization: `Bearer ${token}`
+			Accept: 'application/json'
 		},
 		body: JSON.stringify({
-			name: name
+			name
 		})
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			error = err.detail;
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
+	});
 };
 
 export const getFolders = async (token: string = '') => {
-	let error = null;
-
-	const res = await fetch(`${WEBUI_API_BASE_URL}/folders/`, {
+	return apiJson(`${WEBUI_API_BASE_URL}/folders/`, {
 		method: 'GET',
+		token,
 		headers: {
-			Accept: 'application/json',
-			'Content-Type': 'application/json',
-			authorization: `Bearer ${token}`
+			Accept: 'application/json'
 		}
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.then((json) => {
-			return json;
-		})
-		.catch((err) => {
-			error = err.detail;
-			console.log(err);
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
+	});
 };
 
 export const getFolderById = async (token: string, id: string) => {

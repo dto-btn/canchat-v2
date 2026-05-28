@@ -22,6 +22,7 @@
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import ChatBubbleOval from '$lib/components/icons/ChatBubbleOval.svelte';
 	import { goto } from '$app/navigation';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 	const dispatch = createEventDispatcher();
@@ -94,7 +95,7 @@
 			return;
 		}
 
-		const [res, controller] = await pullModel(localStorage.token, sanitizedModelTag, '0').catch(
+		const [res, controller] = await pullModel(getRequestToken(), sanitizedModelTag, '0').catch(
 			(error) => {
 				toast.error(`${error}`);
 				return null;
@@ -183,7 +184,7 @@
 					})
 				);
 
-				models.set(await getModels(localStorage.token));
+				models.set(await getModels(getRequestToken()));
 			} else {
 				toast.error($i18n.t('Download canceled'));
 			}
@@ -197,7 +198,7 @@
 	};
 
 	onMount(async () => {
-		ollamaVersion = await getOllamaVersion(localStorage.token).catch((error) => false);
+		ollamaVersion = await getOllamaVersion(getRequestToken()).catch((error) => false);
 	});
 
 	const cancelModelPullHandler = async (model: string) => {
@@ -211,7 +212,7 @@
 			MODEL_DOWNLOAD_POOL.set({
 				...$MODEL_DOWNLOAD_POOL
 			});
-			await deleteModel(localStorage.token, model);
+			await deleteModel(getRequestToken(), model);
 			toast.success(`${model} download has been canceled`);
 		}
 	};

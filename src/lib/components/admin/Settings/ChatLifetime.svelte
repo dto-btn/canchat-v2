@@ -22,6 +22,7 @@
 	import Switch from '$lib/components/common/Switch.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	export let saveHandler: Function;
 
@@ -43,7 +44,7 @@
 		loading = true;
 
 		try {
-			await updateChatLifetimeConfig(localStorage.token, config);
+			await updateChatLifetimeConfig(getRequestToken(), config);
 			toast.success($i18n.t('Chat lifetime settings updated successfully'));
 
 			// Refresh schedule info after config update
@@ -61,9 +62,9 @@
 	};
 
 	const loadScheduleInfo = async () => {
-		if (localStorage.token) {
+		if (getRequestToken()) {
 			try {
-				scheduleInfo = await getChatLifetimeSchedule(localStorage.token);
+				scheduleInfo = await getChatLifetimeSchedule(getRequestToken());
 			} catch (error) {
 				console.error('Error loading schedule info:', error);
 				scheduleInfo = null;
@@ -76,7 +77,7 @@
 		try {
 			// For comprehensive cleanup, the server handles the conditional logic
 			// based on CHAT_LIFETIME_ENABLED config, so we just pass the current settings
-			const result = await triggerComprehensiveCleanup(localStorage.token, {
+			const result = await triggerComprehensiveCleanup(getRequestToken(), {
 				max_age_days: config.days,
 				include_chat_cleanup: true,
 				preserve_pinned: config.preserve_pinned,
@@ -123,8 +124,8 @@
 
 				// Only refresh the chat list if chats were actually deleted
 				if (chatsDeleted > 0) {
-					const updatedChats = await getChatList(localStorage.token, $currentChatPage);
-					const updatedPinnedChats = await getPinnedChatList(localStorage.token);
+					const updatedChats = await getChatList(getRequestToken(), $currentChatPage);
+					const updatedPinnedChats = await getPinnedChatList(getRequestToken());
 					chats.set(updatedChats);
 					pinnedChats.set(updatedPinnedChats);
 
@@ -152,9 +153,9 @@
 	};
 
 	onMount(async () => {
-		if (localStorage.token) {
+		if (getRequestToken()) {
 			try {
-				config = await getChatLifetimeConfig(localStorage.token);
+				config = await getChatLifetimeConfig(getRequestToken());
 				await loadScheduleInfo();
 			} catch (error) {
 				console.error('Error loading chat lifetime config:', error);

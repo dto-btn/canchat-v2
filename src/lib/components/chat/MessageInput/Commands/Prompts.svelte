@@ -47,7 +47,7 @@
 		}
 
 		try {
-			const newPrompts = await getPrompts(localStorage.token, {
+			const newPrompts = await getPrompts(getRequestToken(), {
 				page,
 				limit: pageSize,
 				search: search || undefined
@@ -105,6 +105,7 @@
 
 	// Initial load when component mounts
 	import { onMount } from 'svelte';
+	import { getRequestToken } from '$lib/services/auth';
 	onMount(() => {
 		// Load initial prompts when component is shown
 		if (!isInitialized) {
