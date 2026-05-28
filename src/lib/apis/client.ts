@@ -209,10 +209,7 @@ const parseResponseError = async (response: Response): Promise<unknown> => {
 };
 
 /** Sends a request through the global fetch path with client-managed headers. */
-const executeRequest = async (
-	url: string,
-	options: ApiRequestOptions
-) => {
+const executeRequest = async (url: string, options: ApiRequestOptions) => {
 	const { token, includeAuth = true, retryOnUnauthorized = true, ...requestInit } = options;
 	const resolvedToken = includeAuth ? resolveRequestToken(token) : null;
 

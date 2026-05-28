@@ -67,6 +67,7 @@ ACCESS_TOKEN_DURATION_PATTERN = re.compile(r"^(-1|0|(-?\d+(\.\d+)?)(ms|s|m|h|d|w
 # GetSessionUser
 ############################
 
+
 class SessionUserResponse(Token, UserResponse):
     expires_at: Optional[int] = None
     permissions: Optional[dict] = None

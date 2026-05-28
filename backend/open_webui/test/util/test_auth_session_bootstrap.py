@@ -71,9 +71,15 @@ def test_get_session_user_accepts_valid_refresh_cookie_without_bearer(monkeypatc
     response = Response()
     recorded = {}
 
-    monkeypatch.setattr(auths, "_get_active_refresh_session", lambda refresh_token: _build_refresh_session())
+    monkeypatch.setattr(
+        auths,
+        "_get_active_refresh_session",
+        lambda refresh_token: _build_refresh_session(),
+    )
     monkeypatch.setattr(auths, "verify_refresh_token", lambda *args, **kwargs: True)
-    monkeypatch.setattr(auths.Users, "get_user_by_id", lambda user_id: _build_user(user_id))
+    monkeypatch.setattr(
+        auths.Users, "get_user_by_id", lambda user_id: _build_user(user_id)
+    )
     monkeypatch.setattr(auths, "get_permissions", lambda *args, **kwargs: {"ok": True})
 
     def issue_tokens(*args, **kwargs):
@@ -97,7 +103,11 @@ def test_get_session_user_rejects_invalid_refresh_cookie_even_with_bearer(monkey
     response = Response()
     revoked = []
 
-    monkeypatch.setattr(auths, "_get_active_refresh_session", lambda refresh_token: _build_refresh_session())
+    monkeypatch.setattr(
+        auths,
+        "_get_active_refresh_session",
+        lambda refresh_token: _build_refresh_session(),
+    )
     monkeypatch.setattr(auths, "verify_refresh_token", lambda *args, **kwargs: False)
     monkeypatch.setattr(auths.RefreshSessions, "revoke_session_by_id", revoked.append)
 
@@ -135,6 +145,7 @@ def test_get_session_user_rejects_bearer_only_bootstrap(monkeypatch):
         asyncio.run(auths.get_session_user(_build_request(), response, None))
 
     assert exc_info.value.status_code == 403
+
 
 def test_get_session_user_allows_legacy_cookie_migration(monkeypatch):
     response = Response()

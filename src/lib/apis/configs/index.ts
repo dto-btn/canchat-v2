@@ -147,10 +147,12 @@ export const setDefaultPromptSuggestions = async (token: string, promptSuggestio
 };
 
 export const getBanners = async (token: string = ''): Promise<Banner[]> => {
-	return (await apiJson<Banner[]>(`${WEBUI_API_BASE_URL}/configs/banners`, {
-		method: 'GET',
-		token
-	})) ?? [];
+	return (
+		(await apiJson<Banner[]>(`${WEBUI_API_BASE_URL}/configs/banners`, {
+			method: 'GET',
+			token
+		})) ?? []
+	);
 };
 
 export const setBanners = async (token: string, banners: Banner[]) => {

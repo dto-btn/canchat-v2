@@ -7,11 +7,8 @@ const authsUrl = (path: string = '') => `${WEBUI_API_BASE_URL}/auths${path}`;
 const authJson = <T = unknown>(path: string, options: ApiRequestOptions = {}) =>
 	apiJson<T>(authsUrl(path), options);
 
-const authJsonBody = <T = unknown>(
-	path: string,
-	body: unknown,
-	options: ApiRequestOptions = {}
-) => authJson<T>(path, { ...options, body: JSON.stringify(body) });
+const authJsonBody = <T = unknown>(path: string, body: unknown, options: ApiRequestOptions = {}) =>
+	authJson<T>(path, { ...options, body: JSON.stringify(body) });
 
 // Cookie-backed auth endpoints still rely on the browser session cookie.
 const authSessionJson = <T = unknown>(path: string, options: ApiRequestOptions = {}) =>
@@ -43,15 +40,16 @@ export const updateAdminConfig = async (token: string, body: object) =>
 export const getSessionUser = async (token: string = ''): Promise<SessionUser | null> =>
 	authSessionJson<SessionUser>('/', { method: 'GET', token });
 
-export const ldapUserSignIn = async (
-	user: string,
-	password: string
-): Promise<SessionUser | null> =>
-	authSessionJsonBody<SessionUser>('/ldap', { user, password }, {
-		method: 'POST',
-		includeAuth: false,
-		retryOnUnauthorized: false
-	});
+export const ldapUserSignIn = async (user: string, password: string): Promise<SessionUser | null> =>
+	authSessionJsonBody<SessionUser>(
+		'/ldap',
+		{ user, password },
+		{
+			method: 'POST',
+			includeAuth: false,
+			retryOnUnauthorized: false
+		}
+	);
 
 export const getLdapConfig = async (token: string = '') =>
 	authJson('/admin/config/ldap', { method: 'GET', token });
@@ -72,15 +70,16 @@ export const accessTokenRefresh = async (token: string = ''): Promise<SessionUse
 		retryOnUnauthorized: false
 	});
 
-export const userSignIn = async (
-	email: string,
-	password: string
-): Promise<SessionUser | null> =>
-	authSessionJsonBody<SessionUser>('/signin', { email, password }, {
-		method: 'POST',
-		includeAuth: false,
-		retryOnUnauthorized: false
-	});
+export const userSignIn = async (email: string, password: string): Promise<SessionUser | null> =>
+	authSessionJsonBody<SessionUser>(
+		'/signin',
+		{ email, password },
+		{
+			method: 'POST',
+			includeAuth: false,
+			retryOnUnauthorized: false
+		}
+	);
 
 export const userSignUp = async (
 	name: string,
@@ -88,11 +87,15 @@ export const userSignUp = async (
 	password: string,
 	profile_image_url: string
 ): Promise<SessionUser | null> =>
-	authSessionJsonBody<SessionUser>('/signup', { name, email, password, profile_image_url }, {
-		method: 'POST',
-		includeAuth: false,
-		retryOnUnauthorized: false
-	});
+	authSessionJsonBody<SessionUser>(
+		'/signup',
+		{ name, email, password, profile_image_url },
+		{
+			method: 'POST',
+			includeAuth: false,
+			retryOnUnauthorized: false
+		}
+	);
 
 export const userSignOut = async () => {
 	await authSessionVoid('/signout', {
