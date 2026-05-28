@@ -53,19 +53,21 @@ export const getChatList = async (token: string = '', page: number | null = null
 		searchParams.append('page', `${page}`);
 	}
 
-	const res = (await chatApi<any[]>(`/chats/?${searchParams.toString()}`, {
-		method: 'GET',
-		token
-	})) ?? [];
+	const res =
+		(await chatApi<any[]>(`/chats/?${searchParams.toString()}`, {
+			method: 'GET',
+			token
+		})) ?? [];
 
 	return res.map(withTimeRange);
 };
 
 export const getChatListByUserId = async (token: string = '', userId: string) => {
-	const res = (await chatApi<any[]>(`/chats/list/user/${userId}`, {
-		method: 'GET',
-		token
-	})) ?? [];
+	const res =
+		(await chatApi<any[]>(`/chats/list/user/${userId}`, {
+			method: 'GET',
+			token
+		})) ?? [];
 
 	return res.map(withTimeRange);
 };
@@ -95,10 +97,11 @@ export const getChatListBySearchText = async (
 	searchParams.append('text', normalizedText);
 	searchParams.append('page', `${page}`);
 
-	const res = (await chatApi<any[]>(`/chats/search?${searchParams.toString()}`, {
-		method: 'GET',
-		token
-	})) ?? [];
+	const res =
+		(await chatApi<any[]>(`/chats/search?${searchParams.toString()}`, {
+			method: 'GET',
+			token
+		})) ?? [];
 
 	return res.map(withTimeRange);
 };
@@ -132,22 +135,24 @@ export const getAllTags = async (token: string = ''): Promise<any> => {
 };
 
 export const getPinnedChatList = async (token: string = ''): Promise<any> => {
-	const res = (await chatApi<any[]>('/chats/pinned', {
-		method: 'GET',
-		token
-	})) ?? [];
+	const res =
+		(await chatApi<any[]>('/chats/pinned', {
+			method: 'GET',
+			token
+		})) ?? [];
 
 	return res.map(withTimeRange);
 };
 
 export const getChatListByTagName = async (token: string = '', tagName: string) => {
-	const res = (await chatApi<any[]>('/chats/tags', {
-		method: 'POST',
-		token,
-		body: JSON.stringify({
-			name: tagName
-		})
-	})) ?? [];
+	const res =
+		(await chatApi<any[]>('/chats/tags', {
+			method: 'POST',
+			token,
+			body: JSON.stringify({
+				name: tagName
+			})
+		})) ?? [];
 
 	return res.map(withTimeRange);
 };

@@ -25,11 +25,10 @@ const getChoiceContent = (response: CompletionResponse | null | undefined) => {
 };
 
 export const getModels = async (token: string = '', base: boolean = false): Promise<Model[]> => {
-	const res =
-		(await webUiApi<{ data?: unknown[] }>(`/api/models${base ? '/base' : ''}`, {
-			method: 'GET',
-			token
-		})) ?? { data: [] };
+	const res = (await webUiApi<{ data?: unknown[] }>(`/api/models${base ? '/base' : ''}`, {
+		method: 'GET',
+		token
+	})) ?? { data: [] };
 
 	return (res?.data ?? []) as Model[];
 };
@@ -327,10 +326,13 @@ export const getPipelines = async (token: string, urlIdx?: string) => {
 		searchParams.append('urlIdx', urlIdx);
 	}
 
-	const res = await webUiApi<{ data?: unknown[] }>(`/api/v1/pipelines/?${searchParams.toString()}`, {
-		method: 'GET',
-		token
-	});
+	const res = await webUiApi<{ data?: unknown[] }>(
+		`/api/v1/pipelines/?${searchParams.toString()}`,
+		{
+			method: 'GET',
+			token
+		}
+	);
 
 	return res?.data ?? [];
 };

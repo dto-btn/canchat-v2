@@ -134,17 +134,14 @@ export const updateMessage = async (
 	message_id: string,
 	message: MessageForm
 ) => {
-	return apiJson(
-		`${WEBUI_API_BASE_URL}/channels/${channel_id}/messages/${message_id}/update`,
-		{
-			method: 'POST',
-			token,
-			headers: {
-				Accept: 'application/json'
-			},
-			body: JSON.stringify({ ...message })
-		}
-	);
+	return apiJson(`${WEBUI_API_BASE_URL}/channels/${channel_id}/messages/${message_id}/update`, {
+		method: 'POST',
+		token,
+		headers: {
+			Accept: 'application/json'
+		},
+		body: JSON.stringify({ ...message })
+	});
 };
 
 export const addReaction = async (
@@ -186,14 +183,11 @@ export const removeReaction = async (
 };
 
 export const deleteMessage = async (token: string = '', channel_id: string, message_id: string) => {
-	return apiJson(
-		`${WEBUI_API_BASE_URL}/channels/${channel_id}/messages/${message_id}/delete`,
-		{
-			method: 'DELETE',
-			token,
-			headers: {
-				Accept: 'application/json'
-			}
+	return apiJson(`${WEBUI_API_BASE_URL}/channels/${channel_id}/messages/${message_id}/delete`, {
+		method: 'DELETE',
+		token,
+		headers: {
+			Accept: 'application/json'
 		}
-	);
+	});
 };

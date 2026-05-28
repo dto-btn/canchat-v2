@@ -44,7 +44,7 @@ export const updateUserRole = async (token: string, id: string, role: string) =>
 export const getUsers = async (token: string) => {
 	return (
 		(await apiJson(`${WEBUI_API_BASE_URL}/users/`, {
-		method: 'GET',
+			method: 'GET',
 			token
 		})) ?? []
 	);

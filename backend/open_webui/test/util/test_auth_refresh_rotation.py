@@ -61,7 +61,9 @@ def test_issue_tokens_for_user_rotates_refresh_token_near_expiry(monkeypatch):
         recorded["cookie"] = (refresh_token, expires_at_refresh_token)
 
     monkeypatch.setattr(auth, "create_refresh_token", create_refresh_token)
-    monkeypatch.setattr(auth.RefreshSessions, "rotate_session_token", rotate_session_token)
+    monkeypatch.setattr(
+        auth.RefreshSessions, "rotate_session_token", rotate_session_token
+    )
     monkeypatch.setattr(auth, "set_refresh_token_cookie", set_refresh_token_cookie)
 
     access_token, expires_at = auth.issue_tokens_for_user(
@@ -85,7 +87,9 @@ def test_issue_tokens_for_user_rotates_refresh_token_near_expiry(monkeypatch):
     assert recorded["cookie"][1] == recorded["rotate"][2]
 
 
-def test_issue_tokens_for_user_rejects_on_compare_and_swap_rotation_failure(monkeypatch):
+def test_issue_tokens_for_user_rejects_on_compare_and_swap_rotation_failure(
+    monkeypatch,
+):
     response = Response()
 
     def create_refresh_token(session_id=None):
@@ -110,4 +114,7 @@ def test_issue_tokens_for_user_rejects_on_compare_and_swap_rotation_failure(monk
         )
 
     assert getattr(exc_info.value, "status_code", None) == 400
-    assert getattr(exc_info.value, "detail", None) == auth.ERROR_MESSAGES.INVALID_REFRESH_TOKEN
+    assert (
+        getattr(exc_info.value, "detail", None)
+        == auth.ERROR_MESSAGES.INVALID_REFRESH_TOKEN
+    )

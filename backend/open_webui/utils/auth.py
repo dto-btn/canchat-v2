@@ -79,7 +79,9 @@ def seconds_until(
     if expires_at is None:
         return None
 
-    reference_time = current_time if current_time is not None else int(datetime.now(UTC).timestamp())
+    reference_time = (
+        current_time if current_time is not None else int(datetime.now(UTC).timestamp())
+    )
     return expires_at - reference_time
 
 
@@ -319,15 +321,15 @@ def issue_tokens_for_user(
         raise HTTPException(500, detail=ERROR_MESSAGES.DEFAULT())
 
     log_auth_event(
-        "refresh-session-rotated"
-        if current_refresh_session_id is not None
-        else "refresh-session-created",
+        (
+            "refresh-session-rotated"
+            if current_refresh_session_id is not None
+            else "refresh-session-created"
+        ),
         user_id=user_id,
         refresh_session_id=refresh_session_id,
         refresh_expires_at=expires_at_refresh_token,
-        refresh_remaining_seconds=seconds_until(
-            expires_at_refresh_token, current_time
-        ),
+        refresh_remaining_seconds=seconds_until(expires_at_refresh_token, current_time),
     )
 
     set_refresh_token_cookie(response, refresh_token, expires_at_refresh_token)
