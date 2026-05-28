@@ -203,8 +203,48 @@ export const sanitizeResponseContent = (content: string): string => {
 	}).trim();
 };
 
+/**
+ * Wraps bare (undelimited) TeX math commands in $ delimiters so KaTeX can render them.
+ * Some LLMs (e.g. Cohere Command) emit raw LaTeX like \boxed{...} without surrounding
+ * math delimiters. This preprocessor detects those and wraps them before lexing.
+ *
+ * Protected regions (code blocks, existing math delimiters) are left untouched.
+ */
+const wrapUndelimitedTexExpressions = (content: string): string => {
+	// Split into protected segments (code fences, inline code, existing math) and plain text.
+	// The capturing group means odd-indexed elements are the protected segments.
+	const PROTECTED_RE =
+		/(```[\s\S]*?```|`[^`\n]+`|\$\$[\s\S]*?\$\$|\$[^\n$]+\$|\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\])/g;
+
+	const segments = content.split(PROTECTED_RE);
+
+	// Brace group pattern: handles up to 2 levels of inner nesting
+	const B = `\\{(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*\\}`;
+
+	// Single-pass combined regex — prevents double-wrapping when commands are nested
+	// (e.g. \boxed{\frac{1}{2}} would be double-wrapped by two sequential replacements).
+	// Alternation order matters: the longer/outer command is tried first so the inner
+	// occurrence is consumed as part of it rather than matched separately.
+	const COMBINED_RE = new RegExp(
+		`\\\\(?:` +
+			// Single brace group: \boxed, \sqrt, \binom family, \underbrace, \overbrace, \dfrac, \tfrac
+			`(?:boxed|dfrac|tfrac|binom|dbinom|tbinom|underbrace|overbrace|sqrt)\\s*${B}` +
+			// Two brace groups: \frac{num}{den}
+			`|frac\\s*${B}\\s*${B}` +
+			`)`,
+		'g'
+	);
+
+	return segments
+		.map((seg, i) => {
+			if (i % 2 === 1) return seg; // protected segment — leave as-is
+			return seg.replace(COMBINED_RE, (match) => `$${match}$`);
+		})
+		.join('');
+};
+
 export const processResponseContent = (content: string) => {
-	return content.trim();
+	return wrapUndelimitedTexExpressions(content.trim());
 };
 
 export function unescapeHtml(html: string) {
