@@ -67,7 +67,7 @@ jobs:
           echo "Cleaning up Docker cache..."
           docker buildx prune --filter type=local --filter until=336h --force
           echo "Overall disk usage on the cache volume:"
-          df -h /var/lib/docker/cache
+          test -d /var/lib/docker/cache && df -h /var/lib/docker/cache
       - name: Build Docker image (latest)
         uses: docker/build-push-action@v7
         id: build
