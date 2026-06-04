@@ -1,7 +1,7 @@
 """Add refresh session table
 
 Revision ID: 8f3c4a1d2b6e
-Revises: 57c599a3cb57
+Revises: 5233b3d5b959
 Create Date: 2026-05-08 12:00:00.000000
 
 """
@@ -10,7 +10,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = "8f3c4a1d2b6e"
-down_revision = "57c599a3cb57"
+down_revision = "5233b3d5b959"
 branch_labels = None
 depends_on = None
 

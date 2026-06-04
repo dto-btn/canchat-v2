@@ -7,7 +7,12 @@
 import { browser } from '$app/environment';
 
 import { WEBUI_BASE_URL } from '$lib/constants';
-import { clearAuthState, getAccessTokenValue, refreshAuthSession } from '$lib/services/auth';
+import {
+	clearAuthState,
+	getAccessTokenValue,
+	isAuthFailure,
+	refreshAuthSession
+} from '$lib/services/auth';
 
 export type ApiRequestOptions = RequestInit & {
 	token?: string | null;
@@ -76,7 +81,43 @@ const isRefreshRequest = (requestUrl: URL) => requestUrl.pathname === '/api/v1/a
 /** Checks whether the outgoing request is using bearer authentication. */
 const usesBearerAuth = (request: Request) => {
 	const authorizationHeader = request.headers.get('Authorization');
-	return authorizationHeader && authorizationHeader.startsWith('Bearer ');
+	return Boolean(
+		authorizationHeader &&
+			authorizationHeader.startsWith('Bearer ') &&
+			authorizationHeader.slice('Bearer '.length).trim()
+	);
+};
+
+/** Replaces legacy blank bearer headers with the current in-memory token when available. */
+const normalizeInternalApiAuth = (request: Request) => {
+	const requestUrl = new URL(request.url);
+	if (!isInternalApiRequest(requestUrl) || isRefreshRequest(requestUrl)) {
+		return request;
+	}
+
+	const latestAccessToken = getAccessTokenValue();
+	const headers = new Headers(request.headers);
+	const authorizationHeader = request.headers.get('Authorization');
+	if (!authorizationHeader) {
+		if (!latestAccessToken) {
+			return request;
+		}
+
+		headers.set('Authorization', `Bearer ${latestAccessToken}`);
+		return new Request(request, { headers });
+	}
+
+	if (!authorizationHeader.startsWith('Bearer ') || authorizationHeader.slice('Bearer '.length).trim()) {
+		return request;
+	}
+
+	if (latestAccessToken) {
+		headers.set('Authorization', `Bearer ${latestAccessToken}`);
+	} else {
+		headers.delete('Authorization');
+	}
+
+	return new Request(request, { headers });
 };
 
 /** Reads and removes interceptor-only headers before the request hits the network. */
@@ -126,7 +167,8 @@ const shouldRetryUnauthorizedResponse = (
 
 /** Runs a request through the interceptor and retries once after a successful refresh. */
 const performInterceptedFetch = async (request: Request, allowRetry: boolean) => {
-	const { request: sanitizedRequest, skipAuthRetry } = stripInterceptorHeaders(request);
+	const { request: strippedRequest, skipAuthRetry } = stripInterceptorHeaders(request);
+	const sanitizedRequest = normalizeInternalApiAuth(strippedRequest);
 	const response = await getNativeFetch()(sanitizedRequest.clone());
 
 	if (!shouldRetryUnauthorizedResponse(sanitizedRequest, response, allowRetry, skipAuthRetry)) {
@@ -136,11 +178,12 @@ const performInterceptedFetch = async (request: Request, allowRetry: boolean) =>
 	try {
 		const sessionUser = await refreshAuthSession();
 		if (!sessionUser?.token) {
-			clearAuthState();
 			return response;
 		}
 	} catch (error) {
-		clearAuthState();
+		if (isAuthFailure(error)) {
+			clearAuthState();
+		}
 		return response;
 	}
 

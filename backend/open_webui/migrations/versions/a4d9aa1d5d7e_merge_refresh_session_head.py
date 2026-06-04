@@ -1,20 +1,27 @@
-"""Merge refresh session migration head
+"""merge refresh session head
 
 Revision ID: a4d9aa1d5d7e
-Revises: 5233b3d5b959, 8f3c4a1d2b6e
-Create Date: 2026-05-25 00:00:00.000000
+Revises: 0020fee30b61, 8f3c4a1d2b6e
+Create Date: 2026-05-28 12:05:00.000000
 
 """
 
-revision = "a4d9aa1d5d7e"
-down_revision = ("5233b3d5b959", "8f3c4a1d2b6e")
-branch_labels = None
-depends_on = None
+from typing import Sequence, Union
 
 
-def upgrade():
+# revision identifiers, used by Alembic.
+revision: str = "a4d9aa1d5d7e"
+down_revision: Union[str, Sequence[str], None] = (
+    "0020fee30b61",
+    "8f3c4a1d2b6e",
+)
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
     pass
 
 
-def downgrade():
+def downgrade() -> None:
     pass
