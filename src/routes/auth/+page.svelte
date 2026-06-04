@@ -9,7 +9,13 @@
 
 	import { getBackendConfig } from '$lib/apis';
 	import { ldapUserSignIn, userSignIn, userSignUp } from '$lib/apis/auths';
-	import { bootstrapAuthSession, getAccessTokenValue, setAuthSession } from '$lib/services/auth';
+	import {
+		bootstrapAuthSession,
+		broadcastAuthSyncEvent,
+		consumeAuthRecoveryCheckpoint,
+		getAccessTokenValue,
+		setAuthSession
+	} from '$lib/services/auth';
 
 	import { WEBUI_BASE_URL } from '$lib/constants';
 	import { WEBUI_NAME, config, user } from '$lib/stores';
@@ -44,6 +50,7 @@
 			toast.success($i18n.t(`You're now logged in.`));
 			setAuthSession(sessionUser);
 			await user.set(sessionUser);
+			broadcastAuthSyncEvent('session-restored');
 
 			const backendConfig = await getBackendConfig();
 			if (backendConfig) {
@@ -59,7 +66,7 @@
 				});
 			}
 
-			goto('/');
+			await goto(consumeAuthRecoveryCheckpoint() ?? '/');
 		}
 	};
 
@@ -128,7 +135,7 @@
 
 	onMount(async () => {
 		if ($user !== undefined) {
-			await goto('/');
+			await goto(consumeAuthRecoveryCheckpoint() ?? '/');
 		}
 		await checkOauthCallback();
 

@@ -1,6 +1,7 @@
 import re
 import uuid
 import logging
+import time
 from aiohttp import ClientSession
 
 from open_webui.models.auths import (
@@ -45,6 +46,7 @@ from open_webui.utils.auth import (
     get_password_hash,
     get_refresh_token_session_id,
     issue_tokens_for_user,
+    log_auth_event,
     resolve_current_user,
     verify_refresh_token,
 )
@@ -179,6 +181,19 @@ def _build_admin_config_response(request: Request):
     }
 
 
+def _get_refresh_failure_reason(exc: HTTPException) -> str:
+    if exc.detail == ERROR_MESSAGES.MISSING_REFRESH_TOKEN:
+        return "missing_refresh_token"
+
+    if exc.detail == ERROR_MESSAGES.INVALID_REFRESH_TOKEN:
+        return "invalid_refresh_token"
+
+    if exc.detail == ERROR_MESSAGES.REFRESH_SESSION_CONFLICT:
+        return "refresh_session_conflict"
+
+    return f"http_{exc.status_code}"
+
+
 @router.get("/", response_model=SessionUserResponse)
 async def get_session_user(
     request: Request,
@@ -244,16 +259,18 @@ async def update_password(
 ):
     if WEBUI_AUTH_TRUSTED_EMAIL_HEADER:
         raise HTTPException(400, detail=ERROR_MESSAGES.ACTION_PROHIBITED)
-    if session_user:
-        user = Auths.authenticate_user(session_user.email, form_data.password)
 
-        if user:
-            hashed = get_password_hash(form_data.new_password)
-            return Auths.update_user_password_by_id(user.id, hashed)
-        else:
-            raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_PASSWORD)
-    else:
-        raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_CRED)
+    user = Auths.authenticate_user(session_user.email, form_data.password)
+
+    if user:
+        hashed = get_password_hash(form_data.new_password)
+        password_updated = Auths.update_user_password_by_id(user.id, hashed)
+        if password_updated:
+            RefreshSessions.revoke_sessions_by_user_id(user.id)
+
+        return password_updated
+
+    raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_PASSWORD)
 
 
 ############################
@@ -566,24 +583,55 @@ async def signout(request: Request, response: Response):
 
 @router.post("/refresh", response_model=SessionUserResponse)
 async def refresh_token(request: Request, response: Response):
-    refresh_token = request.cookies.get(WEBUI_REFRESH_TOKEN_COOKIE_NAME)
-    if not refresh_token:
-        raise HTTPException(400, detail=ERROR_MESSAGES.MISSING_REFRESH_TOKEN)
+    refresh_started_at = time.perf_counter()
 
-    refresh_session, user = _get_refresh_session_user(refresh_token)
+    try:
+        refresh_token = request.cookies.get(WEBUI_REFRESH_TOKEN_COOKIE_NAME)
+        if not refresh_token:
+            raise HTTPException(400, detail=ERROR_MESSAGES.MISSING_REFRESH_TOKEN)
 
-    access_token, expires_at_access_token = _issue_tokens_for_user(
-        request,
-        response,
-        user.id,
-        current_refresh_session_id=refresh_session.id,
-        current_refresh_expires_at=refresh_session.expires_at,
-        current_refresh_token_hash=refresh_session.token_hash,
-    )
+        refresh_session, user = _get_refresh_session_user(refresh_token)
 
-    return _build_session_user_response(
-        request, user, access_token, expires_at_access_token
-    )
+        access_token, expires_at_access_token = _issue_tokens_for_user(
+            request,
+            response,
+            user.id,
+            current_refresh_session_id=refresh_session.id,
+            current_refresh_expires_at=refresh_session.expires_at,
+            current_refresh_token_hash=refresh_session.token_hash,
+        )
+
+        latency_ms = (time.perf_counter() - refresh_started_at) * 1000
+        log_auth_event(
+            "refresh-token-succeeded",
+            user_id=user.id,
+            refresh_session_id=refresh_session.id,
+            latency_ms=round(latency_ms, 2),
+        )
+
+        return _build_session_user_response(
+            request, user, access_token, expires_at_access_token
+        )
+    except HTTPException as exc:
+        latency_ms = (time.perf_counter() - refresh_started_at) * 1000
+        reason = _get_refresh_failure_reason(exc)
+        log_auth_event(
+            "refresh-token-failed",
+            level="warning" if exc.status_code < 500 else "error",
+            reason=reason,
+            status_code=exc.status_code,
+            latency_ms=round(latency_ms, 2),
+        )
+        raise
+    except Exception:
+        latency_ms = (time.perf_counter() - refresh_started_at) * 1000
+        log_auth_event(
+            "refresh-token-failed",
+            level="error",
+            reason="unexpected_error",
+            latency_ms=round(latency_ms, 2),
+        )
+        raise
 
 
 ############################

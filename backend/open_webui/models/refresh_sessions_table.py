@@ -70,21 +70,6 @@ class RefreshSessionsTable:
                 else None
             )
 
-    def get_token_hash_by_id(
-        self, session_id: str, current_time: Optional[int] = None
-    ) -> Optional[str]:
-        active_time = current_time if current_time is not None else int(time.time())
-
-        with get_db() as db:
-            refresh_session = (
-                db.query(RefreshSession)
-                .filter(RefreshSession.id == session_id)
-                .filter(RefreshSession.revoked_at.is_(None))
-                .filter(RefreshSession.expires_at > active_time)
-                .first()
-            )
-            return refresh_session.token_hash if refresh_session else None
-
     def rotate_session_token(
         self,
         session_id: str,

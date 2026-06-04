@@ -17,7 +17,13 @@
 	import { fade } from 'svelte/transition';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import { userSignOut } from '$lib/apis/auths';
-	import { clearAuthState, endLogout, startLogout } from '$lib/services/auth';
+	import {
+		broadcastAuthSyncEvent,
+		clearAuthRecoveryCheckpoint,
+		clearAuthState,
+		endLogout,
+		startLogout
+	} from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -194,8 +200,10 @@
 
 					try {
 						await userSignOut();
-						clearAuthState();
+						clearAuthRecoveryCheckpoint();
+						broadcastAuthSyncEvent('logout');
 						await user.set(undefined);
+						clearAuthState();
 						location.href = '/auth';
 						show = false;
 					} catch (error) {

@@ -123,7 +123,7 @@ def test_get_session_user_rejects_invalid_refresh_cookie_even_with_bearer(monkey
         )
 
     assert exc_info.value.status_code == 400
-    assert revoked == []
+    assert revoked == ["session-1"]
 
 
 def test_get_session_user_rejects_bearer_only_bootstrap(monkeypatch):

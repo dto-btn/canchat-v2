@@ -113,8 +113,8 @@ def test_issue_tokens_for_user_rejects_on_compare_and_swap_rotation_failure(
             current_refresh_token_hash="stored-hash",
         )
 
-    assert getattr(exc_info.value, "status_code", None) == 400
+    assert getattr(exc_info.value, "status_code", None) == 409
     assert (
         getattr(exc_info.value, "detail", None)
-        == auth.ERROR_MESSAGES.INVALID_REFRESH_TOKEN
+        == auth.ERROR_MESSAGES.REFRESH_SESSION_CONFLICT
     )

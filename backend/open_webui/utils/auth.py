@@ -302,6 +302,7 @@ def issue_tokens_for_user(
             meta=meta,
         )
 
+    # Failing to refresh
     if refresh_session is None:
         if current_refresh_session_id is not None:
             log_auth_event(
@@ -310,7 +311,7 @@ def issue_tokens_for_user(
                 user_id=user_id,
                 refresh_session_id=current_refresh_session_id,
             )
-            raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_REFRESH_TOKEN)
+            raise HTTPException(409, detail=ERROR_MESSAGES.REFRESH_SESSION_CONFLICT)
 
         log_auth_event(
             "refresh-session-create-failed",
@@ -340,21 +341,9 @@ def get_legacy_auth_token(request: Request) -> Optional[str]:
     return request.cookies.get(LEGACY_AUTH_TOKEN_COOKIE_NAME)
 
 
-def extract_token_from_auth_header(auth_header: str):
-    return auth_header[len("Bearer ") :]
-
-
 def create_api_key():
     key = str(uuid.uuid4()).replace("-", "")
     return f"sk-{key}"
-
-
-def get_http_authorization_cred(auth_header: str):
-    try:
-        scheme, credentials = auth_header.split(" ")
-        return HTTPAuthorizationCredentials(scheme=scheme, credentials=credentials)
-    except Exception:
-        raise ValueError(ERROR_MESSAGES.INVALID_TOKEN)
 
 
 def resolve_current_user(
