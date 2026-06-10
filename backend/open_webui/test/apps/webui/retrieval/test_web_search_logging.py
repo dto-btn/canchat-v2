@@ -440,7 +440,7 @@ class TestProcessWebSearchLogging:
                         ENABLE_RAG_WEB_LOADER_SSL_VERIFICATION=True,
                         RAG_WEB_SEARCH_CONCURRENT_REQUESTS=2,
                         BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL=True,
-                        RAG_WEB_SEARCH_TARGET_PAGE_RETRIEVAL=True,
+                        RAG_WEB_SEARCH_TARGET_PAGE_RETRIEVAL=3,
                     )
                 )
             )

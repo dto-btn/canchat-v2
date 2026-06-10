@@ -103,6 +103,7 @@ log.setLevel(SRC_LOG_LEVELS["RAG"])
 
 SEARCH_ENGINE_RESULT_COUNT_CAPS = {
     "google_pse": 10,
+    "brave": 10,
 }
 
 
@@ -1208,6 +1209,7 @@ def search_web(
     request_timeout: Optional[int] = None,
     user=None,
     audit_event_id: Optional[str] = None,
+    result_count: Optional[int] = None,
 ) -> list[SearchResult]:
     """Search the web using a search engine and return the results as a list of SearchResult objects.
     Will look for a search engine API key in environment variables in the following order:
@@ -1229,26 +1231,38 @@ def search_web(
         request_timeout (Optional[int]): Optional per-request timeout override in seconds.
             If not provided, providers use the configured default request timeout.
         user: The authenticated user who triggered the search (for audit logging).
-                audit_event_id: audit event ID
+        audit_event_id: audit event ID
+        result_count (Optional[int]): Optional override for result count.
+            If not provided, falls back to RAG_WEB_SEARCH_RESULT_COUNT config.
     """
+    if result_count is None:
+        result_count = request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT
 
     with web_search_audit_scope(
         engine=engine,
         query=query,
-        result_count_requested=request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+        result_count_requested=result_count,
         domain_filter_list=request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
         user=user,
         event_id=audit_event_id,
     ) as dispatch_ctx:
-        results = _dispatch_search(request, engine, query, request_timeout)
+        results = _dispatch_search(
+            request, engine, query, request_timeout, result_count
+        )
         log_web_search_result(dispatch_ctx=dispatch_ctx, results=results)
         return results
 
 
 def _dispatch_search(
-    request: Request, engine: str, query: str, request_timeout: Optional[int] = None
+    request: Request,
+    engine: str,
+    query: str,
+    request_timeout: Optional[int] = None,
+    result_count: Optional[int] = None,
 ) -> list[SearchResult]:
     """Internal dispatcher — routes to the correct search provider."""
+    if result_count is None:
+        result_count = request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT
 
     # TODO: add playwright to search the web
     if engine == "searxng":
@@ -1256,7 +1270,7 @@ def _dispatch_search(
             return search_searxng(
                 request.app.state.config.SEARXNG_QUERY_URL,
                 query,
-                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+                result_count,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
             )
         else:
@@ -1270,7 +1284,7 @@ def _dispatch_search(
                 request.app.state.config.GOOGLE_PSE_API_KEY,
                 request.app.state.config.GOOGLE_PSE_ENGINE_ID,
                 query,
-                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+                result_count,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
                 request_timeout=request_timeout,
             )
@@ -1283,7 +1297,7 @@ def _dispatch_search(
             return search_brave(
                 request.app.state.config.BRAVE_SEARCH_API_KEY,
                 query,
-                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+                result_count,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
                 request_timeout=request_timeout,
             )
@@ -1294,7 +1308,7 @@ def _dispatch_search(
             return search_kagi(
                 request.app.state.config.KAGI_SEARCH_API_KEY,
                 query,
-                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+                result_count,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
             )
         else:
@@ -1304,7 +1318,7 @@ def _dispatch_search(
             return search_mojeek(
                 request.app.state.config.MOJEEK_SEARCH_API_KEY,
                 query,
-                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+                result_count,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
             )
         else:
@@ -1314,7 +1328,7 @@ def _dispatch_search(
             return search_serpstack(
                 request.app.state.config.SERPSTACK_API_KEY,
                 query,
-                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+                result_count,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
                 https_enabled=request.app.state.config.SERPSTACK_HTTPS,
             )
@@ -1325,7 +1339,7 @@ def _dispatch_search(
             return search_serper(
                 request.app.state.config.SERPER_API_KEY,
                 query,
-                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+                result_count,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
             )
         else:
@@ -1335,7 +1349,7 @@ def _dispatch_search(
             return search_serply(
                 request.app.state.config.SERPLY_API_KEY,
                 query,
-                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+                result_count,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
             )
         else:
@@ -1343,7 +1357,7 @@ def _dispatch_search(
     elif engine == "duckduckgo":
         return search_duckduckgo(
             query,
-            request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+            result_count,
             request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
         )
     elif engine == "tavily":
@@ -1351,7 +1365,7 @@ def _dispatch_search(
             return search_tavily(
                 request.app.state.config.TAVILY_API_KEY,
                 query,
-                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+                result_count,
             )
         else:
             raise Exception("No TAVILY_API_KEY found in environment variables")
@@ -1361,7 +1375,7 @@ def _dispatch_search(
                 request.app.state.config.SEARCHAPI_API_KEY,
                 request.app.state.config.SEARCHAPI_ENGINE,
                 query,
-                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+                result_count,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
             )
         else:
@@ -1370,7 +1384,7 @@ def _dispatch_search(
         return search_jina(
             request.app.state.config.JINA_API_KEY,
             query,
-            request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+            result_count,
         )
     elif engine == "bing":
         return search_bing(
@@ -1378,11 +1392,135 @@ def _dispatch_search(
             request.app.state.config.BING_SEARCH_V7_ENDPOINT,
             str(DEFAULT_LOCALE),
             query,
-            request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+            result_count,
             request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
         )
     else:
         raise Exception("No search engine API key found in environment variables")
+
+
+async def _load_single_url(
+    semaphore: asyncio.Semaphore,
+    index: int,
+    url: str,
+    get_capped_request_timeout,
+    verify_ssl: bool,
+) -> tuple[int, str, list]:
+    """Load a single URL via the web loader, respecting the semaphore for concurrency control.
+
+    Returns (index, url, loaded_documents) on success, or (index, url, []) on non-timeout failure.
+    Timeout errors are re-raised to be handled by the caller.
+    """
+    async with semaphore:
+        request_timeout = get_capped_request_timeout()
+        try:
+            loader = get_web_loader(
+                [url],
+                verify_ssl=verify_ssl,
+                requests_per_second=1,
+                request_timeout=request_timeout,
+            )
+            docs = await asyncio.to_thread(loader.load)
+            return index, url, docs
+        except (TimeoutError, asyncio.TimeoutError):
+            raise
+        except Exception as e:
+            log.debug(
+                "[process_web_search] failed loading url='%s': %s",
+                url,
+                e,
+            )
+            return index, url, []
+
+
+async def _load_urls_concurrently(
+    ranked_urls: list[str],
+    search_result_count: int,
+    max_workers: int,
+    get_capped_request_timeout,
+    verify_ssl: bool,
+) -> tuple[list[tuple[int, str, list]], int]:
+    """Load URLs in parallel using a task queue with a semaphore-limited worker pool.
+
+    Schedules up to "max_workers" url retrievals at once, adds new retrieval tasks
+    as each task completes until the number of documents in "search_result_count" are
+    loaded or all URLs have been tried.
+
+    Returns (ranked_loaded_docs, attempted_url_count).
+    """
+    semaphore = asyncio.Semaphore(max_workers)
+    ranked_loaded_docs: list[tuple[int, str, list]] = []
+    pending_tasks: set[asyncio.Task] = set()
+    attempted_url_count = 0
+    next_index_to_schedule = 0
+
+    def schedule_next_url(index: int) -> bool:
+        nonlocal attempted_url_count
+        if index >= len(ranked_urls):
+            return False
+        task = asyncio.create_task(
+            _load_single_url(
+                semaphore,
+                index,
+                ranked_urls[index],
+                get_capped_request_timeout,
+                verify_ssl,
+            )
+        )
+        pending_tasks.add(task)
+        attempted_url_count += 1
+        return True
+
+    try:
+        # Get initial batch of urls to load
+        initial_parallelism = min(max_workers, search_result_count, len(ranked_urls))
+        for index in range(initial_parallelism):
+            schedule_next_url(index)
+            next_index_to_schedule = index + 1
+
+        # Wait for pending threads to complete, schedule new ones as required
+        while pending_tasks and len(ranked_loaded_docs) < search_result_count:
+            done_tasks, _ = await asyncio.wait(
+                pending_tasks,
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+
+            # Check finished threads for completion reason
+            for task in done_tasks:
+                pending_tasks.discard(task)
+                try:
+                    index, url, url_docs = task.result()
+                except (TimeoutError, asyncio.TimeoutError):
+                    raise
+                except Exception as e:
+                    log.debug(
+                        "[process_web_search] url load task failed with error: %s",
+                        e,
+                    )
+                    continue
+
+                if url_docs:
+                    ranked_loaded_docs.append((index, url, url_docs))
+
+            slots_available = (
+                search_result_count - len(ranked_loaded_docs) - len(pending_tasks)
+            )
+            while (
+                slots_available > 0
+                and next_index_to_schedule < len(ranked_urls)
+                and len(pending_tasks) < max_workers
+            ):
+                if not schedule_next_url(next_index_to_schedule):
+                    break
+                next_index_to_schedule += 1
+                slots_available -= 1
+    finally:
+        if pending_tasks:
+            for task in list(pending_tasks):
+                task.cancel()
+            await asyncio.gather(*pending_tasks, return_exceptions=True)
+
+    return ranked_loaded_docs, attempted_url_count
 
 
 class SearchForm(BaseModel):
@@ -1528,6 +1666,7 @@ async def process_web_search(
                     request_timeout,
                     user,
                     audit_event_id,
+                    effective_search_count,
                 )
             except TimeoutError:
                 raise
@@ -1557,97 +1696,13 @@ async def process_web_search(
                     len(ranked_urls),
                 )
 
-                semaphore = asyncio.Semaphore(max_workers)
-
-                async def load_single_url(index: int, url: str):
-                    async with semaphore:
-                        request_timeout = get_capped_request_timeout()
-                        try:
-                            loader = get_web_loader(
-                                [url],
-                                verify_ssl=request.app.state.config.ENABLE_RAG_WEB_LOADER_SSL_VERIFICATION,
-                                requests_per_second=1,
-                                request_timeout=request_timeout,
-                            )
-                            docs = await asyncio.to_thread(loader.load)
-                            return index, url, docs
-                        except (TimeoutError, asyncio.TimeoutError):
-                            raise
-                        except Exception as e:
-                            log.debug(
-                                "[process_web_search] failed loading url='%s': %s",
-                                url,
-                                e,
-                            )
-                            return index, url, []
-
-                ranked_loaded_docs = []
-                pending_tasks: set[asyncio.Task] = set()
-                attempted_url_count = 0
-                next_index_to_schedule = 0
-
-                def schedule_next_url(index: int) -> bool:
-                    nonlocal attempted_url_count
-                    if index >= len(ranked_urls):
-                        return False
-                    task = asyncio.create_task(
-                        load_single_url(index, ranked_urls[index])
-                    )
-                    pending_tasks.add(task)
-                    attempted_url_count += 1
-                    return True
-
-                try:
-                    initial_parallelism = min(
-                        max_workers, search_result_count, len(ranked_urls)
-                    )
-                    for index in range(initial_parallelism):
-                        schedule_next_url(index)
-                        next_index_to_schedule = index + 1
-
-                    while (
-                        pending_tasks and len(ranked_loaded_docs) < search_result_count
-                    ):
-                        done_tasks, _ = await asyncio.wait(
-                            pending_tasks,
-                            return_when=asyncio.FIRST_COMPLETED,
-                        )
-
-                        for task in done_tasks:
-                            pending_tasks.discard(task)
-                            try:
-                                index, url, url_docs = task.result()
-                            except (TimeoutError, asyncio.TimeoutError):
-                                raise
-                            except Exception as e:
-                                log.debug(
-                                    "[process_web_search] url load task failed with error: %s",
-                                    e,
-                                )
-                                continue
-
-                            if url_docs:
-                                ranked_loaded_docs.append((index, url, url_docs))
-
-                        slots_available = (
-                            search_result_count
-                            - len(ranked_loaded_docs)
-                            - len(pending_tasks)
-                        )
-                        while (
-                            slots_available > 0
-                            and next_index_to_schedule < len(ranked_urls)
-                            and len(pending_tasks) < max_workers
-                        ):
-                            if not schedule_next_url(next_index_to_schedule):
-                                break
-                            next_index_to_schedule += 1
-                            slots_available -= 1
-                finally:
-                    if pending_tasks:
-                        for task in list(pending_tasks):
-                            task.cancel()
-                        await asyncio.gather(*pending_tasks, return_exceptions=True)
+                ranked_loaded_docs, attempted_url_count = await _load_urls_concurrently(
+                    ranked_urls=ranked_urls,
+                    search_result_count=search_result_count,
+                    max_workers=max_workers,
+                    get_capped_request_timeout=get_capped_request_timeout,
+                    verify_ssl=request.app.state.config.ENABLE_RAG_WEB_LOADER_SSL_VERIFICATION,
+                )
 
                 docs, urls = build_ranked_output(ranked_loaded_docs)
 
@@ -1710,7 +1765,28 @@ async def process_web_search(
                 collection_name=None,
                 engine=request.app.state.config.RAG_WEB_SEARCH_ENGINE,
             )
-            return await finalize_search_result(docs, urls)
+            try:
+                async with asyncio.timeout(request_timeout_cap):
+                    return await finalize_search_result(docs, urls)
+            except (TimeoutError, asyncio.TimeoutError):
+                log.warning(
+                    "[process_web_search] timed out finalizing search result after timeout for query='%s'",
+                    form_data.query,
+                )
+                docs_with_meta = [
+                    {
+                        "content": doc.page_content,
+                        "metadata": doc.metadata,
+                    }
+                    for doc in docs
+                ]
+                return {
+                    "status": True,
+                    "collection_name": None,
+                    "docs": docs_with_meta,
+                    "filenames": urls,
+                    "loaded_count": len(docs),
+                }
 
         log.error(
             f"[process_web_search] exceeded total timeout of {total_timeout}s for query: '{form_data.query}'"

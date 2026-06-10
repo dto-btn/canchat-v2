@@ -130,7 +130,7 @@ def test_total_timeout_enforcement(monkeypatch):
                     RAG_WEB_SEARCH_RESULT_COUNT=5,
                     RAG_WEB_SEARCH_CONCURRENT_REQUESTS=2,
                     BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL=True,
-                    RAG_WEB_SEARCH_TARGET_PAGE_RETRIEVAL=True,
+                    RAG_WEB_SEARCH_TARGET_PAGE_RETRIEVAL=3,
                 )
             )
         )
