@@ -39,7 +39,7 @@ def search_brave(
         api_key (str): A Brave Search API key
         query (str): The query to search for
         count (int): Number of results to return
-        additional_params (Optional[str]): Optional semicolon separated kv string of additional parameters (key1=value1;key2=value2)
+        additional_params (Optional[str]): Optional semicolon-separated key=value string of additional parameters (e.g. 'country=ca;safesearch=strict')
         filter_list (Optional[list[str]]): Optional list of domains to filter
         request_timeout (Optional[int]): Optional timeout override in seconds for this request
         search_lang (Optional[str]): Language code detected from the original user message
