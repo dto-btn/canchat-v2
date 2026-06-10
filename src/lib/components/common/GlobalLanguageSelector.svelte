@@ -1,7 +1,5 @@
 <script lang="ts">
 	import { getI18n } from '$lib/utils/context';
-	import { updateUserSettings, getUserSettings } from '$lib/apis/users';
-	import { user } from '$lib/stores';
 
 	import Tooltip from './Tooltip.svelte';
 
@@ -10,23 +8,6 @@
 	async function toggleLanguage() {
 		const newLocale = $i18n.language === 'en-GB' ? 'fr-CA' : 'en-GB';
 		await $i18n.changeLanguage(newLocale);
-
-		// Persist language preference to backend
-		if ($user?.token) {
-			try {
-				const currentSettings = (await getUserSettings($user.token)) || {};
-				const updatedSettings = {
-					...currentSettings,
-					ui: {
-						...(currentSettings.ui || {}),
-						default_locale: newLocale
-					}
-				};
-				await updateUserSettings($user.token, updatedSettings);
-			} catch (error) {
-				console.error('Failed to update language preference:', error);
-			}
-		}
 	}
 
 	$: currentLangDisplay = $i18n.language === 'en-GB' ? 'FR' : 'EN';

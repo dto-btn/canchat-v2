@@ -1201,6 +1201,7 @@ def search_web(
     request_timeout: Optional[int] = None,
     user=None,
     audit_event_id: Optional[str] = None,
+    search_lang: Optional[str] = None,
 ) -> list[SearchResult]:
     """Search the web using a search engine and return the results as a list of SearchResult objects.
     Will look for a search engine API key in environment variables in the following order:
@@ -1235,7 +1236,9 @@ def search_web(
         user=user,
         event_id=audit_event_id,
     ) as dispatch_ctx:
-        results = _dispatch_search(request, engine, query, request_timeout, user)
+        results = _dispatch_search(
+            request, engine, query, request_timeout, user, search_lang=search_lang
+        )
         log_web_search_result(dispatch_ctx=dispatch_ctx, results=results)
         return results
 
@@ -1246,6 +1249,7 @@ def _dispatch_search(
     query: str,
     request_timeout: Optional[int] = None,
     user=None,
+    search_lang: Optional[str] = None,
 ) -> list[SearchResult]:
     """Internal dispatcher — routes to the correct search provider."""
 
@@ -1287,6 +1291,7 @@ def _dispatch_search(
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
                 request_timeout=request_timeout,
                 user=user,
+                search_lang=search_lang,
             )
         else:
             raise Exception("No BRAVE_SEARCH_API_KEY found in environment variables")
@@ -1388,6 +1393,7 @@ def _dispatch_search(
 
 class SearchForm(BaseModel):
     query: str
+    search_lang: Optional[str] = None
 
 
 @router.post("/process/web/search")
@@ -1426,6 +1432,7 @@ async def process_web_search(
                     request_timeout,
                     user,
                     audit_event_id,
+                    search_lang=form_data.search_lang,
                 )
             except TimeoutError:
                 raise

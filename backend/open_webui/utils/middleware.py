@@ -36,7 +36,6 @@ from open_webui.routers.retrieval import process_web_search, SearchForm
 from open_webui.routers.images import image_generations, GenerateImageForm
 
 
-from open_webui.utils.settings import get_user_locale, get_current_lang_description
 from open_webui.utils.webhook import post_webhook
 
 
@@ -637,6 +636,7 @@ async def chat_web_search_handler(
 
     messages = form_data["messages"]
     user_message = get_last_user_message(messages)
+    detected_lang = detect_query_language(user_message)
 
     queries = []
     try:
@@ -707,6 +707,7 @@ async def chat_web_search_handler(
             SearchForm(
                 **{
                     "query": searchQuery,
+                    "search_lang": detected_lang,
                 }
             ),
             user=user,
@@ -1324,24 +1325,14 @@ async def process_chat_payload(request, form_data, metadata, user, model):
         f"Date: {current_date}, Day: {current_weekday}, Time: {now.strftime('%I:%M %p %Z')}."
     )
 
-    # Get UI language from settings and format for system message
-    locale = get_user_locale(user)
-    current_lang = get_current_lang_description(locale)
-    lang_context = (
-        f"IMPORTANT: Always converse in {current_lang}, unless otherwise requested."
-    )
-
-    # Combine language and time context for system message
-    combined_context = f"{lang_context}\n\n{time_context}"
-
-    # Add combined context to system message
+    # Add time information to system message
     messages = form_data.get("messages", [])
     if messages and messages[0].get("role") == "system":
         # Update existing system message
-        messages[0]["content"] = f"{combined_context}\n\n{messages[0]['content']}"
+        messages[0]["content"] = f"{time_context}\n\n{messages[0]['content']}"
     else:
         # Insert new system message at beginning
-        messages.insert(0, {"role": "system", "content": combined_context})
+        messages.insert(0, {"role": "system", "content": time_context})
 
     form_data["messages"] = messages
 
