@@ -87,7 +87,7 @@
 		? fuse.search(searchValue).map((e) => {
 				return e.item;
 			})
-		: items;
+		: displayItems;
 
 	const pullModelHandler = async () => {
 		const sanitizedModelTag = searchValue.trim().replace(/^ollama\s+(run|pull)\s+/, '');
