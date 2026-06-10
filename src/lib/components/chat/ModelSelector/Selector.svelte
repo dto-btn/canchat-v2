@@ -46,6 +46,19 @@
 
 	let show = false;
 
+	let displayItems = [];
+
+	$: if (show) {
+		let array = [...items];
+		for (let i = array.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[array[i], array[j]] = [array[j], array[i]];
+		}
+		displayItems = array;
+	} else {
+		displayItems = [...items];
+	}
+
 	let selectedModel = '';
 	$: selectedModel = items.find((item) => item.value === value) ?? '';
 
