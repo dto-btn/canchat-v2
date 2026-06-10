@@ -1419,15 +1419,9 @@ TITLE_GENERATION_PROMPT_TEMPLATE = PersistentConfig(
     os.environ.get("TITLE_GENERATION_PROMPT_TEMPLATE", ""),
 )
 
-DEFAULT_TITLE_GENERATION_PROMPT_TEMPLATE = """Create a concise, 3-5 word title with an emoji as a title for the chat history, in the given language. Suitable Emojis for the summary can be used to enhance understanding but avoid quotation marks or special formatting. RESPOND ONLY WITH THE TITLE TEXT.
+DEFAULT_TITLE_GENERATION_PROMPT_TEMPLATE = """Generate a short chat title (3-5 words) with a relevant emoji prefix, in the chat's language. Output ONLY the title as plain text — no quotes, no formatting, no reasoning or chain-of-thought.
 
-Examples of titles:
-📉 Stock Market Trends
-🍪 Perfect Chocolate Chip Recipe
-Evolution of Music Streaming
-Remote Work Productivity Tips
-Artificial Intelligence in Healthcare
-🎮 Video Game Development Insights
+Format: EMOJI TITLE (e.g. 🍪 Chocolate Chip Recipe)
 
 <chat_history>
 {{MESSAGES:END:2}}
