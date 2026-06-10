@@ -39,6 +39,8 @@ from starlette.responses import Response
 from open_webui.socket.main import (
     app as socket_app,
     periodic_usage_pool_cleanup,
+    effective_websocket_manager,
+    SESSION_POOL,
 )
 from open_webui.routers import (
     audio,
@@ -292,6 +294,7 @@ from open_webui.env import (
     ENABLE_WEBSOCKET_SUPPORT,
     BYPASS_MODEL_ACCESS_CONTROL,
     RESET_CONFIG_ON_START,
+    USE_REDIS_LOCKS,
 )
 
 from open_webui.custom_logging import LoggingMiddleware, reconfigure_access_log
@@ -1474,17 +1477,16 @@ async def get_opensearch_xml():
 
 
 @app.get("/health")
-async def healthcheck():
+def healthcheck():
     return {"status": True}
 
 
 @app.get("/health/db")
-def healthcheck_with_db():
+def healthcheck_db():
     try:
         # Use a dedicated session for health checks to avoid conflicts with long-running operations
         with get_db() as db:
             db.execute(text("SELECT 1;")).all()
-        return {"status": True}
     except Exception as e:
         log.error(f"Database health check failed: {e}")
         raise HTTPException(
@@ -1492,50 +1494,106 @@ def healthcheck_with_db():
             detail="Database connection failed",
         )
 
+    return {"status": True}
 
-@app.get("/health/redis")
-async def healthcheck_redis():
+
+@app.get("/health/ready")
+def healthcheck_ready():
+    """Aggregated readiness check for K8s readiness/startup probes.
+
+    Checks all critical dependencies (DB, Redis if configured).
+    Returns 503 if any dependency is unhealthy.
     """
-    Redis readiness endpoint for orchestration (Kubernetes, load balancers).
-    Returns 503 if Redis is unhealthy or circuit is OPEN.
-    """
+    result = {"status": True}
+
+    # Check database
     try:
-        from open_webui.retrieval.vector.locks import get_collection_lock_manager
-
-        manager = get_collection_lock_manager()
-        metrics = manager.get_health_metrics()
-
-        # Fail if circuit is open (persistent Redis issues)
-        if metrics["circuit_state"] == "open":
-            log.warning(
-                f"[HEALTH:REDIS] Circuit OPEN: {metrics['consecutive_failures']} "
-                f"consecutive failures, {metrics['recovery_attempts']} recovery attempts"
-            )
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"Redis circuit open. State: {metrics}",
-            )
-
-        # Fail if Redis not initialized
-        if not metrics["redis_initialized"]:
-            log.warning("[HEALTH:REDIS] Redis not initialized")
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Redis not initialized",
-            )
-
-        return {
-            "status": True,
-            "redis": metrics,
-        }
-    except HTTPException:
-        raise
+        with get_db() as db:
+            db.execute(text("SELECT 1;")).all()
+        result["db"] = True
     except Exception as e:
-        log.error(f"Redis health check failed: {e}")
+        log.error(f"Readiness check — database failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Redis health check error: {str(e)}",
+            detail="Database connection failed",
         )
+
+    # Check Redis (if configured)
+    if USE_REDIS_LOCKS or effective_websocket_manager == "redis":
+        try:
+            redis_result = healthcheck_redis()
+            result["redis"] = redis_result
+        except HTTPException:
+            raise
+        except Exception as e:
+            log.error(f"Readiness check — Redis failed: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Redis health check failed: {str(e)}",
+            )
+
+    return result
+
+
+@app.get("/health/redis")
+def healthcheck_redis():
+    """
+    Redis readiness endpoint for orchestration (Kubernetes, load balancers).
+    Checks all Redis dependencies (distributed locks and websocket backend).
+    Returns 503 if any Redis dependency is unhealthy.
+    """
+    result = {"status": True}
+
+    # Check distributed lock Redis
+    if USE_REDIS_LOCKS:
+        try:
+            from open_webui.retrieval.vector.locks import get_collection_lock_manager
+
+            manager = get_collection_lock_manager()
+            metrics = manager.get_health_metrics()
+
+            # Fail if circuit is open (persistent Redis issues)
+            if metrics["circuit_state"] == "open":
+                log.warning(
+                    f"[HEALTH:REDIS] Lock circuit OPEN: {metrics['consecutive_failures']} "
+                    f"consecutive failures, {metrics['recovery_attempts']} recovery attempts"
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail=f"Redis lock circuit open. State: {metrics}",
+                )
+
+            # Fail if Redis not initialized
+            if not metrics["redis_initialized"]:
+                log.warning("[HEALTH:REDIS] Lock Redis not initialized")
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Redis lock manager not initialized",
+                )
+
+            result["locks"] = metrics
+        except HTTPException:
+            raise
+        except Exception as e:
+            log.error(f"Redis lock health check failed: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Redis lock health check error: {str(e)}",
+            )
+
+    # Check websocket Redis
+    if effective_websocket_manager == "redis":
+        try:
+            SESSION_POOL.redis.ping()
+            result["websocket"] = True
+        except Exception as e:
+            log.error(f"Websocket Redis health check failed: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Websocket Redis connection failed: {str(e)}",
+            )
+
+    return result
 
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
