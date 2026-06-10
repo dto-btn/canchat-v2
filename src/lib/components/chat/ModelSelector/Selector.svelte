@@ -246,10 +246,12 @@
 
 <DropdownMenu.Root
 	bind:open={show}
-	onOpenChange={async () => {
+	onOpenChange={async (isOpen) => {
 		searchValue = '';
 		selectedModelIdx = 0;
-		window.setTimeout(() => document.getElementById('model-search-input')?.focus(), 0);
+		if (isOpen) {
+			window.setTimeout(() => document.getElementById('model-search-input')?.focus(), 0);
+		}
 	}}
 	closeFocus={false}
 >
