@@ -17,7 +17,7 @@ env:
 jobs:
   build:
     name: 'Test Backend'
-    runs-on: ubuntu-latest
+    runs-on: arc-ssc-dsai-tko
 
     strategy:
       matrix:
