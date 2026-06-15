@@ -1529,7 +1529,7 @@ def healthcheck_ready():
             log.error(f"Readiness check — Redis failed: {e}")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"Redis health check failed: {str(e)}",
+                detail="Redis health check failed",
             )
 
     return result
