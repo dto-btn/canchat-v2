@@ -1551,6 +1551,7 @@ def healthcheck_redis():
 
             manager = get_collection_lock_manager()
             metrics = manager.get_health_metrics()
+            metrics.pop("redis_url", None)
 
             # Fail if circuit is open (persistent Redis issues)
             if metrics["circuit_state"] == "open":
