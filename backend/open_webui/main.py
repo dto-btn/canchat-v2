@@ -1507,24 +1507,13 @@ def healthcheck_ready():
     result = {"status": True}
 
     # Check database
-    try:
-        with get_db() as db:
-            db.execute(text("SELECT 1;")).all()
-        result["db"] = True
-    except Exception as e:
-        log.error(f"Readiness check — database failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database connection failed",
-        )
+    healthcheck_db()
+    result["db"] = True
 
     # Check Redis (if configured)
     if USE_REDIS_LOCKS or effective_websocket_manager == "redis":
         try:
-            redis_result = healthcheck_redis()
-            result["redis"] = redis_result
-        except HTTPException:
-            raise
+            result["redis"] = healthcheck_redis()
         except Exception as e:
             log.error(f"Readiness check — Redis failed: {e}")
             raise HTTPException(
@@ -1561,7 +1550,7 @@ def healthcheck_redis():
                 )
                 raise HTTPException(
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail=f"Redis lock circuit open. State: {metrics}",
+                    detail="Redis lock circuit open",
                 )
 
             # Fail if Redis not initialized
@@ -1573,13 +1562,11 @@ def healthcheck_redis():
                 )
 
             result["locks"] = metrics
-        except HTTPException:
-            raise
         except Exception as e:
             log.error(f"Redis lock health check failed: {e}")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"Redis lock health check error: {str(e)}",
+                detail="Redis lock health check error",
             )
 
     # Check websocket Redis
@@ -1591,7 +1578,7 @@ def healthcheck_redis():
             log.error(f"Websocket Redis health check failed: {e}")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"Websocket Redis connection failed: {str(e)}",
+                detail="Websocket Redis connection failed",
             )
 
     return result
