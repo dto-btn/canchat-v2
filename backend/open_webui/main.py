@@ -1562,6 +1562,8 @@ def healthcheck_redis():
                 )
 
             result["locks"] = metrics
+        except HTTPException:
+            raise
         except Exception as e:
             log.error(f"Redis lock health check failed: {e}")
             raise HTTPException(
