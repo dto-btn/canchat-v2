@@ -240,7 +240,7 @@
 
 		speaking = true;
 
-		if ($config.audio.tts.engine !== '') {
+		if (($config?.audio?.tts?.engine ?? '') !== '') {
 			loadingSpeech = true;
 
 			const messageContentParts: string[] = getMessageContentParts(
@@ -271,7 +271,7 @@
 			for (const [idx, sentence] of messageContentParts.entries()) {
 				const res = await synthesizeOpenAISpeech(
 					getRequestToken(),
-					$settings?.audio?.tts?.defaultVoice === $config.audio.tts.voice
+					$settings?.audio?.tts?.defaultVoice === ($config?.audio?.tts?.voice ?? '')
 						? ($settings?.audio?.tts?.voice ?? $config?.audio?.tts?.voice)
 						: $config?.audio?.tts?.voice,
 					sentence

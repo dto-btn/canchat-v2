@@ -259,28 +259,6 @@ def issue_tokens_for_user(
 
     clear_legacy_auth_cookie(response)
 
-    if (
-        current_refresh_session_id is not None
-        and current_refresh_expires_at is not None
-        and expires_delta_access_token is not None
-    ):
-        current_time = int(datetime.now(UTC).timestamp())
-        # Avoid rotating the refresh cookie on every access-token mint when the
-        # current session still outlives the next access token window.
-        if current_refresh_expires_at > current_time + int(
-            expires_delta_access_token.total_seconds()
-        ):
-            log_auth_event(
-                "refresh-session-reused",
-                user_id=user_id,
-                refresh_session_id=current_refresh_session_id,
-                refresh_expires_at=current_refresh_expires_at,
-                refresh_remaining_seconds=seconds_until(
-                    current_refresh_expires_at, current_time
-                ),
-            )
-            return access_token, expires_at_access_token
-
     _, expires_at_refresh_token = get_refresh_token_expiration(refresh_token_expires_in)
     refresh_session_id, refresh_token, refresh_token_hash = create_refresh_token(
         current_refresh_session_id

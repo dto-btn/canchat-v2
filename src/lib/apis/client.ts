@@ -8,9 +8,8 @@ import { browser } from '$app/environment';
 
 import { WEBUI_BASE_URL } from '$lib/constants';
 import {
-	clearAuthState,
+	ensureFreshAccessToken,
 	getAccessTokenValue,
-	isAuthFailure,
 	refreshAuthSession
 } from '$lib/services/auth';
 
@@ -27,11 +26,6 @@ const INTERNAL_API_PATH_PREFIXES = ['/api', '/ollama', '/openai', '/mcp'];
 
 let nativeFetch: typeof fetch | null = null;
 let fetchInterceptorInstalled = false;
-
-/** Picks the token to send, treating blank defaults as an omitted token. */
-const resolveRequestToken = (explicitToken?: string | null) => {
-	return explicitToken === '' || !explicitToken ? getAccessTokenValue() : explicitToken;
-};
 
 /** Detects whether the request body should default to JSON content headers. */
 const shouldSetJsonContentType = (body: BodyInit | null | undefined) => {
@@ -83,8 +77,8 @@ const usesBearerAuth = (request: Request) => {
 	const authorizationHeader = request.headers.get('Authorization');
 	return Boolean(
 		authorizationHeader &&
-			authorizationHeader.startsWith('Bearer ') &&
-			authorizationHeader.slice('Bearer '.length).trim()
+		authorizationHeader.startsWith('Bearer ') &&
+		authorizationHeader.slice('Bearer '.length).trim()
 	);
 };
 
@@ -107,7 +101,10 @@ const normalizeInternalApiAuth = (request: Request) => {
 		return new Request(request, { headers });
 	}
 
-	if (!authorizationHeader.startsWith('Bearer ') || authorizationHeader.slice('Bearer '.length).trim()) {
+	if (
+		!authorizationHeader.startsWith('Bearer ') ||
+		authorizationHeader.slice('Bearer '.length).trim()
+	) {
 		return request;
 	}
 
@@ -177,17 +174,15 @@ const performInterceptedFetch = async (request: Request, allowRetry: boolean) =>
 
 	try {
 		const sessionUser = await refreshAuthSession();
-		if (!sessionUser?.token) {
-			return response;
+		if (sessionUser?.token) {
+			return getNativeFetch()(buildRetryRequest(sanitizedRequest));
 		}
-	} catch (error) {
-		if (isAuthFailure(error)) {
-			clearAuthState();
-		}
-		return response;
+	} catch (e) {
+		// Refresh failure should fall back to the original 401 response.
+		console.warn('Auth refresh failed, returning original 401:', e);
 	}
 
-	return getNativeFetch()(buildRetryRequest(sanitizedRequest));
+	return response;
 };
 
 /** Installs the global browser fetch interceptor exactly once. */
@@ -254,7 +249,21 @@ const parseResponseError = async (response: Response): Promise<unknown> => {
 /** Sends a request through the global fetch path with client-managed headers. */
 const executeRequest = async (url: string, options: ApiRequestOptions) => {
 	const { token, includeAuth = true, retryOnUnauthorized = true, ...requestInit } = options;
-	const resolvedToken = includeAuth ? resolveRequestToken(token) : null;
+	const managedTokenAtStart = getAccessTokenValue();
+	const shouldUseManagedToken =
+		includeAuth &&
+		(token === undefined || token === null || token === '' || token === managedTokenAtStart);
+	const shouldEnsureFreshAuth = browser && includeAuth && retryOnUnauthorized && shouldUseManagedToken;
+
+	if (shouldEnsureFreshAuth) {
+		await ensureFreshAccessToken();
+	}
+
+	const resolvedToken = includeAuth
+		? shouldUseManagedToken
+			? getAccessTokenValue()
+			: token ?? null
+		: null;
 
 	return fetch(url, {
 		...requestInit,

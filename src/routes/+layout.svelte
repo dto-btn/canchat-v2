@@ -1,4 +1,5 @@
-<script>
+<script lang="ts">
+	import { browser } from '$app/environment';
 	import { io } from 'socket.io-client';
 	import { spring } from 'svelte/motion';
 
@@ -28,7 +29,7 @@
 		appData,
 		appInfo
 	} from '$lib/stores';
-	import { goto } from '$app/navigation';
+	import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { Toaster, toast } from 'svelte-sonner';
 
@@ -44,8 +45,10 @@
 		isAuthFailure,
 		isAuthTransportFailure,
 		saveAuthRecoveryCheckpoint,
+		subscribeToAuthSessionInvalidationEvents,
 		subscribeToAuthSyncEvents
 	} from '$lib/services/auth';
+	import type { SessionUser } from '$lib/stores';
 	import { accessToken } from '$lib/stores/auth';
 
 	import '../tailwind.css';
@@ -59,7 +62,6 @@
 	import { getAllTags, getChatList } from '$lib/apis/chats';
 	import NotificationToast from '$lib/components/NotificationToast.svelte';
 	import AppSidebar from '$lib/components/app/AppSidebar.svelte';
-	import Modal from '$lib/components/common/Modal.svelte';
 
 	setContext('i18n', i18n);
 
@@ -70,13 +72,10 @@
 	let loaded = false;
 	let authRecoveryRedirectInFlight = false;
 	let authSyncRestoreInFlight = false;
-	/** @type {number} */
-	let authSyncRestoreRetryDelayMs = AUTH_SYNC_RESTORE_RETRY_DELAY_MS;
-	/** @type {number | null} */
-	let authSyncRestoreRetryTimeout = null;
-	/** @type {string | null} */
-	let lastSocketAuthToken = null;
-	let showReauthModal = false;
+	let authSyncRestoreRetryDelayMs: number = AUTH_SYNC_RESTORE_RETRY_DELAY_MS;
+	let authSyncRestoreRetryTimeout: number | null = null;
+	let lastSocketAuthToken: string | null = null;
+	let pendingNavigationTarget: string | null = null;
 
 	let message = '';
 
@@ -93,6 +92,60 @@
 	});
 
 	const BREAKPOINT = 768;
+	type ChatSocketEventPayload = {
+		chat_id?: string;
+		data?: {
+			type?: string | null;
+			data?: {
+				done?: boolean;
+				content?: string;
+				title?: string;
+			} | null;
+		} | null;
+	};
+	type ChannelSocketEventPayload = {
+		channel_id?: string;
+		user?: {
+			id?: string;
+		} | null;
+		channel?: {
+			name?: string;
+		} | null;
+		data?: {
+			type?: string | null;
+			data?: {
+				user?: {
+					name?: string;
+					profile_image_url?: string;
+				} | null;
+				content?: string;
+			} | null;
+		} | null;
+	};
+	const isAuthRoutePath = (path: string) =>
+		path === '/auth' || path.startsWith('/auth?') || path.startsWith('/auth#');
+	const toRoutePath = (url: URL) => `${url.pathname}${url.search}${url.hash}`;
+	const rememberNavigationTarget = (path: string | null) => {
+		if (!path || isAuthRoutePath(path)) {
+			return;
+		}
+
+		pendingNavigationTarget = path;
+	};
+
+	if (browser) {
+		beforeNavigate(({ to }) => {
+			if (to?.url) {
+				rememberNavigationTarget(toRoutePath(to.url));
+			}
+		});
+
+		afterNavigate(({ to }) => {
+			if (to?.url) {
+				rememberNavigationTarget(toRoutePath(to.url));
+			}
+		});
+	}
 
 	const reauthenticateSocket = (force = false) => {
 		if (!$socket || !$socket.connected || !$accessToken) {
@@ -108,6 +161,14 @@
 	};
 
 	const getCurrentRoutePath = () => `${$page.url.pathname}${$page.url.search}${$page.url.hash}`;
+	const getSessionExpiryToastMessage = (message: string | null = null) => {
+		const normalizedMessage = message?.trim().toLowerCase() ?? '';
+		if (!normalizedMessage || normalizedMessage === 'not authenticated') {
+			return $i18n.t('Your session expired. Sign in again to restore your work.');
+		}
+
+		return message?.trim() ?? $i18n.t('Your session expired. Sign in again to restore your work.');
+	};
 
 	const resetAuthSyncRestoreRetry = () => {
 		if (authSyncRestoreRetryTimeout !== null) {
@@ -138,8 +199,8 @@
 		}, retryDelayMs);
 	};
 
-	const beginSessionRecovery = async (broadcast = true) => {
-		if (authRecoveryRedirectInFlight || showReauthModal) {
+	const beginSessionRecovery = async (broadcast = true, message: string | null = null) => {
+		if (authRecoveryRedirectInFlight) {
 			return;
 		}
 
@@ -150,34 +211,49 @@
 		}
 
 		authRecoveryRedirectInFlight = true;
-		saveAuthRecoveryCheckpoint(getCurrentRoutePath(), 'session-expired');
-		showReauthModal = true;
+		try {
+			saveAuthRecoveryCheckpoint(pendingNavigationTarget ?? getCurrentRoutePath(), 'session-expired');
 
-		if (broadcast) {
-			broadcastAuthSyncEvent('session-expired');
+			if (broadcast) {
+				broadcastAuthSyncEvent('session-expired');
+			}
+
+			toast.error(getSessionExpiryToastMessage(message));
+
+			await user.set(undefined);
+			await goto('/auth');
+		} finally {
+			authRecoveryRedirectInFlight = false;
 		}
-
-		authRecoveryRedirectInFlight = false;
 	};
 
-	const handleSessionExpiry = async (broadcast = true) => {
+	const handleSessionExpiry = async (broadcast = true, message: string | null = null) => {
+		if (authRecoveryRedirectInFlight) {
+			return;
+		}
+
 		resetAuthSyncRestoreRetry();
 		clearAuthState();
 
 		if ($user === undefined) {
 			user.set(undefined);
 			if ($page.url.pathname !== '/auth') {
-				await goto('/auth');
+				authRecoveryRedirectInFlight = true;
+				try {
+					toast.error(getSessionExpiryToastMessage(message));
+					await goto('/auth');
+				} finally {
+					authRecoveryRedirectInFlight = false;
+				}
 			}
 			return;
 		}
 
-		await beginSessionRecovery(broadcast);
+		await beginSessionRecovery(broadcast, message);
 	};
 
 	const handleLogoutNavigation = async (broadcast = true) => {
 		resetAuthSyncRestoreRetry();
-		showReauthModal = false;
 		clearAuthRecoveryCheckpoint();
 
 		if (broadcast) {
@@ -196,21 +272,53 @@
 		}
 	};
 
-	/** @param {import('$lib/stores').SessionUser} sessionUser */
-	const applySessionUser = async (sessionUser, { redirectFromAuth = false } = {}) => {
+	const refreshAuthenticatedConfig = async () => {
+		const accessToken = getAccessTokenValue();
+		if (!accessToken) {
+			return;
+		}
+
+		const backendConfig = await getBackendConfig(accessToken).catch((error) => {
+			console.error('Error loading authenticated backend config:', error);
+			return null;
+		});
+
+		if (!backendConfig) {
+			return;
+		}
+
+		await config.set(backendConfig);
+		await WEBUI_NAME.set(backendConfig.name);
+	};
+
+	const initializeUserTimezone = (accessToken: string) => {
+		void import('$lib/services/timezone')
+			.then(({ timezoneService }) => timezoneService.initializeUserTimezone(accessToken))
+			.catch((error) => {
+				console.warn('Failed to initialize timezone:', error);
+			});
+	};
+
+	const applySessionUser = async (
+		sessionUser: SessionUser,
+		{ redirectFromAuth = false }: { redirectFromAuth?: boolean } = {}
+	) => {
 		resetAuthSyncRestoreRetry();
 		user.set(sessionUser);
 
 		const accessToken = getAccessTokenValue();
-		if (accessToken) {
-			const { timezoneService } = await import('$lib/services/timezone');
-			await timezoneService.initializeUserTimezone(accessToken).catch((error) => {
-				console.warn('Failed to initialize timezone:', error);
-			});
+		const redirectTarget =
+			redirectFromAuth && $page.url.pathname === '/auth'
+				? (consumeAuthRecoveryCheckpoint() ?? '/')
+				: null;
+
+		if (redirectTarget) {
+			await goto(redirectTarget);
 		}
 
-		if (redirectFromAuth && $page.url.pathname === '/auth') {
-			await goto(consumeAuthRecoveryCheckpoint() ?? '/');
+		if (accessToken) {
+			void refreshAuthenticatedConfig();
+			initializeUserTimezone(accessToken);
 		}
 	};
 
@@ -226,11 +334,15 @@
 				return;
 			}
 
-			showReauthModal = false;
 			await applySessionUser(sessionUser, { redirectFromAuth: true });
 		} catch (error) {
 			if (isAuthFailure(error)) {
-				await handleSessionExpiry(false);
+				await handleSessionExpiry(
+					false,
+					error && typeof error === 'object' && 'message' in error && typeof error.message === 'string'
+						? error.message
+						: null
+				);
 			} else {
 				console.error('Failed to restore browser session from auth sync:', error);
 				scheduleAuthSyncRestoreRetry();
@@ -258,19 +370,14 @@
 		}
 	}
 
-	$: if (loaded && $user !== undefined && !$accessToken && !showReauthModal) {
+	$: if (loaded && $user !== undefined && !$accessToken) {
 		handleSessionExpiry().catch((error) => {
 			console.error('Failed to start auth recovery:', error);
 			authRecoveryRedirectInFlight = false;
 		});
 	}
 
-	$: if ($accessToken && showReauthModal) {
-		showReauthModal = false;
-	}
-
-	/** @param {boolean} enableWebsocket */
-	const setupSocket = async (enableWebsocket) => {
+	const setupSocket = async (enableWebsocket: boolean) => {
 		const _socket = io(`${WEBUI_BASE_URL}` || undefined, {
 			reconnection: true,
 			reconnectionDelay: 1000,
@@ -351,8 +458,7 @@
 		_socket.on('channel-events', channelEventHandler);
 	};
 
-	/** @param {any} event */
-	const chatEventHandler = async (event) => {
+	const chatEventHandler = async (event: ChatSocketEventPayload) => {
 		const _chat = $page.url.pathname.includes(`/c/${event.chat_id}`);
 
 		let isFocused = document.visibilityState !== 'visible';
@@ -371,7 +477,9 @@
 			const data = event?.data?.data ?? null;
 
 			if (type === 'chat:completion') {
-				const { done, content, title } = data;
+				const done = data?.done ?? false;
+				const content = data?.content ?? '';
+				const title = data?.title ?? 'Open WebUI';
 
 				if (done) {
 					if ($isLastActiveTab) {
@@ -404,8 +512,7 @@
 		}
 	};
 
-	/** @param {any} event */
-	const channelEventHandler = async (event) => {
+	const channelEventHandler = async (event: ChannelSocketEventPayload) => {
 		if (event.data?.type === 'typing') {
 			return;
 		}
@@ -429,10 +536,12 @@
 			const data = event?.data?.data ?? null;
 
 			if (type === 'message') {
+				const content = data?.content ?? '';
+				const title = event?.channel?.name ?? 'Open WebUI';
 				if ($isLastActiveTab) {
 					if ($settings?.notificationEnabled ?? false) {
-						new Notification(`${data?.user?.name} (#${event?.channel?.name}) | Open WebUI`, {
-							body: data?.content,
+						new Notification(`${data?.user?.name} (#${title}) | Open WebUI`, {
+							body: content,
 							icon: data?.user?.profile_image_url ?? `${WEBUI_BASE_URL}/static/favicon.png`
 						});
 					}
@@ -443,8 +552,8 @@
 						onClick: () => {
 							goto(`/channels/${event.channel_id}`);
 						},
-						content: data?.content,
-						title: event?.channel?.name
+						content,
+						title
 					},
 					duration: 15000,
 					unstyled: true
@@ -454,6 +563,7 @@
 	};
 
 	onMount(() => {
+		rememberNavigationTarget(getCurrentRoutePath());
 		let onResize = () => {};
 		let handleVisibilityChange = () => {};
 		const unsubscribeAuthSync = subscribeToAuthSyncEvents(async (event) => {
@@ -470,6 +580,9 @@
 			if (event.type === 'session-restored') {
 				await restoreSessionFromAuthSync();
 			}
+		});
+		const unsubscribeAuthInvalidation = subscribeToAuthSessionInvalidationEvents(async (detail) => {
+			await handleSessionExpiry(true, detail.message);
 		});
 
 		const initializeLayout = async () => {
@@ -551,7 +664,7 @@
 				await config.set(backendConfig);
 				await WEBUI_NAME.set(backendConfig.name);
 
-				await setupSocket(backendConfig.features?.enable_websocket ?? true);
+				void setupSocket(backendConfig.features?.enable_websocket ?? true);
 
 				let sessionUser = null;
 				let sessionRestoreError = null;
@@ -566,18 +679,22 @@
 
 				if (sessionUser) {
 					await applySessionUser(sessionUser, { redirectFromAuth: true });
-				} else if (sessionRestoreError && isAuthTransportFailure(sessionRestoreError)) {
+					return;
+				}
+
+				if (sessionRestoreError && isAuthTransportFailure(sessionRestoreError)) {
 					clearAuthState();
 					await user.set(undefined);
 					await goto('/error');
-				} else {
-					clearAuthState();
-					await user.set(undefined);
-					clearAuthRecoveryCheckpoint();
+					return;
+				}
 
-					if ($page.url.pathname !== '/auth') {
-						await goto('/auth');
-					}
+				clearAuthState();
+				await user.set(undefined);
+				clearAuthRecoveryCheckpoint();
+
+				if ($page.url.pathname !== '/auth') {
+					await goto('/auth');
 				}
 			} catch (error) {
 				console.error('Error initializing layout:', error);
@@ -622,6 +739,7 @@
 
 		return () => {
 			unsubscribeAuthSync();
+			unsubscribeAuthInvalidation();
 			window.removeEventListener('resize', onResize);
 			document.removeEventListener('visibilitychange', handleVisibilityChange);
 			bc.onmessage = null;
@@ -651,28 +769,6 @@
 		<slot />
 	{/if}
 {/if}
-
-<Modal bind:show={showReauthModal} size="sm" disableClose={true} title={$i18n.t('Session expired')}>
-	<div class="p-6 text-black dark:text-white">
-		<h2 class="text-xl font-semibold">{$i18n.t('Session expired')}</h2>
-		<p class="mt-3 text-sm text-gray-600 dark:text-gray-300">
-			{$i18n.t('Your session expired. Sign in again to restore your work.')}
-		</p>
-		<div class="mt-6 flex justify-end">
-			<button
-				id="reauthenticate-session-button"
-				class="rounded-full bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-black dark:bg-white dark:text-black dark:hover:bg-gray-200"
-				on:click={async () => {
-					showReauthModal = false;
-					await user.set(undefined);
-					await goto('/auth');
-				}}
-			>
-				{$i18n.t('Sign in again')}
-			</button>
-		</div>
-	</div>
-</Modal>
 
 <Toaster
 	theme={$theme.includes('dark')

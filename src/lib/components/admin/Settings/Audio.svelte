@@ -10,6 +10,11 @@
 		getModels as _getModels,
 		getVoices as _getVoices
 	} from '$lib/apis/audio';
+	import type {
+		AudioConfigPayload,
+		AudioVoiceOption,
+		AvailableModelsResponse
+	} from '$lib/apis/audio';
 	import { config } from '$lib/stores';
 
 	import SensitiveInput from '$lib/components/common/SensitiveInput.svelte';
@@ -42,10 +47,100 @@
 	let STT_WHISPER_MODEL = '';
 
 	let STT_WHISPER_MODEL_LOADING = false;
+	let audioSettingsInitialized = false;
+	let lastLoadedTTSEngine = '';
 
 	// eslint-disable-next-line no-undef
-	let voices: SpeechSynthesisVoice[] = [];
-	let models: Awaited<ReturnType<typeof _getModels>>['models'] = [];
+	let browserVoices: SpeechSynthesisVoice[] = [];
+	let voices: AudioVoiceOption[] = [];
+	let models: AvailableModelsResponse['models'] = [];
+	const AUDIO_CACHE_KEY = 'open-webui.admin.settings.audio';
+
+	const buildAudioConfig = (): AudioConfigPayload => ({
+		tts: {
+			OPENAI_API_BASE_URL: TTS_OPENAI_API_BASE_URL,
+			OPENAI_API_KEY: TTS_OPENAI_API_KEY,
+			API_KEY: TTS_API_KEY,
+			ENGINE: TTS_ENGINE,
+			MODEL: TTS_MODEL,
+			VOICE: TTS_VOICE,
+			SPLIT_ON: TTS_SPLIT_ON,
+			AZURE_SPEECH_REGION: TTS_AZURE_SPEECH_REGION,
+			AZURE_SPEECH_OUTPUT_FORMAT: TTS_AZURE_SPEECH_OUTPUT_FORMAT
+		},
+		stt: {
+			OPENAI_API_BASE_URL: STT_OPENAI_API_BASE_URL,
+			OPENAI_API_KEY: STT_OPENAI_API_KEY,
+			ENGINE: STT_ENGINE,
+			MODEL: STT_MODEL,
+			WHISPER_MODEL: STT_WHISPER_MODEL
+		}
+	});
+
+	const applyAudioConfig = (nextConfig: AudioConfigPayload | null | undefined) => {
+		const nextTTS: AudioConfigPayload['tts'] = nextConfig?.tts ?? {
+			OPENAI_API_BASE_URL: '',
+			OPENAI_API_KEY: '',
+			API_KEY: '',
+			ENGINE: '',
+			MODEL: '',
+			VOICE: '',
+			SPLIT_ON: TTS_RESPONSE_SPLIT.PUNCTUATION,
+			AZURE_SPEECH_REGION: '',
+			AZURE_SPEECH_OUTPUT_FORMAT: ''
+		};
+		const nextSTT: AudioConfigPayload['stt'] = nextConfig?.stt ?? {
+			OPENAI_API_BASE_URL: '',
+			OPENAI_API_KEY: '',
+			ENGINE: '',
+			MODEL: '',
+			WHISPER_MODEL: ''
+		};
+
+		TTS_OPENAI_API_BASE_URL = nextTTS.OPENAI_API_BASE_URL ?? '';
+		TTS_OPENAI_API_KEY = nextTTS.OPENAI_API_KEY ?? '';
+		TTS_API_KEY = nextTTS.API_KEY ?? '';
+		TTS_ENGINE = nextTTS.ENGINE ?? '';
+		TTS_MODEL = nextTTS.MODEL ?? '';
+		TTS_VOICE = nextTTS.VOICE ?? '';
+		TTS_SPLIT_ON = Object.values(TTS_RESPONSE_SPLIT).includes(
+			nextTTS.SPLIT_ON as TTS_RESPONSE_SPLIT
+		)
+			? (nextTTS.SPLIT_ON as TTS_RESPONSE_SPLIT)
+			: TTS_RESPONSE_SPLIT.PUNCTUATION;
+		TTS_AZURE_SPEECH_OUTPUT_FORMAT = nextTTS.AZURE_SPEECH_OUTPUT_FORMAT ?? '';
+		TTS_AZURE_SPEECH_REGION = nextTTS.AZURE_SPEECH_REGION ?? '';
+
+		STT_OPENAI_API_BASE_URL = nextSTT.OPENAI_API_BASE_URL ?? '';
+		STT_OPENAI_API_KEY = nextSTT.OPENAI_API_KEY ?? '';
+		STT_ENGINE = nextSTT.ENGINE ?? '';
+		STT_MODEL = nextSTT.MODEL ?? '';
+		STT_WHISPER_MODEL = nextSTT.WHISPER_MODEL ?? '';
+	};
+
+	const readCachedAudioState = () => {
+		try {
+			const cachedState = sessionStorage.getItem(AUDIO_CACHE_KEY);
+			return cachedState ? JSON.parse(cachedState) : null;
+		} catch {
+			return null;
+		}
+	};
+
+	const writeCachedAudioState = () => {
+		try {
+			sessionStorage.setItem(
+				AUDIO_CACHE_KEY,
+				JSON.stringify({
+					config: buildAudioConfig(),
+					models: models ?? [],
+					voices: TTS_ENGINE === '' ? [] : (voices ?? [])
+				})
+			);
+		} catch {
+			return;
+		}
+	};
 
 	const getModels = async () => {
 		if (TTS_ENGINE === '') {
@@ -55,21 +150,20 @@
 				toast.error(e);
 			});
 
-			if (res) {
-				models = res.models;
-			}
+			models = Array.isArray(res?.models) ? res.models : [];
 		}
 	};
 
 	const getVoices = async () => {
 		if (TTS_ENGINE === '') {
 			const getVoicesLoop = setInterval(() => {
-				voices = speechSynthesis.getVoices();
+				browserVoices = speechSynthesis.getVoices() ?? [];
+				voices = [];
 
 				// do your loop
-				if (voices.length > 0) {
+				if (browserVoices.length > 0) {
 					clearInterval(getVoicesLoop);
-					voices.sort((a, b) => a.name.localeCompare(b.name, $i18n.resolvedLanguage));
+					browserVoices.sort((a, b) => a.name.localeCompare(b.name, $i18n.resolvedLanguage));
 				}
 			}, 100);
 		} else {
@@ -77,38 +171,23 @@
 				toast.error(e);
 			});
 
-			if (res) {
-				voices = res.voices;
-				voices.sort((a, b) => a.name.localeCompare(b.name, $i18n.resolvedLanguage));
-			}
+			voices = Array.isArray(res?.voices) ? res.voices : [];
+			browserVoices = [];
+			voices.sort((a, b) => a.name.localeCompare(b.name, $i18n.resolvedLanguage));
 		}
 	};
 
 	const updateConfigHandler = async () => {
-		const res = await updateAudioConfig(getRequestToken(), {
-			tts: {
-				OPENAI_API_BASE_URL: TTS_OPENAI_API_BASE_URL,
-				OPENAI_API_KEY: TTS_OPENAI_API_KEY,
-				API_KEY: TTS_API_KEY,
-				ENGINE: TTS_ENGINE,
-				MODEL: TTS_MODEL,
-				VOICE: TTS_VOICE,
-				SPLIT_ON: TTS_SPLIT_ON,
-				AZURE_SPEECH_REGION: TTS_AZURE_SPEECH_REGION,
-				AZURE_SPEECH_OUTPUT_FORMAT: TTS_AZURE_SPEECH_OUTPUT_FORMAT
-			},
-			stt: {
-				OPENAI_API_BASE_URL: STT_OPENAI_API_BASE_URL,
-				OPENAI_API_KEY: STT_OPENAI_API_KEY,
-				ENGINE: STT_ENGINE,
-				MODEL: STT_MODEL,
-				WHISPER_MODEL: STT_WHISPER_MODEL
-			}
-		});
+		const nextConfig = buildAudioConfig();
+		const res = await updateAudioConfig(getRequestToken(), nextConfig);
 
 		if (res) {
 			saveHandler();
-			config.set(await getBackendConfig());
+			const nextBackendConfig = await getBackendConfig(getRequestToken());
+			if (nextBackendConfig) {
+				config.set(nextBackendConfig);
+			}
+			writeCachedAudioState();
 		}
 	};
 
@@ -118,33 +197,42 @@
 		STT_WHISPER_MODEL_LOADING = false;
 	};
 
+	$: if (audioSettingsInitialized && TTS_ENGINE !== lastLoadedTTSEngine) {
+		lastLoadedTTSEngine = TTS_ENGINE;
+		void Promise.all([getVoices(), getModels()]).then(() => {
+			writeCachedAudioState();
+		});
+	}
+
 	onMount(async () => {
-		const res = await getAudioConfig(getRequestToken());
+		const cachedState = readCachedAudioState();
+		if (cachedState?.config) {
+			applyAudioConfig(cachedState.config);
+			models = Array.isArray(cachedState.models) ? cachedState.models : [];
+			voices = Array.isArray(cachedState.voices) ? cachedState.voices : [];
+			lastLoadedTTSEngine = TTS_ENGINE;
+			audioSettingsInitialized = true;
 
-		if (res) {
-			TTS_OPENAI_API_BASE_URL = res.tts.OPENAI_API_BASE_URL;
-			TTS_OPENAI_API_KEY = res.tts.OPENAI_API_KEY;
-			TTS_API_KEY = res.tts.API_KEY;
-
-			TTS_ENGINE = res.tts.ENGINE;
-			TTS_MODEL = res.tts.MODEL;
-			TTS_VOICE = res.tts.VOICE;
-
-			TTS_SPLIT_ON = res.tts.SPLIT_ON || TTS_RESPONSE_SPLIT.PUNCTUATION;
-
-			TTS_AZURE_SPEECH_OUTPUT_FORMAT = res.tts.AZURE_SPEECH_OUTPUT_FORMAT;
-			TTS_AZURE_SPEECH_REGION = res.tts.AZURE_SPEECH_REGION;
-
-			STT_OPENAI_API_BASE_URL = res.stt.OPENAI_API_BASE_URL;
-			STT_OPENAI_API_KEY = res.stt.OPENAI_API_KEY;
-
-			STT_ENGINE = res.stt.ENGINE;
-			STT_MODEL = res.stt.MODEL;
-			STT_WHISPER_MODEL = res.stt.WHISPER_MODEL;
+			if (TTS_ENGINE === '') {
+				await getVoices();
+				writeCachedAudioState();
+			}
+			return;
 		}
 
-		await getVoices();
-		await getModels();
+		const res = await getAudioConfig(getRequestToken()).catch((e) => {
+			toast.error(e);
+			return null;
+		});
+
+		if (res) {
+			applyAudioConfig(res);
+		}
+
+		lastLoadedTTSEngine = TTS_ENGINE;
+		audioSettingsInitialized = true;
+		await Promise.all([getVoices(), getModels()]);
+		writeCachedAudioState();
 	});
 </script>
 
@@ -383,7 +471,7 @@
 									bind:value={TTS_VOICE}
 								>
 									<option value="" selected={TTS_VOICE !== ''}>{$i18n.t('Default')}</option>
-									{#each voices as voice}
+									{#each browserVoices as voice}
 										<option
 											value={voice.voiceURI}
 											class="bg-gray-100 dark:bg-gray-700"

@@ -3,6 +3,7 @@
 
 	import { onMount } from 'svelte';
 	import { WEBUI_NAME, showSidebar, user } from '$lib/stores';
+	import { authBootstrapReady } from '$lib/stores/auth';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 
@@ -13,39 +14,52 @@
 
 	let loaded = false;
 
+	const waitForAuthBootstrap = async () => {
+		if ($authBootstrapReady) {
+			return;
+		}
+
+		await new Promise<void>((resolve) => {
+			const unsubscribe = authBootstrapReady.subscribe((ready) => {
+				if (!ready) {
+					return;
+				}
+
+				unsubscribe();
+				resolve();
+			});
+		});
+	};
+
 	// Check if user has metrics access based on role
 	$: hasMetricsAccess =
 		$user?.role === 'admin' || $user?.role === 'analyst' || $user?.role === 'global_analyst';
 
 	onMount(async () => {
-		// Wait for user data to be loaded before making navigation decisions
+		await waitForAuthBootstrap();
+
 		if (!$user) {
-			// If no user data, wait a bit and try again or redirect to login
-			setTimeout(() => {
-				if (!$user) {
-					goto('/');
-				}
-			}, 100);
+			loaded = true;
 			return;
 		}
 
 		if ($user?.role !== 'admin') {
 			if ($page.url.pathname.includes('/models') && !$user?.permissions?.workspace?.models) {
-				goto('/');
+				await goto('/');
 			} else if (
 				$page.url.pathname.includes('/knowledge') &&
 				!$user?.permissions?.workspace?.knowledge
 			) {
-				goto('/');
+				await goto('/');
 			} else if (
 				$page.url.pathname.includes('/prompts') &&
 				!$user?.permissions?.workspace?.prompts
 			) {
-				goto('/');
+				await goto('/');
 			} else if ($page.url.pathname.includes('/tools') && !$user?.permissions?.workspace?.tools) {
-				goto('/');
+				await goto('/');
 			} else if ($page.url.pathname.includes('/metrics') && !hasMetricsAccess) {
-				goto('/');
+				await goto('/');
 			}
 		}
 

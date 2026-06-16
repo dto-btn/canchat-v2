@@ -379,10 +379,18 @@ export const updatePipelineValves = async (
 	});
 };
 
-export const getBackendConfig = async (): Promise<Config | null> => {
+export const getBackendConfig = async (token?: string): Promise<Config | null> => {
 	return webUiApi<Config>('/api/config', {
 		method: 'GET',
-		credentials: 'include'
+		credentials: 'include',
+		...(token !== undefined
+			? {
+				includeAuth: true,
+				token
+			}
+			: {
+				includeAuth: false
+			})
 	});
 };
 

@@ -15,6 +15,7 @@
 	import { getBanners } from '$lib/apis/configs';
 	import { getUserSettings } from '$lib/apis/users';
 	import { getRequestToken } from '$lib/services/auth';
+	import { authBootstrapReady } from '$lib/stores/auth';
 
 	import {
 		config,
@@ -51,8 +52,36 @@
 		return Boolean(role && APP_ROLES.includes(role as (typeof APP_ROLES)[number]));
 	};
 
+	const readLocalStorageSettings = () => {
+		try {
+			return JSON.parse(localStorage.getItem('settings') ?? '{}') as SettingsState;
+		} catch (error) {
+			console.error('Failed to parse settings from localStorage', error);
+			return {} as SettingsState;
+		}
+	};
+
+	const waitForAuthBootstrap = async () => {
+		if ($authBootstrapReady) {
+			return;
+		}
+
+		await new Promise<void>((resolve) => {
+			const unsubscribe = authBootstrapReady.subscribe((ready) => {
+				if (!ready) {
+					return;
+				}
+
+				unsubscribe();
+				resolve();
+			});
+		});
+	};
+
 	onMount(async () => {
 		try {
+			await waitForAuthBootstrap();
+
 			if ($user === undefined) {
 				await goto('/auth');
 			} else if (hasAppAccess($user.role)) {
@@ -72,35 +101,51 @@
 					// IndexedDB Not Found
 				}
 
-				const userSettings = await getUserSettings(getRequestToken()).catch((error) => {
-					console.error(error);
-					return null;
-				});
+				const fallbackSettings = readLocalStorageSettings();
+				const token = getRequestToken();
+				const [
+					userSettingsResult,
+					modelsResult,
+					bannersResult,
+					toolsResult,
+					promptsResult
+				] = await Promise.allSettled([
+					getUserSettings(token),
+					getModels(token),
+					getBanners(token),
+					getTools(token),
+					getPromptsLegacy(token)
+				]);
 
 				if (
-					userSettings &&
-					typeof userSettings === 'object' &&
-					'ui' in userSettings &&
-					userSettings.ui
+					userSettingsResult.status === 'fulfilled' &&
+					userSettingsResult.value &&
+					typeof userSettingsResult.value === 'object' &&
+					'ui' in userSettingsResult.value &&
+					userSettingsResult.value.ui
 				) {
-					settings.set(userSettings.ui as SettingsState);
+					settings.set(userSettingsResult.value.ui as SettingsState);
 				} else {
-					let localStorageSettings = {} as SettingsState;
-
-					try {
-						localStorageSettings = JSON.parse(localStorage.getItem('settings') ?? '{}');
-					} catch (e: unknown) {
-						console.error('Failed to parse settings from localStorage', e);
+					if (userSettingsResult.status === 'rejected') {
+						console.error(userSettingsResult.reason);
 					}
-
-					settings.set(localStorageSettings);
+					settings.set(fallbackSettings);
 				}
 
-				models.set((await getModels(getRequestToken())) as ModelsState);
-				banners.set(await getBanners(getRequestToken()));
-				tools.set((await getTools(getRequestToken())) as ToolsState);
-				// Load all prompts for global store (now using original endpoint)
-				prompts.set((await getPromptsLegacy(getRequestToken())) as PromptsState);
+				models.set(
+					modelsResult.status === 'fulfilled' ? (modelsResult.value as ModelsState) : ([] as ModelsState)
+				);
+				banners.set(bannersResult.status === 'fulfilled' ? bannersResult.value : []);
+				tools.set(
+					toolsResult.status === 'fulfilled'
+						? (toolsResult.value as ToolsState)
+						: ([] as unknown as ToolsState)
+				);
+				prompts.set(
+					promptsResult.status === 'fulfilled'
+						? (promptsResult.value as PromptsState)
+						: ([] as PromptsState)
+				);
 
 				document.addEventListener('keydown', async function (event) {
 					const isCtrlPressed = event.ctrlKey || event.metaKey; // metaKey is for Cmd key on Mac
@@ -205,8 +250,8 @@
 	<div
 		class=" text-gray-700 dark:text-gray-100 bg-white dark:bg-gray-900 h-screen max-h-[100dvh] overflow-auto flex flex-row justify-end"
 	>
-		{#if loaded}
-			{#if !$user || !hasAppAccess($user.role)}
+		{#if loaded && $user}
+			{#if !hasAppAccess($user.role)}
 				<AccountPending />
 			{:else if localDBChats.length > 0}
 				<div class="fixed w-full h-full flex z-50">

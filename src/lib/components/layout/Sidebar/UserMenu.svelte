@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { getI18n } from '$lib/utils/context';
 
 	import { DropdownMenu } from 'bits-ui';
@@ -204,7 +205,7 @@
 						broadcastAuthSyncEvent('logout');
 						await user.set(undefined);
 						clearAuthState();
-						location.href = '/auth';
+						await goto('/auth');
 						show = false;
 					} catch (error) {
 						endLogout();
