@@ -62,6 +62,7 @@ from open_webui.routers import (
     knowledge,
     prompts,
     evaluations,
+    terms,
     tools,
     users,
     jira,
@@ -316,6 +317,7 @@ from open_webui.utils.auth import (
 )
 from open_webui.utils.oauth import oauth_manager
 from open_webui.utils.security_headers import SecurityHeadersMiddleware
+from open_webui.utils.terms_middleware import TermsOfUseMiddleware
 
 from open_webui.tasks import stop_task, list_tasks  # Import from tasks.py
 
@@ -949,6 +951,7 @@ class RedirectMiddleware(BaseHTTPMiddleware):
 # Add the middleware to the app
 app.add_middleware(RedirectMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(TermsOfUseMiddleware)
 
 
 @app.middleware("http")
@@ -1124,6 +1127,7 @@ app.include_router(
 app.include_router(utils.router, prefix="/api/v1/utils", tags=["utils"])
 app.include_router(jira.router, prefix="/api/v1/jira", tags=["jira"])
 app.include_router(metrics.router, prefix="/api/v1/metrics", tags=["metrics"])
+app.include_router(terms.router, prefix="/api/v1/terms", tags=["terms_of_use"])
 app.include_router(crew_mcp.router, prefix="/api/v1/crew-mcp", tags=["crew-mcp"])
 
 
