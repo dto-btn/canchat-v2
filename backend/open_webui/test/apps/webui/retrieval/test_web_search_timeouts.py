@@ -120,6 +120,7 @@ def test_total_timeout_enforcement(monkeypatch):
         request_timeout=None,
         user=None,
         audit_event_id=None,
+        result_count=None,
         **kwargs,
     ):
         time.sleep(2)
@@ -191,6 +192,7 @@ def test_remaining_timeout_propagates_to_search_and_loader(monkeypatch):
         request_timeout=None,
         user=None,
         audit_event_id=None,
+        result_count=None,
         **kwargs,
     ):
         captured["search_timeout"] = request_timeout
