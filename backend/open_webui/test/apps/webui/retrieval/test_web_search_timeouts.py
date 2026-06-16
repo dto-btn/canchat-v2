@@ -114,7 +114,13 @@ def test_total_timeout_enforcement(monkeypatch):
 
     # Simulate search work that outlives the limit
     def slow_search_web(
-        request, engine, query, request_timeout=None, user=None, audit_event_id=None
+        request,
+        engine,
+        query,
+        request_timeout=None,
+        user=None,
+        audit_event_id=None,
+        **kwargs,
     ):
         time.sleep(2)
         return []
@@ -179,7 +185,13 @@ def test_remaining_timeout_propagates_to_search_and_loader(monkeypatch):
 
     # Capture timeout passed to provider search function
     def fake_search_web(
-        request, engine, query, request_timeout=None, user=None, audit_event_id=None
+        request,
+        engine,
+        query,
+        request_timeout=None,
+        user=None,
+        audit_event_id=None,
+        **kwargs,
     ):
         captured["search_timeout"] = request_timeout
         return [SimpleNamespace(link="https://ok.example")]
