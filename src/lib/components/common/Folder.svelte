@@ -96,10 +96,10 @@
 	});
 
 	onDestroy(() => {
-		if (!dragAndDrop) {
+		if (!dragAndDrop || !folderElement) {
 			return;
 		}
-		folderElement.addEventListener('dragover', onDragOver);
+		folderElement.removeEventListener('dragover', onDragOver);
 		folderElement.removeEventListener('drop', onDrop);
 		folderElement.removeEventListener('dragleave', onDragLeave);
 	});

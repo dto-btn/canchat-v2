@@ -176,7 +176,7 @@ class TestAuths(AbstractPostgresTest):
         assert response.cookies.get(WEBUI_REFRESH_TOKEN_COOKIE_NAME) is not None
         assert response.cookies.get("token") is None
 
-    def test_refresh_reuses_refresh_session_until_near_expiry(self):
+    def test_refresh_rotates_refresh_session_on_every_successful_refresh(self):
         from open_webui.utils.auth import get_password_hash, parse_refresh_token
 
         user = self.auths.insert_new_auth(
@@ -211,19 +211,19 @@ class TestAuths(AbstractPostgresTest):
         current_refresh_token = self.fast_api_client.cookies.get(
             WEBUI_REFRESH_TOKEN_COOKIE_NAME
         )
-        assert current_refresh_token == initial_refresh_token
+        assert current_refresh_token != initial_refresh_token
 
         current_session_id, current_refresh_secret = parse_refresh_token(
             current_refresh_token
         )
 
         assert current_session_id == initial_session_id
-        assert current_refresh_secret == initial_refresh_secret
+        assert current_refresh_secret != initial_refresh_secret
 
         current_session = RefreshSessions.get_active_session_by_id(current_session_id)
         assert current_session is not None
-        assert current_session.token_hash == initial_session.token_hash
-        assert current_session.expires_at == initial_session.expires_at
+        assert current_session.token_hash != initial_session.token_hash
+        assert current_session.expires_at >= initial_session.expires_at
 
     def test_refresh_rejects_tampered_refresh_token(self):
         from open_webui.utils.auth import (

@@ -446,10 +446,10 @@
 					}
 				}
 
-				if ($config.audio.tts.engine !== '') {
+				if (($config?.audio?.tts?.engine ?? '') !== '') {
 					const res = await synthesizeOpenAISpeech(
 						getRequestToken(),
-						$settings?.audio?.tts?.defaultVoice === $config.audio.tts.voice
+						$settings?.audio?.tts?.defaultVoice === ($config?.audio?.tts?.voice ?? '')
 							? ($settings?.audio?.tts?.voice ?? $config?.audio?.tts?.voice)
 							: $config?.audio?.tts?.voice,
 						content
@@ -492,7 +492,7 @@
 						emoji = null;
 					}
 
-					if ($config.audio.tts.engine !== '') {
+					if (($config?.audio?.tts?.engine ?? '') !== '') {
 						try {
 							const audio = audioCache.get(content);
 							await playAudio(audio); // Here ensure that playAudio is indeed correct method to execute

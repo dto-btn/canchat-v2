@@ -15,14 +15,18 @@ const LEGACY_ACCESS_TOKEN_STORAGE_KEY = 'token';
 const AUTH_DEBUG_STORAGE_KEY = 'owui.auth.debug';
 const AUTH_SYNC_CHANNEL_NAME = 'auth-session-channel';
 const AUTH_RECOVERY_STORAGE_KEY = 'owui.auth.recovery';
-const ACCESS_TOKEN_EXPIRY_LOG_INTERVAL_MS = 10_000;
+const AUTH_SESSION_INVALIDATED_EVENT_NAME = 'owui:auth-session-invalidated';
 const AUTH_FAILURE_PATTERNS = [
 	'unauthorized',
 	'not authenticated',
 	'invalid token',
 	'missing refresh token',
-	'invalid refresh token'
+	'invalid refresh token',
+	'refresh session is invalid',
+	'session has expired',
+	'sign in again'
 ];
+const SESSION_AUTH_ENDPOINTS = new Set(['/auths/', '/auths/refresh']);
 
 type AuthLogLevel = 'debug' | 'info' | 'warn' | 'error';
 type AuthSyncEventType = 'logout' | 'session-expired' | 'session-restored';
@@ -43,9 +47,16 @@ type AuthRecoveryCheckpoint = {
 	reason: AuthSyncEventType;
 	createdAt: number;
 };
+type AuthSessionInvalidatedDetail = {
+	reason: 'refresh-auth-failure';
+	issuedAt: number;
+	message: string | null;
+	status: number | null;
+};
 
-let accessTokenExpiryLogInterval: number | null = null;
+let accessTokenExpiryLogTimeout: number | null = null;
 let lastObservedAccessTokenExpiry: number | null = null;
+let lastLoggedExpiredAccessTokenAt: number | null = null;
 let authSyncChannel: BroadcastChannel | null = null;
 
 const isAuthLoggingEnabled = () => {
@@ -105,19 +116,19 @@ const getAuthErrorMessage = (error: unknown): string => {
 
 const getNormalizedAuthErrorMessage = (error: unknown) => getAuthErrorMessage(error).toLowerCase();
 
+const isSessionAuthRequest = (path: string | null | undefined) =>
+	Boolean(path && SESSION_AUTH_ENDPOINTS.has(path));
+
 const isAuthRequestError = (error: unknown): error is AuthRequestError => {
 	return Boolean(
-		error &&
-			typeof error === 'object' &&
-			'kind' in error &&
-			'message' in error &&
-			'status' in error
+		error && typeof error === 'object' && 'kind' in error && 'message' in error && 'status' in error
 	);
 };
 
 const getAuthRequestErrorKind = (
 	status: number | null,
-	error: unknown
+	error: unknown,
+	path?: string | null
 ): AuthRequestErrorKind => {
 	if (status === 409) {
 		return 'sync';
@@ -127,7 +138,8 @@ const getAuthRequestErrorKind = (
 	if (
 		AUTH_FAILURE_PATTERNS.some((pattern) => normalizedMessage.includes(pattern)) ||
 		status === 401 ||
-		status === 403
+		status === 403 ||
+		(status === 400 && isSessionAuthRequest(path))
 	) {
 		return 'auth';
 	}
@@ -143,9 +155,10 @@ const buildAuthRequestError = (
 	status: number | null,
 	error: unknown,
 	fallbackMessage: string,
-	extra: Partial<Pick<AuthRequestError, 'payload' | 'cause'>> = {}
+	extra: Partial<Pick<AuthRequestError, 'payload' | 'cause'>> = {},
+	path?: string | null
 ): AuthRequestError => ({
-	kind: getAuthRequestErrorKind(status, error),
+	kind: getAuthRequestErrorKind(status, error, path),
 	message: getAuthErrorMessage(error) || fallbackMessage,
 	status,
 	...extra
@@ -160,32 +173,37 @@ const getAccessTokenRemainingSeconds = () => {
 	return expiresAt - Math.floor(Date.now() / 1000);
 };
 
-const logAccessTokenExpiryRemaining = () => {
-	const state = get(authState);
-	if (!state.accessToken || !state.accessTokenExpiresAt) {
-		return;
+const scheduleAccessTokenExpiryLog = (expiresAt: number) => {
+	if (accessTokenExpiryLogTimeout !== null) {
+		window.clearTimeout(accessTokenExpiryLogTimeout);
+		accessTokenExpiryLogTimeout = null;
 	}
 
-	const remainingSeconds = getAccessTokenRemainingSeconds();
-	logAuthEvent(
-		remainingSeconds !== null && remainingSeconds <= 0 ? 'warn' : 'info',
-		'access-token-expiry-remaining',
-		{
-			expiresAt: state.accessTokenExpiresAt,
-			remainingSeconds,
-			expired: remainingSeconds !== null ? remainingSeconds <= 0 : null
+	const delayMs = Math.max(expiresAt * 1000 - Date.now() + 500, 0);
+	accessTokenExpiryLogTimeout = window.setTimeout(() => {
+		accessTokenExpiryLogTimeout = null;
+		const state = get(authState);
+		if (!state.accessToken || state.accessTokenExpiresAt !== expiresAt) {
+			return;
 		}
-	);
+
+		lastLoggedExpiredAccessTokenAt = expiresAt;
+		logAuthEvent('warn', 'access-token-expired', {
+			expiresAt,
+			expired: true,
+			remainingSeconds: getAccessTokenRemainingSeconds()
+		});
+	}, delayMs);
 };
 
 const stopAccessTokenExpiryLogging = () => {
-	if (accessTokenExpiryLogInterval !== null) {
-		window.clearInterval(accessTokenExpiryLogInterval);
-		accessTokenExpiryLogInterval = null;
-		logAuthEvent('debug', 'access-token-expiry-logging-stopped');
+	if (accessTokenExpiryLogTimeout !== null) {
+		window.clearTimeout(accessTokenExpiryLogTimeout);
+		accessTokenExpiryLogTimeout = null;
 	}
 
 	lastObservedAccessTokenExpiry = null;
+	lastLoggedExpiredAccessTokenAt = null;
 };
 
 const syncAccessTokenExpiryLogging = () => {
@@ -201,22 +219,16 @@ const syncAccessTokenExpiryLogging = () => {
 
 	if (lastObservedAccessTokenExpiry !== state.accessTokenExpiresAt) {
 		lastObservedAccessTokenExpiry = state.accessTokenExpiresAt;
-		logAuthEvent('info', 'access-token-expiry-updated', {
-			expiresAt: state.accessTokenExpiresAt,
-			remainingSeconds: getAccessTokenRemainingSeconds()
-		});
-		logAccessTokenExpiryRemaining();
+		lastLoggedExpiredAccessTokenAt = null;
+		scheduleAccessTokenExpiryLog(state.accessTokenExpiresAt);
+		return;
 	}
 
-	if (accessTokenExpiryLogInterval === null) {
-		logAuthEvent('debug', 'access-token-expiry-logging-started', {
-			intervalMs: ACCESS_TOKEN_EXPIRY_LOG_INTERVAL_MS,
-			expiresAt: state.accessTokenExpiresAt
-		});
-		accessTokenExpiryLogInterval = window.setInterval(
-			logAccessTokenExpiryRemaining,
-			ACCESS_TOKEN_EXPIRY_LOG_INTERVAL_MS
-		);
+	if (
+		accessTokenExpiryLogTimeout === null &&
+		lastLoggedExpiredAccessTokenAt !== state.accessTokenExpiresAt
+	) {
+		scheduleAccessTokenExpiryLog(state.accessTokenExpiresAt);
 	}
 };
 
@@ -283,6 +295,55 @@ export const subscribeToAuthSyncEvents = (handler: (event: AuthSyncEvent) => voi
 	channel.addEventListener('message', listener);
 	return () => {
 		channel.removeEventListener('message', listener);
+	};
+};
+
+const dispatchAuthSessionInvalidated = (
+	reason: AuthSessionInvalidatedDetail['reason'],
+	error?: unknown
+) => {
+	if (!browser) {
+		return;
+	}
+
+	const message = getAuthErrorMessage(error) || null;
+	const status = isAuthRequestError(error) ? error.status : null;
+
+	window.dispatchEvent(
+		new CustomEvent<AuthSessionInvalidatedDetail>(AUTH_SESSION_INVALIDATED_EVENT_NAME, {
+			detail: {
+				reason,
+				issuedAt: Date.now(),
+				message,
+				status
+			}
+		})
+	);
+	logAuthEvent('warn', 'auth-session-invalidated', { reason, message, status });
+};
+
+export const subscribeToAuthSessionInvalidationEvents = (
+	handler: (detail: AuthSessionInvalidatedDetail) => void | Promise<void>
+) => {
+	if (!browser) {
+		return () => {};
+	}
+
+	const listener = (event: Event) => {
+		const detail = (event as CustomEvent<AuthSessionInvalidatedDetail>).detail;
+		if (!detail?.reason) {
+			return;
+		}
+
+		handler(detail);
+	};
+
+	window.addEventListener(AUTH_SESSION_INVALIDATED_EVENT_NAME, listener as EventListener);
+	return () => {
+		window.removeEventListener(
+			AUTH_SESSION_INVALIDATED_EVENT_NAME,
+			listener as EventListener
+		);
 	};
 };
 
@@ -390,7 +451,8 @@ const requestSessionUser = async (
 			null,
 			error,
 			'Unable to reach the authentication service',
-			{ cause: error }
+			{ cause: error },
+			path
 		);
 		logAuthEvent('warn', 'session-request-failed', {
 			path,
@@ -408,7 +470,8 @@ const requestSessionUser = async (
 			response.status,
 			errorPayload,
 			'Unable to refresh session',
-			{ payload: errorPayload }
+			{ payload: errorPayload },
+			path
 		);
 		logAuthEvent('warn', 'session-request-failed', {
 			path,
@@ -445,6 +508,8 @@ export const hydrateAuthState = () => {
 		...state,
 		accessToken: null,
 		accessTokenExpiresAt: null,
+		bootstrapStatus: 'idle',
+		bootstrapPromise: null,
 		refreshPromise: null,
 		isLoggingOut: false
 	}));
@@ -497,35 +562,68 @@ const recoverAuthSessionFromSyncFailure = async (
 		});
 		if (isAuthFailure(error)) {
 			clearAuthState();
+			if (source === 'refresh') {
+				dispatchAuthSessionInvalidated('refresh-auth-failure', error);
+			}
 		}
 		throw error;
 	}
 };
 
 export const bootstrapAuthSession = async (token: string | null = null) => {
-	try {
-		logAuthEvent('info', 'bootstrap-auth-session-started', {
+	const currentState = get(authState);
+	if (currentState.bootstrapPromise) {
+		logAuthEvent('debug', 'bootstrap-auth-session-reused-inflight-promise', {
 			hasBootstrapToken: Boolean(token)
 		});
-		const sessionUser = await requestSessionUser('/auths/', 'GET', token);
-		setAuthSession(sessionUser);
-		logAuthEvent('info', 'bootstrap-auth-session-succeeded', {
-			expiresAt: sessionUser?.expires_at ?? null
-		});
-		return sessionUser;
-	} catch (error) {
-		logAuthEvent('warn', 'bootstrap-auth-session-failed', {
-			error: getAuthErrorMessage(error),
-			kind: isAuthRequestError(error) ? error.kind : 'unknown'
-		});
-		if (isAuthSyncFailure(error)) {
-			return recoverAuthSessionFromSyncFailure('bootstrap');
-		}
-		if (isAuthFailure(error)) {
-			clearAuthState();
-		}
-		throw error;
+		return currentState.bootstrapPromise as Promise<SessionUser | null>;
 	}
+
+	logAuthEvent('info', 'bootstrap-auth-session-started', {
+		hasBootstrapToken: Boolean(token)
+	});
+
+	const bootstrapPromise: Promise<SessionUser | null> = requestSessionUser(
+		'/auths/',
+		'GET',
+		token
+	)
+		.then((sessionUser) => {
+			setAuthSession(sessionUser);
+			logAuthEvent('info', 'bootstrap-auth-session-succeeded', {
+				expiresAt: sessionUser?.expires_at ?? null
+			});
+			return sessionUser;
+		})
+		.catch((error) => {
+			logAuthEvent('warn', 'bootstrap-auth-session-failed', {
+				error: getAuthErrorMessage(error),
+				kind: isAuthRequestError(error) ? error.kind : 'unknown'
+			});
+			if (isAuthSyncFailure(error)) {
+				return recoverAuthSessionFromSyncFailure('bootstrap');
+			}
+			if (isAuthFailure(error)) {
+				clearAuthState();
+			}
+			throw error;
+		})
+		.finally(() => {
+			authState.update((state) => ({
+				...state,
+				bootstrapStatus: 'ready',
+				bootstrapPromise:
+					state.bootstrapPromise === bootstrapPromise ? null : state.bootstrapPromise
+			}));
+		});
+
+	authState.update((state) => ({
+		...state,
+		bootstrapStatus: 'pending',
+		bootstrapPromise
+	}));
+
+	return bootstrapPromise;
 };
 
 export const isAuthFailure = (error: unknown) => {
@@ -562,7 +660,11 @@ export const clearAuthState = () => {
 		expiresAt: previousState.accessTokenExpiresAt
 	});
 	clearLegacyAccessToken();
-	authState.set(initialAuthState);
+	authState.set({
+		...initialAuthState,
+		bootstrapStatus: previousState.bootstrapStatus,
+		bootstrapPromise: null
+	});
 };
 
 export const startLogout = () => {
@@ -589,6 +691,41 @@ export const hasAccessTokenExpired = (bufferSeconds: number = 0) => {
 	}
 
 	return expiresAt <= Math.floor(Date.now() / 1000) + bufferSeconds;
+};
+
+export const ensureFreshAccessToken = async (bufferSeconds: number = 30) => {
+	const currentState = get(authState);
+	if (currentState.isLoggingOut) {
+		return null;
+	}
+
+	if (currentState.bootstrapPromise) {
+		try {
+			const sessionUser = (await currentState.bootstrapPromise) as SessionUser | null;
+			return sessionUser?.token ?? get(authState).accessToken;
+		} catch {
+			return get(authState).accessToken;
+		}
+	}
+
+	if (currentState.accessToken && !hasAccessTokenExpired(bufferSeconds)) {
+		return currentState.accessToken;
+	}
+
+	if (currentState.bootstrapStatus === 'ready' && !currentState.accessToken) {
+		return null;
+	}
+
+	try {
+		const sessionUser = await refreshAuthSession();
+		return sessionUser?.token ?? get(authState).accessToken;
+	} catch (error) {
+		logAuthEvent('warn', 'ensure-fresh-access-token-failed', {
+			error: getAuthErrorMessage(error),
+			kind: isAuthRequestError(error) ? error.kind : 'unknown'
+		});
+		return get(authState).accessToken;
+	}
 };
 
 export const refreshAuthSession = async (): Promise<SessionUser | null> => {
@@ -631,9 +768,9 @@ export const refreshAuthSession = async (): Promise<SessionUser | null> => {
 			return sessionUser as SessionUser;
 		})
 		.catch((error) => {
-				if (isAuthSyncFailure(error)) {
-					return recoverAuthSessionFromSyncFailure('refresh');
-				}
+			if (isAuthSyncFailure(error)) {
+				return recoverAuthSessionFromSyncFailure('refresh');
+			}
 
 			const authFailure = isAuthFailure(error);
 			logAuthEvent('warn', 'refresh-failed', {
@@ -643,6 +780,7 @@ export const refreshAuthSession = async (): Promise<SessionUser | null> => {
 			});
 			if (authFailure) {
 				clearAuthState();
+				dispatchAuthSessionInvalidated('refresh-auth-failure', error);
 			}
 			throw error;
 		})

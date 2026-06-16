@@ -10,6 +10,7 @@
 	import { getLanguages } from '$lib/i18n';
 
 	import { banners as _banners } from '$lib/stores';
+	import type { Config } from '$lib/stores';
 	import type { Banner } from '$lib/types';
 
 	import { getBanners, setBanners } from '$lib/apis/configs';
@@ -37,7 +38,9 @@
 		QUERY_GENERATION_PROMPT_TEMPLATE: ''
 	};
 
-	let promptSuggestions = [];
+	type InterfacePromptSuggestion = Config['default_prompt_suggestions'][number];
+
+	let promptSuggestions: InterfacePromptSuggestion[] = [];
 	let banners: Banner[] = [];
 	let languages: Awaited<ReturnType<typeof getLanguages>> = [];
 	let bannerTypes: string[] = ['Info', 'Warning', 'Error', 'Success'];
@@ -106,7 +109,7 @@
 							placeholder={$i18n.t('Select a model')}
 						>
 							<option value="" selected>{$i18n.t('Current Model')}</option>
-							{#each $models.filter((m) => m.owned_by === 'ollama') as model}
+							{#each ($models ?? []).filter((m) => m.owned_by === 'ollama') as model}
 								<option value={model.id} class="bg-gray-100 dark:bg-gray-700">
 									{model.name}
 								</option>
@@ -122,7 +125,7 @@
 							placeholder={$i18n.t('Select a model')}
 						>
 							<option value="" selected>{$i18n.t('Current Model')}</option>
-							{#each $models as model}
+							{#each ($models ?? []) as model}
 								<option value={model.id} class="bg-gray-100 dark:bg-gray-700">
 									{model.name}
 								</option>

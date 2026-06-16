@@ -51,22 +51,28 @@
 			setAuthSession(sessionUser);
 			await user.set(sessionUser);
 			broadcastAuthSyncEvent('session-restored');
-
-			const backendConfig = await getBackendConfig();
-			if (backendConfig) {
-				await config.set(backendConfig);
-			}
-
-			// Initialize user timezone detection after successful authentication
+			const redirectPath = consumeAuthRecoveryCheckpoint() ?? '/';
 			const accessToken = getAccessTokenValue();
-			if (accessToken) {
-				const { timezoneService } = await import('$lib/services/timezone');
-				await timezoneService.initializeUserTimezone(accessToken).catch((error) => {
-					console.warn('Failed to initialize timezone during login:', error);
-				});
-			}
 
-			await goto(consumeAuthRecoveryCheckpoint() ?? '/');
+			await goto(redirectPath);
+
+			if (accessToken) {
+				void getBackendConfig(accessToken)
+					.then(async (backendConfig) => {
+						if (backendConfig) {
+							await config.set(backendConfig);
+						}
+					})
+					.catch((error) => {
+						console.error('Failed to refresh authenticated config during login:', error);
+					});
+
+				void import('$lib/services/timezone')
+					.then(({ timezoneService }) => timezoneService.initializeUserTimezone(accessToken))
+					.catch((error) => {
+						console.warn('Failed to initialize timezone during login:', error);
+					});
+			}
 		}
 	};
 
