@@ -78,7 +78,7 @@ class TestHealthcheckRedis:
 
         with (
             patch("open_webui.main.USE_REDIS_LOCKS", True),
-            patch("open_webui.main.effective_websocket_manager", "local"),
+            patch("open_webui.main.WEBSOCKET_MANAGER", "local"),
             patch(
                 "open_webui.retrieval.vector.locks.get_collection_lock_manager",
                 return_value=mock_manager,
@@ -104,7 +104,7 @@ class TestHealthcheckRedis:
 
         with (
             patch("open_webui.main.USE_REDIS_LOCKS", True),
-            patch("open_webui.main.effective_websocket_manager", "local"),
+            patch("open_webui.main.WEBSOCKET_MANAGER", "local"),
             patch(
                 "open_webui.retrieval.vector.locks.get_collection_lock_manager",
                 return_value=mock_manager,
@@ -127,7 +127,7 @@ class TestHealthcheckRedis:
 
         with (
             patch("open_webui.main.USE_REDIS_LOCKS", True),
-            patch("open_webui.main.effective_websocket_manager", "local"),
+            patch("open_webui.main.WEBSOCKET_MANAGER", "local"),
             patch(
                 "open_webui.retrieval.vector.locks.get_collection_lock_manager",
                 return_value=mock_manager,
@@ -144,7 +144,7 @@ class TestHealthcheckRedis:
 
         with (
             patch("open_webui.main.USE_REDIS_LOCKS", False),
-            patch("open_webui.main.effective_websocket_manager", "redis"),
+            patch("open_webui.main.WEBSOCKET_MANAGER", "redis"),
             patch("open_webui.main.SESSION_POOL", mock_pool),
         ):
             response = client.get("/health/redis")
@@ -158,7 +158,7 @@ class TestHealthcheckRedis:
 
         with (
             patch("open_webui.main.USE_REDIS_LOCKS", False),
-            patch("open_webui.main.effective_websocket_manager", "redis"),
+            patch("open_webui.main.WEBSOCKET_MANAGER", "redis"),
             patch("open_webui.main.SESSION_POOL", mock_pool),
         ):
             response = client.get("/health/redis")
@@ -169,7 +169,7 @@ class TestHealthcheckRedis:
     def test_no_redis_configured_returns_status_only(self, client):
         with (
             patch("open_webui.main.USE_REDIS_LOCKS", False),
-            patch("open_webui.main.effective_websocket_manager", "local"),
+            patch("open_webui.main.WEBSOCKET_MANAGER", "local"),
         ):
             response = client.get("/health/redis")
 
@@ -191,7 +191,7 @@ class TestHealthcheckReady:
         with (
             patch("open_webui.main.get_db", fake_get_db),
             patch("open_webui.main.USE_REDIS_LOCKS", False),
-            patch("open_webui.main.effective_websocket_manager", "local"),
+            patch("open_webui.main.WEBSOCKET_MANAGER", "local"),
         ):
             response = client.get("/health/ready")
 
@@ -210,7 +210,7 @@ class TestHealthcheckReady:
         with (
             patch("open_webui.main.get_db", fake_get_db),
             patch("open_webui.main.USE_REDIS_LOCKS", False),
-            patch("open_webui.main.effective_websocket_manager", "local"),
+            patch("open_webui.main.WEBSOCKET_MANAGER", "local"),
         ):
             response = client.get("/health/ready")
 
@@ -227,7 +227,7 @@ class TestHealthcheckReady:
         with (
             patch("open_webui.main.get_db", fake_get_db),
             patch("open_webui.main.USE_REDIS_LOCKS", False),
-            patch("open_webui.main.effective_websocket_manager", "local"),
+            patch("open_webui.main.WEBSOCKET_MANAGER", "local"),
         ):
             response = client.get("/health/ready")
 
@@ -247,7 +247,7 @@ class TestHealthcheckReady:
         with (
             patch("open_webui.main.get_db", fake_get_db),
             patch("open_webui.main.USE_REDIS_LOCKS", False),
-            patch("open_webui.main.effective_websocket_manager", "redis"),
+            patch("open_webui.main.WEBSOCKET_MANAGER", "redis"),
             patch("open_webui.main.SESSION_POOL", mock_pool),
         ):
             response = client.get("/health/ready")
@@ -267,7 +267,7 @@ class TestHealthcheckReady:
         with (
             patch("open_webui.main.get_db", fake_get_db),
             patch("open_webui.main.USE_REDIS_LOCKS", False),
-            patch("open_webui.main.effective_websocket_manager", "redis"),
+            patch("open_webui.main.WEBSOCKET_MANAGER", "redis"),
             patch("open_webui.main.SESSION_POOL", mock_pool),
         ):
             response = client.get("/health/ready")

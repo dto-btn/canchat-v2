@@ -39,7 +39,7 @@ from starlette.responses import Response
 from open_webui.socket.main import (
     app as socket_app,
     periodic_usage_pool_cleanup,
-    effective_websocket_manager,
+    WEBSOCKET_MANAGER,
     SESSION_POOL,
 )
 from open_webui.routers import (
@@ -1511,7 +1511,7 @@ def healthcheck_ready():
     result["db"] = True
 
     # Check Redis (if configured)
-    if USE_REDIS_LOCKS or effective_websocket_manager == "redis":
+    if USE_REDIS_LOCKS or WEBSOCKET_MANAGER == "redis":
         try:
             result["redis"] = healthcheck_redis()
         except Exception as e:
@@ -1572,7 +1572,7 @@ def healthcheck_redis():
             )
 
     # Check websocket Redis
-    if effective_websocket_manager == "redis":
+    if WEBSOCKET_MANAGER == "redis":
         try:
             SESSION_POOL.redis.ping()
             result["websocket"] = True
