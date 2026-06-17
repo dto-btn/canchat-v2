@@ -5,27 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.7-ccv2-1.15.1] - 2026-06-17
+
+### Changed
+
+- **🔒 Redis URL Display**: Removed Redis URL from being displayed for security purposes.
+- **📦 Dependencies**: Updated dependencies to fix vulnerabilities.
+- **🔗 Repository Link**: Removed link to different repository.
+
+### Fixed
+
+- **🧮 TeX Wrapping**: Fixed TeX wrapping functionality to processResponseContent.
+- **🧠 Prompt Template**: Fixed prompt template to not add reasoning/chain-of-thoughts.
+- **🏗️ Docker Build Workflow**: Fixed cache folder existence check before df in docker-build workflow.
+- **📥 SharePoint Import**: Fixed import handling for SharePointOAuthClient and adjusted requirements.txt for dependency issues.
+- **📄 Error Pages**: Updated error page messages for better clarity and user guidance.
+
 ## [0.5.7-ccv2-1.15.0] - 2026-05-19
 
 ### Added
 
-- \*\*🧪 Playwright E2E Tests: Added comprehensive test coverage around document upload and authentication flows.
-- \*\*📝 Web Search Logging: Added enhanced diagnostic logging around web search operations.
+- **🧪 Playwright E2E Tests**: Added comprehensive test coverage around document upload and authentication flows.
+- **📝 Web Search Logging**: Added enhanced diagnostic logging around web search operations.
 
 ### Changed
 
-- \*\*🏢 MCP SharePoint Integration: Refactored the integration to fully support multi-department configurations.
-- \*\*📦 Security Dependencies: Updated multiple dependency requirements to patch known vulnerability issues.
-- \*\*📈 Workspace Dashboard: Updated the usage dashboard within the workspace section.
-- \*\*🎨 CANChat Logo: Updated the main application logo.
-- \*\*🔗 Web Search Links: Modified link routing so web search results no longer point directly to Google.
-- \*\*🏷️ Chat Deletion Label: Updated the UI label pertaining to automatic chat deletion after 30 days of inactivity.
+- **🏢 MCP SharePoint Integration**: Refactored the integration to fully support multi-department configurations.
+- **📦 Security Dependencies**: Updated multiple dependency requirements to patch known vulnerability issues.
+- **📈 Workspace Dashboard**: Updated the usage dashboard within the workspace section.
+- **🎨 CANChat Logo**: Updated the main application logo.
+- **🔗 Web Search Links**: Modified link routing so web search results no longer point directly to Google.
+- **🏷️ Chat Deletion Label**: Updated the UI label pertaining to automatic chat deletion after 30 days of inactivity.
 
 ### Fixed
 
-- \*\*🧹 Markdown Sanitization: Fixed an issue preventing proper sanitization of markdown content.
-- \*\*📱 Wikipedia Grounding UI: Fixed a display bug affecting the Wikipedia grounding label on smaller screen sizes.
-- \*\*🧠 Thinking Model Display: Fixed rendering issues with the display of the model's thought process.
+- **🧹 Markdown Sanitization**: Fixed an issue preventing proper sanitization of markdown content.
+- **📱 Wikipedia Grounding UI**: Fixed a display bug affecting the Wikipedia grounding label on smaller screen sizes.
+- **🧠 Thinking Model Display**: Fixed rendering issues with the display of the model's thought process.
 
 ## [0.5.7-ccv2-1.14.0] - 2026-03-23
 
@@ -953,7 +969,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **📚 Enhanced Knowledge Collection**: Now, you can reference individual files from a knowledge collection—ideal for more precise Retrieval-Augmented Generations (RAG) queries and document analysis.
 - **🏷️ Enhanced Tagging System**: Tags now take up less space! Utilize the new 'tag:' query system to manage, search, and organize your conversations more effectively without cluttering the interface.
 - **🧠 Auto-Tagging for Chats**: Your conversations are now automatically tagged for improved organization, mirroring the efficiency of auto-generated titles.
-- **🔍 Backend Chat Query System**: Chat filtering has become more efficient, now handled through the backend\*\* instead of your browser, improving search performance and accuracy.
+- **🔍 Backend Chat Query System**: Chat filtering has become more efficient, now handled through the backend instead of your browser, improving search performance and accuracy.
 - **🎮 Revamped Playground**: Experience a refreshed and optimized Playground for smoother testing, tweaks, and experimentation of your models and tools.
 - **🧩 Token-Based Text Splitter**: Introducing token-based text splitting (tiktoken), giving you more precise control over how text is processed. Previously, only character-based splitting was available.
 - **🔢 Ollama Batch Embeddings**: Leverage new batch embedding support for improved efficiency and performance with Ollama embedding models.

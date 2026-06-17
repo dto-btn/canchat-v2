@@ -512,7 +512,7 @@ class RedisCollectionLockManager:
                         )
                     ):
                         log.warning(
-                            f"[LOCK:SECURITY] Using default localhost Redis ({instance.redis_url}). "
+                            f"[LOCK:SECURITY] Using default localhost Redis. "
                             "For multi-instance deployments, ensure all instances share a central Redis."
                         )
 
@@ -684,7 +684,7 @@ class RedisCollectionLockManager:
                     self._initialized = True
 
                 log.info(
-                    f"[LOCK:INIT] Redis lock manager initialized successfully: url={self.redis_url}, "
+                    f"[LOCK:INIT] Redis lock manager initialized successfully, "
                     f"loop_id={current_loop_id}"
                 )
                 return
@@ -921,9 +921,7 @@ class RedisCollectionLockManager:
 
                 self.circuit_state = CircuitState.CLOSED
                 self.circuit_open_time = None
-                log.info(
-                    f"[LOCK:HEALTH_OK] Redis validated successfully: {self.redis_url}"
-                )
+                log.info(f"[LOCK:HEALTH_OK] Redis validated successfully.")
                 return True
 
             except Exception as e:
@@ -988,6 +986,7 @@ class RedisCollectionLockManager:
         with self._client_state_lock:
             active_clients = len(self._redis_clients_by_loop)
 
+        # NOTE: Avoid including potentially sensitive details like Redis URL or error messages in these metrics.
         return {
             "use_redis_locks": self.use_redis_locks,
             "circuit_state": self.circuit_state.value,
@@ -997,7 +996,6 @@ class RedisCollectionLockManager:
             "recovery_attempts": self.recovery_attempts,
             "successful_recoveries": self.successful_recoveries,
             "redis_initialized": self._initialized,
-            "redis_url": self.redis_url if self.redis_url else "NOT_SET",
             "redis_loop_id": self._redis_loop_id,
             "redis_active_clients": active_clients,
         }

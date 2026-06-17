@@ -170,11 +170,9 @@ async def generate_title(
         },
     )
 
-    prompt = f"{content}\n\nReturn ONLY the title as plain text, formatted as EMOJI + space + TITLE (e.g. 😄 Short Title)"
-
     payload = {
         "model": task_model_id,
-        "messages": [{"role": "user", "content": prompt}],
+        "messages": [{"role": "user", "content": content}],
         "stream": False,
         "temperature": 0.3,
         **(
