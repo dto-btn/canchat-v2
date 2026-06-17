@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.7-ccv2-1.15.1] - 2026-06-17
+
+### Changed
+
+- **🔒 Redis URL Display**: Removed Redis URL from being displayed for security purposes.
+- **📦 Dependencies**: Updated dependencies to fix vulnerabilities.
+- **🔗 Repository Link**: Removed link to different repository.
+
+### Fixed
+
+- **🧮 TeX Wrapping**: Fixed TeX wrapping functionality to processResponseContent.
+- **🧠 Prompt Template**: Fixed prompt template to not add reasoning/chain-of-thoughts.
+- **🏗️ Docker Build Workflow**: Fixed cache folder existence check before df in docker-build workflow.
+- **📥 SharePoint Import**: Fixed import handling for SharePointOAuthClient and adjusted requirements.txt for dependency issues.
+- **📄 Error Pages**: Updated error page messages for better clarity and user guidance.
+
 ## [0.5.7-ccv2-1.15.0] - 2026-05-19
 
 ### Added
