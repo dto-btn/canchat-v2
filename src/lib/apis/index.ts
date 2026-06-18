@@ -385,12 +385,12 @@ export const getBackendConfig = async (token?: string): Promise<Config | null> =
 		credentials: 'include',
 		...(token !== undefined
 			? {
-				includeAuth: true,
-				token
-			}
+					includeAuth: true,
+					token
+				}
 			: {
-				includeAuth: false
-			})
+					includeAuth: false
+				})
 	});
 };
 

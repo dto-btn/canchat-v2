@@ -89,7 +89,6 @@ def _issue_tokens_for_user(
     response: Response,
     user_id: str,
     current_refresh_session_id: Optional[str] = None,
-    current_refresh_expires_at: Optional[int] = None,
     current_refresh_token_hash: Optional[str] = None,
 ) -> tuple[str, Optional[int]]:
     return issue_tokens_for_user(
@@ -98,7 +97,6 @@ def _issue_tokens_for_user(
         access_token_expires_in=request.app.state.config.ACCESS_TOKEN_EXPIRES_IN,
         refresh_token_expires_in=request.app.state.config.REFRESH_TOKEN_EXPIRES_IN,
         current_refresh_session_id=current_refresh_session_id,
-        current_refresh_expires_at=current_refresh_expires_at,
         current_refresh_token_hash=current_refresh_token_hash,
         meta={
             "ip": _get_client_ip(request),
@@ -209,7 +207,6 @@ async def get_session_user(
             response,
             user.id,
             current_refresh_session_id=refresh_session.id,
-            current_refresh_expires_at=refresh_session.expires_at,
             current_refresh_token_hash=refresh_session.token_hash,
         )
     else:
@@ -399,6 +396,8 @@ async def ldap_auth(request: Request, response: Response, form_data: LdapForm):
                 400,
                 f"User {form_data.user} does not match the record. Search result: {str(entry[f'{LDAP_ATTRIBUTE_FOR_USERNAME}'])}",
             )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
@@ -527,6 +526,8 @@ async def signup(request: Request, response: Response, form_data: SignupForm):
             return _build_session_user_response(request, user, token, expires_at)
         else:
             raise HTTPException(500, detail=ERROR_MESSAGES.CREATE_USER_ERROR)
+    except HTTPException:
+        raise
     except Exception as err:
         raise HTTPException(500, detail=ERROR_MESSAGES.DEFAULT(err))
 
@@ -597,7 +598,6 @@ async def refresh_token(request: Request, response: Response):
             response,
             user.id,
             current_refresh_session_id=refresh_session.id,
-            current_refresh_expires_at=refresh_session.expires_at,
             current_refresh_token_hash=refresh_session.token_hash,
         )
 

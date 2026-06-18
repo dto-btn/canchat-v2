@@ -125,3 +125,23 @@ class TestRefreshSessions(AbstractPostgresTest):
         assert deleted_count == 1
         assert self.refresh_sessions.get_session_by_id(expired_session.id) is None
         assert self.refresh_sessions.get_session_by_id(active_session.id) is not None
+
+    def test_rotate_refresh_session_token_fails_on_stale_hash(self):
+        refresh_session = self.refresh_sessions.create_session(
+            user_id="user-1",
+            token_hash="hash-1",
+            expires_at=int(time.time()) + 3600,
+        )
+
+        result = self.refresh_sessions.rotate_session_token(
+            refresh_session.id,
+            "hash-2",
+            int(time.time()) + 7200,
+            current_token_hash="wrong-hash",
+        )
+
+        assert result is None
+
+        unchanged = self.refresh_sessions.get_session_by_id(refresh_session.id)
+        assert unchanged is not None
+        assert unchanged.token_hash == "hash-1"

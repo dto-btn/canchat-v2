@@ -234,7 +234,6 @@ def issue_tokens_for_user(
     access_token_expires_in: str,
     refresh_token_expires_in: str,
     current_refresh_session_id: Optional[str] = None,
-    current_refresh_expires_at: Optional[int] = None,
     current_refresh_token_hash: Optional[str] = None,
     meta: Optional[dict] = None,
 ) -> tuple[str, Optional[int]]:

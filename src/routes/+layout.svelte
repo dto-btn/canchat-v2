@@ -45,11 +45,10 @@
 		isAuthFailure,
 		isAuthTransportFailure,
 		saveAuthRecoveryCheckpoint,
-		subscribeToAuthSessionInvalidationEvents,
 		subscribeToAuthSyncEvents
 	} from '$lib/services/auth';
 	import type { SessionUser } from '$lib/stores';
-	import { accessToken } from '$lib/stores/auth';
+	import { accessToken, authState } from '$lib/stores/auth';
 
 	import '../tailwind.css';
 	import '../app.css';
@@ -212,8 +211,7 @@
 
 		authRecoveryRedirectInFlight = true;
 		try {
-			saveAuthRecoveryCheckpoint(pendingNavigationTarget ?? getCurrentRoutePath(), 'session-expired');
-
+			saveAuthRecoveryCheckpoint(pendingNavigationTarget ?? getCurrentRoutePath());
 			if (broadcast) {
 				broadcastAuthSyncEvent('session-expired');
 			}
@@ -339,7 +337,10 @@
 			if (isAuthFailure(error)) {
 				await handleSessionExpiry(
 					false,
-					error && typeof error === 'object' && 'message' in error && typeof error.message === 'string'
+					error &&
+						typeof error === 'object' &&
+						'message' in error &&
+						typeof error.message === 'string'
 						? error.message
 						: null
 				);
@@ -371,7 +372,7 @@
 	}
 
 	$: if (loaded && $user !== undefined && !$accessToken) {
-		handleSessionExpiry().catch((error) => {
+		handleSessionExpiry(true, $authState.lastAuthFailureMessage).catch((error) => {
 			console.error('Failed to start auth recovery:', error);
 			authRecoveryRedirectInFlight = false;
 		});
@@ -581,9 +582,6 @@
 				await restoreSessionFromAuthSync();
 			}
 		});
-		const unsubscribeAuthInvalidation = subscribeToAuthSessionInvalidationEvents(async (detail) => {
-			await handleSessionExpiry(true, detail.message);
-		});
 
 		const initializeLayout = async () => {
 			try {
@@ -739,7 +737,6 @@
 
 		return () => {
 			unsubscribeAuthSync();
-			unsubscribeAuthInvalidation();
 			window.removeEventListener('resize', onResize);
 			document.removeEventListener('visibilitychange', handleVisibilityChange);
 			bc.onmessage = null;

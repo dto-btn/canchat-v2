@@ -15,7 +15,6 @@ const LEGACY_ACCESS_TOKEN_STORAGE_KEY = 'token';
 const AUTH_DEBUG_STORAGE_KEY = 'owui.auth.debug';
 const AUTH_SYNC_CHANNEL_NAME = 'auth-session-channel';
 const AUTH_RECOVERY_STORAGE_KEY = 'owui.auth.recovery';
-const AUTH_SESSION_INVALIDATED_EVENT_NAME = 'owui:auth-session-invalidated';
 const AUTH_FAILURE_PATTERNS = [
 	'unauthorized',
 	'not authenticated',
@@ -32,31 +31,15 @@ type AuthLogLevel = 'debug' | 'info' | 'warn' | 'error';
 type AuthSyncEventType = 'logout' | 'session-expired' | 'session-restored';
 type AuthSyncEvent = {
 	type: AuthSyncEventType;
-	issuedAt: number;
 };
 type AuthRequestErrorKind = 'auth' | 'transport' | 'sync' | 'unknown';
 type AuthRequestError = {
 	kind: AuthRequestErrorKind;
 	message: string;
 	status: number | null;
-	payload?: unknown;
 	cause?: unknown;
 };
-type AuthRecoveryCheckpoint = {
-	path: string;
-	reason: AuthSyncEventType;
-	createdAt: number;
-};
-type AuthSessionInvalidatedDetail = {
-	reason: 'refresh-auth-failure';
-	issuedAt: number;
-	message: string | null;
-	status: number | null;
-};
 
-let accessTokenExpiryLogTimeout: number | null = null;
-let lastObservedAccessTokenExpiry: number | null = null;
-let lastLoggedExpiredAccessTokenAt: number | null = null;
 let authSyncChannel: BroadcastChannel | null = null;
 
 const isAuthLoggingEnabled = () => {
@@ -155,7 +138,7 @@ const buildAuthRequestError = (
 	status: number | null,
 	error: unknown,
 	fallbackMessage: string,
-	extra: Partial<Pick<AuthRequestError, 'payload' | 'cause'>> = {},
+	extra: Partial<Pick<AuthRequestError, 'cause'>> = {},
 	path?: string | null
 ): AuthRequestError => ({
 	kind: getAuthRequestErrorKind(status, error, path),
@@ -172,71 +155,6 @@ const getAccessTokenRemainingSeconds = () => {
 
 	return expiresAt - Math.floor(Date.now() / 1000);
 };
-
-const scheduleAccessTokenExpiryLog = (expiresAt: number) => {
-	if (accessTokenExpiryLogTimeout !== null) {
-		window.clearTimeout(accessTokenExpiryLogTimeout);
-		accessTokenExpiryLogTimeout = null;
-	}
-
-	const delayMs = Math.max(expiresAt * 1000 - Date.now() + 500, 0);
-	accessTokenExpiryLogTimeout = window.setTimeout(() => {
-		accessTokenExpiryLogTimeout = null;
-		const state = get(authState);
-		if (!state.accessToken || state.accessTokenExpiresAt !== expiresAt) {
-			return;
-		}
-
-		lastLoggedExpiredAccessTokenAt = expiresAt;
-		logAuthEvent('warn', 'access-token-expired', {
-			expiresAt,
-			expired: true,
-			remainingSeconds: getAccessTokenRemainingSeconds()
-		});
-	}, delayMs);
-};
-
-const stopAccessTokenExpiryLogging = () => {
-	if (accessTokenExpiryLogTimeout !== null) {
-		window.clearTimeout(accessTokenExpiryLogTimeout);
-		accessTokenExpiryLogTimeout = null;
-	}
-
-	lastObservedAccessTokenExpiry = null;
-	lastLoggedExpiredAccessTokenAt = null;
-};
-
-const syncAccessTokenExpiryLogging = () => {
-	if (!browser) {
-		return;
-	}
-
-	const state = get(authState);
-	if (!state.accessToken || !state.accessTokenExpiresAt) {
-		stopAccessTokenExpiryLogging();
-		return;
-	}
-
-	if (lastObservedAccessTokenExpiry !== state.accessTokenExpiresAt) {
-		lastObservedAccessTokenExpiry = state.accessTokenExpiresAt;
-		lastLoggedExpiredAccessTokenAt = null;
-		scheduleAccessTokenExpiryLog(state.accessTokenExpiresAt);
-		return;
-	}
-
-	if (
-		accessTokenExpiryLogTimeout === null &&
-		lastLoggedExpiredAccessTokenAt !== state.accessTokenExpiresAt
-	) {
-		scheduleAccessTokenExpiryLog(state.accessTokenExpiresAt);
-	}
-};
-
-if (browser) {
-	authState.subscribe(() => {
-		syncAccessTokenExpiryLogging();
-	});
-}
 
 // Purge the old persisted token whenever auth state changes so memory stays authoritative.
 const clearLegacyAccessToken = () => {
@@ -273,10 +191,7 @@ export const broadcastAuthSyncEvent = (type: AuthSyncEventType) => {
 		return;
 	}
 
-	channel.postMessage({
-		type,
-		issuedAt: Date.now()
-	} satisfies AuthSyncEvent);
+	channel.postMessage({ type } satisfies AuthSyncEvent);
 	logAuthEvent('debug', 'auth-sync-broadcast', { type });
 };
 
@@ -298,74 +213,14 @@ export const subscribeToAuthSyncEvents = (handler: (event: AuthSyncEvent) => voi
 	};
 };
 
-const dispatchAuthSessionInvalidated = (
-	reason: AuthSessionInvalidatedDetail['reason'],
-	error?: unknown
-) => {
-	if (!browser) {
-		return;
-	}
-
-	const message = getAuthErrorMessage(error) || null;
-	const status = isAuthRequestError(error) ? error.status : null;
-
-	window.dispatchEvent(
-		new CustomEvent<AuthSessionInvalidatedDetail>(AUTH_SESSION_INVALIDATED_EVENT_NAME, {
-			detail: {
-				reason,
-				issuedAt: Date.now(),
-				message,
-				status
-			}
-		})
-	);
-	logAuthEvent('warn', 'auth-session-invalidated', { reason, message, status });
-};
-
-export const subscribeToAuthSessionInvalidationEvents = (
-	handler: (detail: AuthSessionInvalidatedDetail) => void | Promise<void>
-) => {
-	if (!browser) {
-		return () => {};
-	}
-
-	const listener = (event: Event) => {
-		const detail = (event as CustomEvent<AuthSessionInvalidatedDetail>).detail;
-		if (!detail?.reason) {
-			return;
-		}
-
-		handler(detail);
-	};
-
-	window.addEventListener(AUTH_SESSION_INVALIDATED_EVENT_NAME, listener as EventListener);
-	return () => {
-		window.removeEventListener(
-			AUTH_SESSION_INVALIDATED_EVENT_NAME,
-			listener as EventListener
-		);
-	};
-};
-
-export const saveAuthRecoveryCheckpoint = (
-	path: string,
-	reason: AuthSyncEventType = 'session-expired'
-) => {
+export const saveAuthRecoveryCheckpoint = (path: string) => {
 	if (!browser) {
 		return;
 	}
 
 	const normalizedPath = normalizeAuthRecoveryPath(path);
-	const checkpoint: AuthRecoveryCheckpoint = {
-		path: normalizedPath,
-		reason,
-		createdAt: Date.now()
-	};
-	sessionStorage.setItem(AUTH_RECOVERY_STORAGE_KEY, JSON.stringify(checkpoint));
-	logAuthEvent('info', 'auth-recovery-checkpoint-saved', {
-		path: normalizedPath,
-		reason
-	});
+	sessionStorage.setItem(AUTH_RECOVERY_STORAGE_KEY, normalizedPath);
+	logAuthEvent('info', 'auth-recovery-checkpoint-saved', { path: normalizedPath });
 };
 
 export const consumeAuthRecoveryCheckpoint = () => {
@@ -373,24 +228,15 @@ export const consumeAuthRecoveryCheckpoint = () => {
 		return null;
 	}
 
-	const rawCheckpoint = sessionStorage.getItem(AUTH_RECOVERY_STORAGE_KEY);
-	if (!rawCheckpoint) {
+	const savedPath = sessionStorage.getItem(AUTH_RECOVERY_STORAGE_KEY);
+	if (!savedPath) {
 		return null;
 	}
 
 	sessionStorage.removeItem(AUTH_RECOVERY_STORAGE_KEY);
-
-	try {
-		const checkpoint = JSON.parse(rawCheckpoint) as AuthRecoveryCheckpoint;
-		const normalizedPath = normalizeAuthRecoveryPath(checkpoint?.path);
-		logAuthEvent('info', 'auth-recovery-checkpoint-consumed', {
-			path: normalizedPath,
-			reason: checkpoint?.reason ?? null
-		});
-		return normalizedPath;
-	} catch {
-		return '/';
-	}
+	const normalizedPath = normalizeAuthRecoveryPath(savedPath);
+	logAuthEvent('info', 'auth-recovery-checkpoint-consumed', { path: normalizedPath });
+	return normalizedPath;
 };
 
 export const clearAuthRecoveryCheckpoint = () => {
@@ -470,7 +316,7 @@ const requestSessionUser = async (
 			response.status,
 			errorPayload,
 			'Unable to refresh session',
-			{ payload: errorPayload },
+			{},
 			path
 		);
 		logAuthEvent('warn', 'session-request-failed', {
@@ -530,6 +376,7 @@ export const setAuthSession = (
 		accessToken: nextAccessToken,
 		accessTokenExpiresAt: nextAccessTokenExpiresAt,
 		isLoggingOut: false,
+		lastAuthFailureMessage: null,
 		refreshPromise: null
 	}));
 	logAuthEvent('info', 'auth-session-updated', {
@@ -561,10 +408,7 @@ const recoverAuthSessionFromSyncFailure = async (
 			kind: isAuthRequestError(error) ? error.kind : 'unknown'
 		});
 		if (isAuthFailure(error)) {
-			clearAuthState();
-			if (source === 'refresh') {
-				dispatchAuthSessionInvalidated('refresh-auth-failure', error);
-			}
+			clearAuthState(getAuthErrorMessage(error));
 		}
 		throw error;
 	}
@@ -583,11 +427,7 @@ export const bootstrapAuthSession = async (token: string | null = null) => {
 		hasBootstrapToken: Boolean(token)
 	});
 
-	const bootstrapPromise: Promise<SessionUser | null> = requestSessionUser(
-		'/auths/',
-		'GET',
-		token
-	)
+	const bootstrapPromise: Promise<SessionUser | null> = requestSessionUser('/auths/', 'GET', token)
 		.then((sessionUser) => {
 			setAuthSession(sessionUser);
 			logAuthEvent('info', 'bootstrap-auth-session-succeeded', {
@@ -653,7 +493,7 @@ export const isAuthTransportFailure = (error: unknown) => {
 	);
 };
 
-export const clearAuthState = () => {
+export const clearAuthState = (failureMessage?: string | null) => {
 	const previousState = get(authState);
 	logAuthEvent('info', 'auth-state-cleared', {
 		hadAccessToken: Boolean(previousState.accessToken),
@@ -663,7 +503,8 @@ export const clearAuthState = () => {
 	authState.set({
 		...initialAuthState,
 		bootstrapStatus: previousState.bootstrapStatus,
-		bootstrapPromise: null
+		bootstrapPromise: null,
+		lastAuthFailureMessage: failureMessage ?? null
 	});
 };
 
@@ -779,8 +620,7 @@ export const refreshAuthSession = async (): Promise<SessionUser | null> => {
 				authFailure
 			});
 			if (authFailure) {
-				clearAuthState();
-				dispatchAuthSessionInvalidated('refresh-auth-failure', error);
+				clearAuthState(getAuthErrorMessage(error));
 			}
 			throw error;
 		})

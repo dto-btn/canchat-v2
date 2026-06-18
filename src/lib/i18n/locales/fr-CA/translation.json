@@ -1197,7 +1197,6 @@
 	"Sidebar collapsed.": "Barre latérale réduite.",
 	"Sidebar expanded.": "Barre latérale élargie.",
 	"Sign in": "S'identifier",
-	"Sign in again": "Se reconnecter",
 	"Sign in to {{WEBUI_NAME}}": "Se connecter à {{WEBUI_NAME}}",
 	"Sign in to {{WEBUI_NAME}} with LDAP": "Se connecter à {{WEBUI_NAME}} avec LDAP",
 	"Sign Out": "Déconnexion",
