@@ -416,7 +416,7 @@
 					toast.success($i18n.t('Settings saved successfully!'));
 
 					await tick();
-					await config.set(await getBackendConfig(getRequestToken()) ?? undefined);
+					await config.set((await getBackendConfig(getRequestToken())) ?? undefined);
 				}}
 			/>
 		{:else if selectedTab === 'connections'}
@@ -441,7 +441,7 @@
 					toast.success($i18n.t('Settings saved successfully!'));
 
 					await tick();
-					await config.set(await getBackendConfig(getRequestToken()) ?? undefined);
+					await config.set((await getBackendConfig(getRequestToken())) ?? undefined);
 				}}
 			/>
 		{:else if selectedTab === 'web'}
@@ -450,7 +450,7 @@
 					toast.success($i18n.t('Settings saved successfully!'));
 
 					await tick();
-					await config.set(await getBackendConfig()  ?? undefined);
+					await config.set((await getBackendConfig()) ?? undefined);
 				}}
 			/>
 		{:else if selectedTab === 'grounding'}
@@ -459,7 +459,7 @@
 					toast.success($i18n.t('Settings saved successfully!'));
 
 					await tick();
-					await config.set(await getBackendConfig(getRequestToken()) ?? undefined);
+					await config.set((await getBackendConfig(getRequestToken())) ?? undefined);
 				}}
 			/>
 		{:else if selectedTab === 'interface'}

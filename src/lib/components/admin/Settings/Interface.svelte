@@ -125,7 +125,7 @@
 							placeholder={$i18n.t('Select a model')}
 						>
 							<option value="" selected>{$i18n.t('Current Model')}</option>
-							{#each ($models ?? []) as model}
+							{#each $models ?? [] as model}
 								<option value={model.id} class="bg-gray-100 dark:bg-gray-700">
 									{model.name}
 								</option>

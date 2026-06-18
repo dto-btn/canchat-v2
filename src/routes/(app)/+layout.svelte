@@ -103,19 +103,14 @@
 
 				const fallbackSettings = readLocalStorageSettings();
 				const token = getRequestToken();
-				const [
-					userSettingsResult,
-					modelsResult,
-					bannersResult,
-					toolsResult,
-					promptsResult
-				] = await Promise.allSettled([
-					getUserSettings(token),
-					getModels(token),
-					getBanners(token),
-					getTools(token),
-					getPromptsLegacy(token)
-				]);
+				const [userSettingsResult, modelsResult, bannersResult, toolsResult, promptsResult] =
+					await Promise.allSettled([
+						getUserSettings(token),
+						getModels(token),
+						getBanners(token),
+						getTools(token),
+						getPromptsLegacy(token)
+					]);
 
 				if (
 					userSettingsResult.status === 'fulfilled' &&
@@ -133,7 +128,9 @@
 				}
 
 				models.set(
-					modelsResult.status === 'fulfilled' ? (modelsResult.value as ModelsState) : ([] as ModelsState)
+					modelsResult.status === 'fulfilled'
+						? (modelsResult.value as ModelsState)
+						: ([] as ModelsState)
 				);
 				banners.set(bannersResult.status === 'fulfilled' ? bannersResult.value : []);
 				tools.set(

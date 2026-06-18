@@ -253,7 +253,8 @@ const executeRequest = async (url: string, options: ApiRequestOptions) => {
 	const shouldUseManagedToken =
 		includeAuth &&
 		(token === undefined || token === null || token === '' || token === managedTokenAtStart);
-	const shouldEnsureFreshAuth = browser && includeAuth && retryOnUnauthorized && shouldUseManagedToken;
+	const shouldEnsureFreshAuth =
+		browser && includeAuth && retryOnUnauthorized && shouldUseManagedToken;
 
 	if (shouldEnsureFreshAuth) {
 		await ensureFreshAccessToken();
@@ -262,7 +263,7 @@ const executeRequest = async (url: string, options: ApiRequestOptions) => {
 	const resolvedToken = includeAuth
 		? shouldUseManagedToken
 			? getAccessTokenValue()
-			: token ?? null
+			: (token ?? null)
 		: null;
 
 	return fetch(url, {

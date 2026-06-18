@@ -179,3 +179,29 @@ def test_get_current_user_optional_ignores_invalid_token():
     )
 
     assert auth.get_current_user_optional(request, invalid_auth) is None
+
+
+def test_get_refresh_failure_reason_maps_known_errors():
+    from fastapi import HTTPException
+    from open_webui.routers.auths import _get_refresh_failure_reason
+    from open_webui.constants import ERROR_MESSAGES
+
+    assert (
+        _get_refresh_failure_reason(
+            HTTPException(400, ERROR_MESSAGES.MISSING_REFRESH_TOKEN)
+        )
+        == "missing_refresh_token"
+    )
+    assert (
+        _get_refresh_failure_reason(
+            HTTPException(400, ERROR_MESSAGES.INVALID_REFRESH_TOKEN)
+        )
+        == "invalid_refresh_token"
+    )
+    assert (
+        _get_refresh_failure_reason(
+            HTTPException(409, ERROR_MESSAGES.REFRESH_SESSION_CONFLICT)
+        )
+        == "refresh_session_conflict"
+    )
+    assert _get_refresh_failure_reason(HTTPException(500, "unexpected")) == "http_500"

@@ -10,6 +10,8 @@ export type AuthState = {
 	accessTokenExpiresAt: number | null;
 	bootstrapStatus: 'idle' | 'pending' | 'ready';
 	isLoggingOut: boolean;
+	// Set when auth state is cleared due to an auth failure; read by the session-expiry handler.
+	lastAuthFailureMessage: string | null;
 	// Shared in-flight refresh used to dedupe concurrent callers.
 	refreshPromise: Promise<unknown> | null;
 	// Shared in-flight bootstrap used to dedupe session restore callers.
@@ -21,6 +23,7 @@ export const initialAuthState: AuthState = {
 	accessTokenExpiresAt: null,
 	bootstrapStatus: 'idle',
 	isLoggingOut: false,
+	lastAuthFailureMessage: null,
 	refreshPromise: null,
 	bootstrapPromise: null
 };
@@ -38,8 +41,3 @@ export const authBootstrapReady = derived(
 	($authState) => $authState.bootstrapStatus === 'ready'
 );
 export const authLogoutInProgress = derived(authState, ($authState) => $authState.isLoggingOut);
-export const authRefreshPromise = derived(authState, ($authState) => $authState.refreshPromise);
-export const authBootstrapPromise = derived(
-	authState,
-	($authState) => $authState.bootstrapPromise
-);

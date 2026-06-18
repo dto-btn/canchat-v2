@@ -177,7 +177,10 @@
 		};
 		mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
 		mediaRecorder.onstop = async () => {
-			if (($config?.audio?.stt?.engine ?? '') === 'web' || ($settings?.audio?.stt?.engine ?? '') === 'web') {
+			if (
+				($config?.audio?.stt?.engine ?? '') === 'web' ||
+				($settings?.audio?.stt?.engine ?? '') === 'web'
+			) {
 				audioChunks = [];
 			} else {
 				if (confirmed) {
@@ -193,7 +196,10 @@
 			}
 		};
 		mediaRecorder.start();
-		if (($config?.audio?.stt?.engine ?? '') === 'web' || ($settings?.audio?.stt?.engine ?? '') === 'web') {
+		if (
+			($config?.audio?.stt?.engine ?? '') === 'web' ||
+			($settings?.audio?.stt?.engine ?? '') === 'web'
+		) {
 			if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
 				// Create a SpeechRecognition object
 				speechRecognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
