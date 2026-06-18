@@ -317,7 +317,6 @@ from open_webui.utils.auth import (
 )
 from open_webui.utils.oauth import oauth_manager
 from open_webui.utils.security_headers import SecurityHeadersMiddleware
-from open_webui.utils.terms_middleware import TermsOfUseMiddleware
 
 from open_webui.tasks import stop_task, list_tasks  # Import from tasks.py
 
@@ -951,7 +950,6 @@ class RedirectMiddleware(BaseHTTPMiddleware):
 # Add the middleware to the app
 app.add_middleware(RedirectMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
-app.add_middleware(TermsOfUseMiddleware)
 
 
 @app.middleware("http")

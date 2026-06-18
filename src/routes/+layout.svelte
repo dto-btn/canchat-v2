@@ -45,6 +45,7 @@
 	import { getAllTags, getChatList } from '$lib/apis/chats';
 	import NotificationToast from '$lib/components/NotificationToast.svelte';
 	import AppSidebar from '$lib/components/app/AppSidebar.svelte';
+	import { getTermsStatus } from '$lib/apis/terms';
 
 	setContext('i18n', i18n);
 
@@ -336,6 +337,16 @@
 						$socket?.on('channel-events', channelEventHandler);
 
 						await user.set(sessionUser);
+
+						// Check Terms of Use Status
+						if ($page.url.pathname !== '/terms' && $page.url.pathname !== '/conditions') {
+							const termsStatus = await getTermsStatus(localStorage.token);
+							if (!termsStatus) {
+								const termsPage = localStorage.locale === 'fr-CA' ? '/conditions' : '/terms';
+								await goto(termsPage);
+							}
+						}
+
 						await config.set(await getBackendConfig());
 
 						// Initialize user timezone detection
