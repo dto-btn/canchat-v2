@@ -359,7 +359,7 @@ JWT_EXPIRES_IN = PersistentConfig(
 ACCESS_TOKEN_EXPIRES_IN = PersistentConfig(
     "ACCESS_TOKEN_EXPIRES_IN",
     "auth.access_token_expiry",
-    os.environ.get("ACCESS_TOKEN_EXPIRES_IN", "1m"),
+    os.environ.get("ACCESS_TOKEN_EXPIRES_IN", "30m"),
 )
 
 REFRESH_TOKEN_EXPIRES_IN = PersistentConfig(
