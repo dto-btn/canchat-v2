@@ -5,6 +5,13 @@ Tous les changements notables apportés à ce projet seront documentés dans ce 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage sémantique](https://semver.org/lang/fr/spec/v2.0.0.html).
 
+## [0.5.7-ccv2-1.15.1] - 2026-06-19
+
+### Modifié
+
+- **✨ Points de terminaison de santé** : Mise à jour des points de terminaison de santé pour offrir une meilleure visibilité sur l'état des services.
+- **📦 Dépendances** : Mise à jour des dépendances pour corriger les vulnérabilités.
+
 ## [0.5.7-ccv2-1.15.1] - 2026-06-17
 
 ### Modifié
