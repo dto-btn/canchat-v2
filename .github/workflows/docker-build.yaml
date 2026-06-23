@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - dev
-      - feat-tko-runner
     tags:
       - v*
 
@@ -18,7 +17,7 @@ jobs:
     runs-on: arc-ssc-dsai-tko
 
     # Set a timeout for the job
-    # timeout-minutes: 30
+    timeout-minutes: 30
 
     permissions:
       contents: read
