@@ -1,8 +1,13 @@
 <script>
+	import { getI18n } from '$lib/utils/context';
 	import { goto } from '$app/navigation';
-	import { acceptTerms } from '$lib/apis/terms';
+	import { acceptTerms, getTermsStatus } from '$lib/apis/terms';
+	import { onMount } from 'svelte';
+
+	const i18n = getI18n();
 
 	let accepting = false;
+	let accepted = false;
 
 	async function handleAccept() {
 		accepting = true;
@@ -14,6 +19,18 @@
 			accepting = false;
 		}
 	}
+
+	onMount(async () => {
+		await $i18n.changeLanguage('fr-CA');
+		try {
+			const status = await getTermsStatus(localStorage.token);
+			if (status.accepted_at) {
+				accepted = true;
+			}
+		} catch (e) {
+			console.error('Failed to fetch terms status:', e);
+		}
+	});
 </script>
 
 <div class="w-full h-screen max-h-[100dvh] overflow-y-auto bg-white dark:bg-gray-950">
@@ -22,12 +39,23 @@
 			<h1 class="text-3xl font-bold mb-2 md:mb-0 md:mr-4 dark:text-white">
 				CANChat – Conditions d'utilisation
 			</h1>
-			<a
-				href="/terms"
-				class="px-4 py-2 bg-purple-800 text-white rounded-md hover:bg-purple-800/80 transition-colors"
-			>
-				English
-			</a>
+			<div>
+				{#if accepted}
+					<a
+						href="/"
+						class="px-4 py-2 mr-2 bg-purple-800 text-white rounded-md hover:bg-purple-800/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+						on:click={() => goto('/')}
+					>
+						Retour à CANChat
+					</a>
+				{/if}
+				<a
+					href="/terms"
+					class="px-4 py-2 bg-purple-800 text-white rounded-md hover:bg-purple-800/80 transition-colors"
+				>
+					English
+				</a>
+			</div>
 		</div>
 
 		<p class="text-sm text-neutral-600 dark:text-neutral-400 mt-1 pl-1">
@@ -833,17 +861,27 @@
 		</div>
 
 		<div class="flex justify-center">
-			<button
-				on:click={handleAccept}
-				disabled={accepting}
-				class="px-4 py-2 mt-3 bg-purple-800 text-white p-4 rounded-md hover:bg-purple-800/80 disabled:opacity-50 transition-colors"
-			>
-				{#if accepting}
-					Mise à jour...
-				{:else}
-					J'accepte les conditions
-				{/if}
-			</button>
+			{#if accepted}
+				<button
+					on:click={() => goto('/')}
+					disabled={accepting}
+					class="px-4 py-2 mt-3 bg-purple-800 text-white p-4 rounded-md hover:bg-purple-800/80 disabled:opacity-50 transition-colors"
+				>
+					Retour à CANChat
+				</button>
+			{:else}
+				<button
+					on:click={handleAccept}
+					disabled={accepting}
+					class="px-4 py-2 mt-3 bg-purple-800 text-white p-4 rounded-md hover:bg-purple-800/80 disabled:opacity-50 transition-colors"
+				>
+					{#if accepting}
+						Mise à jour...
+					{:else}
+						J'accepte les conditions
+					{/if}
+				</button>
+			{/if}
 		</div>
 	</div>
 </div>
