@@ -17,10 +17,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Add the 'name_fr' column to the 'models' table
-    op.add_column("models", sa.Column("name_fr", sa.Text(), nullable=False))
+    # Add the 'name_fr' column to the 'model' table
+    op.add_column("model", sa.Column("name_fr", sa.Text(), nullable=False))
 
 
 def downgrade() -> None:
-    # Remove the 'name_fr' column from the 'models' table in case of rollback
-    op.drop_column("models", "name_fr")
+    # Remove the 'name_fr' column from the 'model' table in case of rollback
+    op.drop_column("model", "name_fr")
