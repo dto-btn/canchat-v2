@@ -23,7 +23,7 @@ class Term(Base):
     __tablename__ = "terms"
 
     id = Column(Text, primary_key=True)
-    user_id = Column(Text, nullable=False, unique=True)
+    user_id = Column(Text, nullable=False)
     accepted_at = Column(BigInteger, nullable=False)
     version = Column(Text, nullable=False, unique=False)
 
