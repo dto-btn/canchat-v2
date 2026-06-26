@@ -24,6 +24,7 @@ def upgrade() -> None:
         sa.Column("id", sa.Text(), nullable=False, primary_key=True, unique=True),
         sa.Column("user_id", sa.Text(), nullable=False, unique=True),
         sa.Column("accepted_at", sa.BigInteger(), nullable=False),
+        sa.Column("version", sa.Text(), nullable=False, unique=False),
     )
 
 

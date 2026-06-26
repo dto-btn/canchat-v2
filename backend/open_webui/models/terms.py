@@ -25,13 +25,14 @@ class Term(Base):
     id = Column(Text, primary_key=True)
     user_id = Column(Text, nullable=False, unique=True)
     accepted_at = Column(BigInteger, nullable=False)
+    version = Column(Text, nullable=False, unique=False)
 
 
 class TermsModel(BaseModel):
     id: str
     user_id: str
     accepted_at: int
-
+    version: str
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -41,10 +42,12 @@ class TermsModel(BaseModel):
 
 
 class TermsTable:
-    def accept(self, user_id: str) -> Optional[TermsModel]:
+    def accept(self, user_id: str, version: str) -> Optional[TermsModel]:
         try:
             with get_db() as db:
-                existing = db.query(Term).filter_by(user_id=user_id).first()
+                existing = (
+                    db.query(Term).filter_by(user_id=user_id, version=version).first()
+                )
                 if existing:
                     return TermsModel.model_validate(existing)
 
@@ -53,6 +56,7 @@ class TermsTable:
                     id=id,
                     user_id=user_id,
                     accepted_at=int(time.time()),
+                    version=version,
                 )
                 result = Term(**terms.model_dump())
                 db.add(result)
@@ -65,10 +69,12 @@ class TermsTable:
             log.error(f"Error accepting terms: {e}")
             return None
 
-    def get_terms_by_user_id(self, user_id: str) -> Optional[TermsModel]:
+    def get_terms_by_user_id(self, user_id: str, version: str) -> Optional[TermsModel]:
         try:
             with get_db() as db:
-                terms = db.query(Term).filter_by(user_id=user_id).first()
+                terms = (
+                    db.query(Term).filter_by(user_id=user_id, version=version).first()
+                )
                 if not terms:
                     return None
                 return TermsModel.model_validate(terms)

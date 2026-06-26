@@ -2676,3 +2676,13 @@ JIRA_PROJECT_KEY = PersistentConfig(
     "jira.project_key",
     os.environ.get("JIRA_PROJECT_KEY", ""),
 )
+
+####################################
+# Terms Of Use
+####################################
+
+TERMS_VERSION = PersistentConfig(
+    "TERMS_VERSION",
+    "terms.version",
+    os.environ.get("TERMS_VERSION", "0.0.0"),
+)
