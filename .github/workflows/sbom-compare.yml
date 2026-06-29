@@ -115,10 +115,6 @@ jobs:
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             PR_NUMBER=$(jq -r '.number' "$GITHUB_EVENT_PATH")
             echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
-          elif [ "${{ github.event_name }}" == "push" ]; then
-            echo "pr_number=none (push)" >> $GITHUB_OUTPUT
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "pr_number=none (workflow_dispatch)" >> $GITHUB_OUTPUT
           else
             echo "pr_number=none" >> $GITHUB_OUTPUT
           fi
