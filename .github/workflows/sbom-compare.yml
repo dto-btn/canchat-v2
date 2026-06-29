@@ -66,13 +66,12 @@ jobs:
             | jq -r '.workflow_runs
               | if length > 0 then .[0].id else empty end')
           echo "Last successful run workflow id: ${LAST_WORKFLOW_ID}"
-          LAST_ARTIFACT_ID=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          ARCHIVE_DOWNLOAD_URL=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/repos/ssc-dsai/canchat-v2/actions/runs/${LAST_WORKFLOW_ID}/artifacts?name=carryover.zip" \
             | jq -r '.artifacts
-              | if length > 0 then .[0].id else empty end')
-          echo "Last artifact id: ${LAST_ARTIFACT_ID}"
-          curl -o .sbom/carryover.zip -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/ssc-dsai/canchat-v2/actions/artifacts/${LAST_ARTIFACT_ID}/zip"
+              | if length > 0 then .[0].archive_download_url else empty end')
+          echo "Archive download URL: ${ARCHIVE_DOWNLOAD_URL}"
+          curl -o .sbom/carryover.zip -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "${ARCHIVE_DOWNLOAD_URL}"
 
       - name: unzip carryover
         id: unzip-carryover
