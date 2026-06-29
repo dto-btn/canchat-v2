@@ -69,7 +69,7 @@ jobs:
             git checkout HEAD^
             cdxgen -o .sbom/previous.cdx.json --json-pretty
             git checkout -
-          elif [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then-
+          elif [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
             git checkout ${{ github.base_ref }}
             cdxgen -o .sbom/previous.cdx.json --json-pretty
             git checkout ${{ github.head_ref }}
