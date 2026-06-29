@@ -83,18 +83,18 @@ jobs:
         id: previous-sbom-cdx
         run: |
           echo "github.event_name = ${{ github.event_name }}"
-          if [ "${{ github.event_name }}" == "push" ]; then
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            git checkout ${{ github.base_ref }}
+            cdxgen -o .sbom/previous.cdx.json --json-pretty
+            git checkout ${{ github.head_ref }}
+          elif [ "${{ github.event_name }}" == "push" ]; then
             git checkout HEAD^
             cdxgen -o .sbom/previous.cdx.json --json-pretty
             git checkout -
-          elif [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
-            git checkout ${{ github.base_ref }}
+          elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            git checkout HEAD^
             cdxgen -o .sbom/previous.cdx.json --json-pretty
-            git checkout ${{ github.head_ref }}
-          elif [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            git checkout ${{ github.base_ref }}
-            cdxgen -o .sbom/previous.cdx.json --json-pretty
-            git checkout ${{ github.head_ref }}
+            git checkout -
           else
             cp .sbom/current.cdx.json .sbom/previous.cdx.json
           fi
@@ -112,13 +112,13 @@ jobs:
       - name: Get PR number
         id: get-pr-number
         run: |
-          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
             PR_NUMBER=$(jq -r '.number' "$GITHUB_EVENT_PATH")
             echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
-          elif [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            echo "pr_number=none (workflow_dispatch)" >> $GITHUB_OUTPUT
-          elif [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+          elif [ "${{ github.event_name }}" == "push" ]; then
             echo "pr_number=none (push)" >> $GITHUB_OUTPUT
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "pr_number=none (workflow_dispatch)" >> $GITHUB_OUTPUT
           else
             echo "pr_number=none" >> $GITHUB_OUTPUT
           fi
@@ -132,11 +132,11 @@ jobs:
           
           # CDX version
           echo "" >> .sbom/comparison.md
-          if [ "${{ github.event_name }}" == "push" ]; then
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "### Comparison of current CDX SBOM with BASE repository" >> .sbom/comparison.md
+          elif [ "${{ github.event_name }}" == "push" ]; then
             echo "### Comparison of current CDX SBOM with previous commit" >> .sbom/comparison.md
-          elif [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
-            echo "### Comparison of current CDX SBOM with base repo" >> .sbom/comparison.md
-          elif [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+          elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "### Comparison of current CDX SBOM with base repo" >> .sbom/comparison.md
           else
             echo "### Comparison not completed" >> .sbom/comparison.md
