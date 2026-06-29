@@ -37,7 +37,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0  # Fetch all previous commits, changed from 2 (last) to 0 (all)
-#          ref: ${{ github.head_ref }}
+          ref: ${{ github.head_ref }}
          
       - name: Install Dependencies
         run: |
@@ -135,7 +135,11 @@ jobs:
 
           # prepend current comparison log to the top of the comparison history file (most recent first)
           echo "" >> .sbom/comparison.md
+          if test -f .sbom/comparison-history.md; then cp .sbom/comparison-history.md .sbom/old-comparison-history.md; fi
           cp .sbom/comparison.md .sbom/comparison-history.md
+          if test -f .sbom/old-comparison-history.md; then 
+            cat .sbom/old-comparison-history.md >> .sbom/comparison-history.md
+          fi
           cat .sbom/comparison-history.md >> $GITHUB_STEP_SUMMARY
 
       - name: show artifacts in run log before upload
