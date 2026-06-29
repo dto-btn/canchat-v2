@@ -74,7 +74,7 @@ jobs:
             cdxgen -o .sbom/previous.cdx.json --json-pretty
             git checkout ${{ github.head_ref }}
           else
-            copy .sbom/current.cdx.json .sbom/previous.cdx.json
+            cp .sbom/current.cdx.json .sbom/previous.cdx.json
           fi
           echo "previous_sbom=.sbom/previous.cdx.json" >> $GITHUB_OUTPUT
 
