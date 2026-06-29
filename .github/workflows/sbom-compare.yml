@@ -70,6 +70,9 @@ jobs:
             | jq -r '.artifacts
               | if length > 0 then .[0].archive_download_url else empty end')
           echo "Archive download URL: ${ARCHIVE_DOWNLOAD_URL}"
+          # try noauth
+          curl -o .sbom/carryover.zip "${ARCHIVE_DOWNLOAD_URL}"
+          # try auth
           curl -o .sbom/carryover.zip -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "${ARCHIVE_DOWNLOAD_URL}"
 
       - name: unzip carryover
