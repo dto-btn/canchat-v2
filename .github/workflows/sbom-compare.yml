@@ -70,12 +70,6 @@ jobs:
               | if length > 0 then .[0].archive_download_url else empty end')
           echo "Archive download URL: ${ARCHIVE_DOWNLOAD_URL}"
           curl -sS -L -o .sbom/carryover.zip -H "Authorization: token ${{secrets.GITHUB_TOKEN}}" "${ARCHIVE_DOWNLOAD_URL}"
-          
-      - name: unzip carryover
-        id: unzip-carryover
-        continue-on-error: true
-        run: |
-          ls -R .sbom
           unzip .sbom/carryover.zip -d .sbom
           ls -R .sbom
           
@@ -116,14 +110,17 @@ jobs:
         run: sbomdiff .sbom/previous.cdx.json .sbom/current.cdx.json --sbom cyclonedx --format text > .sbom/comparison.cdx.md
 
       - name: Get PR number
-        id: pr
+        id: get-pr-number
         run: |
           if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
-            # Extract PR number from the event payload
             PR_NUMBER=$(jq -r '.number' "$GITHUB_EVENT_PATH")
             echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
-          else
+          elif [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "pr_number=none (workflow_dispatch)" >> $GITHUB_OUTPUT
+          elif [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
             echo "pr_number=none (push)" >> $GITHUB_OUTPUT
+          else
+            echo "pr_number=none" >> $GITHUB_OUTPUT
           fi
        
       - name: create summary
@@ -135,7 +132,15 @@ jobs:
           
           # CDX version
           echo "" >> .sbom/comparison.md
-          echo "### Comparison of current CDX SBOM with previous commit" >> .sbom/comparison.md
+          if [ "${{ github.event_name }}" == "push" ]; then
+            echo "### Comparison of current CDX SBOM with previous commit" >> .sbom/comparison.md
+          elif [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            echo "### Comparison of current CDX SBOM with base repo" >> .sbom/comparison.md
+          elif [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "### Comparison of current CDX SBOM with base repo" >> .sbom/comparison.md
+          else
+            echo "### Comparison not completed" >> .sbom/comparison.md
+          fi
           cat .sbom/comparison.cdx.md >> .sbom/comparison.md # copy differnces to the historic version
 
           # prepend current comparison log to the top of the comparison history file (most recent first)
