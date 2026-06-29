@@ -60,7 +60,8 @@ jobs:
         # fail expected if no previous github action run exists - allow the script to continue
         continue-on-error: true
         run: |
-          ARTIFACTS_URL=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/ssc-dsai/canchat-v2/actions/workflows/sbom-compare.yml/runs?status=success&branch=${{ github.ref_name }}" \
+          ARTIFACTS_URL=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/ssc-dsai/canchat-v2/actions/workflows/sbom-compare.yml/runs?status=success&branch=${{ github.ref_name }}" \
             | jq -r '.workflow_runs
               | if length > 0 then .[0].artifacts_url else empty end')
           echo "Artifacts URL: ${ARTIFACTS_URL}"
@@ -75,8 +76,9 @@ jobs:
         continue-on-error: true
         run: |
           cd .sbom
+          cat carryover.zip
           unzip carryover.zip
-          ls -R
+          ls
           cd ..
           
       - name: Generate Current SBOM CDX format
