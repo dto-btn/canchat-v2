@@ -69,19 +69,15 @@ jobs:
             | jq -r '.artifacts
               | if length > 0 then .[0].archive_download_url else empty end')
           echo "Archive download URL: ${ARCHIVE_DOWNLOAD_URL}"
-          #curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "${ARCHIVE_DOWNLOAD_URL}"
-          #curl -o .sbom/carryover.zip -H "Authorization: token ${{secrets.GITHUB_TOKEN}}" "$ARCHIVE_DOWNLOAD_URL"
-          wget --header="Authorization: token ${{ secrets.GITHUB_TOKEN }}" "$ARCHIVE_DOWNLOAD_URL" -O .sbom/carryover.zip
+          curl -sS -L -o .sbom/carryover.zip -H "Authorization: token ${{secrets.GITHUB_TOKEN}}" "${ARCHIVE_DOWNLOAD_URL}"
           
       - name: unzip carryover
         id: unzip-carryover
         continue-on-error: true
         run: |
-          cd .sbom
-          cat carryover.zip
-          unzip carryover.zip
-          ls
-          cd ..
+          ls -R .sbom
+          unzip .sbom/carryover.zip -d .sbom
+          ls -R .sbom
           
       - name: Generate Current SBOM CDX format
         id: current-sbom-cdx
