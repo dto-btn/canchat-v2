@@ -63,15 +63,20 @@ jobs:
           echo "token: ${{ secrets.GITHUB_TOKEN }}"
           LAST_WORKFLOW_ID=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/repos/ssc-dsai/canchat-v2/actions/workflows/sbom-compare.yml/runs?status=success&branch=${{ github.ref_name }}"
-            | jq -r '.workflow_id
+            | jq -r '.workflow_runs
               | if length > 0 then .[0].id else empty end')
-          echo "Last successful run workflow id: ${LAST_WORKFLOW_ID }"
+          echo "Last successful run workflow id: ${LAST_WORKFLOW_ID}"
           LAST_ARTIFACT_ID=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/repos/ssc-dsai/canchat-v2/actions/runs/${LAST_WORKFLOW_ID}/artifacts?name=carryover.zip"
-            | jq -r '.id
+            | jq -r '.artifacts
               | if length > 0 then .[0].id else empty end')
-          echo "Last artifact id: ${LAST_WORKFLOW_ID}"
+          echo "Last artifact id: ${LAST_ARTIFACT_ID}"
           curl -o .sbom/carryover.zip "https://api.github.com/repos/ssc-dsai/canchat-v2/actions/artifacts/${LAST_ARTIFACT_ID}/zip"
+
+            | jq -r '.workflow_runs 
+              | map(select(.name == "SBOM compare"))  # Replace "Your Workflow Name" with the desired name
+              | if length > 1 then .[1].id else empty end')  # Fetch the second most recent run with the matching name
+
 
       - name: Generate Current SBOM CDX format
         id: current-sbom-cdx
