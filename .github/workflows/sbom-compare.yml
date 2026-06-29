@@ -70,8 +70,8 @@ jobs:
               | if length > 0 then .[0].archive_download_url else empty end')
           echo "Archive download URL: ${ARCHIVE_DOWNLOAD_URL}"
           #curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "${ARCHIVE_DOWNLOAD_URL}"
-          curl -o .sbom/carryover.zip -H "Authorization: token ${{secrets.GITHUB_TOKEN}}" "$ARCHIVE_DOWNLOAD_URL"
-          #wget --header="Authorization: token ${{ secrets.GITHUB_TOKEN }}" "$ARCHIVE_DOWNLOAD_URL" -O .sbom/carryover.zip
+          #curl -o .sbom/carryover.zip -H "Authorization: token ${{secrets.GITHUB_TOKEN}}" "$ARCHIVE_DOWNLOAD_URL"
+          wget --header="Authorization: token ${{ secrets.GITHUB_TOKEN }}" "$ARCHIVE_DOWNLOAD_URL" -O .sbom/carryover.zip
           
       - name: unzip carryover
         id: unzip-carryover
