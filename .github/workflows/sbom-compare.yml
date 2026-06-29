@@ -92,6 +92,10 @@ jobs:
             git checkout ${{ github.base_ref }}
             cdxgen -o .sbom/previous.cdx.json --json-pretty
             git checkout ${{ github.head_ref }}
+          elif [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            git checkout ${{ github.base_ref }}
+            cdxgen -o .sbom/previous.cdx.json --json-pretty
+            git checkout ${{ github.head_ref }}
           else
             cp .sbom/current.cdx.json .sbom/previous.cdx.json
           fi
