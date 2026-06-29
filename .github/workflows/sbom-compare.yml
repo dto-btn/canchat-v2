@@ -1,13 +1,13 @@
-# target steps:
-# download current SBOM (from github - SPDX format)
-# download previous SBOM (from previous run artifact)
-# - lack of github SBOM sort order detects changes incorectly, solution is to sort
-# - occasional workflow failures and artifacts expiring will cause issues with previous artefact availability for a current run
-#  - solution: create a 'previous' and 'current' SBOM in the same script (use CDX, newer more robust format)
-# DIFF the SPDX files (prev from last action run)
-# DIFF the CDX files (prev from last commit)
-# create CSVs for easier human usability (sbom-to-excel would be nicer but the conversion tool is not robust and crashing on content)
-# upload carryover and other artifacts
+# download previous compare history for this branch
+# - continue-on-error whenever this is a first run and no file is available to download
+# create a current SBOM
+# create a previous SBOM from:
+#  - pull_request, use base repository
+#  - push, use the previous commit
+#  - workflow_dispatch, use the previous commit (same as push)
+# DIFF the SBOMs and report
+# create CSVs for easier human use
+# upload artifacts (for sbom-reports.zip, and carryover.zip)
 
 name: SBOM compare
 on:
