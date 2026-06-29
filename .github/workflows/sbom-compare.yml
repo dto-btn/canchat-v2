@@ -74,6 +74,7 @@ jobs:
 
       - name: unzip carryover
         id: unzip-carryover
+        continue-on-error: true
         run: |
           ls -R .sbom
           unzip .sbom/carryover.zip -d .sbom
