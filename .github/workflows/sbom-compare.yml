@@ -73,6 +73,7 @@ jobs:
           echo "Last artifact id: ${LAST_ARTIFACT_ID}"
           curl -o .sbom/carryover.zip -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/repos/ssc-dsai/canchat-v2/actions/artifacts/${LAST_ARTIFACT_ID}/zip"
+          ls -R .sbom
 
       - name: Generate Current SBOM CDX format
         id: current-sbom-cdx
