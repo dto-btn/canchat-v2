@@ -71,8 +71,13 @@ jobs:
             | jq -r '.artifacts
               | if length > 0 then .[0].id else empty end')
           echo "Last artifact id: ${LAST_ARTIFACT_ID}"
-          curl -o .sbom/carryover.zip -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          curl -o .sbom/carryover.zip -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/repos/ssc-dsai/canchat-v2/actions/artifacts/${LAST_ARTIFACT_ID}/zip"
+
+      - name: unzip carryover
+        id: unzip-carryover
+        run: |
+          ls -R .sbom
           unzip .sbom/carryover.zip -d .sbom
           ls -R .sbom
 
