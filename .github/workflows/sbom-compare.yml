@@ -55,23 +55,23 @@ jobs:
       - name: setup artifact folder
         run: mkdir .sbom
 
-      - name: Get Previous Run ID
-        id: get-run-id
+      - name: Download carryover file from last successful run of this branch
+        id: dl-prev-carryover-zip
         # fail expected if no previous github action run exists - allow the script to continue
         continue-on-error: true
         run: |
-          echo "Github token: ${{ secrets.GITHUB_TOKEN }}"
+          echo "token: ${{ secrets.GITHUB_TOKEN }}"
           LAST_WORKFLOW_ID=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/ssc-dsai/canchat-v2/actions/workflows/sbom-compare.yml/runs?status=success&branch=${{ github.ref_name }}" \
+            "https://api.github.com/repos/ssc-dsai/canchat-v2/actions/workflows/sbom-compare.yml/runs?status=success&branch=${{ github.ref_name }}"
             | jq -r '.workflow_id
               | if length > 0 then .[0].id else empty end')
-          echo "Last successful run workflow id: ${{ LAST_WORKFLOW_ID }}"
+          echo "Last successful run workflow id: ${LAST_WORKFLOW_ID }"
           LAST_ARTIFACT_ID=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/ssc-dsai/canchat-v2/actions/runs/${{ LAST_WORKFLOW_ID }}/artifacts?name=carryover.zip" \
+            "https://api.github.com/repos/ssc-dsai/canchat-v2/actions/runs/${LAST_WORKFLOW_ID}/artifacts?name=carryover.zip"
             | jq -r '.id
               | if length > 0 then .[0].id else empty end')
-          echo "Last artifact id: ${{ LAST_WORKFLOW_ID }}"
-          curl -o .sbom/carryover.zip "https://api.github.com/repos/ssc-dsai/canchat-v2/actions/artifacts/${{ LAST_ARTIFACT_ID }}/zip"
+          echo "Last artifact id: ${LAST_WORKFLOW_ID}"
+          curl -o .sbom/carryover.zip "https://api.github.com/repos/ssc-dsai/canchat-v2/actions/artifacts/${LAST_ARTIFACT_ID}/zip"
 
       - name: Generate Current SBOM CDX format
         id: current-sbom-cdx
