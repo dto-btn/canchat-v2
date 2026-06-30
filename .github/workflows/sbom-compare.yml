@@ -13,14 +13,14 @@ name: SBOM compare
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
-      - dev
+#    branches:
+#      - main
+#      - dev
 
   pull_request:
-    branches:
-      - main
-      - dev
+#    branches:
+#      - main
+#      - dev
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
