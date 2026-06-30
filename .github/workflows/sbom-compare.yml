@@ -115,26 +115,20 @@ jobs:
         id: compare-sbom-cdx
         continue-on-error: true
         run: sbomdiff .sbom/previous.cdx.json .sbom/current.cdx.json --sbom cyclonedx --format text > .sbom/comparison.cdx.md
-
-      - name: Get PR number
-        id: get-pr-number
-        run: |
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            PR_NUMBER=$(jq -r '.number' "$GITHUB_EVENT_PATH")
-            echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
-          elif [ "${{ github.event_name }}" == "push" ]; then
-            echo "pr_number=none (push)" >> $GITHUB_OUTPUT
-          elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "pr_number=none (workflow_dispatch)" >> $GITHUB_OUTPUT
-          else
-            echo "pr_number=none" >> $GITHUB_OUTPUT
-          fi
        
       - name: create summary
         id: create-summary
         run: |
           TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S %Z")
-          echo "# Pull Request Number: ${{ steps.get-pr-number.outputs.pr_number }}"  > .sbom/comparison.md
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "# Pull Request Number: $(jq -r '.number' "$GITHUB_EVENT_PATH")"  > .sbom/comparison.md
+          elif [ "${{ github.event_name }}" == "push" ]; then
+            echo "# Push Commit"  > .sbom/comparison.md
+          elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "# Workflow Dispatch"  > .sbom/comparison.md
+          else
+            echo "# Type unknown"  > .sbom/comparison.md
+          fi
           echo "## Run Timestamp: $TIMESTAMP" >> .sbom/comparison.md
           
           # CDX version
