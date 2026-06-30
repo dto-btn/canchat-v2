@@ -75,6 +75,13 @@ jobs:
             | jq -r '.artifacts
               | if length > 0 then .[0].archive_download_url else empty end')
           echo "Archive download URL: ${ARCHIVE_DOWNLOAD_URL}"
+          if [ -z "${ARCHIVE_DOWNLOAD_URL+x}" ]; then
+            echo "Variable is unset."
+          elif [ -z "$ARCHIVE_DOWNLOAD_URL" ]; then
+            echo "Variable is set but empty."
+          else
+            echo "Variable has a value: '$my_var'"
+          fi
           curl -sS -L -o .sbom/carryover.zip -H "Authorization: token ${{secrets.GITHUB_TOKEN}}" "${ARCHIVE_DOWNLOAD_URL}"
           unzip .sbom/carryover.zip -d .sbom
           ls -R .sbom
