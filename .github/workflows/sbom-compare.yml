@@ -13,9 +13,9 @@ name: SBOM compare
 on:
   workflow_dispatch:
   push:
-#    branches:
-#      - main
-#      - dev
+    branches:
+      - main
+      - dev
 
   pull_request:
 #    branches:
