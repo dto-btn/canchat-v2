@@ -130,13 +130,9 @@ jobs:
           # CDX version
           echo "" >> .sbom/comparison.md
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo "### Comparison of current CDX SBOM with base repository" >> .sbom/comparison.md
-          elif [ "${{ github.event_name }}" == "push" ]; then
-            echo "### Comparison of current CDX SBOM with previous commit" >> .sbom/comparison.md
-          elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "### Comparison of current CDX SBOM with base repo" >> .sbom/comparison.md
+            echo "### Comparison to base repository" >> .sbom/comparison.md
           else
-            echo "### Comparison not completed" >> .sbom/comparison.md
+            echo "### Comparison to previous commit" >> .sbom/comparison.md
           fi
           cat .sbom/comparison.cdx.md >> .sbom/comparison.md # copy differnces to the historic version
 
