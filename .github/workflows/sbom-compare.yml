@@ -1,5 +1,5 @@
 # download previous compare history for this branch
-# - continue-on-error whenever this is a first run and no file is available to download
+# - continue-on-error whenever this is a first run for the selected branch BECAUSE there is no history file is available to download
 # create a current SBOM
 # create a previous SBOM from:
 #  - pull_request, use base repository
