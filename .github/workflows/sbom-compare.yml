@@ -65,8 +65,9 @@ jobs:
           else
             BRANCH_WITH_CARRYOVER=${{ github.ref_name }}
           fi
-          ARTIFACTS_URL=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/ssc-dsai/canchat-v2/actions/workflows/sbom-compare.yml/runs?status=success&branch=${BRANCH_WITH_CARRYOVER}" \
+          WORKFLOW_HISTORY_URL="https://api.github.com/repos/ssc-dsai/canchat-v2/actions/workflows/sbom-compare.yml/runs?status=success&branch=${BRANCH_WITH_CARRYOVER}"
+          echo "Workflow History URL: ${WORKFLOW_HISTORY_URL}"
+          ARTIFACTS_URL=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "${WORKFLOW_HISTORY_URL}" \
             | jq -r '.workflow_runs
               | if length > 0 then .[0].artifacts_url else empty end')
           echo "Artifacts URL: ${ARTIFACTS_URL}"
