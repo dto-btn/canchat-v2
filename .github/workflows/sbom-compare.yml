@@ -61,16 +61,14 @@ jobs:
         continue-on-error: true
         run: |
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            ARTIFACTS_URL=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/repos/ssc-dsai/canchat-v2/actions/workflows/sbom-compare.yml/runs?status=success&branch=${{ github.head_ref }}" \
-              | jq -r '.workflow_runs
-                | if length > 0 then .[0].artifacts_url else empty end')
+            BRANCH_WITH_CARRYOVER=${{ github.head_ref }}
           else
-            ARTIFACTS_URL=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/repos/ssc-dsai/canchat-v2/actions/workflows/sbom-compare.yml/runs?status=success&branch=${{ github.ref_name }}" \
-              | jq -r '.workflow_runs
-                | if length > 0 then .[0].artifacts_url else empty end')
+            BRANCH_WITH_CARRYOVER=${{ github.ref_name }}
           fi
+          ARTIFACTS_URL=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/ssc-dsai/canchat-v2/actions/workflows/sbom-compare.yml/runs?status=success&branch=${BRANCH_WITH_CARRYOVER}" \
+            | jq -r '.workflow_runs
+              | if length > 0 then .[0].artifacts_url else empty end')
           echo "Artifacts URL: ${ARTIFACTS_URL}"
           ARCHIVE_DOWNLOAD_URL=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "${ARTIFACTS_URL}?name=carryover.zip" \
             | jq -r '.artifacts
