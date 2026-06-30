@@ -130,7 +130,7 @@ jobs:
           # CDX version
           echo "" >> .sbom/comparison.md
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo "### Comparison of current CDX SBOM with BASE repository" >> .sbom/comparison.md
+            echo "### Comparison of current CDX SBOM with base repository" >> .sbom/comparison.md
           elif [ "${{ github.event_name }}" == "push" ]; then
             echo "### Comparison of current CDX SBOM with previous commit" >> .sbom/comparison.md
           elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
