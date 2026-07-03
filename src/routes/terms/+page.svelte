@@ -2,33 +2,85 @@
 	import { getI18n } from '$lib/utils/context';
 	import { goto } from '$app/navigation';
 	import { acceptTerms, getTermsStatus } from '$lib/apis/terms';
+	import {
+		TERMS_SUPPORT_EMAIL,
+		TERMS_MAX_RETRY_ATTEMPTS,
+		TERMS_RETRY_DELAY_MS
+	} from '$lib/constants';
+	import { toast } from 'svelte-sonner';
 	import { onMount } from 'svelte';
 
 	const i18n = getI18n();
+
 	let accepting = false;
 	let accepted = false;
+	let checkingTermsStatus = true;
+	let termsStatusUnavailable = false;
+	let acceptTermsFailureCount = 0;
 
-	async function handleAccept() {
+	const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+	const runWithRetry = async (operation, maxAttempts = TERMS_MAX_RETRY_ATTEMPTS) => {
+		let lastError;
+		for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+			try {
+				return await operation(attempt);
+			} catch (error) {
+				lastError = error;
+				if (attempt < maxAttempts) {
+					await sleep(TERMS_RETRY_DELAY_MS * attempt);
+				}
+			}
+		}
+
+		if (lastError instanceof Error) {
+			throw lastError;
+		}
+
+		throw new Error(`Operation failed after ${maxAttempts} retries`);
+	};
+
+	const loadTermsStatus = async () => {
+		checkingTermsStatus = true;
+		termsStatusUnavailable = false;
+
+		try {
+			const status = await runWithRetry(
+				() => getTermsStatus(localStorage.token),
+				TERMS_MAX_RETRY_ATTEMPTS
+			);
+			accepted = !!status?.accepted_at;
+		} catch (e) {
+			termsStatusUnavailable = true;
+		} finally {
+			checkingTermsStatus = false;
+		}
+	};
+
+	const handleAccept = async () => {
 		accepting = true;
 		try {
-			await acceptTerms(localStorage.token);
+			await runWithRetry(() => acceptTerms(localStorage.token), TERMS_MAX_RETRY_ATTEMPTS);
+			acceptTermsFailureCount = 0;
+			toast.success('Terms accepted. Redirecting to CANChat.');
 			await goto('/');
 		} catch (e) {
-			console.error('Failed to accept terms:', e);
+			acceptTermsFailureCount += 1;
+			if (acceptTermsFailureCount >= TERMS_MAX_RETRY_ATTEMPTS) {
+				toast.error(
+					`Failed to accept terms after multiple attempts. Please retry, or contact CANChat Support.`
+				);
+			} else {
+				toast.error(`Failed to accept terms. Please try again.`);
+			}
+		} finally {
 			accepting = false;
 		}
-	}
+	};
 
 	onMount(async () => {
 		await $i18n.changeLanguage('en-GB');
-		try {
-			const status = await getTermsStatus(localStorage.token);
-			if (status.accepted_at) {
-				accepted = true;
-			}
-		} catch (e) {
-			console.error('Failed to fetch terms status:', e);
-		}
+		await loadTermsStatus();
 	});
 </script>
 
@@ -42,7 +94,7 @@
 				{#if accepted}
 					<a
 						href="/"
-						class="px-4 py-2 mr-2 bg-purple-800 text-white rounded-md hover:bg-purple-800/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+						class="px-4 py-2 mr-2 bg-purple-800 text-white rounded-md hover:bg-purple-800/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 dark:focus-visible:ring-purple-300"
 						on:click={() => goto('/')}
 					>
 						Return to CANChat
@@ -50,7 +102,7 @@
 				{/if}
 				<a
 					href="/conditions"
-					class="px-4 py-2 bg-purple-800 text-white rounded-md hover:bg-purple-800/80 transition-colors"
+					class="px-4 py-2 bg-purple-800 text-white rounded-md hover:bg-purple-800/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 dark:focus-visible:ring-purple-300"
 				>
 					Français
 				</a>
@@ -550,7 +602,7 @@
 					8. Intellectual Property (IP) Rights
 				</h2>
 				<div class="mb-4">
-					<h3 class="text-lg font-semibold mb-2 text-pink-500 dark:text-pink-400">
+					<h3 class="text-lg font-semibold mb-2 text-purple-700 dark:text-purple-400">
 						8.1 Input Data
 					</h3>
 					<ul class="list-disc pl-6">
@@ -566,7 +618,7 @@
 					</ul>
 				</div>
 				<div>
-					<h3 class="text-lg font-semibold mb-2 text-pink-500 dark:text-pink-400">
+					<h3 class="text-lg font-semibold mb-2 text-purple-700 dark:text-purple-400">
 						8.2 Output Content
 					</h3>
 					<ul class="list-disc pl-6">
@@ -811,27 +863,79 @@
 			</div>
 		</div>
 
-		<div class="flex justify-center">
+		<div class="mt-3 flex justify-center">
 			{#if accepted}
 				<button
+					type="button"
 					on:click={() => goto('/')}
-					disabled={accepting}
-					class="px-4 py-2 mt-3 bg-purple-800 text-white p-4 rounded-md hover:bg-purple-800/80 disabled:opacity-50 transition-colors"
+					disabled={accepting || checkingTermsStatus}
+					aria-busy={accepting || checkingTermsStatus}
+					class="px-4 py-2 bg-purple-800 text-white p-4 rounded-md hover:bg-purple-800/80 disabled:opacity-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 dark:focus-visible:ring-purple-300"
 				>
-					Return to CANChat
-				</button>
-			{:else}
-				<button
-					on:click={handleAccept}
-					disabled={accepting}
-					class="px-4 py-2 mt-3 bg-purple-800 text-white p-4 rounded-md hover:bg-purple-800/80 disabled:opacity-50 transition-colors"
-				>
-					{#if accepting}
-						Updating...
+					{#if checkingTermsStatus}
+						Checking terms...
 					{:else}
-						I Accept Terms
+						Return to CANChat
 					{/if}
 				</button>
+			{:else}
+				<div
+					class="flex w-full max-w-4xl flex-col items-center justify-center gap-2 sm:flex-row sm:flex-wrap sm:gap-3"
+				>
+					{#if !termsStatusUnavailable}
+						<button
+							type="button"
+							on:click={handleAccept}
+							disabled={accepting || checkingTermsStatus}
+							aria-busy={accepting || checkingTermsStatus}
+							class="px-4 py-2 bg-purple-800 text-white p-4 rounded-md hover:bg-purple-800/80 disabled:opacity-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 dark:focus-visible:ring-purple-300"
+						>
+							{#if checkingTermsStatus}
+								Checking terms...
+							{:else if accepting}
+								Updating...
+							{:else}
+								I Accept Terms
+							{/if}
+						</button>
+					{/if}
+					{#if termsStatusUnavailable}
+						<div
+							role="alert"
+							class="inline-flex max-w-xl items-start gap-2 rounded-md border border-red-700/90 bg-white px-3 py-2 text-sm text-red-900 shadow-sm dark:border-red-400 dark:bg-gray-950 dark:text-red-200"
+						>
+							<span
+								class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-current text-xs font-bold"
+								>!</span
+							>
+							<p>
+								Unable to verify terms status. Please contact
+								<a
+									class="font-semibold underline underline-offset-2"
+									href={`mailto:${TERMS_SUPPORT_EMAIL}`}>CANChat Support</a
+								>.
+							</p>
+						</div>
+					{/if}
+					{#if acceptTermsFailureCount >= TERMS_MAX_RETRY_ATTEMPTS}
+						<div
+							role="alert"
+							class="inline-flex max-w-xl items-start gap-2 rounded-md border border-red-700/90 bg-white px-3 py-2 text-sm text-red-900 shadow-sm dark:border-red-400 dark:bg-gray-950 dark:text-red-200"
+						>
+							<span
+								class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-current text-xs font-bold"
+								>!</span
+							>
+							<p>
+								Repeated attempts to accept terms have failed. You can keep retrying, or contact
+								<a
+									class="font-semibold underline underline-offset-2"
+									href={`mailto:${TERMS_SUPPORT_EMAIL}`}>CANChat Support</a
+								>.
+							</p>
+						</div>
+					{/if}
+				</div>
 			{/if}
 		</div>
 	</div>

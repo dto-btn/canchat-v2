@@ -2,34 +2,85 @@
 	import { getI18n } from '$lib/utils/context';
 	import { goto } from '$app/navigation';
 	import { acceptTerms, getTermsStatus } from '$lib/apis/terms';
+	import {
+		TERMS_SUPPORT_EMAIL,
+		TERMS_MAX_RETRY_ATTEMPTS,
+		TERMS_RETRY_DELAY_MS
+	} from '$lib/constants';
+	import { toast } from 'svelte-sonner';
 	import { onMount } from 'svelte';
 
 	const i18n = getI18n();
 
 	let accepting = false;
 	let accepted = false;
+	let checkingTermsStatus = true;
+	let termsStatusUnavailable = false;
+	let acceptTermsFailureCount = 0;
+
+	const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+	const runWithRetry = async (operation, maxAttempts = TERMS_MAX_RETRY_ATTEMPTS) => {
+		let lastError;
+		for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+			try {
+				return await operation(attempt);
+			} catch (error) {
+				lastError = error;
+				if (attempt < maxAttempts) {
+					await sleep(TERMS_RETRY_DELAY_MS * attempt);
+				}
+			}
+		}
+
+		if (lastError instanceof Error) {
+			throw lastError;
+		}
+
+		throw new Error(`Operation failed after ${maxAttempts} retries`);
+	};
+
+	const loadTermsStatus = async () => {
+		checkingTermsStatus = true;
+		termsStatusUnavailable = false;
+
+		try {
+			const status = await runWithRetry(
+				() => getTermsStatus(localStorage.token),
+				TERMS_MAX_RETRY_ATTEMPTS
+			);
+			accepted = !!status?.accepted_at;
+		} catch (e) {
+			termsStatusUnavailable = true;
+		} finally {
+			checkingTermsStatus = false;
+		}
+	};
 
 	async function handleAccept() {
 		accepting = true;
 		try {
-			await acceptTerms(localStorage.token);
+			await runWithRetry(() => acceptTerms(localStorage.token), TERMS_MAX_RETRY_ATTEMPTS);
+			acceptTermsFailureCount = 0;
+			toast.success('Conditions acceptées. Redirection vers CANChat.');
 			await goto('/');
 		} catch (e) {
-			console.error('Failed to accept terms:', e);
+			acceptTermsFailureCount += 1;
+			if (acceptTermsFailureCount >= TERMS_MAX_RETRY_ATTEMPTS) {
+				toast.error(
+					"Échec après plusieurs tentatives. Réessayez ou contactez l'assistance CANChat."
+				);
+			} else {
+				toast.error("Échec de l'acceptation des conditions. Veuillez réessayer.");
+			}
+		} finally {
 			accepting = false;
 		}
 	}
 
 	onMount(async () => {
 		await $i18n.changeLanguage('fr-CA');
-		try {
-			const status = await getTermsStatus(localStorage.token);
-			if (status.accepted_at) {
-				accepted = true;
-			}
-		} catch (e) {
-			console.error('Failed to fetch terms status:', e);
-		}
+		await loadTermsStatus();
 	});
 </script>
 
@@ -580,7 +631,7 @@
 					8. Droits de propriété intellectuelle (PI)
 				</h2>
 				<div class="mb-4">
-					<h3 class="text-lg font-semibold mb-2 text-pink-500 dark:text-pink-400">
+					<h3 class="text-lg font-semibold mb-2 text-purple-700 dark:text-purple-400">
 						8.1 Données d'entrée
 					</h3>
 					<ul class="list-disc pl-6">
@@ -598,7 +649,7 @@
 					</ul>
 				</div>
 				<div>
-					<h3 class="text-lg font-semibold mb-2 text-pink-500 dark:text-pink-400">
+					<h3 class="text-lg font-semibold mb-2 text-purple-700 dark:text-purple-400">
 						8.2 Contenu de sortie
 					</h3>
 					<ul class="list-disc pl-6">
@@ -855,32 +906,85 @@
 			<div class="mt-3">
 				<p class="font-semibold">
 					En acceptant d'utiliser CANChat, vous comprenez vos responsabilités et acceptez de
-					respecter ces Conditions d'utilisation.
+					respecter ces conditions d'utilisation.
 				</p>
 			</div>
 		</div>
 
-		<div class="flex justify-center">
+		<div class="mt-3 flex justify-center">
 			{#if accepted}
 				<button
+					type="button"
 					on:click={() => goto('/')}
-					disabled={accepting}
-					class="px-4 py-2 mt-3 bg-purple-800 text-white p-4 rounded-md hover:bg-purple-800/80 disabled:opacity-50 transition-colors"
+					disabled={accepting || checkingTermsStatus}
+					aria-busy={accepting || checkingTermsStatus}
+					class="px-4 py-2 bg-purple-800 text-white p-4 rounded-md hover:bg-purple-800/80 disabled:opacity-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 dark:focus-visible:ring-purple-300"
 				>
-					Retour à CANChat
-				</button>
-			{:else}
-				<button
-					on:click={handleAccept}
-					disabled={accepting}
-					class="px-4 py-2 mt-3 bg-purple-800 text-white p-4 rounded-md hover:bg-purple-800/80 disabled:opacity-50 transition-colors"
-				>
-					{#if accepting}
-						Mise à jour...
+					{#if checkingTermsStatus}
+						Vérification des conditions...
 					{:else}
-						J'accepte les conditions
+						Retour à CANChat
 					{/if}
 				</button>
+			{:else}
+				<div
+					class="flex w-full max-w-4xl flex-col items-center justify-center gap-2 sm:flex-row sm:flex-wrap sm:gap-3"
+				>
+					{#if !termsStatusUnavailable}
+						<button
+							type="button"
+							on:click={handleAccept}
+							disabled={accepting || checkingTermsStatus}
+							aria-busy={accepting || checkingTermsStatus}
+							class="px-4 py-2 bg-purple-800 text-white p-4 rounded-md hover:bg-purple-800/80 disabled:opacity-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 dark:focus-visible:ring-purple-300"
+						>
+							{#if checkingTermsStatus}
+								Vérification des conditions...
+							{:else if accepting}
+								Mise à jour...
+							{:else}
+								J'accepte les conditions
+							{/if}
+						</button>
+					{/if}
+					{#if termsStatusUnavailable}
+						<div
+							role="alert"
+							class="inline-flex max-w-xl items-start gap-2 rounded-md border border-red-700/90 bg-white px-3 py-2 text-sm text-red-900 shadow-sm dark:border-red-400 dark:bg-gray-950 dark:text-red-200"
+						>
+							<span
+								class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-current text-xs font-bold"
+								>!</span
+							>
+							<p>
+								Impossible de vérifier l'état des conditions. Veuillez contacter
+								<a
+									class="font-semibold underline underline-offset-2"
+									href={`mailto:${TERMS_SUPPORT_EMAIL}`}>l'assistance CANChat</a
+								>.
+							</p>
+						</div>
+					{/if}
+					{#if acceptTermsFailureCount >= TERMS_MAX_RETRY_ATTEMPTS}
+						<div
+							role="alert"
+							class="inline-flex max-w-xl items-start gap-2 rounded-md border border-red-700/90 bg-white px-3 py-2 text-sm text-red-900 shadow-sm dark:border-red-400 dark:bg-gray-950 dark:text-red-200"
+						>
+							<span
+								class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-current text-xs font-bold"
+								>!</span
+							>
+							<p>
+								Les tentatives répétées d'acceptation ont échoué. Vous pouvez réessayer, ou
+								contacter
+								<a
+									class="font-semibold underline underline-offset-2"
+									href={`mailto:${TERMS_SUPPORT_EMAIL}`}>l'assistance CANChat</a
+								>.
+							</p>
+						</div>
+					{/if}
+				</div>
 			{/if}
 		</div>
 	</div>

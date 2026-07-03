@@ -65,6 +65,16 @@
 
 	const BREAKPOINT = 768;
 
+	const setDocumentLanguage = (language) => {
+		if (typeof document === 'undefined' || !language) {
+			return;
+		}
+
+		document.documentElement.lang = language;
+	};
+
+	$: setDocumentLanguage($i18n?.language);
+
 	const setupSocket = async (enableWebsocket) => {
 		const _socket = io(`${WEBUI_BASE_URL}` || undefined, {
 			reconnection: true,
