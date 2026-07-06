@@ -65,7 +65,7 @@ class Model(Base):
         The human-readable display name of the model.
     """
 
-    name_fr = Column(Text)
+    name_fr = Column(Text, nullable=True)
     """
         The human-readable display name of the model in French.
     """
@@ -109,7 +109,7 @@ class ModelModel(BaseModel):
     base_model_id: Optional[str] = None
 
     name: str
-    name_fr: str
+    name_fr: Optional[str] = None
     params: ModelParams
     meta: ModelMeta
 
@@ -139,7 +139,7 @@ class ModelForm(BaseModel):
     id: str
     base_model_id: Optional[str] = None
     name: str
-    name_fr: str
+    name_fr: Optional[str] = None
     meta: ModelMeta
     params: ModelParams
     access_control: Optional[dict] = None

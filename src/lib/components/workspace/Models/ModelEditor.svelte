@@ -113,6 +113,7 @@
 		info.id = id;
 		info.name = name;
 		info.name_fr = name_fr;
+
 		if (id === '') {
 			toast.error('Model ID is required.');
 			loading = false;
@@ -121,12 +122,6 @@
 
 		if (name === '') {
 			toast.error('Model Name is required.');
-			loading = false;
-			return;
-		}
-
-		if (name_fr === '') {
-			toast.error('Model Name in French is required.');
 			loading = false;
 			return;
 		}
@@ -473,7 +468,6 @@
 								class="text-sm w-full bg-transparent outline-none"
 								placeholder={$i18n.t('Enter the model name in French (fr-ca)')}
 								bind:value={name_fr}
-								required
 							/>
 						</div>
 					</div>
