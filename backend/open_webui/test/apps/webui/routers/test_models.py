@@ -32,6 +32,7 @@ class TestModels(AbstractPostgresTest):
                     "id": "my-model",
                     "base_model_id": "base-model-id",
                     "name": "Hello World",
+                    "name_fr": "Bonjour le monde",
                     "meta": {
                         "profile_image_url": "/static/favicon.png",
                         "description": "description",
@@ -56,6 +57,7 @@ class TestModels(AbstractPostgresTest):
         data = response.json()[0]
         assert data["id"] == "my-model"
         assert data["name"] == "Hello World"
+        assert data["name_fr"] == "Bonjour le monde"
 
         with mock_webui_user(id="2", role="admin"):
             response = self.fast_api_client.delete(
