@@ -322,7 +322,12 @@ from open_webui.utils.auth import (
 from open_webui.utils.oauth import oauth_manager
 from open_webui.utils.security_headers import SecurityHeadersMiddleware
 
-from open_webui.tasks import stop_task, list_tasks  # Import from tasks.py
+from open_webui.tasks import (
+    list_tasks,
+    start_task_cancellation_listener,
+    stop_task,
+    stop_task_cancellation_listener,
+)  # Import from tasks.py
 
 if SAFE_MODE:
     print("SAFE MODE ENABLED")
@@ -392,6 +397,14 @@ async def lifespan(app: FastAPI):
             f"Continuing without Redis (single-instance / local dev mode). Error: {e}"
         )
         app.state.redis_lock_manager = None
+
+    try:
+        await start_task_cancellation_listener()
+    except Exception as e:
+        log.warning(
+            f"Shared task cancellation listener unavailable. "
+            f"Cross-instance chat stop will fall back to local-only behavior. Error: {e}"
+        )
 
     if RESET_CONFIG_ON_START:
         reset_config()
@@ -546,6 +559,12 @@ async def lifespan(app: FastAPI):
                 log.info("Redis lock manager cleanup completed")
             except Exception as e:
                 log.error(f"Error during Redis lock manager cleanup: {e}")
+
+        try:
+            await stop_task_cancellation_listener()
+            log.info("Shared task cancellation listener cleanup completed")
+        except Exception as e:
+            log.error(f"Error during shared task cancellation cleanup: {e}")
 
 
 app = FastAPI(

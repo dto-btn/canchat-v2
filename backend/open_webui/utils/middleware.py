@@ -9,7 +9,6 @@ import asyncio
 from typing import Optional
 import json
 import inspect
-from uuid import uuid4
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -1847,9 +1846,9 @@ async def process_chat_response(
         return response
 
     if event_emitter:
-        task_id = str(uuid4())  # Create a unique task ID.
-
         # Handle as a background task
+        task_id = None
+
         async def post_response_handler(response, events):
             message = Chats.get_message_by_id_and_message_id(
                 metadata["chat_id"], metadata["message_id"]
@@ -2171,7 +2170,15 @@ async def process_chat_response(
                 await response.background()
 
         # background_tasks.add_task(post_response_handler, response, events)
-        task_id, _ = create_task(post_response_handler(response, events))
+        task_id, _ = await create_task(
+            post_response_handler(response, events),
+            metadata={
+                "chat_id": metadata.get("chat_id"),
+                "message_id": metadata.get("message_id"),
+                "session_id": metadata.get("session_id"),
+                "user_id": metadata.get("user_id"),
+            },
+        )
         return {"status": True, "task_id": task_id}
 
     else:

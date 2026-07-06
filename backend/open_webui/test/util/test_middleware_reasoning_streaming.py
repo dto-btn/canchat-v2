@@ -59,7 +59,7 @@ async def _run_streaming_response(monkeypatch, chunks):
     def fake_get_message(_chat_id, _message_id):
         return dict(message_state)
 
-    def fake_create_task(coroutine):
+    async def fake_create_task(coroutine, metadata=None):
         nonlocal created_task
         created_task = asyncio.create_task(coroutine)
         return ("task-id", created_task)
