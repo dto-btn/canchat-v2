@@ -1491,7 +1491,7 @@ async def _load_urls_concurrently(
                 try:
                     index, url, url_docs = task.result()
                 except (TimeoutError, asyncio.TimeoutError):
-                    raise
+                    continue
                 except Exception as e:
                     log.debug(
                         "[process_web_search] url load task failed with error: %s",
@@ -1514,6 +1514,8 @@ async def _load_urls_concurrently(
                     break
                 next_index_to_schedule += 1
                 slots_available -= 1
+    except asyncio.CancelledError:
+        pass
     finally:
         if pending_tasks:
             for task in list(pending_tasks):
