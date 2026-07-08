@@ -92,6 +92,7 @@ export type Model = OpenAIModel | OllamaModel;
 type BaseModel = {
 	id: string;
 	name: string;
+	name_fr?: string;
 	info?: ModelConfig;
 	owned_by: 'ollama' | 'openai' | 'arena';
 };
