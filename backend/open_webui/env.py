@@ -420,9 +420,3 @@ OFFLINE_MODE = os.environ.get("OFFLINE_MODE", "false").lower() == "true"
 
 if OFFLINE_MODE:
     os.environ["HF_HUB_OFFLINE"] = "1"
-
-####################################
-# Terms Of Use
-####################################
-
-TERMS_VERSION = os.environ.get("TERMS_VERSION", "0.0.0")

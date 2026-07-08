@@ -20,6 +20,7 @@ export const TERMS_RETRY_DELAY_MS = 600;
 
 export const WEBUI_VERSION = APP_VERSION;
 export const WEBUI_BUILD_HASH = APP_BUILD_HASH;
+export const TERMS_VERSION = APP_TERMS_VERSION;
 export const REQUIRED_OLLAMA_VERSION = '0.1.16';
 
 export const SUPPORTED_FILE_TYPE = [

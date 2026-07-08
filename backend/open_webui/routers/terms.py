@@ -4,7 +4,7 @@ from open_webui.models.terms import (
     Terms,
     TermsModel,
 )
-from open_webui.env import SRC_LOG_LEVELS, TERMS_VERSION
+from open_webui.env import SRC_LOG_LEVELS
 from fastapi import APIRouter, Depends, HTTPException, status
 from open_webui.utils.auth import get_current_user, get_admin_user
 
@@ -19,9 +19,14 @@ router = APIRouter()
 
 
 @router.post("/accept", response_model=TermsModel)
-async def accept_terms(user=Depends(get_current_user)):
+async def accept_terms(terms_version: str | None, user=Depends(get_current_user)):
+    if not terms_version or not terms_version.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="terms_version is required",
+        )
     try:
-        terms = Terms.accept(user.id, version=TERMS_VERSION)
+        terms = Terms.accept(user.id, terms_version)
     except Exception as e:
         log.exception(f"accept_terms failed for user {user.id}")
         raise HTTPException(
@@ -41,10 +46,15 @@ async def accept_terms(user=Depends(get_current_user)):
 ############################
 
 
-@router.get("/status", response_model=TermsModel | None)
-async def get_terms_status(user=Depends(get_current_user)):
+@router.get("/status/{terms_version}", response_model=TermsModel | None)
+async def get_terms_status(terms_version: str | None, user=Depends(get_current_user)):
+    if not terms_version or not terms_version.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="terms_version is required",
+        )
     try:
-        return Terms.get_terms_by_user_id(user.id, version=TERMS_VERSION)
+        return Terms.get_terms_by_user_id(user.id, terms_version)
     except Exception as e:
         log.exception(f"get_terms_status failed for user {user.id}")
         raise HTTPException(
@@ -58,15 +68,22 @@ async def get_terms_status(user=Depends(get_current_user)):
 ############################
 
 
-@router.get("/user/{user_id}", response_model=TermsModel | None)
-async def get_user_terms(user_id: str, user=Depends(get_admin_user)):
+@router.get("/user/{user_id}/{terms_version}", response_model=TermsModel | None)
+async def get_user_terms(
+    user_id: str, terms_version: str | None, user=Depends(get_admin_user)
+):
     if not user_id or not user_id.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="user_id is required",
         )
+    if not terms_version or not terms_version.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="terms_version is required",
+        )
     try:
-        return Terms.get_terms_by_user_id(user_id, version=TERMS_VERSION)
+        return Terms.get_terms_by_user_id(user_id, terms_version)
     except Exception as e:
         log.exception(f"get_user_terms failed for user_id {user_id}")
         raise HTTPException(
