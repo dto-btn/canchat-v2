@@ -5,14 +5,37 @@ Tous les changements notables apportés à ce projet seront documentés dans ce 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage sémantique](https://semver.org/lang/fr/spec/v2.0.0.html).
 
+## [0.5.7-ccv2-1.15.1] - 2026-06-19
+
+### Modifié
+
+- **✨ Points de terminaison de santé** : Mise à jour des points de terminaison de santé pour offrir une meilleure visibilité sur l'état des services.
+- **📦 Dépendances** : Mise à jour des dépendances pour corriger les vulnérabilités.
+
+## [0.5.7-ccv2-1.15.1] - 2026-06-17
+
+### Modifié
+
+- **🔒 Affichage de l'URL Redis** : Retrait de l'affichage de l'URL Redis pour des raisons de sécurité.
+- **📦 Dépendances** : Mise à jour des dépendances pour corriger des vulnérabilités.
+- **🔗 Lien du dépôt** : Retrait du lien vers un dépôt différent.
+
+### Corrigé
+
+- **🧮 Encapsulation TeX** : Correction de la fonctionnalité d'encapsulation TeX au traitement du contenu des réponses.
+- **🧠 Modèle d'invite** : Correction du modèle d'invite pour ne pas ajouter de raisonnement/chaîne de pensées.
+- **🏗️ Flux de travail Docker Build** : Correction de la vérification de l'existence du dossier de cache avant df dans le flux de travail docker-build.
+- **📥 Importation SharePoint** : Correction de la gestion de l'importation pour SharePointOAuthClient et ajustement de requirements.txt pour les problèmes de dépendances.
+- **📄 Pages d'erreur** : Mise à jour des messages des pages d'erreur pour une meilleure clarté et orientation des utilisateurs.
+
 ## [0.5.7-ccv2-1.15.0] - 2026-05-19
 
-### Added
+### Ajouté
 
 - **🧪 Tests E2E Playwright** : Ajout d'une couverture de tests exhaustive pour le téléversement de documents et les flux d'authentification.
 - **📝 Journalisation de la recherche web** : Ajout d'une journalisation de diagnostic améliorée pour les opérations de recherche web.
 
-### Changed
+### Modifié
 
 - **🏢 Intégration MCP SharePoint** : Refonte de l'intégration pour prendre entièrement en charge les configurations multi-départements.
 - **📦 Dépendances de sécurité** : Mise à jour de plusieurs dépendances pour corriger des problèmes de vulnérabilités connus.
@@ -21,7 +44,7 @@ et ce projet adhère au [Versionnage sémantique](https://semver.org/lang/fr/spe
 - **🔗 Liens de recherche web** : Modification du routage des liens afin que les résultats de la recherche web ne pointent plus directement vers Google.
 - **🏷️ Étiquette de suppression de chat** : Mise à jour de l'étiquette de l'interface utilisateur concernant la suppression automatique des chats après 30 jours d'inactivité.
 
-### Fixed
+### Corrigé
 
 - **🧹 Assainissement Markdown** : Correction d'un problème empêchant l'assainissement adéquat du contenu markdown.
 - **📱 Interface d'ancrage Wikipédia** : Correction d'un bogue d'affichage affectant l'étiquette d'ancrage Wikipédia sur les petits écrans.
