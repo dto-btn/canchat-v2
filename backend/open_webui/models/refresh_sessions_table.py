@@ -19,6 +19,12 @@ class RefreshSessionsTable:
         session_id: Optional[str] = None,
         meta: Optional[dict] = None,
     ) -> Optional[RefreshSessionModel]:
+        """Create a refresh-session row.
+
+        A caller may provide ``session_id`` because the opaque refresh token embeds
+        that identifier before the row is persisted. Initial sign-in creates the
+        token first, then stores the matching row under the same id.
+        """
         current_time = int(time.time())
 
         with get_db() as db:
@@ -115,10 +121,8 @@ class RefreshSessionsTable:
 
             return RefreshSessionModel.model_validate(refresh_session)
 
-    def revoke_session_by_id(
-        self, session_id: str, revoked_at: Optional[int] = None
-    ) -> bool:
-        current_time = revoked_at if revoked_at is not None else int(time.time())
+    def revoke_session_by_id(self, session_id: str) -> bool:
+        current_time = int(time.time())
 
         with get_db() as db:
             refresh_session = (
@@ -150,6 +154,11 @@ class RefreshSessionsTable:
             return result
 
     def delete_expired_sessions(self, current_time: Optional[int] = None) -> int:
+        """Delete sessions that expired at or before ``current_time``.
+
+        The optional cutoff keeps the helper deterministic for tests and future
+        maintenance jobs that may need to evaluate expiry at a fixed timestamp.
+        """
         expiry_time = current_time if current_time is not None else int(time.time())
 
         with get_db() as db:

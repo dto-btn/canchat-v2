@@ -85,6 +85,14 @@ def seconds_until(
     return expires_at - reference_time
 
 
+def build_refresh_session_meta(request: Request) -> Optional[dict[str, str]]:
+    user_agent = request.headers.get("user-agent")
+    if not user_agent:
+        return None
+
+    return {"user_agent": user_agent}
+
+
 def verify_password(plain_password, hashed_password):
     return (
         pwd_context.verify(plain_password, hashed_password) if hashed_password else None
@@ -93,27 +101,6 @@ def verify_password(plain_password, hashed_password):
 
 def get_password_hash(password):
     return pwd_context.hash(password)
-
-
-def create_access_token(
-    data: dict, expires_delta: Union[timedelta, None] = None
-) -> str:
-    payload = data.copy()
-
-    if expires_delta:
-        expire = datetime.now(UTC) + expires_delta
-        payload.update({"exp": expire})
-
-    encoded_jwt = jwt.encode(payload, SESSION_SECRET, algorithm=ALGORITHM)
-    return encoded_jwt
-
-
-def decode_access_token(token: str) -> Optional[dict]:
-    try:
-        decoded = jwt.decode(token, SESSION_SECRET, algorithms=[ALGORITHM])
-        return decoded
-    except Exception:
-        return None
 
 
 def parse_refresh_token(refresh_token: str) -> tuple[str, str]:
@@ -156,6 +143,15 @@ def verify_refresh_token(refresh_token: str, refresh_token_hash: Optional[str]) 
 
 
 def create_refresh_token(session_id: Optional[str] = None) -> tuple[str, str, str]:
+    """Create an opaque refresh token and its persisted hash.
+
+    Args:
+        session_id: Existing refresh-session id to reuse during rotation. When
+            omitted, a new id is generated for first-time session creation.
+
+    Returns:
+        A tuple of ``(session_id, refresh_token, refresh_token_hash)``.
+    """
     refresh_session_id = session_id or str(uuid.uuid4())
     refresh_token_secret = secrets.token_urlsafe(32)
     refresh_token = (
@@ -166,11 +162,22 @@ def create_refresh_token(session_id: Optional[str] = None) -> tuple[str, str, st
 
 
 def create_token(data: dict, expires_delta: Union[timedelta, None] = None) -> str:
-    return create_access_token(data, expires_delta)
+    payload = data.copy()
+
+    if expires_delta:
+        expire = datetime.now(UTC) + expires_delta
+        payload.update({"exp": expire})
+
+    encoded_jwt = jwt.encode(payload, SESSION_SECRET, algorithm=ALGORITHM)
+    return encoded_jwt
 
 
 def decode_token(token: str) -> Optional[dict]:
-    return decode_access_token(token)
+    try:
+        decoded = jwt.decode(token, SESSION_SECRET, algorithms=[ALGORITHM])
+        return decoded
+    except Exception:
+        return None
 
 
 def get_access_token_expiration(
@@ -345,7 +352,10 @@ def resolve_current_user(
 
     if token is None:
         if require_auth:
-            raise HTTPException(status_code=403, detail="Not authenticated")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated",
+            )
         return None
 
     # auth by api key

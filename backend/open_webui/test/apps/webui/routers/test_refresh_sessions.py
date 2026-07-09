@@ -15,16 +15,9 @@ class TestRefreshSessions(AbstractPostgresTest):
 
     def test_access_token_helpers_keep_legacy_compatibility(self):
         from open_webui.utils.auth import (
-            create_access_token,
             create_token,
-            decode_access_token,
             decode_token,
         )
-
-        access_token = create_access_token(
-            {"id": "user-1"}, expires_delta=timedelta(minutes=5)
-        )
-        assert decode_access_token(access_token)["id"] == "user-1"
 
         legacy_token = create_token(
             {"id": "user-1"}, expires_delta=timedelta(minutes=5)

@@ -35,7 +35,11 @@ from open_webui.config import (
 )
 from open_webui.constants import ERROR_MESSAGES, WEBHOOK_MESSAGES
 from open_webui.env import WEBUI_SESSION_COOKIE_SAME_SITE, WEBUI_SESSION_COOKIE_SECURE
-from open_webui.utils.auth import get_password_hash, issue_tokens_for_user
+from open_webui.utils.auth import (
+    build_refresh_session_meta,
+    get_password_hash,
+    issue_tokens_for_user,
+)
 from open_webui.utils.webhook import post_webhook
 
 log = logging.getLogger(__name__)
@@ -315,10 +319,7 @@ class OAuthManager:
             response=response,
             access_token_expires_in=request.app.state.config.ACCESS_TOKEN_EXPIRES_IN,
             refresh_token_expires_in=request.app.state.config.REFRESH_TOKEN_EXPIRES_IN,
-            meta={
-                "ip": request.client.host if request.client else None,
-                "user_agent": request.headers.get("user-agent"),
-            },
+            meta=build_refresh_session_meta(request),
         )
 
         oauth_id_token = token.get("id_token")

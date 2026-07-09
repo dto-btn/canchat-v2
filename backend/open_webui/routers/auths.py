@@ -17,7 +17,9 @@ from open_webui.models.auths import (
     UserResponse,
 )
 from open_webui.models.auths_table import Auths
+from open_webui.models.refresh_sessions import RefreshSessionModel
 from open_webui.models.users import Users
+from open_webui.models.users import UserModel
 from open_webui.models.refresh_sessions_table import RefreshSessions
 
 from open_webui.constants import ERROR_MESSAGES, WEBHOOK_MESSAGES
@@ -37,6 +39,7 @@ from open_webui.config import (
 from pydantic import BaseModel
 from open_webui.utils.misc import validate_email_format
 from open_webui.utils.auth import (
+    build_refresh_session_meta,
     clear_legacy_auth_cookie,
     create_api_key,
     bearer_security,
@@ -53,7 +56,7 @@ from open_webui.utils.auth import (
 from open_webui.utils.webhook import post_webhook
 from open_webui.utils.access_control import get_permissions
 
-from typing import Optional
+from typing import Any, NoReturn, Optional
 
 from ssl import CERT_REQUIRED, PROTOCOL_TLS
 from ldap3 import Server, Connection, NONE, Tls
@@ -63,7 +66,7 @@ router = APIRouter()
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["MAIN"])
-ACCESS_TOKEN_DURATION_PATTERN = re.compile(r"^(-1|0|(-?\d+(\.\d+)?)(ms|s|m|h|d|w))$")
+TOKEN_DURATION_PATTERN = re.compile(r"^(-1|0|(-?\d+(\.\d+)?)(ms|s|m|h|d|w))$")
 
 ############################
 # GetSessionUser
@@ -73,15 +76,6 @@ ACCESS_TOKEN_DURATION_PATTERN = re.compile(r"^(-1|0|(-?\d+(\.\d+)?)(ms|s|m|h|d|w
 class SessionUserResponse(Token, UserResponse):
     expires_at: Optional[int] = None
     permissions: Optional[dict] = None
-    domain: Optional[str] = None
-
-
-class AddUserResponse(UserResponse):
-    domain: Optional[str] = None
-
-
-def _get_client_ip(request: Request) -> Optional[str]:
-    return request.client.host if request.client else None
 
 
 def _issue_tokens_for_user(
@@ -98,10 +92,7 @@ def _issue_tokens_for_user(
         refresh_token_expires_in=request.app.state.config.REFRESH_TOKEN_EXPIRES_IN,
         current_refresh_session_id=current_refresh_session_id,
         current_refresh_token_hash=current_refresh_token_hash,
-        meta={
-            "ip": _get_client_ip(request),
-            "user_agent": request.headers.get("user-agent"),
-        },
+        meta=build_refresh_session_meta(request),
     )
 
 
@@ -118,14 +109,18 @@ def _get_active_refresh_session(refresh_token: str):
     return refresh_session
 
 
-def _raise_invalid_refresh_token(refresh_session_id: Optional[str] = None):
+def _raise_invalid_refresh_token(
+    refresh_session_id: Optional[str] = None,
+) -> NoReturn:
     if refresh_session_id is not None:
         RefreshSessions.revoke_session_by_id(refresh_session_id)
 
     raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_REFRESH_TOKEN)
 
 
-def _get_refresh_session_user(refresh_token: str):
+def _get_refresh_session_user(
+    refresh_token: str,
+) -> tuple[RefreshSessionModel, UserModel]:
     refresh_session = _get_active_refresh_session(refresh_token)
     if not verify_refresh_token(refresh_token, refresh_session.token_hash):
         _raise_invalid_refresh_token(refresh_session.id)
@@ -139,10 +134,10 @@ def _get_refresh_session_user(refresh_token: str):
 
 def _build_session_user_response(
     request: Request,
-    user,
+    user: UserModel,
     token: str,
     expires_at: Optional[int],
-):
+) -> dict[str, Any]:
     user_permissions = get_permissions(
         user.id, request.app.state.config.USER_PERMISSIONS
     )
@@ -161,7 +156,7 @@ def _build_session_user_response(
     }
 
 
-def _build_admin_config_response(request: Request):
+def _build_admin_config_response(request: Request) -> dict[str, Any]:
     app_config = request.app.state.config
     return {
         "SHOW_ADMIN_DETAILS": app_config.SHOW_ADMIN_DETAILS,
@@ -173,6 +168,7 @@ def _build_admin_config_response(request: Request):
         "ENABLE_CHANNELS": app_config.ENABLE_CHANNELS,
         "DEFAULT_USER_ROLE": app_config.DEFAULT_USER_ROLE,
         "ACCESS_TOKEN_EXPIRES_IN": app_config.ACCESS_TOKEN_EXPIRES_IN,
+        "REFRESH_TOKEN_EXPIRES_IN": app_config.REFRESH_TOKEN_EXPIRES_IN,
         "JWT_EXPIRES_IN": app_config.ACCESS_TOKEN_EXPIRES_IN,
         "ENABLE_COMMUNITY_SHARING": app_config.ENABLE_COMMUNITY_SHARING,
         "ENABLE_MESSAGE_RATING": app_config.ENABLE_MESSAGE_RATING,
@@ -180,14 +176,13 @@ def _build_admin_config_response(request: Request):
 
 
 def _get_refresh_failure_reason(exc: HTTPException) -> str:
-    if exc.detail == ERROR_MESSAGES.MISSING_REFRESH_TOKEN:
-        return "missing_refresh_token"
-
-    if exc.detail == ERROR_MESSAGES.INVALID_REFRESH_TOKEN:
-        return "invalid_refresh_token"
-
-    if exc.detail == ERROR_MESSAGES.REFRESH_SESSION_CONFLICT:
-        return "refresh_session_conflict"
+    match exc.detail:
+        case ERROR_MESSAGES.MISSING_REFRESH_TOKEN:
+            return "missing_refresh_token"
+        case ERROR_MESSAGES.INVALID_REFRESH_TOKEN:
+            return "invalid_refresh_token"
+        case ERROR_MESSAGES.REFRESH_SESSION_CONFLICT:
+            return "refresh_session_conflict"
 
     return f"http_{exc.status_code}"
 
@@ -583,7 +578,7 @@ async def signout(request: Request, response: Response):
 
 
 @router.post("/refresh", response_model=SessionUserResponse)
-async def refresh_token(request: Request, response: Response):
+def refresh_token(request: Request, response: Response):
     refresh_started_at = time.perf_counter()
 
     try:
@@ -639,7 +634,7 @@ async def refresh_token(request: Request, response: Response):
 ############################
 
 
-@router.post("/add", response_model=AddUserResponse)
+@router.post("/add", response_model=UserResponse)
 async def add_user(form_data: AddUserForm, user=Depends(get_admin_user)):
     if not validate_email_format(form_data.email.lower()):
         raise HTTPException(
@@ -683,7 +678,7 @@ async def add_user(form_data: AddUserForm, user=Depends(get_admin_user)):
 @router.get("/admin/details")
 async def get_admin_details(request: Request, user=Depends(get_current_user)):
     if not request.app.state.config.SHOW_ADMIN_DETAILS:
-        raise HTTPException(400, detail=ERROR_MESSAGES.ACTION_PROHIBITED)
+        raise HTTPException(404, detail=ERROR_MESSAGES.ACTION_PROHIBITED)
 
     admin_email = request.app.state.config.ADMIN_EMAIL
     admin_name = None
@@ -693,7 +688,7 @@ async def get_admin_details(request: Request, user=Depends(get_current_user)):
         if admin:
             admin_name = admin.name
     else:
-        admin = Users.get_first_user()
+        admin = Users.get_first_admin_user()
         if admin:
             admin_email = admin.email
             admin_name = admin.name
@@ -724,6 +719,7 @@ class AdminConfig(BaseModel):
     ENABLE_CHANNELS: bool
     DEFAULT_USER_ROLE: str
     ACCESS_TOKEN_EXPIRES_IN: str
+    REFRESH_TOKEN_EXPIRES_IN: str
     JWT_EXPIRES_IN: Optional[str] = None
     ENABLE_COMMUNITY_SHARING: bool
     ENABLE_MESSAGE_RATING: bool
@@ -753,11 +749,16 @@ async def update_admin_config(
     access_token_expires_in = (
         form_data.ACCESS_TOKEN_EXPIRES_IN or form_data.JWT_EXPIRES_IN
     )
-    if access_token_expires_in and ACCESS_TOKEN_DURATION_PATTERN.match(
+    if access_token_expires_in and TOKEN_DURATION_PATTERN.match(
         access_token_expires_in
     ):
         app_config.ACCESS_TOKEN_EXPIRES_IN = access_token_expires_in
         app_config.JWT_EXPIRES_IN = access_token_expires_in
+
+    if form_data.REFRESH_TOKEN_EXPIRES_IN and TOKEN_DURATION_PATTERN.match(
+        form_data.REFRESH_TOKEN_EXPIRES_IN
+    ):
+        app_config.REFRESH_TOKEN_EXPIRES_IN = form_data.REFRESH_TOKEN_EXPIRES_IN
 
     app_config.ENABLE_COMMUNITY_SHARING = form_data.ENABLE_COMMUNITY_SHARING
     app_config.ENABLE_MESSAGE_RATING = form_data.ENABLE_MESSAGE_RATING
