@@ -73,16 +73,11 @@ def log_auth_event(
     logger(message)
 
 
-def seconds_until(
-    expires_at: Optional[int], current_time: Optional[int] = None
-) -> Optional[int]:
+def seconds_until(expires_at: Optional[int]) -> Optional[int]:
     if expires_at is None:
         return None
 
-    reference_time = (
-        current_time if current_time is not None else int(datetime.now(UTC).timestamp())
-    )
-    return expires_at - reference_time
+    return expires_at - int(datetime.now(UTC).timestamp())
 
 
 def build_refresh_session_meta(request: Request) -> Optional[dict[str, str]]:
@@ -244,7 +239,6 @@ def issue_tokens_for_user(
     current_refresh_token_hash: Optional[str] = None,
     meta: Optional[dict] = None,
 ) -> tuple[str, Optional[int]]:
-    current_time = int(datetime.now(UTC).timestamp())
     expires_delta_access_token, expires_at_access_token = get_access_token_expiration(
         access_token_expires_in
     )
@@ -258,9 +252,7 @@ def issue_tokens_for_user(
         "access-token-issued",
         user_id=user_id,
         access_token_expires_at=expires_at_access_token,
-        access_token_remaining_seconds=seconds_until(
-            expires_at_access_token, current_time
-        ),
+        access_token_remaining_seconds=seconds_until(expires_at_access_token),
     )
 
     clear_legacy_auth_cookie(response)
@@ -314,7 +306,7 @@ def issue_tokens_for_user(
         user_id=user_id,
         refresh_session_id=refresh_session_id,
         refresh_expires_at=expires_at_refresh_token,
-        refresh_remaining_seconds=seconds_until(expires_at_refresh_token, current_time),
+        refresh_remaining_seconds=seconds_until(expires_at_refresh_token),
     )
 
     set_refresh_token_cookie(response, refresh_token, expires_at_refresh_token)
