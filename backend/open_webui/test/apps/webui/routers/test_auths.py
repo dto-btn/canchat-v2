@@ -176,7 +176,7 @@ class TestAuths(AbstractPostgresTest):
         assert response.cookies.get(WEBUI_REFRESH_TOKEN_COOKIE_NAME) is not None
         assert response.cookies.get("token") is None
 
-    def test_refresh_rotates_refresh_session_on_every_successful_refresh(self):
+    def test_refresh_rotates_session_on_every_success(self):
         from open_webui.utils.auth import get_password_hash, parse_refresh_token
 
         user = self.auths.insert_new_auth(
