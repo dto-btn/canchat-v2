@@ -47,6 +47,10 @@
 		?.filter((m) => searchValue === '' || m.name.toLowerCase().includes(searchValue.toLowerCase()))
 		.map((model) => ({
 			...model,
+			name: ($i18n.language === 'fr-CA'
+				? model?.name_fr || model?.name || ''
+				: model?.name || ''
+			).trim(),
 			description: ($i18n.language === 'fr-CA'
 				? model?.meta?.description_fr || ''
 				: model?.meta?.description || ''

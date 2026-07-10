@@ -42,6 +42,7 @@
 
 	let id = '';
 	let name = '';
+	let name_fr = '';
 
 	$: if (!edit) {
 		if (name) {
@@ -56,6 +57,7 @@
 		id: '',
 		base_model_id: null,
 		name: '',
+		name_fr: '',
 		meta: {
 			profile_image_url: '/static/favicon.png',
 			description: '',
@@ -111,6 +113,7 @@
 
 		info.id = id;
 		info.name = name;
+		info.name_fr = name_fr;
 
 		if (id === '') {
 			toast.error('Model ID is required.');
@@ -191,6 +194,7 @@
 
 		if (model) {
 			name = model.name;
+			name_fr = model.name_fr || '';
 			await tick();
 
 			id = model.id;
@@ -251,7 +255,8 @@
 							? model
 							: {
 									id: model.id,
-									name: model.name
+									name: model.name,
+									name_fr: model.name_fr || ''
 								}
 					)
 				)
@@ -452,6 +457,19 @@
 									required
 								/>
 							</div>
+						</div>
+					</div>
+
+					<div class="my-1">
+						<div class=" text-sm font-semibold mb-1">
+							{$i18n.t('Model Name in French (Canada)')}
+						</div>
+						<div>
+							<input
+								class="text-sm w-full bg-transparent outline-none"
+								placeholder={$i18n.t('Enter the model name in French (fr-ca)')}
+								bind:value={name_fr}
+							/>
 						</div>
 					</div>
 

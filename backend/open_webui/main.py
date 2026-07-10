@@ -11,6 +11,27 @@ from urllib.parse import urlencode, parse_qs, urlparse
 from pydantic import BaseModel
 from sqlalchemy import text
 
+# Load .env first for all imports that depend on environment variables
+from open_webui.env import (
+    CHANGELOG,
+    CHANGELOG_FR,
+    GLOBAL_LOG_LEVEL,
+    SAFE_MODE,
+    SRC_LOG_LEVELS,
+    VERSION,
+    WEBUI_BUILD_HASH,
+    WEBUI_SECRET_KEY,
+    WEBUI_SESSION_COOKIE_SAME_SITE,
+    WEBUI_SESSION_COOKIE_SECURE,
+    WEBUI_AUTH_TRUSTED_EMAIL_HEADER,
+    WEBUI_AUTH_TRUSTED_NAME_HEADER,
+    ENABLE_PBMM_ENV,
+    ENABLE_WEBSOCKET_SUPPORT,
+    BYPASS_MODEL_ACCESS_CONTROL,
+    RESET_CONFIG_ON_START,
+    USE_REDIS_LOCKS,
+)
+
 # Needs to be imported before fastapi to ensure instrumentation is set up correctly
 from open_webui.instrumentation import meter
 
@@ -278,25 +299,6 @@ from open_webui.config import (
     CHAT_LIFETIME_DAYS,
     CHAT_CLEANUP_PRESERVE_PINNED,
     CHAT_CLEANUP_PRESERVE_ARCHIVED,
-)
-from open_webui.env import (
-    CHANGELOG,
-    CHANGELOG_FR,
-    GLOBAL_LOG_LEVEL,
-    SAFE_MODE,
-    SRC_LOG_LEVELS,
-    VERSION,
-    WEBUI_BUILD_HASH,
-    WEBUI_SECRET_KEY,
-    WEBUI_SESSION_COOKIE_SAME_SITE,
-    WEBUI_SESSION_COOKIE_SECURE,
-    WEBUI_AUTH_TRUSTED_EMAIL_HEADER,
-    WEBUI_AUTH_TRUSTED_NAME_HEADER,
-    ENABLE_PBMM_ENV,
-    ENABLE_WEBSOCKET_SUPPORT,
-    BYPASS_MODEL_ACCESS_CONTROL,
-    RESET_CONFIG_ON_START,
-    USE_REDIS_LOCKS,
 )
 
 from open_webui.custom_logging import LoggingMiddleware, reconfigure_access_log

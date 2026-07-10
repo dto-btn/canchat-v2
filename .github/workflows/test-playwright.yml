@@ -1,5 +1,5 @@
 name: Testing - Playwright
- 
+
 on:
   workflow_dispatch:
     inputs:
@@ -15,21 +15,21 @@ on:
         - main
     types:
       - completed
- 
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
   REGISTRY: ghcr.io
- 
+
 jobs:
   tests:
     name: 'Playwright E2E Tests'
-    runs-on: arc-ssc-dsai
+    runs-on: arc-ssc-dsai-tko
     permissions:
       contents: read
       packages: read
       attestations: read
       id-token: write
- 
+
     timeout-minutes: 60
     services:
       qdrant:
@@ -39,16 +39,16 @@ jobs:
           - 6334:6334
         options: >-
           --add-host host.docker.internal:host-gateway
- 
-    steps:      
+
+    steps:
       - name: Checkout CANChat-V2
         uses: actions/checkout@v6
- 
+
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
           node-version: '22'
- 
+
       - name: Log in to the GitHub Container registry
         uses: docker/login-action@v4
         with:
@@ -88,16 +88,16 @@ jobs:
               unset USE_RERANKING_MODEL_DOCKER && \
               unset RAG_RERANKING_MODEL && \
               bash start.sh'
-   
+
       - name:  Copy env variables
         run: echo "${{ secrets.E2E_ENV_FILE }}" | base64 --decode > .env
- 
+
       - name:  Set up Node dependencies & build
         run:  |
           npm ci
           npm run test:setup:headless
- 
- 
+
+
       - name: Wait for CANChat to be ready
         run: |
           for i in {1..300}; do
@@ -108,17 +108,17 @@ jobs:
               echo "CANChat is ready."
               exit 0
             fi
- 
+
           done
           echo "CANChat failed to start in time" >&2
           exit 1
- 
+
       - name: Start Playwright Tests (Parallel)
         env:
           REUSE_EXISTING_SERVER: true
         run: |
           bash -c 'env $(grep -v "^#" "${ENV_FILE:-.env}"| xargs) PLAYWRIGHT_BLOB_OUTPUT_DIR=./blob-report-parallel npx playwright test --grep-invert @serial --reporter=blob'
-          
+
       - name: Start Playwright Tests (Serial)
         if: always()
         env:
@@ -132,17 +132,17 @@ jobs:
           mkdir -p ./all-blob-reports
           cp -r ./blob-report-parallel/* ./all-blob-reports/ || true
           cp -r ./blob-report-serial/* ./all-blob-reports/ || true
-          
+
           PLAYWRIGHT_JSON_OUTPUT_NAME=results.json npx playwright merge-reports --reporter=html,json ./all-blob-reports
           mkdir -p playwright-report
           mv results.json playwright-report/results.json || true
- 
+
       - name: Get timestamp
         id: timestamps
         shell: bash
         run: |
           echo "timestamp=$(/bin/date -u "+%Y%m%d_%H%M%S")" >> $GITHUB_OUTPUT
- 
+
       - name: Upload Report
         id: upload_report
         uses: actions/upload-artifact@v7
