@@ -8,7 +8,8 @@ from typing import Generic, Optional, TypeVar
 from urllib.parse import urlparse
 import requests
 from pydantic import BaseModel
-from sqlalchemy import JSON, Column, DateTime, Integer, func
+from sqlalchemy import JSON, Column, DateTime, Integer, func, inspect
+from sqlalchemy.exc import SQLAlchemyError
 
 from open_webui.env import (
     DATA_DIR,
@@ -22,7 +23,7 @@ from open_webui.env import (
     WEBUI_NAME,
     log,
 )
-from open_webui.internal.db import get_db
+from open_webui.internal.db import engine, get_db
 from open_webui.models.base import Base
 
 ####################################
@@ -32,7 +33,6 @@ from open_webui.models.base import Base
 
 class Config(Base):
     __tablename__ = "config"
-    __table_args__ = {"extend_existing": True}
 
     id = Column(Integer, primary_key=True)
     data = Column(JSON, nullable=False)
@@ -44,6 +44,14 @@ class Config(Base):
 def load_json_config():
     with open(f"{DATA_DIR}/config.json", "r") as file:
         return json.load(file)
+
+
+def config_table_exists() -> bool:
+    try:
+        return inspect(engine).has_table(Config.__tablename__)
+    except SQLAlchemyError as exc:
+        log.warning("Unable to inspect config table availability: %s", exc)
+        return False
 
 
 def save_to_db(data):
@@ -68,8 +76,13 @@ def reset_config():
 # When initializing, check if config.json exists and migrate it to the database
 if os.path.exists(f"{DATA_DIR}/config.json"):
     data = load_json_config()
-    save_to_db(data)
-    os.rename(f"{DATA_DIR}/config.json", f"{DATA_DIR}/old_config.json")
+    if config_table_exists():
+        save_to_db(data)
+        os.rename(f"{DATA_DIR}/config.json", f"{DATA_DIR}/old_config.json")
+    else:
+        log.warning(
+            "Skipping config.json migration because the config table is unavailable"
+        )
 
 DEFAULT_CONFIG = {
     "version": 0,
@@ -223,6 +236,12 @@ DEFAULT_CONFIG = {
 
 
 def get_config():
+    if not config_table_exists():
+        log.warning(
+            "Config table is unavailable; falling back to default configuration"
+        )
+        return DEFAULT_CONFIG
+
     with get_db() as db:
         config_entry = db.query(Config).order_by(Config.id.desc()).first()
         return config_entry.data if config_entry else DEFAULT_CONFIG

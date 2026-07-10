@@ -37,4 +37,9 @@ jobs:
           pip install -r backend/requirements.txt
 
       - name: Run Pytest
-        run: pytest -q
+        env:
+          PYTHONPATH: backend
+          DATA_DIR: ${{ runner.temp }}/open-webui-test-data
+        run: |
+          mkdir -p "$DATA_DIR"
+          pytest -q
