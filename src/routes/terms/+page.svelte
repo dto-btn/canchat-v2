@@ -927,7 +927,7 @@
 								>!</span
 							>
 							<p>
-								Repeated attempts to accept terms have failed. You can keep retrying, or contact
+								Repeated attempts to accept terms have failed. Please retry, or contact
 								<a
 									class="font-semibold underline underline-offset-2"
 									href={`mailto:${TERMS_SUPPORT_EMAIL}`}>CANChat Support</a

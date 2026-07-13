@@ -975,8 +975,7 @@
 								>!</span
 							>
 							<p>
-								Les tentatives répétées d'acceptation ont échoué. Vous pouvez réessayer, ou
-								contacter
+								Les tentatives répétées d'acceptation ont échoué. Réessayez, ou contactez
 								<a
 									class="font-semibold underline underline-offset-2"
 									href={`mailto:${TERMS_SUPPORT_EMAIL}`}>l'assistance CANChat</a
