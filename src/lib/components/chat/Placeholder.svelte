@@ -143,7 +143,11 @@
 					<div class="flex -space-x-4 mb-0.5" in:fade={{ duration: 100 }}>
 						{#each models as model, modelIdx}
 							<Tooltip
-								content={(models[modelIdx]?.info?.meta?.tags ?? [])
+								content={($i18n.language === 'fr-CA' &&
+								(models[modelIdx]?.info?.meta?.tags_fr ?? []).length > 0
+									? models[modelIdx]?.info?.meta?.tags_fr
+									: (models[modelIdx]?.info?.meta?.tags ?? [])
+								)
 									.map((tag) => tag.name.toUpperCase())
 									.join(', ')}
 								placement="top"
