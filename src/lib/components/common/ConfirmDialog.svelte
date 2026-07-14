@@ -137,9 +137,13 @@
 								rows="3"
 								required
 <<<<<<< HEAD
+<<<<<<< HEAD
 								aria-label={inputPlaceholder ? inputPlaceholder : $i18n.t('Enter your message')}
 =======
 >>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
+=======
+								aria-label={inputPlaceholder ? inputPlaceholder : $i18n.t('Enter your message')}
+>>>>>>> eb179ac31 (feat: enhance accessibility by adding aria-labels to various input fields and components across the application)
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 							/>
 						{/if}

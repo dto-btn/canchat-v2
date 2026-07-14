@@ -275,9 +275,13 @@
 								required
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 <<<<<<< HEAD
+<<<<<<< HEAD
 								on:input={(e) => e.target.setCustomValidity('')}
 =======
 >>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
+=======
+								on:input={(e) => e.target.setCustomValidity('')}
+>>>>>>> eb179ac31 (feat: enhance accessibility by adding aria-labels to various input fields and components across the application)
 							/>
 
 							<SensitiveInput placeholder={$i18n.t('API Key')} bind:value={STT_OPENAI_API_KEY} />
@@ -437,9 +441,13 @@
 								required
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 <<<<<<< HEAD
+<<<<<<< HEAD
 								on:input={(e) => e.target.setCustomValidity('')}
 =======
 >>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
+=======
+								on:input={(e) => e.target.setCustomValidity('')}
+>>>>>>> eb179ac31 (feat: enhance accessibility by adding aria-labels to various input fields and components across the application)
 							/>
 
 							<SensitiveInput placeholder={$i18n.t('API Key')} bind:value={TTS_OPENAI_API_KEY} />
@@ -456,9 +464,13 @@
 								required
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 <<<<<<< HEAD
+<<<<<<< HEAD
 								on:input={(e) => e.target.setCustomValidity('')}
 =======
 >>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
+=======
+								on:input={(e) => e.target.setCustomValidity('')}
+>>>>>>> eb179ac31 (feat: enhance accessibility by adding aria-labels to various input fields and components across the application)
 							/>
 						</div>
 					</div>
@@ -473,9 +485,13 @@
 								required
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 <<<<<<< HEAD
+<<<<<<< HEAD
 								on:input={(e) => e.target.setCustomValidity('')}
 =======
 >>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
+=======
+								on:input={(e) => e.target.setCustomValidity('')}
+>>>>>>> eb179ac31 (feat: enhance accessibility by adding aria-labels to various input fields and components across the application)
 							/>
 							<input
 								class="flex-1 w-full rounded-lg py-2 pl-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
@@ -485,9 +501,13 @@
 								required
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 <<<<<<< HEAD
+<<<<<<< HEAD
 								on:input={(e) => e.target.setCustomValidity('')}
 =======
 >>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
+=======
+								on:input={(e) => e.target.setCustomValidity('')}
+>>>>>>> eb179ac31 (feat: enhance accessibility by adding aria-labels to various input fields and components across the application)
 							/>
 						</div>
 					</div>

@@ -313,10 +313,15 @@
 									required
 									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 <<<<<<< HEAD
+<<<<<<< HEAD
 									on:input={(e) => e.target.setCustomValidity('')}
 									aria-label={$i18n.t('Type')}
 =======
 >>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
+=======
+									on:input={(e) => e.target.setCustomValidity('')}
+									aria-label={$i18n.t('Type')}
+>>>>>>> eb179ac31 (feat: enhance accessibility by adding aria-labels to various input fields and components across the application)
 								>
 									{#if banner.type == ''}
 										<option value="" selected disabled class="text-gray-900"
@@ -339,10 +344,15 @@
 									required
 									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 <<<<<<< HEAD
+<<<<<<< HEAD
 									on:input={(e) => e.target.setCustomValidity('')}
 									aria-label={$i18n.t('Language')}
 =======
 >>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
+=======
+									on:input={(e) => e.target.setCustomValidity('')}
+									aria-label={$i18n.t('Language')}
+>>>>>>> eb179ac31 (feat: enhance accessibility by adding aria-labels to various input fields and components across the application)
 								>
 									{#if banner.lang == ''}
 										<option value="" selected disabled class="text-gray-900"

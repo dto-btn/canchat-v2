@@ -113,9 +113,13 @@
 							required
 							on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 <<<<<<< HEAD
+<<<<<<< HEAD
 							aria-label={$i18n.t('Web Search Engine')}
 =======
 >>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
+=======
+							aria-label={$i18n.t('Web Search Engine')}
+>>>>>>> eb179ac31 (feat: enhance accessibility by adding aria-labels to various input fields and components across the application)
 						>
 							<option disabled selected value="">{$i18n.t('Select an engine')}</option>
 							{#each webSearchEngines as engine}
@@ -340,9 +344,13 @@
 								required
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 <<<<<<< HEAD
+<<<<<<< HEAD
 								aria-label={$i18n.t('Search Result Count')}
 =======
 >>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
+=======
+								aria-label={$i18n.t('Search Result Count')}
+>>>>>>> eb179ac31 (feat: enhance accessibility by adding aria-labels to various input fields and components across the application)
 							/>
 						</div>
 
@@ -358,9 +366,13 @@
 								required
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 <<<<<<< HEAD
+<<<<<<< HEAD
 								aria-label={$i18n.t('Concurrent Requests')}
 =======
 >>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
+=======
+								aria-label={$i18n.t('Concurrent Requests')}
+>>>>>>> eb179ac31 (feat: enhance accessibility by adding aria-labels to various input fields and components across the application)
 							/>
 						</div>
 					</div>

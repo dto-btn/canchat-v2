@@ -446,9 +446,13 @@
 									required
 									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 <<<<<<< HEAD
+<<<<<<< HEAD
 									aria-label={$i18n.t('Model Name')}
 =======
 >>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
+=======
+									aria-label={$i18n.t('Model Name')}
+>>>>>>> eb179ac31 (feat: enhance accessibility by adding aria-labels to various input fields and components across the application)
 								/>
 							</div>
 						</div>
@@ -463,9 +467,13 @@
 									required
 									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 <<<<<<< HEAD
+<<<<<<< HEAD
 									aria-label={$i18n.t('Model ID')}
 =======
 >>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
+=======
+									aria-label={$i18n.t('Model ID')}
+>>>>>>> eb179ac31 (feat: enhance accessibility by adding aria-labels to various input fields and components across the application)
 								/>
 							</div>
 						</div>
@@ -499,9 +507,13 @@
 									required
 									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 <<<<<<< HEAD
+<<<<<<< HEAD
 									aria-label={$i18n.t('Base Model (From)')}
 =======
 >>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
+=======
+									aria-label={$i18n.t('Base Model (From)')}
+>>>>>>> eb179ac31 (feat: enhance accessibility by adding aria-labels to various input fields and components across the application)
 								>
 									<option value={null} class=" text-gray-900"
 										>{$i18n.t('Select a base model')}</option

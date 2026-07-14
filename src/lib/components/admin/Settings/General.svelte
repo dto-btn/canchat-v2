@@ -261,9 +261,13 @@
 							type="text"
 							placeholder={`e.g.) "30m","1h", "10d". `}
 <<<<<<< HEAD
+<<<<<<< HEAD
 							aria-label={$i18n.t('JWT Expiration')}
 							bind:value={adminConfig.JWT_EXPIRES_IN}
 =======
+=======
+							aria-label={$i18n.t('Access Token Expiration')}
+>>>>>>> eb179ac31 (feat: enhance accessibility by adding aria-labels to various input fields and components across the application)
 							bind:value={adminConfig.ACCESS_TOKEN_EXPIRES_IN}
 >>>>>>> eac42d059 (feat(re-auth): Implemented new silent refresh workflow (#566))
 						/>

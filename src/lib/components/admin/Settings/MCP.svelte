@@ -959,10 +959,15 @@
 								required
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 <<<<<<< HEAD
+<<<<<<< HEAD
 								on:input={(e) => e.target.setCustomValidity('')}
 								aria-label={$i18n.t('Server Name')}
 =======
 >>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
+=======
+								on:input={(e) => e.target.setCustomValidity('')}
+								aria-label={$i18n.t('Server Name')}
+>>>>>>> eb179ac31 (feat: enhance accessibility by adding aria-labels to various input fields and components across the application)
 							/>
 						</div>
 
@@ -1004,10 +1009,15 @@
 								required
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 <<<<<<< HEAD
+<<<<<<< HEAD
 								on:input={(e) => e.target.setCustomValidity('')}
 								aria-label={$i18n.t('Transport Type')}
 =======
 >>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
+=======
+								on:input={(e) => e.target.setCustomValidity('')}
+								aria-label={$i18n.t('Transport Type')}
+>>>>>>> eb179ac31 (feat: enhance accessibility by adding aria-labels to various input fields and components across the application)
 							>
 								<option value="stdio">{$i18n.t('Standard I/O (stdio)')}</option>
 								<option value="sse">{$i18n.t('Server-Sent Events (SSE)')}</option>
@@ -1031,10 +1041,15 @@
 									required
 									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 <<<<<<< HEAD
+<<<<<<< HEAD
 									on:input={(e) => e.target.setCustomValidity('')}
 									aria-label={$i18n.t('Command')}
 =======
 >>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
+=======
+									on:input={(e) => e.target.setCustomValidity('')}
+									aria-label={$i18n.t('Command')}
+>>>>>>> eb179ac31 (feat: enhance accessibility by adding aria-labels to various input fields and components across the application)
 								/>
 							</div>
 
@@ -1074,10 +1089,15 @@
 										on:invalid={(e) =>
 											e.target.setCustomValidity($i18n.t('This field is required'))}
 <<<<<<< HEAD
+<<<<<<< HEAD
 										on:input={(e) => e.target.setCustomValidity('')}
 										aria-label={$i18n.t('URL')}
 =======
 >>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
+=======
+										on:input={(e) => e.target.setCustomValidity('')}
+										aria-label={$i18n.t('URL')}
+>>>>>>> eb179ac31 (feat: enhance accessibility by adding aria-labels to various input fields and components across the application)
 									/>
 								</div>
 

@@ -64,9 +64,13 @@
 								placeholder={$i18n.t('Title')}
 								required
 <<<<<<< HEAD
+<<<<<<< HEAD
 								aria-label={$i18n.t('Title')}
 =======
 >>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
+=======
+								aria-label={$i18n.t('Title')}
+>>>>>>> eb179ac31 (feat: enhance accessibility by adding aria-labels to various input fields and components across the application)
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 							/>
 						</div>

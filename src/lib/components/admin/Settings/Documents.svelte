@@ -325,9 +325,13 @@
 						required
 						on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 <<<<<<< HEAD
+<<<<<<< HEAD
 						on:input={(e) => e.target.setCustomValidity('')}
 =======
 >>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
+=======
+						on:input={(e) => e.target.setCustomValidity('')}
+>>>>>>> eb179ac31 (feat: enhance accessibility by adding aria-labels to various input fields and components across the application)
 					/>
 
 					<SensitiveInput placeholder={$i18n.t('API Key')} bind:value={OpenAIKey} />
@@ -342,9 +346,13 @@
 						required
 						on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 <<<<<<< HEAD
+<<<<<<< HEAD
 						on:input={(e) => e.target.setCustomValidity('')}
 =======
 >>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
+=======
+						on:input={(e) => e.target.setCustomValidity('')}
+>>>>>>> eb179ac31 (feat: enhance accessibility by adding aria-labels to various input fields and components across the application)
 					/>
 
 					<SensitiveInput
@@ -433,9 +441,13 @@
 							required
 							on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 <<<<<<< HEAD
+<<<<<<< HEAD
 							on:input={(e) => e.target.setCustomValidity('')}
 =======
 >>>>>>> 93527cf31 (fix: add custom validity messages for required fields across multiple components)
+=======
+							on:input={(e) => e.target.setCustomValidity('')}
+>>>>>>> eb179ac31 (feat: enhance accessibility by adding aria-labels to various input fields and components across the application)
 						/>
 					</div>
 				</div>
