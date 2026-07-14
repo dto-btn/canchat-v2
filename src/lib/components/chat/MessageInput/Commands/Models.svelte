@@ -25,12 +25,13 @@
 					...model,
 					modelName: model?.name,
 					tags: model?.info?.meta?.tags?.map((tag) => tag.name).join(' '),
+					tags_fr: model?.info?.meta?.tags_fr?.map((tag) => tag.name).join(' '),
 					desc: model?.info?.meta?.description
 				};
 				return _item;
 			}),
 		{
-			keys: ['value', 'tags', 'modelName'],
+			keys: ['value', 'tags', 'tags_fr', 'modelName'],
 			threshold: 0.3
 		}
 	);
