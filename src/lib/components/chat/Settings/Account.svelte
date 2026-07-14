@@ -86,6 +86,7 @@
 			type="file"
 			hidden
 			accept="image/*"
+			aria-label={$i18n.t('Profile image')}
 			on:change={(e) => {
 				const files = profileImageInputElement.files ?? [];
 				let reader = new FileReader();
@@ -237,6 +238,7 @@
 							class="w-full rounded-lg py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-850 outline-none"
 							type="text"
 							bind:value={name}
+							aria-label={$i18n.t('Name')}
 							required
 							on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 						/>
@@ -257,6 +259,7 @@
 						<select
 							id="timezone-select"
 							aria-describedby="timezone-help"
+							aria-label={$i18n.t('Timezone')}
 							class="w-full rounded-lg py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-850 outline-none border border-gray-200 dark:border-gray-700"
 							bind:value={selectedTimezone}
 						>

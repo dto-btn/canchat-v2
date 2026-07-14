@@ -145,6 +145,7 @@
 							? ''
 							: 'text-gray-500'} placeholder:text-gray-300 dark:placeholder:text-gray-700 outline-none"
 						bind:value={selectedModelId}
+						aria-label={$i18n.t('Select a model')}
 					>
 						<option value="">{$i18n.t('Select a model')}</option>
 						{#each $models.filter((m) => m?.owned_by !== 'arena') as model}
@@ -180,7 +181,8 @@
 				<select
 					class="w-full bg-transparent outline-none py-0.5 text-sm"
 					bind:value={permissions.model.default_id}
-					placeholder="Select a model"
+					placeholder={$i18n.t('Select a model')}
+					aria-label={$i18n.t('Default Model')}
 				>
 					<option value="" disabled selected>{$i18n.t('Select a model')}</option>
 					{#each permissions.model.filter ? $models.filter( (model) => filterModelIds.includes(model.id) ) : $models.filter((model) => model.id) as model}

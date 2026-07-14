@@ -236,6 +236,7 @@
 					class=" w-full text-sm pr-4 py-1 rounded-r-xl outline-none bg-transparent"
 					bind:value={query}
 					placeholder={$i18n.t('Search Prompts')}
+					aria-label={$i18n.t('Search Prompts')}
 				/>
 			</div>
 
@@ -366,6 +367,7 @@
 					type="file"
 					accept=".json"
 					hidden
+					aria-label={$i18n.t('Import Prompts')}
 					on:change={() => {
 						const reader = new FileReader();
 						reader.onload = async (event) => {

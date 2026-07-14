@@ -118,6 +118,7 @@
 								bind:value={name}
 								placeholder={$i18n.t('new-channel')}
 								autocomplete="off"
+								aria-label={$i18n.t('Channel Name')}
 							/>
 						</div>
 					</div>

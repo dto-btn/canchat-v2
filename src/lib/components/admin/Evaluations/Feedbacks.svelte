@@ -253,7 +253,7 @@
 				type="button"
 				class="p-2 rounded-xl hover:bg-gray-100 dark:bg-gray-900 dark:hover:bg-gray-850 transition font-medium text-sm flex items-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
 				on:click={exportHandler}
-				aria-label="Export"
+				aria-label={$i18n.t('Export')}
 			>
 				<ArrowDownTray className="size-3" />
 			</button>
@@ -290,7 +290,7 @@
 					type="button"
 					on:click={() => (searchQuery = '')}
 					class="text-[#757575] hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded p-1"
-					aria-label="Clear search"
+					aria-label={$i18n.t('Clear search')}
 				>
 					<span aria-hidden="true">✕</span>
 				</button>
@@ -317,7 +317,7 @@
 	{:else}
 		<table
 			class="w-full text-sm text-left text-[#767676] dark:text-gray-400 table-fixed"
-			aria-label="Feedback history table"
+			aria-label={$i18n.t('Feedback history table')}
 			aria-describedby={searchQuery ? 'search-results-count' : undefined}
 		>
 			<thead
@@ -338,7 +338,7 @@
 									? 'descending'
 									: 'none'
 							: 'none'}
-						aria-label="Sort by user name"
+						aria-label={$i18n.t('Sort by user name')}
 					>
 						<div class="flex items-center justify-center">
 							<span class="whitespace-nowrap mx-auto">{$i18n.t('User')}</span>
@@ -369,7 +369,7 @@
 									? 'descending'
 									: 'none'
 							: 'none'}
-						aria-label="Sort by model"
+						aria-label={$i18n.t('Sort by model')}
 					>
 						<div class="flex gap-1 items-center">
 							{$i18n.t('Models')}
@@ -409,7 +409,7 @@
 									? 'descending'
 									: 'none'
 							: 'none'}
-						aria-label="Sort by result"
+						aria-label={$i18n.t('Sort by result')}
 					>
 						<div class="flex gap-1 items-center">
 							<span class="whitespace-nowrap">{$i18n.t('Result')}</span>
@@ -444,7 +444,7 @@
 									? 'descending'
 									: 'none'
 							: 'none'}
-						aria-label="Sort by rating"
+						aria-label={$i18n.t('Sort by rating')}
 					>
 						<div class="flex gap-1 items-center">
 							<span class="whitespace-nowrap">{$i18n.t('Rating')}</span>
@@ -479,7 +479,7 @@
 									? 'descending'
 									: 'none'
 							: 'none'}
-						aria-label="Sort by reason"
+						aria-label={$i18n.t('Sort by reason')}
 					>
 						<div class="flex gap-1 items-center whitespace-nowrap">
 							{$i18n.t('Reason')}
@@ -514,7 +514,7 @@
 									? 'descending'
 									: 'none'
 							: 'none'}
-						aria-label="Sort by comment"
+						aria-label={$i18n.t('Sort by comment')}
 					>
 						<div class="flex gap-1 items-center">
 							{$i18n.t('Comment')}
@@ -554,7 +554,7 @@
 									? 'descending'
 									: 'none'
 							: 'none'}
-						aria-label="Sort by updated date"
+						aria-label={$i18n.t('Sort by updated date')}
 					>
 						<div class="flex gap-1 items-center justify-end whitespace-nowrap">
 							{$i18n.t('Updated At')}
@@ -635,13 +635,15 @@
 												selectedFeedback = feedback;
 												showConversationModal = true;
 											}}
-											aria-label="View chat conversation for this feedback"
+											aria-label={$i18n.t('View chat conversation for this feedback')}
 										>
 											<ChatBubbles />
 										</button>
 									</Tooltip>
 								{:else}
-									<span class="text-[#757575] italic text-xs" aria-label="No chat available">-</span
+									<span
+										class="text-[#757575] italic text-xs"
+										aria-label={$i18n.t('No chat available')}>-</span
 									>
 								{/if}
 							</div>
@@ -765,7 +767,7 @@
 								>
 									<div
 										class="inline-flex text-sm p-1 dark:text-gray-300 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded-xl cursor-pointer"
-										aria-label="Open feedback actions menu"
+										aria-label={$i18n.t('Open feedback actions menu')}
 									>
 										<EllipsisHorizontal />
 									</div>

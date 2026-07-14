@@ -415,6 +415,7 @@
 							id="folder-{folderId}-input"
 							type="text"
 							bind:value={name}
+							aria-label={$i18n.t('Edit folder name')}
 							on:blur={() => {
 								nameUpdateHandler();
 								edit = false;

@@ -192,6 +192,7 @@
 					class=" w-full text-sm py-1 rounded-r-xl outline-none bg-transparent"
 					bind:value={searchValue}
 					placeholder={$i18n.t('Search Models')}
+					aria-label={$i18n.t('Search Models')}
 				/>
 			</div>
 
@@ -358,6 +359,7 @@
 					type="file"
 					accept=".json"
 					hidden
+					aria-label={$i18n.t('Import Models')}
 					on:change={() => {
 						let reader = new FileReader();
 						reader.onload = async (event) => {

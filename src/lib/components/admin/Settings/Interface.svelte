@@ -103,6 +103,7 @@
 							class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 							bind:value={taskConfig.TASK_MODEL}
 							placeholder={$i18n.t('Select a model')}
+							aria-label={$i18n.t('Select a model')}
 						>
 							<option value="" selected>{$i18n.t('Current Model')}</option>
 							{#each $models.filter((m) => m.owned_by === 'ollama') as model}
@@ -119,6 +120,7 @@
 							class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 							bind:value={taskConfig.TASK_MODEL_EXTERNAL}
 							placeholder={$i18n.t('Select a model')}
+							aria-label={$i18n.t('Select a model')}
 						>
 							<option value="" selected>{$i18n.t('Current Model')}</option>
 							{#each $models as model}
@@ -188,6 +190,7 @@
 								class="w-full outline-none bg-transparent"
 								bind:value={taskConfig.AUTOCOMPLETE_GENERATION_INPUT_MAX_LENGTH}
 								placeholder={$i18n.t('-1 for no limit, or a positive integer for a specific limit')}
+								aria-label={$i18n.t('Autocomplete Generation Input Max Length')}
 							/>
 						</Tooltip>
 					</div>
@@ -305,6 +308,8 @@
 									bind:value={banner.type}
 									required
 									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+									on:input={(e) => e.target.setCustomValidity('')}
+									aria-label={$i18n.t('Type')}
 								>
 									{#if banner.type == ''}
 										<option value="" selected disabled class="text-gray-900"
@@ -326,6 +331,8 @@
 									bind:value={banner.lang}
 									required
 									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+									on:input={(e) => e.target.setCustomValidity('')}
+									aria-label={$i18n.t('Language')}
 								>
 									{#if banner.lang == ''}
 										<option value="" selected disabled class="text-gray-900"
@@ -347,6 +354,7 @@
 									class="px-5 py-1.5 text-xs w-full bg-transparent outline-none"
 									placeholder={$i18n.t('Content')}
 									bind:value={banner.content}
+									aria-label={$i18n.t('Content')}
 								/>
 
 								<div class="relative top-1.5 -left-2">
@@ -421,6 +429,7 @@
 										class="px-3 py-1.5 text-xs w-full bg-transparent outline-none border-r border-gray-100 dark:border-gray-800"
 										bind:value={prompt.lang}
 										placeholder={$i18n.languages[prompt.lang] || 'Unknown Language'}
+										aria-label={$i18n.t('Language')}
 									>
 										{#each languages as language}
 											<option value={language.code}>{language.title}</option>
@@ -431,12 +440,14 @@
 											class="px-3 py-1.5 text-xs w-full bg-transparent outline-none border-r border-gray-100 dark:border-gray-800"
 											placeholder={$i18n.t('Title (e.g. Tell me a fun fact)')}
 											bind:value={prompt.title[0]}
+											aria-label={$i18n.t('Title (e.g. Tell me a fun fact)')}
 										/>
 
 										<input
 											class="px-3 py-1.5 text-xs w-full bg-transparent outline-none border-r border-gray-100 dark:border-gray-800"
 											placeholder={$i18n.t('Subtitle (e.g. about the Roman Empire)')}
 											bind:value={prompt.title[1]}
+											aria-label={$i18n.t('Subtitle (e.g. about the Roman Empire)')}
 										/>
 									</div>
 
@@ -445,6 +456,7 @@
 										placeholder={$i18n.t('Prompt (e.g. Tell me a fun fact about the Roman Empire)')}
 										rows="3"
 										bind:value={prompt.content}
+										aria-label={$i18n.t('Prompt (e.g. Tell me a fun fact about the Roman Empire)')}
 									/>
 								</div>
 

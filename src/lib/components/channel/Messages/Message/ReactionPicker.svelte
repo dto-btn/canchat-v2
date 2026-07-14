@@ -117,8 +117,9 @@
 			<input
 				type="text"
 				class="w-full text-sm bg-transparent outline-none"
-				placeholder="Search all emojis"
+				placeholder={$i18n.t('Search all emojis')}
 				bind:value={search}
+				aria-label={$i18n.t('Search all emojis')}
 			/>
 		</div>
 		<!-- Virtualized Emoji List -->

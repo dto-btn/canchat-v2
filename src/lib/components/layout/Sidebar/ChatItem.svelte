@@ -259,6 +259,7 @@
 				bind:value={chatTitle}
 				id="chat-title-input-{id}"
 				class="bg-transparent w-full outline-none mr-10"
+				aria-label={$i18n.t('Edit chat title')}
 				on:keydown={async (e) => {
 					if (e.key === 'Enter') {
 						await editChatTitle(id, chatTitle);

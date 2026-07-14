@@ -205,6 +205,7 @@
 							<select
 								class="w-full bg-transparent border border-gray-50 dark:border-gray-850 rounded-lg py-1 px-2 -mx-0.5 text-sm outline-none"
 								bind:value={selectedModelId}
+								aria-label={$i18n.t('Model')}
 							>
 								{#each $models as model}
 									<option value={model.id} class="bg-gray-50 dark:bg-gray-700">{model.name}</option>
@@ -253,6 +254,7 @@
 								class="w-full h-full bg-transparent resize-none outline-none text-sm"
 								bind:value={system}
 								placeholder={$i18n.t("You're a helpful assistant.")}
+								aria-label={$i18n.t('System Instructions')}
 								rows="4"
 							/>
 						</div>
@@ -295,6 +297,9 @@
 							bind:value={message}
 							class=" w-full h-full bg-transparent resize-none outline-none text-sm"
 							placeholder={$i18n.t(`Enter {{role}} message here`, {
+								role: role === 'user' ? $i18n.t('a user') : $i18n.t('an assistant')
+							})}
+							aria-label={$i18n.t(`Enter {{role}} message here`, {
 								role: role === 'user' ? $i18n.t('a user') : $i18n.t('an assistant')
 							})}
 							on:input={(e) => {

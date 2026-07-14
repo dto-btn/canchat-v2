@@ -21,6 +21,7 @@
 		disabled={readOnly}
 		autocomplete="off"
 		type="text"
+		aria-label={placeholder || $i18n.t('Sensitive input')}
 	/>
 	<button
 		class={showButtonClassName}

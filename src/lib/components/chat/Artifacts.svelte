@@ -217,7 +217,7 @@
 						{#if contents[selectedContentIdx].type === 'iframe'}
 							<iframe
 								bind:this={iframeElement}
-								title="Content"
+								title={$i18n.t('Content')}
 								srcdoc={contents[selectedContentIdx].content}
 								class="w-full border-0 h-full rounded-none"
 								sandbox="allow-scripts allow-forms allow-same-origin"

@@ -160,6 +160,7 @@
 							on:input={() =>
 								ariaMessage.set(filteredChatList.length + $i18n.t(' archived chat found'))}
 							placeholder={$i18n.t('Search Chats')}
+							aria-label={$i18n.t('Search Chats')}
 						/>
 					</div>
 				</div>

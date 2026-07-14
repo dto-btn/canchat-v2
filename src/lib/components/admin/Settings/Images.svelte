@@ -287,6 +287,7 @@
 							class=" dark:bg-gray-900 w-fit pr-8 cursor-pointer rounded px-2 p-1 text-xs bg-transparent outline-none text-right"
 							bind:value={config.engine}
 							placeholder={$i18n.t('Select Engine')}
+							aria-label={$i18n.t('Image Generation Engine')}
 							on:change={async () => {
 								updateConfigHandler();
 							}}
@@ -309,6 +310,7 @@
 								<input
 									class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 									placeholder={$i18n.t('Enter URL (e.g. http://127.0.0.1:7860/)')}
+									aria-label={$i18n.t('AUTOMATIC1111 Base URL')}
 									bind:value={config.automatic1111.AUTOMATIC1111_BASE_URL}
 								/>
 							</div>
@@ -388,6 +390,7 @@
 										list="sampler-list"
 										class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 										placeholder={$i18n.t('Enter Sampler (e.g. Euler a)')}
+										aria-label={$i18n.t('Set Sampler')}
 										bind:value={config.automatic1111.AUTOMATIC1111_SAMPLER}
 									/>
 
@@ -410,6 +413,7 @@
 										list="scheduler-list"
 										class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 										placeholder={$i18n.t('Enter Scheduler (e.g. Karras)')}
+										aria-label={$i18n.t('Set Scheduler')}
 										bind:value={config.automatic1111.AUTOMATIC1111_SCHEDULER}
 									/>
 
@@ -431,6 +435,7 @@
 									<input
 										class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 										placeholder={$i18n.t('Enter CFG Scale (e.g. 7.0)')}
+										aria-label={$i18n.t('Set CFG Scale')}
 										bind:value={config.automatic1111.AUTOMATIC1111_CFG_SCALE}
 									/>
 								</Tooltip>
@@ -445,6 +450,7 @@
 								<input
 									class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 									placeholder={$i18n.t('Enter URL (e.g. http://127.0.0.1:7860/)')}
+									aria-label={$i18n.t('ComfyUI Base URL')}
 									bind:value={config.comfyui.COMFYUI_BASE_URL}
 								/>
 							</div>
@@ -499,6 +505,7 @@
 							<textarea
 								class="w-full rounded-lg mb-1 py-2 px-4 text-xs bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none disabled:text-gray-600 resize-none"
 								rows="10"
+								aria-label={$i18n.t('ComfyUI Workflow')}
 								bind:value={config.comfyui.COMFYUI_WORKFLOW}
 								required
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
@@ -512,6 +519,7 @@
 									hidden
 									type="file"
 									accept=".json"
+									aria-label={$i18n.t('Upload ComfyUI Workflow')}
 									on:change={(e) => {
 										const file = e.target.files[0];
 										const reader = new FileReader();
@@ -560,7 +568,8 @@
 											<Tooltip content="Input Key (e.g. text, unet_name, steps)">
 												<input
 													class="py-1 px-3 w-24 text-xs text-center bg-transparent outline-none border-r dark:border-gray-850"
-													placeholder="Key"
+													placeholder={$i18n.t('Key')}
+													aria-label={$i18n.t('Workflow Node Key')}
 													bind:value={node.key}
 													required
 													on:invalid={(e) =>
@@ -576,7 +585,8 @@
 											>
 												<input
 													class="w-full py-1 px-4 rounded-r-lg text-xs bg-transparent outline-none"
-													placeholder="Node Ids"
+													placeholder={$i18n.t('Node Ids')}
+													aria-label={$i18n.t('Workflow Node Ids')}
 													bind:value={node.node_ids}
 												/>
 											</Tooltip>
@@ -598,6 +608,7 @@
 							<input
 								class="flex-1 w-full text-sm bg-transparent outline-none"
 								placeholder={$i18n.t('API Base URL')}
+								aria-label={$i18n.t('API Base URL')}
 								bind:value={config.openai.OPENAI_API_BASE_URL}
 								required
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
@@ -626,7 +637,8 @@
 											list="model-list"
 											class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 											bind:value={imageGenerationConfig.MODEL}
-											placeholder="Select a model"
+											placeholder={$i18n.t('Select a model')}
+											aria-label={$i18n.t('Set Default Model')}
 											required
 											on:invalid={(e) =>
 												e.target.setCustomValidity($i18n.t('This field is required'))}
@@ -652,6 +664,7 @@
 								<input
 									class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 									placeholder={$i18n.t('Enter Image Size (e.g. 512x512)')}
+									aria-label={$i18n.t('Set Image Size')}
 									bind:value={imageGenerationConfig.IMAGE_SIZE}
 									required
 									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
@@ -669,6 +682,7 @@
 								<input
 									class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 									placeholder={$i18n.t('Enter Number of Steps (e.g. 50)')}
+									aria-label={$i18n.t('Set Steps')}
 									bind:value={imageGenerationConfig.IMAGE_STEPS}
 									required
 									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}

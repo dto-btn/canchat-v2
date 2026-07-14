@@ -568,6 +568,9 @@
 									modelTag: 'mistral:7b'
 								})}
 								bind:value={modelTag}
+								aria-label={$i18n.t('Enter model tag (e.g. {{modelTag}})', {
+									modelTag: 'mistral:7b'
+								})}
 							/>
 						</div>
 						<button
@@ -708,6 +711,7 @@
 								class="w-full py-2 px-4 text-sm outline-none bg-transparent"
 								bind:value={deleteModelTag}
 								placeholder={$i18n.t('Select a model')}
+								aria-label={$i18n.t('Select a model')}
 							>
 								{#if !deleteModelTag}
 									<option value="" disabled selected>{$i18n.t('Select a model')}</option>
@@ -752,6 +756,9 @@
 								})}
 								bind:value={createModelName}
 								disabled={createModelLoading}
+								aria-label={$i18n.t('Enter model tag (e.g. {{modelTag}})', {
+									modelTag: 'my-modelfile'
+								})}
 							/>
 
 							<textarea
@@ -760,6 +767,7 @@
 								rows="6"
 								placeholder={`e.g. {"model": "my-modelfile", "from": "ollama:7b"})`}
 								disabled={createModelLoading}
+								aria-label={$i18n.t('Create a model')}
 							/>
 						</div>
 
@@ -867,7 +875,9 @@
 											required
 											on:invalid={(e) =>
 												e.target.setCustomValidity($i18n.t('This field is required'))}
+											on:input={(e) => e.target.setCustomValidity('')}
 											hidden
+											aria-label={$i18n.t('Upload a GGUF model')}
 										/>
 
 										<button
@@ -895,8 +905,10 @@
 											required
 											on:invalid={(e) =>
 												e.target.setCustomValidity($i18n.t('This field is required'))}
+											on:input={(e) => e.target.setCustomValidity('')}
 											bind:value={modelFileUrl}
 											placeholder={$i18n.t('Type Hugging Face Resolve (Download) URL')}
+											aria-label={$i18n.t('Type Hugging Face Resolve (Download) URL')}
 										/>
 									</div>
 								{/if}
@@ -967,6 +979,7 @@
 										bind:value={modelFileContent}
 										class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-100 dark:bg-gray-850 outline-none resize-none"
 										rows="6"
+										aria-label={$i18n.t('Modelfile Content')}
 									/>
 								</div>
 							</div>

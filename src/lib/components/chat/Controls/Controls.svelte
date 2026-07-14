@@ -25,7 +25,7 @@
 		<h2 class=" text-lg font-medium self-center font-primary">{$i18n.t('Chat Controls')}</h2>
 		<button
 			class="self-center"
-			aria-label="Close"
+			aria-label={$i18n.t('Close')}
 			on:click={() => {
 				dispatch('close');
 			}}
@@ -82,6 +82,7 @@
 							class="w-full text-xs py-1.5 bg-transparent outline-none resize-none"
 							rows="4"
 							placeholder={$i18n.t('Enter system prompt')}
+							aria-label={$i18n.t('System Prompt')}
 						/>
 					</Tooltip>
 				</div>

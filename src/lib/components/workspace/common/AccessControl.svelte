@@ -102,6 +102,7 @@
 						id="models"
 						class="outline-none bg-transparent text-sm font-medium rounded-lg block w-fit pr-8 max-w-full placeholder-gray-400"
 						value={accessControl !== null ? 'private' : 'public'}
+						aria-label={$i18n.t('Visibility')}
 						on:change={(e) => {
 							accessControl =
 								e.target.value === 'public'
@@ -148,9 +149,10 @@
 							<div class="w-full px-0.5">
 								<select
 									class="outline-none bg-transparent text-sm rounded-lg block w-full pr-10 max-w-full
-									{selectedGroupId ? '' : 'text-gray-500'}
-									dark:placeholder-gray-500"
+								{selectedGroupId ? '' : 'text-gray-500'}
+								dark:placeholder-gray-500"
 									bind:value={selectedGroupId}
+									aria-label={$i18n.t('Select a group')}
 								>
 									<option class=" text-gray-700" value="" disabled selected
 										>{$i18n.t('Select a group')}</option

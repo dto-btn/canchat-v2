@@ -168,6 +168,7 @@
 											? ''
 											: 'text-gray-500'} placeholder:text-gray-300 dark:placeholder:text-gray-700 outline-none"
 										bind:value={selectedModelId}
+										aria-label={$i18n.t('Default Models')}
 									>
 										<option value="">{$i18n.t('Select a model')}</option>
 										{#each $models as model}

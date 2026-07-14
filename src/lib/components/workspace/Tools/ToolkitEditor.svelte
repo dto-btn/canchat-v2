@@ -220,6 +220,7 @@ class Tools:
 									class="w-full text-2xl font-semibold bg-transparent outline-none"
 									type="text"
 									placeholder={$i18n.t('Tool Name')}
+									aria-label={$i18n.t('Tool Name')}
 									bind:value={name}
 									required
 									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
@@ -255,6 +256,7 @@ class Tools:
 									class="w-full text-sm disabled:text-gray-500 bg-transparent outline-none"
 									type="text"
 									placeholder={$i18n.t('Tool ID')}
+									aria-label={$i18n.t('Tool ID')}
 									bind:value={id}
 									required
 									disabled={edit}
@@ -272,6 +274,7 @@ class Tools:
 								class="w-full text-sm bg-transparent outline-none"
 								type="text"
 								placeholder={$i18n.t('Tool Description')}
+								aria-label={$i18n.t('Tool Description')}
 								bind:value={meta.description}
 								required
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
