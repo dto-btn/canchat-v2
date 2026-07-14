@@ -1182,7 +1182,7 @@
 															toast.error($i18n.t('Permission denied when accessing microphone'));
 														}
 													}}
-													aria-label="Voice Input"
+													aria-label={$i18n.t('Voice Input')}
 												>
 													<svg
 														xmlns="http://www.w3.org/2000/svg"
@@ -1245,7 +1245,7 @@
 																	);
 																}
 															}}
-															aria-label="Call"
+															aria-label={$i18n.t('Call')}
 														>
 															<Headphone className="size-5" />
 														</button>
@@ -1315,7 +1315,7 @@
 						<div
 							class="text-sm text-gray-700 dark:text-gray-300 text-center max-w-4xl mx-auto font-medium"
 							role="note"
-							aria-label="Disclaimer"
+							aria-label={$i18n.t('Disclaimer')}
 						>
 							{$i18n.t(
 								'Reminder: CANchat can make mistakes. Verify the accuracy of the information it provides. All records are temporary, and chats are deleted after 30 days of inactivity.'

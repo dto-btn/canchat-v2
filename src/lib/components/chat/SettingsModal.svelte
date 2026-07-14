@@ -376,6 +376,7 @@
 						bind:value={search}
 						on:input={searchDebounceHandler}
 						placeholder={$i18n.t('Search')}
+						aria-label={$i18n.t('Search')}
 					/>
 				</div>
 

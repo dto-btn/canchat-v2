@@ -248,6 +248,7 @@
 												class="my-0.5 w-full text-sm outline-none bg-transparent"
 												autocomplete="name"
 												placeholder={$i18n.t('Enter Your Full Name')}
+												aria-label={$i18n.t('Name')}
 												required
 												on:invalid={(e) =>
 													e.target.setCustomValidity($i18n.t('This field is required'))}
@@ -265,6 +266,7 @@
 												autocomplete="username"
 												name="username"
 												placeholder={$i18n.t('Enter Your Username')}
+												aria-label={$i18n.t('Username')}
 												required
 												on:invalid={(e) =>
 													e.target.setCustomValidity($i18n.t('This field is required'))}
@@ -280,6 +282,7 @@
 												autocomplete="email"
 												name="email"
 												placeholder={$i18n.t('Enter Your Email')}
+												aria-label={$i18n.t('Email')}
 												required
 												on:invalid={(e) =>
 													e.target.setCustomValidity($i18n.t('This field is required'))}
@@ -295,6 +298,7 @@
 											type="password"
 											class="my-0.5 w-full text-sm outline-none bg-transparent"
 											placeholder={$i18n.t('Enter Your Password')}
+											aria-label={$i18n.t('Password')}
 											autocomplete="current-password"
 											name="current-password"
 											required

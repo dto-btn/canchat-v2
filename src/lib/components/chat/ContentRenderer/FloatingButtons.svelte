@@ -270,6 +270,7 @@
 					class="ml-5 bg-transparent outline-none w-full flex-1 text-sm"
 					placeholder={$i18n.t('Ask a question')}
 					bind:value={floatingInputValue}
+					aria-label={$i18n.t('Ask a question')}
 					on:keydown={(e) => {
 						if (e.key === 'Enter') {
 							askHandler();

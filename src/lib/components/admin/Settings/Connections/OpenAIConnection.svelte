@@ -57,6 +57,7 @@
 					placeholder={$i18n.t('API Base URL')}
 					bind:value={url}
 					autocomplete="off"
+					aria-label={$i18n.t('API Base URL')}
 				/>
 
 				{#if pipeline}

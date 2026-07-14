@@ -58,7 +58,7 @@
 							ariaMessage.set($i18n.t('Sidebar expanded.'));
 							await changeFocus('hide-sidebar-button');
 						}}
-						aria-label="Show Sidebar"
+						aria-label={$i18n.t('Show Sidebar')}
 					>
 						<MenuLines />
 					</button>
@@ -111,7 +111,7 @@
 							on:click={async () => {
 								await showControls.set(!$showControls);
 							}}
-							aria-label="Controls"
+							aria-label={$i18n.t('Controls')}
 						>
 							<AdjustmentsHorizontal className="size-5" strokeWidth="0.5" />
 						</button>

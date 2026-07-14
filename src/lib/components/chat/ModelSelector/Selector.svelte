@@ -290,6 +290,7 @@
 						class="w-full text-sm bg-transparent outline-none"
 						placeholder={$i18n.t('Search a model')}
 						autocomplete="off"
+						aria-label={$i18n.t('Search a model')}
 						on:keydown={(e) => {
 							if (e.code === 'Enter' && filteredItems.length > 0) {
 								value = filteredItems[selectedModelIdx].value;
@@ -384,7 +385,7 @@
 								<!-- {JSON.stringify(item.info)} -->
 
 								{#if item.model.owned_by === 'openai'}
-									<Tooltip content={`${'External'}`}>
+									<Tooltip content={$i18n.t('External')}>
 										<div class="translate-y-[1px]">
 											<svg
 												xmlns="http://www.w3.org/2000/svg"

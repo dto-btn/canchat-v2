@@ -136,6 +136,7 @@
 								class="w-full mt-2 rounded-lg px-4 py-2 text-sm dark:text-gray-300 dark:bg-gray-900 outline-none resize-none"
 								rows="3"
 								required
+								aria-label={inputPlaceholder ? inputPlaceholder : $i18n.t('Enter your message')}
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 							/>
 						{/if}

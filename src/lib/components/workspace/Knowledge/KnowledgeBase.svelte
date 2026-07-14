@@ -541,7 +541,7 @@
 			: 'left-0'}  w-full h-full flex z-50 touch-none pointer-events-none"
 		id="dropzone"
 		role="region"
-		aria-label="Drag and Drop Container"
+		aria-label={$i18n.t('Drag and Drop Container')}
 	>
 		<div class="absolute w-full h-full backdrop-blur bg-gray-800/40 flex justify-center">
 			<div class="m-auto pt-64 flex flex-col justify-center">
@@ -581,6 +581,7 @@
 	type="file"
 	multiple
 	hidden
+	aria-label={$i18n.t('Upload files')}
 	on:change={async () => {
 		if (inputFiles && inputFiles.length > 0) {
 			for (const file of inputFiles) {
@@ -618,7 +619,8 @@
 								type="text"
 								class="text-left w-full font-semibold text-2xl font-primary bg-transparent outline-none"
 								bind:value={knowledge.name}
-								placeholder="Knowledge Name"
+								placeholder={$i18n.t('Knowledge Name')}
+								aria-label={$i18n.t('Knowledge Name')}
 								on:input={() => {
 									changeDebounceHandler();
 								}}
@@ -647,7 +649,8 @@
 							type="text"
 							class="text-left text-xs w-full text-gray-500 bg-transparent outline-none"
 							bind:value={knowledge.description}
-							placeholder="Knowledge Description"
+							placeholder={$i18n.t('Knowledge Description')}
+							aria-label={$i18n.t('Knowledge Description')}
 							on:input={() => {
 								changeDebounceHandler();
 							}}
@@ -805,6 +808,7 @@
 									class=" w-full text-sm pr-4 py-1 rounded-r-xl outline-none bg-transparent"
 									bind:value={query}
 									placeholder={$i18n.t('Search Collection')}
+									aria-label={$i18n.t('Search Collection')}
 									on:focus={() => {
 										selectedFileId = null;
 									}}

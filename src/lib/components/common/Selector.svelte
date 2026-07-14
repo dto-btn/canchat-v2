@@ -61,6 +61,7 @@
 						bind:value={searchValue}
 						class="w-full text-sm bg-transparent outline-none"
 						placeholder={searchPlaceholder}
+						aria-label={searchPlaceholder}
 					/>
 				</div>
 

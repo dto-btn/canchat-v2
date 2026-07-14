@@ -185,6 +185,7 @@
 										class="w-full capitalize rounded-lg text-sm bg-transparent dark:disabled:text-gray-500 outline-none"
 										bind:value={_user.role}
 										placeholder={$i18n.t('Enter Your Role')}
+										aria-label={$i18n.t('Enter Your Role')}
 										required
 										on:invalid={(e) =>
 											e.target.setCustomValidity($i18n.t('This field is required'))}
@@ -207,6 +208,7 @@
 										type="text"
 										bind:value={_user.name}
 										placeholder={$i18n.t('Enter Your Full Name')}
+										aria-label={$i18n.t('Enter Your Full Name')}
 										autocomplete="off"
 										required
 										on:invalid={(e) =>
@@ -226,6 +228,7 @@
 										type="email"
 										bind:value={_user.email}
 										placeholder={$i18n.t('Enter Your Email')}
+										aria-label={$i18n.t('Enter Your Email')}
 										required
 										on:invalid={(e) =>
 											e.target.setCustomValidity($i18n.t('This field is required'))}
@@ -242,6 +245,7 @@
 										type="password"
 										bind:value={_user.password}
 										placeholder={$i18n.t('Enter Your Password')}
+										aria-label={$i18n.t('Enter Your Password')}
 										autocomplete="off"
 									/>
 								</div>
@@ -255,6 +259,7 @@
 										bind:files={inputFiles}
 										type="file"
 										accept=".csv"
+										aria-label={$i18n.t('Upload CSV file')}
 									/>
 
 									<button

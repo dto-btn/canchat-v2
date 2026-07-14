@@ -112,6 +112,7 @@
 							placeholder={$i18n.t('Select an engine')}
 							required
 							on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+							aria-label={$i18n.t('Web Search Engine')}
 						>
 							<option disabled selected value="">{$i18n.t('Select an engine')}</option>
 							{#each webSearchEngines as engine}
@@ -137,6 +138,7 @@
 											placeholder={$i18n.t('Enter Searxng Query URL')}
 											bind:value={webConfig.search.searxng_query_url}
 											autocomplete="off"
+											aria-label={$i18n.t('Enter Searxng Query URL')}
 										/>
 									</div>
 								</div>
@@ -165,6 +167,7 @@
 											placeholder={$i18n.t('Enter Google PSE Engine Id')}
 											bind:value={webConfig.search.google_pse_engine_id}
 											autocomplete="off"
+											aria-label={$i18n.t('Enter Google PSE Engine Id')}
 										/>
 									</div>
 								</div>
@@ -259,6 +262,7 @@
 											placeholder={$i18n.t('Enter SearchApi Engine')}
 											bind:value={webConfig.search.searchapi_engine}
 											autocomplete="off"
+											aria-label={$i18n.t('Enter SearchApi Engine')}
 										/>
 									</div>
 								</div>
@@ -299,6 +303,7 @@
 											placeholder={$i18n.t('Enter Bing Search V7 Endpoint')}
 											bind:value={webConfig.search.bing_search_v7_endpoint}
 											autocomplete="off"
+											aria-label={$i18n.t('Enter Bing Search V7 Endpoint')}
 										/>
 									</div>
 								</div>
@@ -331,6 +336,7 @@
 								bind:value={webConfig.search.result_count}
 								required
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+								aria-label={$i18n.t('Search Result Count')}
 							/>
 						</div>
 
@@ -345,6 +351,7 @@
 								bind:value={webConfig.search.concurrent_requests}
 								required
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+								aria-label={$i18n.t('Concurrent Requests')}
 							/>
 						</div>
 					</div>
@@ -395,6 +402,7 @@
 								placeholder={$i18n.t('Enter language codes')}
 								bind:value={youtubeLanguage}
 								autocomplete="off"
+								aria-label={$i18n.t('Language')}
 							/>
 						</div>
 					</div>
@@ -410,6 +418,7 @@
 								placeholder={$i18n.t('Enter proxy URL (e.g. https://user:password@host:port)')}
 								bind:value={youtubeProxyUrl}
 								autocomplete="off"
+								aria-label={$i18n.t('Proxy URL')}
 							/>
 						</div>
 					</div>

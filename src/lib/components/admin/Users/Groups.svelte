@@ -184,6 +184,7 @@
 						class=" w-full text-sm pr-4 py-1 rounded-r-xl outline-none bg-transparent"
 						bind:value={search}
 						placeholder={$i18n.t('Search')}
+						aria-label={$i18n.t('Search')}
 					/>
 				</div>
 

@@ -22,7 +22,7 @@
 			: 'left-0'}  fixed top-0 right-0 bottom-0 w-full h-full flex z-[9999] touch-none pointer-events-none"
 		id="dropzone"
 		role="region"
-		aria-label="Drag and Drop Container"
+		aria-label={$i18n.t('Drag and Drop Container')}
 	>
 		<div class="absolute w-full h-full backdrop-blur bg-gray-800/40 flex justify-center">
 			<div class="m-auto pt-64 flex flex-col justify-center">
