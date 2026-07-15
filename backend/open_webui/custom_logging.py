@@ -8,10 +8,13 @@ from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from uvicorn.logging import AccessFormatter
 
-from open_webui.utils.auth import get_current_user
+from open_webui.utils.auth import get_request_identity
 
 ACCESS_LOG_NAME: str = "uvicorn.access"
 DATE_FORMAT: str = "%Y/%m/%d %H:%M:%S %Z"
+ACCESS_LOG_DEFAULT_TEXT: str = "N/A"
+ACCESS_LOG_DEFAULT_USER: str = "unauthenticated"
+ACCESS_LOG_DEFAULT_CONTENT_LENGTH: int = -1
 LOG_FORMAT: str = (
     '%(name)s: %(remote_address)s - %(request_id)s - %(user)s [%(asctime)s] %(host)s "%(http_method)s %(http_path)s HTTP/%(http_version)s" "%(user_agent)s" %(http_status)d %(content_length)dB %(request_duration)fs'
 )
@@ -19,13 +22,21 @@ LOG_FORMAT: str = (
 _request_duration_context = contextvars.ContextVar(
     "access_log_process_time", default=-1.0
 )
-_user_context = contextvars.ContextVar("access_log_user", default="unauthenticated")
-_request_id_context = contextvars.ContextVar("access_log_request_id", default="N/A")
-_context_length_context = contextvars.ContextVar(
-    "access_log_content_length", default=-1
+_user_context = contextvars.ContextVar(
+    "access_log_user", default=ACCESS_LOG_DEFAULT_USER
 )
-_user_agent_context = contextvars.ContextVar("access_log_user_agent", default="N/A")
-_host_context = contextvars.ContextVar("access_log_host", default="N/A")
+_request_id_context = contextvars.ContextVar(
+    "access_log_request_id", default=ACCESS_LOG_DEFAULT_TEXT
+)
+_context_length_context = contextvars.ContextVar(
+    "access_log_content_length", default=ACCESS_LOG_DEFAULT_CONTENT_LENGTH
+)
+_user_agent_context = contextvars.ContextVar(
+    "access_log_user_agent", default=ACCESS_LOG_DEFAULT_TEXT
+)
+_host_context = contextvars.ContextVar(
+    "access_log_host", default=ACCESS_LOG_DEFAULT_TEXT
+)
 
 
 class UvicornAccessFieldsFilter(logging.Filter):
@@ -80,29 +91,26 @@ class LoggingMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next):
-
         start_time = time.perf_counter()
+
+        _user_context.set(
+            get_request_identity(request=request, auth_token=None)
+            or ACCESS_LOG_DEFAULT_USER
+        )
+        _request_id_context.set(
+            request.headers.get("X-Request-Id") or ACCESS_LOG_DEFAULT_TEXT
+        )
+        _user_agent_context.set(
+            request.headers.get("User-Agent") or ACCESS_LOG_DEFAULT_TEXT
+        )
+        _host_context.set(request.headers.get("Host") or ACCESS_LOG_DEFAULT_TEXT)
+        _context_length_context.set(ACCESS_LOG_DEFAULT_CONTENT_LENGTH)
 
         response = await call_next(request)
 
-        try:
-            _user_context.set(get_current_user(request=request, auth_token=None).email)
-        except Exception:
-            pass
-
         _request_duration_context.set(time.perf_counter() - start_time)
-
-        if request_id := request.headers.get("X-Request-Id"):
-            _request_id_context.set(request_id)
-
         if context_length := response.headers.get("Content-Length"):
             _context_length_context.set(int(context_length))
-
-        if user_agent := request.headers.get("User-Agent"):
-            _user_agent_context.set(user_agent)
-
-        if host := request.headers.get("Host"):
-            _host_context.set(host)
 
         return response
 

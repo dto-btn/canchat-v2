@@ -317,6 +317,49 @@ def get_legacy_auth_token(request: Request) -> Optional[str]:
     return request.cookies.get(LEGACY_AUTH_TOKEN_COOKIE_NAME)
 
 
+def get_request_auth_token(
+    request: Request,
+    auth_token: Optional[HTTPAuthorizationCredentials] = None,
+) -> tuple[Optional[str], Optional[AuthSource]]:
+    if auth_token is not None:
+        return auth_token.credentials, "bearer"
+
+    authorization_header = request.headers.get("authorization")
+    if authorization_header:
+        scheme, _, credentials = authorization_header.partition(" ")
+        if scheme.lower() == "bearer" and credentials:
+            return credentials, "bearer"
+
+    token = get_legacy_auth_token(request)
+    if token is not None:
+        return token, "legacy_cookie"
+
+    return None, None
+
+
+def get_request_identity(
+    request: Request,
+    auth_token: Optional[HTTPAuthorizationCredentials] = None,
+) -> Optional[str]:
+    token, _ = get_request_auth_token(request, auth_token)
+
+    if not token:
+        return None
+
+    if token.startswith("sk-"):
+        return None
+
+    data = decode_token(token)
+    if not data:
+        return None
+
+    user_id = data.get("id")
+    if isinstance(user_id, str) and user_id:
+        return user_id
+
+    return None
+
+
 def create_api_key():
     key = str(uuid.uuid4()).replace("-", "")
     return f"sk-{key}"
@@ -328,19 +371,7 @@ def resolve_current_user(
     require_auth: bool = True,
 ) -> Optional[ResolvedAuthContext]:
     """Resolve bearer, legacy-cookie, or API-key auth and return the winning source."""
-    token = None
-    auth_source: Optional[AuthSource] = None
-
-    if auth_token is not None:
-        token = auth_token.credentials
-        auth_source = "bearer"
-
-    if token is None:
-        # Temporary rollout fallback for legacy browser sessions that still rely
-        # on the old access-token cookie.
-        token = get_legacy_auth_token(request)
-        if token is not None:
-            auth_source = "legacy_cookie"
+    token, auth_source = get_request_auth_token(request, auth_token)
 
     if token is None:
         if require_auth:
