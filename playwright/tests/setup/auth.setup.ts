@@ -33,6 +33,7 @@ setup('global setup: seed data & authenticate', async ({ page }) => {
 		console.log('CanChat already initialized. Missing auth files detected.');
 		await authPage.login(adminUser.email, adminUser.password);
 		await saveAuthState(page, 'admin.json');
+		await seedUserAccounts(page, adminPage);
 		await generateUserAuthFiles(page, authPage, adminPage);
 		console.log('Auth files regenerated.');
 		return;
@@ -71,7 +72,7 @@ async function seedUserAccounts(page: Page, adminPage: AdminPage) {
 	);
 
 	for (const user of standardUsers) {
-		const userExists = await page.getByText(user.email).isVisible();
+		const userExists = await page.getByText(user.email, { exact: true }).isVisible();
 
 		if (!userExists) {
 			console.log(`Creating user: ${user.username}`);

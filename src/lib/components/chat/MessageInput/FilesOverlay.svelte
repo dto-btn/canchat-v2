@@ -1,6 +1,9 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
 	import { showSidebar } from '$lib/stores';
 	import AddFilesPlaceholder from '$lib/components/AddFilesPlaceholder.svelte';
+
+	const i18n = getI18n();
 
 	export let show = false;
 	let overlayElement = null;
