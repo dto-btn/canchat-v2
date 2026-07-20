@@ -17,10 +17,6 @@
 				class=" cursor-pointer {selected === 'home' ? 'rounded-2xl' : 'rounded-full'}"
 				on:click={() => {
 					selected = 'home';
-
-					if (window.electronAPI) {
-						window.electronAPI.load('home');
-					}
 				}}
 			>
 				<img
