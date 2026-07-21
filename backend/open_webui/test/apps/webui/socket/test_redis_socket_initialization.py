@@ -1,5 +1,6 @@
 import sys
 import types
+import pytest
 
 sys.modules.setdefault("uvicorn", types.ModuleType("uvicorn"))
 
@@ -93,10 +94,10 @@ def test_initialize_socket_state_retries_then_uses_redis(monkeypatch):
     assert release_func.__self__ is FakeLock.instances[0]
 
 
-def test_initialize_socket_state_falls_back_to_local_consistently(monkeypatch):
+def test_initialize_socket_state_redis_failure_does_not_fallback(monkeypatch):
     from open_webui.socket import main as socket_main
 
-    FakeRedisDict.failures_before_success = 10
+    FakeRedisDict.failures_before_success = 5
     FakeRedisDict.ping_calls = 0
     sleep_calls = []
 
@@ -111,6 +112,27 @@ def test_initialize_socket_state_falls_back_to_local_consistently(monkeypatch):
     monkeypatch.setattr(
         socket_main.time, "sleep", lambda delay: sleep_calls.append(delay)
     )
+
+    with pytest.raises(RuntimeError, match="WEBSOCKET_MANAGER=redis"):
+        socket_main._initialize_socket_state()
+
+    assert sleep_calls == [socket_main.TIMEOUT_DURATION] * 4
+
+
+@pytest.mark.parametrize("manager_value", [None, "local", "none"])
+def test_initialize_socket_state_uses_local_manager(monkeypatch, manager_value):
+    from open_webui.socket import main as socket_main
+
+    FakeRedisDict.failures_before_success = 0
+    FakeRedisDict.ping_calls = 0
+
+    monkeypatch.setattr(socket_main, "WEBSOCKET_MANAGER", manager_value)
+    monkeypatch.setattr(socket_main, "RedisDict", FakeRedisDict)
+    monkeypatch.setattr(socket_main, "RedisLock", FakeLock)
+    monkeypatch.setattr(
+        socket_main.socketio, "AsyncRedisManager", FakeAsyncRedisManager
+    )
+    monkeypatch.setattr(socket_main.socketio, "AsyncServer", FakeAsyncServer)
 
     (
         effective_manager,
@@ -131,4 +153,4 @@ def test_initialize_socket_state_falls_back_to_local_consistently(monkeypatch):
     assert acquire_func is socket_main._lock_noop
     assert renew_func is socket_main._lock_noop
     assert release_func is socket_main._lock_noop
-    assert sleep_calls == [socket_main.TIMEOUT_DURATION] * 4
+    assert FakeRedisDict.ping_calls == 0

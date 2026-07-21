@@ -24,8 +24,7 @@
 		tags,
 		temporaryChatEnabled,
 		isLastActiveTab,
-		isApp,
-		appInfo
+		isApp
 	} from '$lib/stores';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -153,14 +152,6 @@
 		const chat = $page.url.pathname.includes(`/c/${event.chat_id}`);
 
 		let isFocused = document.visibilityState !== 'visible';
-		if (window.electronAPI) {
-			const res = await window.electronAPI.send({
-				type: 'window:isFocused'
-			});
-			if (res) {
-				isFocused = res.isFocused;
-			}
-		}
 
 		if ((event.chat_id !== $chatId && !$temporaryChatEnabled) || isFocused) {
 			await tick();
@@ -210,14 +201,6 @@
 		const channel = $page.url.pathname.includes(`/channels/${event.channel_id}`);
 
 		let isFocused = document.visibilityState !== 'visible';
-		if (window.electronAPI) {
-			const res = await window.electronAPI.send({
-				type: 'window:isFocused'
-			});
-			if (res) {
-				isFocused = res.isFocused;
-			}
-		}
 
 		if ((!channel || isFocused) && event?.user?.id !== $user?.id) {
 			await tick();
@@ -250,25 +233,6 @@
 	};
 
 	onMount(async () => {
-		if (window?.electronAPI) {
-			const info = await window.electronAPI.send({
-				type: 'app:info'
-			});
-
-			if (info) {
-				isApp.set(true);
-				appInfo.set(info);
-
-				const data = await window.electronAPI.send({
-					type: 'app:data'
-				});
-
-				if (data) {
-					appData.set(data);
-				}
-			}
-		}
-
 		// Listen for messages on the BroadcastChannel
 		bc.onmessage = (event) => {
 			if (event.data === 'active') {
