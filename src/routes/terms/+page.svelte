@@ -70,10 +70,10 @@
 			acceptTermsFailureCount += 1;
 			if (acceptTermsFailureCount >= TERMS_MAX_RETRY_ATTEMPTS) {
 				toast.error(
-					`Failed to accept terms after multiple attempts. Please retry, or contact CANChat Support.`
+					`Repeated attempts to record acceptance have failed. Please wait a few minutes before retrying.`
 				);
 			} else {
-				toast.error(`Failed to accept terms. Please try again.`);
+				toast.error(`Failed to record acceptance. Please try again.`);
 			}
 		} finally {
 			accepting = false;
@@ -933,11 +933,8 @@
 								>!</span
 							>
 							<p>
-								Repeated attempts to accept terms have failed. Please retry, or contact
-								<a
-									class="font-semibold underline underline-offset-2"
-									href={`mailto:${TERMS_SUPPORT_EMAIL}`}>CANChat Support</a
-								>.
+								Repeated attempts to record acceptance have failed. Please wait a few minutes before
+								retrying.
 							</p>
 						</div>
 					{/if}

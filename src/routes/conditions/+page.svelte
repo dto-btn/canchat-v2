@@ -70,10 +70,12 @@
 			acceptTermsFailureCount += 1;
 			if (acceptTermsFailureCount >= TERMS_MAX_RETRY_ATTEMPTS) {
 				toast.error(
-					"Échec après plusieurs tentatives. Réessayez ou contactez l'assistance CANChat."
+					"Les tentatives répétées d'enregistrement de l'acceptation ont échoué. Veuillez patienter quelques minutes avant de réessayer."
 				);
 			} else {
-				toast.error("Échec de l'acceptation des conditions. Veuillez réessayer.");
+				toast.error(
+					"Échec de l'enregistrement de l'acceptation des conditions. Veuillez réessayer."
+				);
 			}
 		} finally {
 			accepting = false;
@@ -981,11 +983,8 @@
 								>!</span
 							>
 							<p>
-								Les tentatives répétées d'acceptation ont échoué. Réessayez, ou contactez
-								<a
-									class="font-semibold underline underline-offset-2"
-									href={`mailto:${TERMS_SUPPORT_EMAIL}`}>l'assistance CANChat</a
-								>.
+								Les tentatives répétées d'enregistrement de l'acceptation ont échoué. Veuillez
+								patienter quelques minutes avant de réessayer.
 							</p>
 						</div>
 					{/if}
