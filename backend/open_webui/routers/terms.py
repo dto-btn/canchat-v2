@@ -1,12 +1,10 @@
 import logging
 
-from open_webui.models.terms import (
-    Terms,
-    TermsModel,
-)
-from open_webui.env import SRC_LOG_LEVELS
 from fastapi import APIRouter, Depends, HTTPException, status
-from open_webui.utils.auth import get_current_user, get_admin_user
+
+from open_webui.env import SRC_LOG_LEVELS
+from open_webui.models.terms import Terms, TermsModel
+from open_webui.utils.auth import get_admin_user, get_current_user
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["MODELS"])
