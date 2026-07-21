@@ -19,7 +19,7 @@ router = APIRouter()
 
 
 @router.post("/accept", response_model=TermsModel)
-async def accept_terms(terms_version: str | None, user=Depends(get_current_user)):
+async def accept_terms(terms_version: str, user=Depends(get_current_user)):
     if not terms_version or not terms_version.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -27,13 +27,14 @@ async def accept_terms(terms_version: str | None, user=Depends(get_current_user)
         )
     try:
         terms = Terms.accept(user.id, terms_version)
-    except Exception as e:
-        log.exception(f"accept_terms failed for user {user.id}")
+    except Exception:
+        log.error(f"accept_terms failed for user {user.id}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to accept terms of use",
         )
     if not terms:
+        log.error(f"accept_terms returned None for user {user.id}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to accept terms of use",
@@ -47,7 +48,7 @@ async def accept_terms(terms_version: str | None, user=Depends(get_current_user)
 
 
 @router.get("/status/{terms_version}", response_model=TermsModel | None)
-async def get_terms_status(terms_version: str | None, user=Depends(get_current_user)):
+async def get_terms_status(terms_version: str, user=Depends(get_current_user)):
     if not terms_version or not terms_version.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -55,8 +56,8 @@ async def get_terms_status(terms_version: str | None, user=Depends(get_current_u
         )
     try:
         return Terms.get_terms_by_user_id(user.id, terms_version)
-    except Exception as e:
-        log.exception(f"get_terms_status failed for user {user.id}")
+    except Exception:
+        log.error(f"get_terms_status failed for user {user.id}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve terms status",
@@ -70,7 +71,7 @@ async def get_terms_status(terms_version: str | None, user=Depends(get_current_u
 
 @router.get("/user/{user_id}/{terms_version}", response_model=TermsModel | None)
 async def get_user_terms(
-    user_id: str, terms_version: str | None, user=Depends(get_admin_user)
+    user_id: str, terms_version: str, user=Depends(get_admin_user)
 ):
     if not user_id or not user_id.strip():
         raise HTTPException(
@@ -84,8 +85,8 @@ async def get_user_terms(
         )
     try:
         return Terms.get_terms_by_user_id(user_id, terms_version)
-    except Exception as e:
-        log.exception(f"get_user_terms failed for user_id {user_id}")
+    except Exception:
+        log.error(f"get_user_terms failed for user_id {user_id}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve terms for user",

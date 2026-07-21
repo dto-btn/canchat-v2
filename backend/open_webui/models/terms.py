@@ -22,10 +22,10 @@ log.setLevel(SRC_LOG_LEVELS["MODELS"])
 class Term(Base):
     __tablename__ = "terms"
 
-    id = Column(Text, primary_key=True)
+    id = Column(Text, nullable=False, primary_key=True)
     user_id = Column(Text, nullable=False)
     accepted_at = Column(BigInteger, nullable=False)
-    version = Column(Text, nullable=False, unique=False)
+    version = Column(Text, nullable=False)
 
 
 class TermsModel(BaseModel):
