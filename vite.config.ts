@@ -29,8 +29,7 @@ export default defineConfig({
 	],
 	define: {
 		APP_VERSION: JSON.stringify(process.env.npm_package_version),
-		APP_BUILD_HASH: JSON.stringify(process.env.APP_BUILD_HASH || 'dev-build'),
-		APP_TERMS_VERSION: JSON.stringify(process.env.APP_TERMS_VERSION || '0.0.0')
+		APP_BUILD_HASH: JSON.stringify(process.env.APP_BUILD_HASH || 'dev-build')
 	},
 	build: {
 		sourcemap: true

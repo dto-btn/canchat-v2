@@ -15,7 +15,6 @@ ARG USE_RERANKING_MODEL=""
 ARG USE_TIKTOKEN_ENCODING_NAME="cl100k_base"
 
 ARG BUILD_HASH=dev-build
-ARG TERMS_VERSION=0.0.0
 # Override at your own risk - non-root configurations are untested
 ARG UID=0
 ARG GID=0
@@ -25,7 +24,6 @@ FROM --platform=$BUILDPLATFORM node:22-alpine3.20 AS build
 # for local docker test runs, enable alpine below
 # FROM node:22-alpine3.20 AS build
 ARG BUILD_HASH
-ARG TERMS_VERSION
 ARG BUILD_MODE=build
 
 WORKDIR /app
@@ -35,7 +33,6 @@ RUN npm ci && npm cache clean --force
 
 COPY . .
 ENV APP_BUILD_HASH=${BUILD_HASH}
-ENV APP_TERMS_VERSION=${TERMS_VERSION}
 RUN npm run ${BUILD_MODE} && \
     # Cleanup node_modules and other build artifacts to reduce layer size
     rm -rf node_modules .svelte-kit src static/pyodide package-lock.json
