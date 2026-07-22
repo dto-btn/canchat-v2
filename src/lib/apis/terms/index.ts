@@ -36,17 +36,15 @@ export const acceptTerms = async (token: string) => {
 	let error = null;
 	const termsVersion = TERMS_VERSION?.trim() || '0.0.0';
 
-	const res = await fetch(
-		`${WEBUI_BASE_URL}/api/v1/terms/accept?terms_version=${encodeURIComponent(termsVersion)}`,
-		{
-			method: 'POST',
-			headers: {
-				Accept: 'application/json',
-				'Content-Type': 'application/json',
-				authorization: `Bearer ${token}`
-			}
-		}
-	)
+	const res = await fetch(`${WEBUI_BASE_URL}/api/v1/terms/accept`, {
+		method: 'POST',
+		headers: {
+			Accept: 'application/json',
+			'Content-Type': 'application/json',
+			authorization: `Bearer ${token}`
+		},
+		body: JSON.stringify({ terms_version: termsVersion })
+	})
 		.then(async (res) => {
 			if (!res.ok) throw await res.json();
 			return res.json();

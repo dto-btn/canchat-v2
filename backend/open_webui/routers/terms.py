@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 
 from open_webui.env import SRC_LOG_LEVELS
 from open_webui.models.terms import Terms, TermsModel
@@ -17,7 +17,9 @@ router = APIRouter()
 
 
 @router.post("/accept", response_model=TermsModel)
-async def accept_terms(terms_version: str, user=Depends(get_current_user)):
+async def accept_terms(
+    terms_version: str = Body(..., embed=True), user=Depends(get_current_user)
+):
     if not terms_version or not terms_version.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
