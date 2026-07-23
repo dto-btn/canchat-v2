@@ -524,7 +524,11 @@
 					</div>
 
 					<div class=" mt-2 my-1">
+						<div class="mb-1 flex w-full justify-between items-center">
+							<div class=" self-center text-sm font-semibold">{$i18n.t('Tags')}</div>
+						</div>
 						<div class="">
+							<div class="text-xs text-gray-500 mb-1">{$i18n.t('English Tags')}</div>
 							<Tags
 								tags={info?.meta?.tags ?? []}
 								on:delete={(e) => {
@@ -537,6 +541,26 @@
 										info.meta.tags = [{ name: tagName }];
 									} else {
 										info.meta.tags = [...info.meta.tags, { name: tagName }];
+									}
+								}}
+							/>
+						</div>
+						<div class="mt-2">
+							<div class="text-xs text-gray-500 mb-1">{$i18n.t('French Tags')}</div>
+							<Tags
+								tags={info?.meta?.tags_fr ?? []}
+								on:delete={(e) => {
+									const tagName = e.detail;
+									info.meta.tags_fr = (info.meta.tags_fr ?? []).filter(
+										(tag) => tag.name !== tagName
+									);
+								}}
+								on:add={(e) => {
+									const tagName = e.detail;
+									if (!(info?.meta?.tags_fr ?? null)) {
+										info.meta.tags_fr = [{ name: tagName }];
+									} else {
+										info.meta.tags_fr = [...info.meta.tags_fr, { name: tagName }];
 									}
 								}}
 							/>

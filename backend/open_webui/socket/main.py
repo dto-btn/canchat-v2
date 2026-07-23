@@ -106,20 +106,17 @@ def _initialize_socket_state():
                 time.sleep(retry_delay_seconds)
             else:
                 log.error(
-                    "Failed to initialize Redis websocket backend after %s attempts: %s. Falling back to local websocket manager and local pools.",
+                    "Failed to initialize Redis websocket backend after %s attempts: %s. Aborting startup because WEBSOCKET_MANAGER is set to redis.",
                     max_attempts,
                     e,
                 )
+                raise RuntimeError(
+                    "Redis websocket backend initialization failed while WEBSOCKET_MANAGER=redis"
+                ) from e
 
-    return (
-        "local",
-        _build_socket_server(),
-        {},
-        {},
-        {},
-        _lock_noop,
-        _lock_noop,
-        _lock_noop,
+    # Defensive guard: redis mode must never silently downgrade to local.
+    raise RuntimeError(
+        "Unreachable state: Redis websocket backend was not initialized while WEBSOCKET_MANAGER=redis"
     )
 
 
