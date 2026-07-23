@@ -2170,7 +2170,12 @@ async def process_chat_response(
                 await response.background()
 
         # background_tasks.add_task(post_response_handler, response, events)
-        task_id, _ = await create_task(
+        task_manager = getattr(request.app.state, "task_manager", None)
+        create_background_task = (
+            task_manager.create if task_manager is not None else create_task
+        )
+
+        task_id, _ = await create_background_task(
             post_response_handler(response, events),
             metadata={
                 "chat_id": metadata.get("chat_id"),

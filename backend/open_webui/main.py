@@ -322,12 +322,11 @@ from open_webui.utils.auth import (
 from open_webui.utils.oauth import oauth_manager
 from open_webui.utils.security_headers import SecurityHeadersMiddleware
 
-from open_webui.tasks import (
-    list_tasks,
-    start_task_cancellation_listener,
-    stop_task,
-    stop_task_cancellation_listener,
-)  # Import from tasks.py
+from open_webui.tasking import (
+    clear_task_manager,
+    create_default_task_manager,
+    set_task_manager,
+)
 
 if SAFE_MODE:
     print("SAFE MODE ENABLED")
@@ -398,8 +397,10 @@ async def lifespan(app: FastAPI):
         )
         app.state.redis_lock_manager = None
 
+    app.state.task_manager = set_task_manager(create_default_task_manager())
+
     try:
-        await start_task_cancellation_listener()
+        await app.state.task_manager.start()
     except Exception as e:
         log.warning(
             f"Shared task cancellation listener unavailable. "
@@ -560,11 +561,14 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 log.error(f"Error during Redis lock manager cleanup: {e}")
 
-        try:
-            await stop_task_cancellation_listener()
-            log.info("Shared task cancellation listener cleanup completed")
-        except Exception as e:
-            log.error(f"Error during shared task cancellation cleanup: {e}")
+        if hasattr(app.state, "task_manager") and app.state.task_manager:
+            try:
+                await app.state.task_manager.close()
+                log.info("Shared task manager cleanup completed")
+            except Exception as e:
+                log.error(f"Error during shared task manager cleanup: {e}")
+
+        clear_task_manager()
 
 
 app = FastAPI(
@@ -1306,17 +1310,21 @@ async def chat_action(
 
 
 @app.post("/api/tasks/stop/{task_id}")
-async def stop_task_endpoint(task_id: str, user=Depends(get_verified_user)):
+async def stop_task_endpoint(
+    request: Request,
+    task_id: str,
+    user=Depends(get_verified_user),
+):
     try:
-        result = await stop_task(task_id)  # Use the function from tasks.py
+        result = await request.app.state.task_manager.stop(task_id)
         return result
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
 @app.get("/api/tasks")
-async def list_tasks_endpoint(user=Depends(get_verified_user)):
-    return {"tasks": list_tasks()}  # Use the function from tasks.py
+async def list_tasks_endpoint(request: Request, user=Depends(get_verified_user)):
+    return {"tasks": request.app.state.task_manager.list()}
 
 
 ##################################

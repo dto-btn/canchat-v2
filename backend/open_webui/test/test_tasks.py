@@ -1,182 +1,225 @@
 import asyncio
 
-import pytest
-
-from open_webui import tasks as task_registry
+from open_webui.tasking import InMemoryTaskHub, TaskManager, TaskManagerSettings
 
 
-@pytest.fixture(autouse=True)
-def clear_task_registry():
-    task_registry.tasks.clear()
-    task_registry.task_metadata_by_id.clear()
-    task_registry.recent_task_states.clear()
-    yield
-    task_registry.tasks.clear()
-    task_registry.task_metadata_by_id.clear()
-    task_registry.recent_task_states.clear()
-
-
-@pytest.mark.asyncio
-async def test_create_task_records_shared_running_state_before_task_starts(monkeypatch):
-    events = []
-
-    async def fake_upsert_shared_task_record(task_id, *, state, metadata=None):
-        events.append((state, task_id, metadata))
-
-    async def complete_immediately():
-        events.append(("started", None, None))
-
-    monkeypatch.setattr(
-        task_registry,
-        "upsert_shared_task_record",
-        fake_upsert_shared_task_record,
+def create_test_manager(
+    instance_id: str,
+    *,
+    hub: InMemoryTaskHub | None = None,
+    recent_task_ttl_seconds: int = 30,
+    active_task_ttl_seconds: int = 60,
+    remote_stop_wait_seconds: float = 5.0,
+) -> TaskManager:
+    shared_hub = hub or InMemoryTaskHub(
+        active_task_ttl_seconds=active_task_ttl_seconds,
+        recent_task_ttl_seconds=recent_task_ttl_seconds,
+    )
+    return TaskManager(
+        backend=shared_hub.create_backend(),
+        settings=TaskManagerSettings(
+            instance_id=instance_id,
+            recent_task_ttl_seconds=recent_task_ttl_seconds,
+            remote_stop_wait_seconds=remote_stop_wait_seconds,
+        ),
     )
 
-    task_id, task = await task_registry.create_task(
-        complete_immediately(),
-        metadata={"chat_id": "chat-id"},
-    )
-    await task
-    await asyncio.sleep(0)
 
-    assert events[0] == ("running", task_id, {"chat_id": "chat-id"})
-    assert events[1] == ("started", None, None)
+def test_create_task_records_shared_running_state_before_task_starts():
+    async def scenario():
+        hub = InMemoryTaskHub(
+            active_task_ttl_seconds=60,
+            recent_task_ttl_seconds=30,
+        )
+        manager = create_test_manager(instance_id="owner", hub=hub)
+        events = []
 
+        original_save_record = manager.backend.save_record
 
-@pytest.mark.asyncio
-async def test_stop_task_returns_recent_state_before_checking_shared_record(
-    monkeypatch,
-):
-    task_registry.remember_task_state("recent-task", "cancelled")
+        async def recording_save_record(record):
+            events.append((record.state.value, record.task_id, dict(record.metadata)))
+            return await original_save_record(record)
 
-    async def fail_get_shared_task_record(task_id):
-        raise AssertionError(f"shared task lookup should not run for {task_id}")
+        manager.backend.save_record = recording_save_record
+        await manager.start()
 
-    monkeypatch.setattr(
-        task_registry,
-        "get_shared_task_record",
-        fail_get_shared_task_record,
-    )
+        async def complete_immediately():
+            events.append(("started", None, None))
 
-    result = await task_registry.stop_task("recent-task")
+        task_id, task = await manager.create(
+            complete_immediately(),
+            metadata={"chat_id": "chat-id"},
+        )
+        await task
+        await asyncio.sleep(0)
+        await manager.close()
 
-    assert result == {
-        "status": True,
-        "message": "Task recent-task already cancelled.",
-        "state": "cancelled",
-    }
+        assert events[0] == ("running", task_id, {"chat_id": "chat-id"})
+        assert events[1] == ("started", None, None)
 
-
-@pytest.mark.asyncio
-async def test_stop_task_returns_success_for_recently_completed_task():
-    async def complete_immediately():
-        return "done"
-
-    task_id, task = await task_registry.create_task(complete_immediately())
-    await task
-
-    result = await task_registry.stop_task(task_id)
-
-    assert result == {
-        "status": True,
-        "message": f"Task {task_id} already completed.",
-        "state": "completed",
-    }
+    asyncio.run(scenario())
 
 
-@pytest.mark.asyncio
-async def test_stop_task_raises_for_unknown_task_id():
-    with pytest.raises(ValueError, match="Task with ID missing-task not found"):
-        await task_registry.stop_task("missing-task")
+def test_stop_task_returns_success_for_recently_completed_task():
+    async def scenario():
+        manager = create_test_manager(instance_id="owner")
+        await manager.start()
 
+        async def complete_immediately():
+            return "done"
 
-@pytest.mark.asyncio
-async def test_stop_task_caches_terminal_shared_state_locally(monkeypatch):
-    async def fake_get_shared_task_record(task_id):
-        return {
-            "task_id": task_id,
+        task_id, task = await manager.create(complete_immediately())
+        await task
+        await asyncio.sleep(0)
+
+        result = await manager.stop(task_id)
+        await manager.close()
+
+        assert result == {
+            "status": True,
+            "message": f"Task {task_id} already completed.",
             "state": "completed",
-            "owner_instance_id": "remote-instance",
         }
 
-    monkeypatch.setattr(
-        task_registry, "get_shared_task_record", fake_get_shared_task_record
-    )
-
-    result = await task_registry.stop_task("remote-completed-task")
-
-    assert result == {
-        "status": True,
-        "message": "Task remote-completed-task already completed.",
-        "state": "completed",
-    }
-    assert task_registry.get_recent_task_state("remote-completed-task") == "completed"
+    asyncio.run(scenario())
 
 
-@pytest.mark.asyncio
-async def test_stop_task_requests_remote_cancellation(monkeypatch):
-    published = []
+def test_stop_task_raises_for_unknown_task_id():
+    async def scenario():
+        manager = create_test_manager(instance_id="owner")
+        await manager.start()
 
-    async def fake_get_shared_task_record(task_id):
-        return {
-            "task_id": task_id,
-            "state": "running",
-            "owner_instance_id": "remote-instance",
+        try:
+            await manager.stop("missing-task")
+        except ValueError as exc:
+            assert str(exc) == "Task with ID missing-task not found."
+        else:
+            raise AssertionError("Expected ValueError for missing task")
+        finally:
+            await manager.close()
+
+    asyncio.run(scenario())
+
+
+def test_stop_task_uses_recent_terminal_cache_before_backend_lookup():
+    async def scenario():
+        manager = create_test_manager(instance_id="owner")
+        await manager.start()
+        manager.remember_task_state("recent-task", "cancelled")
+
+        async def fail_load_record(task_id):
+            raise AssertionError(f"backend load should not run for {task_id}")
+
+        manager.backend.load_record = fail_load_record
+        result = await manager.stop("recent-task")
+        await manager.close()
+
+        assert result == {
+            "status": True,
+            "message": "Task recent-task already cancelled.",
+            "state": "cancelled",
         }
 
-    async def fake_publish_remote_stop_request(task_id, owner_instance_id):
-        published.append((task_id, owner_instance_id))
-        return True
-
-    async def fake_wait_for_task_terminal_state(task_id, timeout_seconds=5):
-        assert timeout_seconds == task_registry.REMOTE_STOP_WAIT_SECONDS
-        return "cancelled"
-
-    monkeypatch.setattr(
-        task_registry, "get_shared_task_record", fake_get_shared_task_record
-    )
-    monkeypatch.setattr(
-        task_registry,
-        "publish_remote_stop_request",
-        fake_publish_remote_stop_request,
-    )
-    monkeypatch.setattr(
-        task_registry,
-        "wait_for_task_terminal_state",
-        fake_wait_for_task_terminal_state,
-    )
-
-    result = await task_registry.stop_task("remote-task")
-
-    assert published == [("remote-task", "remote-instance")]
-    assert result == {
-        "status": True,
-        "message": "Task remote-task successfully stopped.",
-        "state": "cancelled",
-    }
+    asyncio.run(scenario())
 
 
-@pytest.mark.asyncio
-async def test_stop_task_rechecks_recent_state_after_shared_lookup(monkeypatch):
-    recent_states = iter([None, "completed"])
+def test_stop_task_marks_swallowed_cancellation_as_cancelled():
+    async def scenario():
+        manager = create_test_manager(instance_id="owner")
+        await manager.start()
+        started = asyncio.Event()
 
-    def fake_get_recent_task_state(task_id):
-        return next(recent_states, None)
+        async def swallow_cancelled_error():
+            started.set()
+            try:
+                while True:
+                    await asyncio.sleep(0)
+            except asyncio.CancelledError:
+                return "partial"
 
-    async def fake_get_shared_task_record(task_id):
-        return None
+        task_id, _ = await manager.create(swallow_cancelled_error())
+        await started.wait()
 
-    monkeypatch.setattr(
-        task_registry, "get_recent_task_state", fake_get_recent_task_state
-    )
-    monkeypatch.setattr(
-        task_registry, "get_shared_task_record", fake_get_shared_task_record
-    )
+        result = await manager.stop(task_id)
+        await manager.close()
 
-    result = await task_registry.stop_task("race-task")
+        assert result == {
+            "status": True,
+            "message": f"Task {task_id} successfully stopped.",
+            "state": "cancelled",
+        }
 
-    assert result == {
-        "status": True,
-        "message": "Task race-task already completed.",
-        "state": "completed",
-    }
+    asyncio.run(scenario())
+
+
+def test_remote_stop_is_event_driven_and_returns_terminal_state():
+    async def scenario():
+        hub = InMemoryTaskHub(
+            active_task_ttl_seconds=60,
+            recent_task_ttl_seconds=30,
+        )
+        owner = create_test_manager(instance_id="owner", hub=hub)
+        requester = create_test_manager(instance_id="requester", hub=hub)
+        await owner.start()
+        await requester.start()
+        started = asyncio.Event()
+
+        async def swallow_cancelled_error():
+            started.set()
+            try:
+                while True:
+                    await asyncio.sleep(0)
+            except asyncio.CancelledError:
+                return "partial"
+
+        task_id, _ = await owner.create(
+            swallow_cancelled_error(),
+            metadata={"chat_id": "chat-1"},
+        )
+        await started.wait()
+
+        result = await requester.stop(task_id)
+        await owner.close()
+        await requester.close()
+
+        assert result == {
+            "status": True,
+            "message": f"Task {task_id} successfully stopped.",
+            "state": "cancelled",
+        }
+
+    asyncio.run(scenario())
+
+
+def test_remote_terminal_state_is_cached_locally_after_stop():
+    async def scenario():
+        hub = InMemoryTaskHub(
+            active_task_ttl_seconds=60,
+            recent_task_ttl_seconds=30,
+        )
+        owner = create_test_manager(instance_id="owner", hub=hub)
+        requester = create_test_manager(instance_id="requester", hub=hub)
+        await owner.start()
+        await requester.start()
+
+        async def complete_immediately():
+            return "done"
+
+        task_id, task = await owner.create(complete_immediately())
+        await task
+        await asyncio.sleep(0)
+
+        result = await requester.stop(task_id)
+        cached_state = requester.get_recent_task_state(task_id)
+
+        await owner.close()
+        await requester.close()
+
+        assert result == {
+            "status": True,
+            "message": f"Task {task_id} already completed.",
+            "state": "completed",
+        }
+        assert cached_state == "completed"
+
+    asyncio.run(scenario())
