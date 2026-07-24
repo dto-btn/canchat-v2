@@ -25,9 +25,7 @@
 		tags,
 		temporaryChatEnabled,
 		isLastActiveTab,
-		isApp,
-		appData,
-		appInfo
+		isApp
 	} from '$lib/stores';
 	import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -569,25 +567,6 @@
 
 		const initializeLayout = async () => {
 			try {
-				if (window?.electronAPI) {
-					const info = await window.electronAPI.send({
-						type: 'app:info'
-					});
-
-					if (info) {
-						isApp.set(true);
-						appInfo.set(info);
-
-						const data = await window.electronAPI.send({
-							type: 'app:data'
-						});
-
-						if (data) {
-							appData.set(data);
-						}
-					}
-				}
-
 				bc.onmessage = (event) => {
 					if (event.data === 'active') {
 						isLastActiveTab.set(false);

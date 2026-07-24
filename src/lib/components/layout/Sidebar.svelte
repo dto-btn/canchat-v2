@@ -5,7 +5,7 @@
 	import { v4 as uuidv4 } from 'uuid';
 
 	import { goto } from '$app/navigation';
-	import { getAccessTokenValue } from '$lib/services/auth';
+	import { getRequestToken } from '$lib/services/auth';
 	import {
 		user,
 		chats,
@@ -87,10 +87,9 @@
 	let allChatsLoaded = false;
 
 	let folders = {};
-	const authToken = () => getAccessTokenValue() ?? '';
 
 	const initFolders = async () => {
-		const folderList = await getFolders(authToken()).catch((error) => {
+		const folderList = await getFolders(getRequestToken()).catch((error) => {
 			toast.error(`${error}`);
 			return [];
 		});
@@ -155,7 +154,7 @@
 			}
 		};
 
-		const res = await createNewFolder(authToken(), name).catch((error) => {
+		const res = await createNewFolder(getRequestToken(), name).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
@@ -166,22 +165,22 @@
 	};
 
 	const initChannels = async () => {
-		await channels.set(await getChannels(authToken()));
+		await channels.set(await getChannels(getRequestToken()));
 	};
 
 	const initChatList = async () => {
 		// Reset pagination variables
-		tags.set(await getAllTags(authToken()));
-		pinnedChats.set(await getPinnedChatList(authToken()));
+		tags.set(await getAllTags(getRequestToken()));
+		pinnedChats.set(await getPinnedChatList(getRequestToken()));
 		initFolders();
 
 		currentChatPage.set(1);
 		allChatsLoaded = false;
 
 		if (search) {
-			await chats.set(await getChatListBySearchText(authToken(), search, $currentChatPage));
+			await chats.set(await getChatListBySearchText(getRequestToken(), search, $currentChatPage));
 		} else {
-			await chats.set(await getChatList(authToken(), $currentChatPage));
+			await chats.set(await getChatList(getRequestToken(), $currentChatPage));
 		}
 
 		// Enable pagination
@@ -196,9 +195,9 @@
 		let newChatList = [];
 
 		if (search) {
-			newChatList = await getChatListBySearchText(authToken(), search, $currentChatPage);
+			newChatList = await getChatListBySearchText(getRequestToken(), search, $currentChatPage);
 		} else {
-			newChatList = await getChatList(authToken(), $currentChatPage);
+			newChatList = await getChatList(getRequestToken(), $currentChatPage);
 		}
 
 		// once the bottom of the list has been reached (no results) there is no need to continue querying
@@ -239,10 +238,10 @@
 					})
 					.join(' ');
 
-				await chats.set(await getChatListBySearchText(authToken(), normalizedSearch));
+				await chats.set(await getChatListBySearchText(getRequestToken(), normalizedSearch));
 				ariaMessage.set($chats.length + $i18n.t(' chat found'));
 				if ($chats.length === 0) {
-					tags.set(await getAllTags(authToken()));
+					tags.set(await getAllTags(getRequestToken()));
 				}
 			}, 1000);
 		}
@@ -251,7 +250,7 @@
 	const importChatHandler = async (items, pinned = false, folderId = null) => {
 		for (const item of items) {
 			if (item.chat) {
-				await importChat(authToken(), item.chat, item?.meta ?? {}, pinned, folderId);
+				await importChat(getRequestToken(), item.chat, item?.meta ?? {}, pinned, folderId);
 			}
 		}
 
@@ -343,7 +342,9 @@
 		const chatIdsArray = selectedChatIds;
 
 		try {
-			const result = await processDeletion(() => deleteMultipleChats(authToken(), chatIdsArray));
+			const result = await processDeletion(() =>
+				deleteMultipleChats(getRequestToken(), chatIdsArray)
+			);
 
 			if (result.failed_deletions.length > 0) {
 				const message =
@@ -552,7 +553,7 @@
 <ChannelModal
 	bind:show={showCreateChannel}
 	onSubmit={async ({ name, access_control }) => {
-		const res = await createNewChannel(authToken(), {
+		const res = await createNewChannel(getRequestToken(), {
 			name: name,
 			access_control: access_control
 		}).catch((error) => {
@@ -561,7 +562,7 @@
 		});
 
 		if (res) {
-			$socket?.emit('join-channels', { auth: { token: getAccessTokenValue() } });
+			$socket?.emit('join-channels', { auth: { token: getRequestToken() } });
 			await initChannels();
 			showCreateChannel = false;
 		}
@@ -811,16 +812,16 @@
 					const { type, id, item } = e.detail;
 
 					if (type === 'chat') {
-						let chat = await getChatById(authToken(), id).catch((error) => {
+						let chat = await getChatById(getRequestToken(), id).catch((error) => {
 							return null;
 						});
 						if (!chat && item) {
-							chat = await importChat(authToken(), item.chat, item?.meta ?? {});
+							chat = await importChat(getRequestToken(), item.chat, item?.meta ?? {});
 						}
 
 						if (chat) {
 							if (chat.folder_id) {
-								const res = await updateChatFolderIdById(authToken(), chat.id, null).catch(
+								const res = await updateChatFolderIdById(getRequestToken(), chat.id, null).catch(
 									(error) => {
 										toast.error(`${error}`);
 										return null;
@@ -829,7 +830,7 @@
 							}
 
 							if (chat.pinned) {
-								const res = await toggleChatPinnedStatusById(authToken(), chat.id);
+								const res = await toggleChatPinnedStatusById(getRequestToken(), chat.id);
 							}
 
 							initChatList();
@@ -839,10 +840,12 @@
 							return;
 						}
 
-						const res = await updateFolderParentIdById(authToken(), id, null).catch((error) => {
-							toast.error(`${error}`);
-							return null;
-						});
+						const res = await updateFolderParentIdById(getRequestToken(), id, null).catch(
+							(error) => {
+								toast.error(`${error}`);
+								return null;
+							}
+						);
 
 						if (res) {
 							await initFolders();
@@ -869,25 +872,27 @@
 								const { type, id, item } = e.detail;
 
 								if (type === 'chat') {
-									let chat = await getChatById(authToken(), id).catch((error) => {
+									let chat = await getChatById(getRequestToken(), id).catch((error) => {
 										return null;
 									});
 									if (!chat && item) {
-										chat = await importChat(authToken(), item.chat, item?.meta ?? {});
+										chat = await importChat(getRequestToken(), item.chat, item?.meta ?? {});
 									}
 
 									if (chat) {
 										if (chat.folder_id) {
-											const res = await updateChatFolderIdById(authToken(), chat.id, null).catch(
-												(error) => {
-													toast.error(`${error}`);
-													return null;
-												}
-											);
+											const res = await updateChatFolderIdById(
+												getRequestToken(),
+												chat.id,
+												null
+											).catch((error) => {
+												toast.error(`${error}`);
+												return null;
+											});
 										}
 
 										if (!chat.pinned) {
-											const res = await toggleChatPinnedStatusById(authToken(), chat.id);
+											const res = await toggleChatPinnedStatusById(getRequestToken(), chat.id);
 										}
 
 										initChatList();

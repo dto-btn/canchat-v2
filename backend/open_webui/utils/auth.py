@@ -3,6 +3,8 @@
 import logging
 import secrets
 import uuid
+from enum import StrEnum
+
 import jwt
 
 from datetime import UTC, datetime, timedelta
@@ -47,6 +49,17 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 AuthSource = Literal["bearer", "legacy_cookie", "api_key"]
 
 
+class AuthLogEvent(StrEnum):
+    ACCESS_TOKEN_ISSUED = "access-token-issued"
+    REFRESH_COOKIE_SET = "refresh-cookie-set"
+    REFRESH_SESSION_CREATED = "refresh-session-created"
+    REFRESH_SESSION_CREATE_FAILED = "refresh-session-create-failed"
+    REFRESH_SESSION_ROTATED = "refresh-session-rotated"
+    REFRESH_SESSION_ROTATION_FAILED = "refresh-session-rotation-failed"
+    REFRESH_TOKEN_FAILED = "refresh-token-failed"
+    REFRESH_TOKEN_SUCCEEDED = "refresh-token-succeeded"
+
+
 class ResolvedAuthContext(NamedTuple):
     # Callers use the source to enforce rollout-specific behavior, such as only
     # allowing legacy-cookie bootstrap on the migration endpoint.
@@ -56,7 +69,7 @@ class ResolvedAuthContext(NamedTuple):
 
 
 def log_auth_event(
-    event: str,
+    event: AuthLogEvent | str,
     *,
     level: Literal["debug", "info", "warning", "error"] = "info",
     **details,
@@ -223,7 +236,7 @@ def set_refresh_token_cookie(
         secure=WEBUI_REFRESH_TOKEN_COOKIE_SECURE,
     )
     log_auth_event(
-        "refresh-cookie-set",
+        AuthLogEvent.REFRESH_COOKIE_SET,
         refresh_session_id=refresh_session_id,
         refresh_expires_at=expires_at_refresh_token,
         refresh_remaining_seconds=seconds_until(expires_at_refresh_token),
@@ -249,7 +262,7 @@ def issue_tokens_for_user(
     )
 
     log_auth_event(
-        "access-token-issued",
+        AuthLogEvent.ACCESS_TOKEN_ISSUED,
         user_id=user_id,
         access_token_expires_at=expires_at_access_token,
         access_token_remaining_seconds=seconds_until(expires_at_access_token),
@@ -282,7 +295,7 @@ def issue_tokens_for_user(
     if refresh_session is None:
         if current_refresh_session_id is not None:
             log_auth_event(
-                "refresh-session-rotation-failed",
+                AuthLogEvent.REFRESH_SESSION_ROTATION_FAILED,
                 level="warning",
                 user_id=user_id,
                 refresh_session_id=current_refresh_session_id,
@@ -290,7 +303,7 @@ def issue_tokens_for_user(
             raise HTTPException(409, detail=ERROR_MESSAGES.REFRESH_SESSION_CONFLICT)
 
         log_auth_event(
-            "refresh-session-create-failed",
+            AuthLogEvent.REFRESH_SESSION_CREATE_FAILED,
             level="error",
             user_id=user_id,
             refresh_session_id=refresh_session_id,
@@ -299,9 +312,9 @@ def issue_tokens_for_user(
 
     log_auth_event(
         (
-            "refresh-session-rotated"
+            AuthLogEvent.REFRESH_SESSION_ROTATED
             if current_refresh_session_id is not None
-            else "refresh-session-created"
+            else AuthLogEvent.REFRESH_SESSION_CREATED
         ),
         user_id=user_id,
         refresh_session_id=refresh_session_id,

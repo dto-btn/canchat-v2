@@ -14,13 +14,14 @@ ACCESS_LOG_NAME: str = "uvicorn.access"
 DATE_FORMAT: str = "%Y/%m/%d %H:%M:%S %Z"
 ACCESS_LOG_DEFAULT_TEXT: str = "N/A"
 ACCESS_LOG_DEFAULT_USER: str = "unauthenticated"
+ACCESS_LOG_DEFAULT_DURATION: float = -1.0
 ACCESS_LOG_DEFAULT_CONTENT_LENGTH: int = -1
 LOG_FORMAT: str = (
     '%(name)s: %(remote_address)s - %(request_id)s - %(user)s [%(asctime)s] %(host)s "%(http_method)s %(http_path)s HTTP/%(http_version)s" "%(user_agent)s" %(http_status)d %(content_length)dB %(request_duration)fs'
 )
 
 _request_duration_context = contextvars.ContextVar(
-    "access_log_process_time", default=-1.0
+    "access_log_process_time", default=ACCESS_LOG_DEFAULT_DURATION
 )
 _user_context = contextvars.ContextVar(
     "access_log_user", default=ACCESS_LOG_DEFAULT_USER
@@ -93,6 +94,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         start_time = time.perf_counter()
 
+        _request_duration_context.set(ACCESS_LOG_DEFAULT_DURATION)
         _user_context.set(
             get_request_identity(request=request, auth_token=None)
             or ACCESS_LOG_DEFAULT_USER

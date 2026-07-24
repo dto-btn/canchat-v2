@@ -39,6 +39,7 @@ from open_webui.config import (
 from pydantic import BaseModel
 from open_webui.utils.misc import validate_email_format
 from open_webui.utils.auth import (
+    AuthLogEvent,
     build_refresh_session_meta,
     clear_legacy_auth_cookie,
     create_api_key,
@@ -76,6 +77,22 @@ TOKEN_DURATION_PATTERN = re.compile(r"^(-1|0|(-?\d+(\.\d+)?)(ms|s|m|h|d|w))$")
 class SessionUserResponse(Token, UserResponse):
     expires_at: Optional[int] = None
     permissions: Optional[dict] = None
+
+
+class AdminConfig(BaseModel):
+    SHOW_ADMIN_DETAILS: bool
+    WEBUI_URL: str
+    ENABLE_SIGNUP: bool
+    ENABLE_API_KEY: bool
+    ENABLE_API_KEY_ENDPOINT_RESTRICTIONS: bool
+    API_KEY_ALLOWED_ENDPOINTS: str
+    ENABLE_CHANNELS: bool
+    DEFAULT_USER_ROLE: str
+    ACCESS_TOKEN_EXPIRES_IN: str
+    REFRESH_TOKEN_EXPIRES_IN: str
+    JWT_EXPIRES_IN: Optional[str] = None
+    ENABLE_COMMUNITY_SHARING: bool
+    ENABLE_MESSAGE_RATING: bool
 
 
 def _issue_tokens_for_user(
@@ -156,23 +173,23 @@ def _build_session_user_response(
     }
 
 
-def _build_admin_config_response(request: Request) -> dict[str, Any]:
+def _build_admin_config_response(request: Request) -> AdminConfig:
     app_config = request.app.state.config
-    return {
-        "SHOW_ADMIN_DETAILS": app_config.SHOW_ADMIN_DETAILS,
-        "WEBUI_URL": app_config.WEBUI_URL,
-        "ENABLE_SIGNUP": app_config.ENABLE_SIGNUP,
-        "ENABLE_API_KEY": app_config.ENABLE_API_KEY,
-        "ENABLE_API_KEY_ENDPOINT_RESTRICTIONS": app_config.ENABLE_API_KEY_ENDPOINT_RESTRICTIONS,
-        "API_KEY_ALLOWED_ENDPOINTS": app_config.API_KEY_ALLOWED_ENDPOINTS,
-        "ENABLE_CHANNELS": app_config.ENABLE_CHANNELS,
-        "DEFAULT_USER_ROLE": app_config.DEFAULT_USER_ROLE,
-        "ACCESS_TOKEN_EXPIRES_IN": app_config.ACCESS_TOKEN_EXPIRES_IN,
-        "REFRESH_TOKEN_EXPIRES_IN": app_config.REFRESH_TOKEN_EXPIRES_IN,
-        "JWT_EXPIRES_IN": app_config.ACCESS_TOKEN_EXPIRES_IN,
-        "ENABLE_COMMUNITY_SHARING": app_config.ENABLE_COMMUNITY_SHARING,
-        "ENABLE_MESSAGE_RATING": app_config.ENABLE_MESSAGE_RATING,
-    }
+    return AdminConfig(
+        SHOW_ADMIN_DETAILS=app_config.SHOW_ADMIN_DETAILS,
+        WEBUI_URL=app_config.WEBUI_URL,
+        ENABLE_SIGNUP=app_config.ENABLE_SIGNUP,
+        ENABLE_API_KEY=app_config.ENABLE_API_KEY,
+        ENABLE_API_KEY_ENDPOINT_RESTRICTIONS=app_config.ENABLE_API_KEY_ENDPOINT_RESTRICTIONS,
+        API_KEY_ALLOWED_ENDPOINTS=app_config.API_KEY_ALLOWED_ENDPOINTS,
+        ENABLE_CHANNELS=app_config.ENABLE_CHANNELS,
+        DEFAULT_USER_ROLE=app_config.DEFAULT_USER_ROLE,
+        ACCESS_TOKEN_EXPIRES_IN=app_config.ACCESS_TOKEN_EXPIRES_IN,
+        REFRESH_TOKEN_EXPIRES_IN=app_config.REFRESH_TOKEN_EXPIRES_IN,
+        JWT_EXPIRES_IN=app_config.ACCESS_TOKEN_EXPIRES_IN,
+        ENABLE_COMMUNITY_SHARING=app_config.ENABLE_COMMUNITY_SHARING,
+        ENABLE_MESSAGE_RATING=app_config.ENABLE_MESSAGE_RATING,
+    )
 
 
 def _get_refresh_failure_reason(exc: HTTPException) -> str:
@@ -598,7 +615,7 @@ def refresh_token(request: Request, response: Response):
 
         latency_ms = (time.perf_counter() - refresh_started_at) * 1000
         log_auth_event(
-            "refresh-token-succeeded",
+            AuthLogEvent.REFRESH_TOKEN_SUCCEEDED,
             user_id=user.id,
             refresh_session_id=refresh_session.id,
             latency_ms=round(latency_ms, 2),
@@ -611,7 +628,7 @@ def refresh_token(request: Request, response: Response):
         latency_ms = (time.perf_counter() - refresh_started_at) * 1000
         reason = _get_refresh_failure_reason(exc)
         log_auth_event(
-            "refresh-token-failed",
+            AuthLogEvent.REFRESH_TOKEN_FAILED,
             level="warning" if exc.status_code < 500 else "error",
             reason=reason,
             status_code=exc.status_code,
@@ -621,7 +638,7 @@ def refresh_token(request: Request, response: Response):
     except Exception:
         latency_ms = (time.perf_counter() - refresh_started_at) * 1000
         log_auth_event(
-            "refresh-token-failed",
+            AuthLogEvent.REFRESH_TOKEN_FAILED,
             level="error",
             reason="unexpected_error",
             latency_ms=round(latency_ms, 2),
@@ -704,28 +721,12 @@ async def get_admin_details(request: Request, user=Depends(get_current_user)):
 ############################
 
 
-@router.get("/admin/config")
+@router.get("/admin/config", response_model=AdminConfig)
 async def get_admin_config(request: Request, user=Depends(get_admin_user)):
     return _build_admin_config_response(request)
 
 
-class AdminConfig(BaseModel):
-    SHOW_ADMIN_DETAILS: bool
-    WEBUI_URL: str
-    ENABLE_SIGNUP: bool
-    ENABLE_API_KEY: bool
-    ENABLE_API_KEY_ENDPOINT_RESTRICTIONS: bool
-    API_KEY_ALLOWED_ENDPOINTS: str
-    ENABLE_CHANNELS: bool
-    DEFAULT_USER_ROLE: str
-    ACCESS_TOKEN_EXPIRES_IN: str
-    REFRESH_TOKEN_EXPIRES_IN: str
-    JWT_EXPIRES_IN: Optional[str] = None
-    ENABLE_COMMUNITY_SHARING: bool
-    ENABLE_MESSAGE_RATING: bool
-
-
-@router.post("/admin/config")
+@router.post("/admin/config", response_model=AdminConfig)
 async def update_admin_config(
     request: Request, form_data: AdminConfig, user=Depends(get_admin_user)
 ):
