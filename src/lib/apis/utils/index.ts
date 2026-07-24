@@ -49,7 +49,7 @@ export const getHTMLFromMarkdown = async (md: string) => {
 		includeAuth: false,
 		retryOnUnauthorized: false,
 		body: JSON.stringify({
-			md
+			md: md
 		})
 	});
 
