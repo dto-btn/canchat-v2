@@ -11,6 +11,18 @@ from open_webui.models.refresh_sessions import RefreshSession, RefreshSessionMod
 class RefreshSessionsTable:
     """CRUD helpers for refresh sessions backed by the database table."""
 
+    @staticmethod
+    def _resolve_session_id(session_id: Optional[str]) -> str:
+        if session_id is None:
+            return str(uuid.uuid4())
+
+        try:
+            uuid.UUID(session_id)
+        except (TypeError, ValueError, AttributeError) as exc:
+            raise ValueError("session_id must be a valid UUID string") from exc
+
+        return session_id
+
     def create_session(
         self,
         user_id: str,
@@ -26,10 +38,11 @@ class RefreshSessionsTable:
         token first, then stores the matching row under the same id.
         """
         current_time = int(time.time())
+        resolved_session_id = self._resolve_session_id(session_id)
 
         with get_db() as db:
             refresh_session = RefreshSessionModel(
-                id=session_id or str(uuid.uuid4()),
+                id=resolved_session_id,
                 user_id=user_id,
                 token_hash=token_hash,
                 created_at=current_time,
