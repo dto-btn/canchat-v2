@@ -43,7 +43,7 @@ export const acceptTerms = async (token: string) => {
 			'Content-Type': 'application/json',
 			authorization: `Bearer ${token}`
 		},
-		body: JSON.stringify({ terms_version: termsVersion })
+		body: JSON.stringify({ version: termsVersion })
 	})
 		.then(async (res) => {
 			if (!res.ok) throw await res.json();

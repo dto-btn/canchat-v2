@@ -14,6 +14,10 @@ log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["MODELS"])
 
 
+class TermsForm(BaseModel):
+    version: str
+
+
 ####################
 # Terms DB Schema
 ####################

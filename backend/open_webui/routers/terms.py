@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, Body, Depends, HTTPException, status
 
 from open_webui.env import SRC_LOG_LEVELS
-from open_webui.models.terms import Terms, TermsModel
+from open_webui.models.terms import Terms, TermsForm, TermsModel
 from open_webui.utils.auth import get_admin_user, get_current_user
 
 log = logging.getLogger(__name__)
@@ -17,9 +17,8 @@ router = APIRouter()
 
 
 @router.post("/accept", response_model=TermsModel)
-async def accept_terms(
-    terms_version: str = Body(..., embed=True), user=Depends(get_current_user)
-):
+async def accept_terms(form_data: TermsForm, user=Depends(get_current_user)):
+    terms_version = form_data.version
     if not terms_version or not terms_version.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
