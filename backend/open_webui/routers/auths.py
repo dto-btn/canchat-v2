@@ -37,7 +37,7 @@ from open_webui.config import (
     OPENID_PROVIDER_URL,
 )
 from pydantic import BaseModel
-from open_webui.utils.misc import validate_email_format
+from open_webui.utils.misc import parse_duration, validate_email_format
 from open_webui.utils.auth import (
     AuthLogEvent,
     build_refresh_session_meta,
@@ -202,6 +202,22 @@ def _get_refresh_failure_reason(exc: HTTPException) -> str:
             return "refresh_session_conflict"
 
     return f"http_{exc.status_code}"
+
+
+def _validate_admin_token_expirations(
+    access_token_expires_in: str, refresh_token_expires_in: str
+) -> None:
+    access_duration = parse_duration(access_token_expires_in)
+    refresh_duration = parse_duration(refresh_token_expires_in)
+
+    if refresh_duration is None:
+        raise HTTPException(400, detail="Refresh token expiry must be finite")
+
+    if access_duration is not None and refresh_duration <= access_duration:
+        raise HTTPException(
+            400,
+            detail="Refresh token expiry must be greater than access token expiry",
+        )
 
 
 @router.get("/", response_model=SessionUserResponse)
@@ -750,16 +766,26 @@ async def update_admin_config(
     access_token_expires_in = (
         form_data.ACCESS_TOKEN_EXPIRES_IN or form_data.JWT_EXPIRES_IN
     )
+    next_access_token_expires_in = app_config.ACCESS_TOKEN_EXPIRES_IN
     if access_token_expires_in and TOKEN_DURATION_PATTERN.match(
         access_token_expires_in
     ):
-        app_config.ACCESS_TOKEN_EXPIRES_IN = access_token_expires_in
-        app_config.JWT_EXPIRES_IN = access_token_expires_in
+        next_access_token_expires_in = access_token_expires_in
 
+    next_refresh_token_expires_in = app_config.REFRESH_TOKEN_EXPIRES_IN
     if form_data.REFRESH_TOKEN_EXPIRES_IN and TOKEN_DURATION_PATTERN.match(
         form_data.REFRESH_TOKEN_EXPIRES_IN
     ):
-        app_config.REFRESH_TOKEN_EXPIRES_IN = form_data.REFRESH_TOKEN_EXPIRES_IN
+        next_refresh_token_expires_in = form_data.REFRESH_TOKEN_EXPIRES_IN
+
+    _validate_admin_token_expirations(
+        next_access_token_expires_in,
+        next_refresh_token_expires_in,
+    )
+
+    app_config.ACCESS_TOKEN_EXPIRES_IN = next_access_token_expires_in
+    app_config.JWT_EXPIRES_IN = next_access_token_expires_in
+    app_config.REFRESH_TOKEN_EXPIRES_IN = next_refresh_token_expires_in
 
     app_config.ENABLE_COMMUNITY_SHARING = form_data.ENABLE_COMMUNITY_SHARING
     app_config.ENABLE_MESSAGE_RATING = form_data.ENABLE_MESSAGE_RATING

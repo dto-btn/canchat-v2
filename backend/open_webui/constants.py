@@ -41,7 +41,9 @@ class ERROR_MESSAGES(str, Enum):
     INVALID_TOKEN = (
         "Your session has expired or the token is invalid. Please sign in again."
     )
-    MISSING_REFRESH_TOKEN = "Your refresh token is missing. Please sign in again."
+    MISSING_REFRESH_TOKEN = (
+        "Your refresh token is missing or expired. Please sign in again."
+    )
     INVALID_REFRESH_TOKEN = (
         "Your refresh session is invalid or has expired. Please sign in again."
     )

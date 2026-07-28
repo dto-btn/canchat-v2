@@ -205,3 +205,33 @@ def test_get_refresh_failure_reason_maps_known_errors():
         == "refresh_session_conflict"
     )
     assert _get_refresh_failure_reason(HTTPException(500, "unexpected")) == "http_500"
+
+
+def test_validate_admin_token_expirations_accepts_refresh_longer_than_access():
+    auths._validate_admin_token_expirations("1m", "2m")
+
+
+def test_validate_admin_token_expirations_accepts_any_finite_refresh_when_access_is_infinite():
+    # When access is non-expiring (-1 or 0), ordering check is skipped;
+    # only finiteness of refresh is required.
+    auths._validate_admin_token_expirations("-1", "1m")
+    auths._validate_admin_token_expirations("0", "1m")
+
+
+def test_validate_admin_token_expirations_rejects_refresh_not_longer_than_access():
+    with pytest.raises(HTTPException) as exc_info:
+        auths._validate_admin_token_expirations("2m", "1m")
+
+    assert exc_info.value.status_code == 400
+    assert (
+        exc_info.value.detail
+        == "Refresh token expiry must be greater than access token expiry"
+    )
+
+
+def test_validate_admin_token_expirations_rejects_non_finite_refresh():
+    with pytest.raises(HTTPException) as exc_info:
+        auths._validate_admin_token_expirations("1m", "-1")
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "Refresh token expiry must be finite"
