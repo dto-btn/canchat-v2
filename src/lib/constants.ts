@@ -14,6 +14,12 @@ export const AUDIO_API_BASE_URL = `${WEBUI_BASE_URL}/api/v1/audio`;
 export const IMAGES_API_BASE_URL = `${WEBUI_BASE_URL}/api/v1/images`;
 export const RETRIEVAL_API_BASE_URL = `${WEBUI_BASE_URL}/api/v1/retrieval`;
 
+export const TERMS_SUPPORT_EMAIL = 'ssc.canchat-support-assistance-canchat.spc@ssc-spc.gc.ca';
+export const TERMS_MAX_RETRY_ATTEMPTS = 3;
+export const TERMS_RETRY_DELAY_MS = 600;
+export const TERMS_VERSION = '3.0.0';
+export const TERMS_VERSION_DATE = new Date('2026-01-9');
+
 export const WEBUI_VERSION = APP_VERSION;
 export const WEBUI_BUILD_HASH = APP_BUILD_HASH;
 export const REQUIRED_OLLAMA_VERSION = '0.1.16';

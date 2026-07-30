@@ -32,6 +32,7 @@
 	import SettingsModal from '$lib/components/chat/SettingsModal.svelte';
 	import ChangelogModal from '$lib/components/ChangelogModal.svelte';
 	import AccountPending from '$lib/components/layout/Overlay/AccountPending.svelte';
+	import { getTermsStatus } from '$lib/apis/terms';
 
 	const i18n = getI18n();
 
@@ -59,6 +60,16 @@
 				}
 			} catch (error) {
 				// IndexedDB Not Found
+			}
+
+			const terms_accepted = await getTermsStatus(localStorage.token).catch((error) => {
+				console.error(error);
+				return null;
+			});
+
+			if (!terms_accepted) {
+				const TermsOfUseUrl = $i18n.language === 'fr-CA' ? '/conditions' : '/terms';
+				await goto(TermsOfUseUrl);
 			}
 
 			const userSettings = await getUserSettings(localStorage.token).catch((error) => {
