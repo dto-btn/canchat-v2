@@ -6,6 +6,9 @@
 		getAdminConfig,
 		getLdapConfig,
 		getLdapServer,
+		type AdminConfig,
+		type LdapConfig,
+		type LdapServerConfig,
 		updateAdminConfig,
 		updateLdapConfig,
 		updateLdapServer
@@ -19,14 +22,17 @@
 
 	const i18n = getI18n();
 
-	export let saveHandler: Function;
+	type SaveHandler = () => void | Promise<void>;
+	type LdapServerForm = Omit<LdapServerConfig, 'port'> & { port: string | number | null };
 
-	let adminConfig = null;
+	export let saveHandler: SaveHandler;
+
+	let adminConfig: AdminConfig | null = null;
 	let webhookUrl = '';
 
 	// LDAP
 	let ENABLE_LDAP = false;
-	let LDAP_SERVER = {
+	let LDAP_SERVER: LdapServerForm = {
 		label: '',
 		host: '',
 		port: '',
@@ -41,6 +47,30 @@
 		ciphers: ''
 	};
 
+	const normalizeLdapServer = (server: LdapServerConfig): LdapServerForm => ({
+		...LDAP_SERVER,
+		...server,
+		port: server.port ?? ''
+	});
+
+	const localizeApiError = (error: unknown) => {
+		if (typeof error === 'string' && error.trim()) {
+			return error;
+		}
+
+		if (error && typeof error === 'object') {
+			if ('detail' in error && typeof error.detail === 'string') {
+				return error.detail;
+			}
+
+			if ('message' in error && typeof error.message === 'string') {
+				return error.message;
+			}
+		}
+
+		return $i18n.t('Failed to update settings');
+	};
+
 	const updateLdapServerHandler = async () => {
 		if (!ENABLE_LDAP) return;
 		const res = await updateLdapServer(getRequestToken(), LDAP_SERVER).catch((error) => {
@@ -53,15 +83,25 @@
 	};
 
 	const updateHandler = async () => {
-		webhookUrl = await updateWebhookUrl(getRequestToken(), webhookUrl);
-		const res = await updateAdminConfig(getRequestToken(), adminConfig);
+		if (!adminConfig) {
+			return;
+		}
+
+		const nextWebhookUrl = await updateWebhookUrl(getRequestToken(), webhookUrl);
+		const res = await updateAdminConfig(getRequestToken(), adminConfig).catch((error) => {
+			toast.error(localizeApiError(error));
+			return null;
+		});
+
+		if (!res) {
+			return;
+		}
+
+		webhookUrl = nextWebhookUrl;
+		adminConfig = res;
 		await updateLdapServerHandler();
 
-		if (res) {
-			saveHandler();
-		} else {
-			toast.error(i18n.t('Failed to update settings'));
-		}
+		await saveHandler();
 	};
 
 	onMount(async () => {
@@ -74,19 +114,19 @@
 				webhookUrl = await getWebhookUrl(getRequestToken());
 			})(),
 			(async () => {
-				LDAP_SERVER = await getLdapServer(getRequestToken());
+				LDAP_SERVER = normalizeLdapServer(await getLdapServer(getRequestToken()));
 			})()
 		]);
 
-		const ldapConfig = await getLdapConfig(getRequestToken());
-		ENABLE_LDAP = ldapConfig.ENABLE_LDAP;
+		const ldapConfig = (await getLdapConfig(getRequestToken())) as LdapConfig;
+		ENABLE_LDAP = Boolean(ldapConfig.ENABLE_LDAP);
 	});
 </script>
 
 <form
 	class="flex flex-col h-full justify-between space-y-3 text-sm"
 	on:submit|preventDefault={async () => {
-		updateHandler();
+		await updateHandler();
 	}}
 >
 	<div class=" space-y-3 overflow-y-scroll scrollbar-hidden h-full">

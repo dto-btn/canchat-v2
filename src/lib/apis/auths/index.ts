@@ -4,6 +4,41 @@ import type { SessionUser } from '$lib/stores';
 
 const authsUrl = (path: string = '') => `${WEBUI_API_BASE_URL}/auths${path}`;
 
+export type AdminConfig = {
+	SHOW_ADMIN_DETAILS: boolean;
+	WEBUI_URL: string;
+	ENABLE_SIGNUP: boolean;
+	ENABLE_API_KEY: boolean;
+	ENABLE_API_KEY_ENDPOINT_RESTRICTIONS: boolean;
+	API_KEY_ALLOWED_ENDPOINTS: string;
+	ENABLE_CHANNELS: boolean;
+	DEFAULT_USER_ROLE: string;
+	ACCESS_TOKEN_EXPIRES_IN: string;
+	REFRESH_TOKEN_EXPIRES_IN: string;
+	JWT_EXPIRES_IN?: string | null;
+	ENABLE_COMMUNITY_SHARING: boolean;
+	ENABLE_MESSAGE_RATING: boolean;
+};
+
+export type LdapServerConfig = {
+	label: string;
+	host: string;
+	port?: number | string | null;
+	attribute_for_mail: string;
+	attribute_for_username: string;
+	app_dn: string;
+	app_dn_password: string;
+	search_base: string;
+	search_filters: string;
+	use_tls: boolean;
+	certificate_path?: string | null;
+	ciphers?: string | null;
+};
+
+export type LdapConfig = {
+	ENABLE_LDAP: boolean | null;
+};
+
 const authJson = <T = unknown>(path: string, options: ApiRequestOptions = {}) =>
 	apiJson<T>(authsUrl(path), options);
 
@@ -32,10 +67,10 @@ export const getAdminDetails = async (token: string) =>
 	authJson('/admin/details', { method: 'GET', token });
 
 export const getAdminConfig = async (token: string) =>
-	authJson('/admin/config', { method: 'GET', token });
+	authJson<AdminConfig>('/admin/config', { method: 'GET', token });
 
-export const updateAdminConfig = async (token: string, body: object) =>
-	authJsonBody('/admin/config', body, { method: 'POST', token });
+export const updateAdminConfig = async (token: string, body: AdminConfig) =>
+	authJsonBody<AdminConfig>('/admin/config', body, { method: 'POST', token });
 
 export const getSessionUser = async (token: string = ''): Promise<SessionUser | null> =>
 	authSessionJson<SessionUser>('/', { method: 'GET', token });
@@ -52,16 +87,19 @@ export const ldapUserSignIn = async (user: string, password: string): Promise<Se
 	);
 
 export const getLdapConfig = async (token: string = '') =>
-	authJson('/admin/config/ldap', { method: 'GET', token });
+	authJson<LdapConfig>('/admin/config/ldap', { method: 'GET', token });
 
 export const updateLdapConfig = async (token: string = '', enable_ldap: boolean) =>
 	authJsonBody('/admin/config/ldap', { enable_ldap }, { method: 'POST', token });
 
 export const getLdapServer = async (token: string = '') =>
-	authJson('/admin/config/ldap/server', { method: 'GET', token });
+	authJson<LdapServerConfig>('/admin/config/ldap/server', { method: 'GET', token });
 
-export const updateLdapServer = async (token: string = '', body: object) =>
-	authSessionJsonBody('/admin/config/ldap/server', body, { method: 'POST', token });
+export const updateLdapServer = async (token: string = '', body: LdapServerConfig) =>
+	authSessionJsonBody<LdapServerConfig>('/admin/config/ldap/server', body, {
+		method: 'POST',
+		token
+	});
 
 export const accessTokenRefresh = async (token: string = ''): Promise<SessionUser | null> =>
 	authSessionJson<SessionUser>('/refresh', {

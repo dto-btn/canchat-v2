@@ -26,6 +26,7 @@ const AUTH_FAILURE_PATTERNS = [
 	'sign in again'
 ];
 const SESSION_AUTH_ENDPOINTS = new Set(['/auths/', '/auths/refresh']);
+const SESSION_REQUEST_TIMEOUT_MS = 10_000;
 
 type AuthLogLevel = 'debug' | 'info' | 'warn' | 'error';
 type AuthSyncEventType = 'logout' | 'session-expired' | 'session-restored';
@@ -282,16 +283,48 @@ const requestSessionUser = async (
 		hasBearerToken: Boolean(token)
 	});
 
-	let response: Response;
 	try {
-		response = await fetch(`${WEBUI_API_BASE_URL}${path}`, {
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), SESSION_REQUEST_TIMEOUT_MS);
+
+		const response = await fetch(`${WEBUI_API_BASE_URL}${path}`, {
 			method,
 			headers: {
 				...headers,
 				...(token ? { Authorization: `Bearer ${token}` } : {})
 			},
-			credentials: 'include'
+			credentials: 'include',
+			signal: controller.signal
 		});
+
+		clearTimeout(timeoutId);
+
+		if (!response.ok) {
+			const errorPayload = await readAuthErrorPayload(response);
+			const requestError = buildAuthRequestError(
+				response.status,
+				errorPayload,
+				'Unable to refresh session',
+				{},
+				path
+			);
+			logAuthEvent('warn', 'session-request-failed', {
+				path,
+				method,
+				status: response.status,
+				error: requestError.message,
+				kind: requestError.kind
+			});
+			throw requestError;
+		}
+
+		const sessionUser = (await response.json()) as SessionUser;
+		logAuthEvent('info', 'session-request-succeeded', {
+			path,
+			method,
+			expiresAt: sessionUser?.expires_at ?? null
+		});
+		return sessionUser;
 	} catch (error) {
 		const requestError = buildAuthRequestError(
 			null,
@@ -309,33 +342,6 @@ const requestSessionUser = async (
 		});
 		throw requestError;
 	}
-
-	if (!response.ok) {
-		const errorPayload = await readAuthErrorPayload(response);
-		const requestError = buildAuthRequestError(
-			response.status,
-			errorPayload,
-			'Unable to refresh session',
-			{},
-			path
-		);
-		logAuthEvent('warn', 'session-request-failed', {
-			path,
-			method,
-			status: response.status,
-			error: requestError.message,
-			kind: requestError.kind
-		});
-		throw requestError;
-	}
-
-	const sessionUser = (await response.json()) as SessionUser;
-	logAuthEvent('info', 'session-request-succeeded', {
-		path,
-		method,
-		expiresAt: sessionUser?.expires_at ?? null
-	});
-	return sessionUser;
 };
 
 export const getAuthState = () => get(authState);

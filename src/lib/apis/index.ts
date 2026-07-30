@@ -2,6 +2,8 @@ import { WEBUI_BASE_URL } from '$lib/constants';
 import { apiJson, apiRequest, type ApiRequestOptions } from '$lib/apis/client';
 import type { Config, Model } from '$lib/stores';
 
+const BACKEND_CONFIG_REQUEST_TIMEOUT_MS = 10_000;
+
 const webUiApi = async <T = unknown>(path: string, options: ApiRequestOptions = {}) => {
 	return apiJson<T>(`${WEBUI_BASE_URL}${path}`, {
 		...options,
@@ -380,18 +382,26 @@ export const updatePipelineValves = async (
 };
 
 export const getBackendConfig = async (token?: string): Promise<Config | null> => {
-	return webUiApi<Config>('/api/config', {
-		method: 'GET',
-		credentials: 'include',
-		...(token !== undefined
-			? {
-					includeAuth: true,
-					token
-				}
-			: {
-					includeAuth: false
-				})
-	});
+	const controller = new AbortController();
+	const timeoutId = setTimeout(() => controller.abort(), BACKEND_CONFIG_REQUEST_TIMEOUT_MS);
+
+	try {
+		return await webUiApi<Config>('/api/config', {
+			method: 'GET',
+			credentials: 'include',
+			signal: controller.signal,
+			...(token !== undefined
+				? {
+						includeAuth: true,
+						token
+					}
+				: {
+						includeAuth: false
+					})
+		});
+	} finally {
+		clearTimeout(timeoutId);
+	}
 };
 
 export const getChangelog = async (locale: string = 'en') => {
@@ -428,7 +438,7 @@ export const getWebhookUrl = async (token: string) => {
 		token
 	});
 
-	return res?.url;
+	return res?.url ?? '';
 };
 
 export const updateWebhookUrl = async (token: string, url: string) => {
@@ -440,7 +450,7 @@ export const updateWebhookUrl = async (token: string, url: string) => {
 		})
 	});
 
-	return res?.url;
+	return res?.url ?? '';
 };
 
 export const getCommunitySharingEnabledStatus = async (token: string) => {
