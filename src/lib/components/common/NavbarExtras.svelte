@@ -9,6 +9,7 @@
 	import IssueModal from '$lib/components/common/IssueModal.svelte';
 	import SuggestionModal from '$lib/components/common/SuggestionModal.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
+	import { goto } from '$app/navigation';
 
 	const i18n = getContext('i18n');
 
@@ -21,6 +22,7 @@
 	$: SurveyUrl = $i18n.language === 'fr-CA' ? $config?.survey_url_fr : $config?.survey_url;
 	$: DocsUrl = $i18n.language === 'fr-CA' ? $config?.docs_url_fr : $config?.docs_url;
 	$: TrainingUrl = $i18n.language === 'fr-CA' ? $config?.training_url_fr : $config?.training_url;
+	$: TermsOfUseUrl = $i18n.language === 'fr-CA' ? '/conditions' : '/terms';
 
 	// Event Handlers
 	const toggleShortcuts = () => (showShortcuts = !showShortcuts);
@@ -37,6 +39,7 @@
 			showSurveyHandler={() => openUrl(SurveyUrl)}
 			showIssueHandler={() => (showIssue = true)}
 			showSuggestionHandler={() => (showSuggestion = true)}
+			showTermsOfUseHandler={() => goto(TermsOfUseUrl)}
 		>
 			<Tooltip content={$i18n.t('Help')} placement="bottom">
 				<div

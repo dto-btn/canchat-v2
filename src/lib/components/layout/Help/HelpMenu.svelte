@@ -12,6 +12,7 @@
 	import ExclamationCircle from '$lib/components/icons/ExclamationCircle.svelte';
 	import LightBlub from '$lib/components/icons/LightBlub.svelte';
 	import BookOpen from '$lib/components/icons/BookOpen.svelte';
+	import Document from '$lib/components/icons/Document.svelte';
 	const i18n = getI18n();
 
 	export let showShortcutsHandler: Function;
@@ -20,6 +21,7 @@
 	export let showIssueHandler: Function;
 	export let showSuggestionHandler: Function;
 	export let showTrainingHandler: Function;
+	export let showTermsOfUseHandler: Function;
 
 	export let onClose: Function = () => {};
 
@@ -53,6 +55,17 @@
 			>
 				<QuestionMarkCircle className="size-5" />
 				<div class="flex items-center">{$i18n.t('Documentation')}</div>
+			</DropdownMenu.Item>
+
+			<DropdownMenu.Item
+				class="flex gap-2 items-center px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md"
+				id="terms-button"
+				on:click={() => {
+					showTermsOfUseHandler();
+				}}
+			>
+				<Document className="size-5" />
+				<div class="flex items-center">{$i18n.t('Terms of Use')}</div>
 			</DropdownMenu.Item>
 
 			<DropdownMenu.Item
