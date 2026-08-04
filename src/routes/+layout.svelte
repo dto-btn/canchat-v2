@@ -39,6 +39,7 @@
 		clearAuthRecoveryCheckpoint,
 		clearAuthState,
 		getAccessTokenValue,
+		getRequestToken,
 		hydrateAuthState,
 		isAuthFailure,
 		isAuthTransportFailure,
@@ -59,6 +60,7 @@
 	import { getAllTags, getChatList } from '$lib/apis/chats';
 	import NotificationToast from '$lib/components/NotificationToast.svelte';
 	import AppSidebar from '$lib/components/app/AppSidebar.svelte';
+	import { getTermsStatus } from '$lib/apis/terms';
 
 	setContext('i18n', i18n);
 
@@ -89,6 +91,16 @@
 	});
 
 	const BREAKPOINT = 768;
+
+	const setDocumentLanguage = (language: string | undefined) => {
+		if (typeof document === 'undefined' || !language) {
+			return;
+		}
+
+		document.documentElement.lang = language;
+	};
+
+	$: setDocumentLanguage($i18n?.language);
 	type ChatSocketEventPayload = {
 		chat_id?: string;
 		data?: {
@@ -640,6 +652,17 @@
 
 				if (sessionUser) {
 					await applySessionUser(sessionUser, { redirectFromAuth: true });
+					// Check Terms of Use Status
+					if ($page.url.pathname !== '/terms' && $page.url.pathname !== '/conditions') {
+						const termsStatus = await getTermsStatus(getRequestToken()).catch((error) => {
+							console.error('Failed to load Terms of Use status:', error);
+							return null;
+						});
+						if (!termsStatus) {
+							const termsPage = $i18n.language === 'fr-CA' ? '/conditions' : '/terms';
+							await goto(termsPage);
+						}
+					}
 					return;
 				}
 

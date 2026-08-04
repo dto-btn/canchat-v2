@@ -34,6 +34,7 @@
 	import SettingsModal from '$lib/components/chat/SettingsModal.svelte';
 	import ChangelogModal from '$lib/components/ChangelogModal.svelte';
 	import AccountPending from '$lib/components/layout/Overlay/AccountPending.svelte';
+	import { getTermsStatus } from '$lib/apis/terms';
 
 	const i18n = getI18n();
 	const APP_ROLES = ['user', 'admin', 'analyst', 'global_analyst'] as const;
@@ -101,6 +102,17 @@
 					// IndexedDB Not Found
 				}
 
+				const termsAccepted = await getTermsStatus(getRequestToken()).catch((error) => {
+					console.error('Failed to load Terms of Use status:', error);
+					return null;
+				});
+
+				if (!termsAccepted) {
+					const termsOfUseUrl = $i18n.language === 'fr-CA' ? '/conditions' : '/terms';
+					await goto(termsOfUseUrl);
+					return;
+				}
+
 				const fallbackSettings = readLocalStorageSettings();
 				const token = getRequestToken();
 				const [userSettingsResult, modelsResult, bannersResult, toolsResult, promptsResult] =
@@ -144,7 +156,7 @@
 						: ([] as PromptsState)
 				);
 
-				document.addEventListener('keydown', async function (event) {
+				document.addEventListener('keydown', async function (event: KeyboardEvent) {
 					const isCtrlPressed = event.ctrlKey || event.metaKey; // metaKey is for Cmd key on Mac
 					// Check if the Shift key is pressed
 					const isShiftPressed = event.shiftKey;
