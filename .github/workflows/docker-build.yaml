@@ -81,6 +81,8 @@ jobs:
           cache-from: type=local,src=/var/lib/docker/cache
           build-args: |
             BUILD_HASH=${{ github.sha }}
+            UID=1001
+            GID=1001
           tags: ${{ steps.meta.outputs.tags }}
 
   backup-build-main-image:
@@ -142,4 +144,6 @@ jobs:
           no-cache: true  # Disable caching due to large/unstable images causing disk space issues
           build-args: |
             BUILD_HASH=${{ github.sha }}
+            UID=1001
+            GID=1001
           tags: ${{ steps.meta.outputs.tags }}
