@@ -11,9 +11,9 @@ openai==2.30.0 # Litellm require 2.30.0
 sentence-transformers==5.4.1
 sentencepiece==0.2.1
 tiktoken==0.12.0
-torch==2.9.1 #do not update, newer versions are causing startup issues.
-torchaudio==2.9.1 #do not update, newer versions are causing startup issues.
-torchvision==0.24.1 #do not update, newer versions are causing startup issues.
+torch==2.13.0
+torchaudio==2.11.0
+torchvision==0.28.0
 transformers==5.5.0
 # tokenizers version controlled by crewai dependency (0.20.3) - don't override
 
