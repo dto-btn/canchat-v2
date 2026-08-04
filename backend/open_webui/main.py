@@ -322,11 +322,7 @@ from open_webui.utils.auth import (
 from open_webui.utils.oauth import oauth_manager
 from open_webui.utils.security_headers import SecurityHeadersMiddleware
 
-from open_webui.tasking import (
-    clear_task_manager,
-    create_default_task_manager,
-    set_task_manager,
-)
+from open_webui.tasks.streams import create_stream_manager
 
 if SAFE_MODE:
     print("SAFE MODE ENABLED")
@@ -397,13 +393,12 @@ async def lifespan(app: FastAPI):
         )
         app.state.redis_lock_manager = None
 
-    app.state.task_manager = set_task_manager(create_default_task_manager())
-
     try:
-        await app.state.task_manager.start()
+        app.state.stream_task_manager = create_stream_manager()
+        await app.state.stream_task_manager.start()
     except Exception as e:
         log.warning(
-            f"Shared task cancellation listener unavailable. "
+            f"Shared stream task cancellation listener unavailable."
             f"Cross-instance chat stop will fall back to local-only behavior. Error: {e}"
         )
 
@@ -561,14 +556,12 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 log.error(f"Error during Redis lock manager cleanup: {e}")
 
-        if hasattr(app.state, "task_manager") and app.state.task_manager:
+        if hasattr(app.state, "stream_task_manager") and app.state.stream_task_manager:
             try:
-                await app.state.task_manager.close()
+                await app.state.stream_task_manager.close()
                 log.info("Shared task manager cleanup completed")
             except Exception as e:
                 log.error(f"Error during shared task manager cleanup: {e}")
-
-        clear_task_manager()
 
 
 app = FastAPI(
@@ -1316,7 +1309,7 @@ async def stop_task_endpoint(
     user=Depends(get_verified_user),
 ):
     try:
-        result = await request.app.state.task_manager.stop(task_id)
+        result = await request.app.state.stream_task_manager.stop_request(task_id)
         return result
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
@@ -1324,7 +1317,7 @@ async def stop_task_endpoint(
 
 @app.get("/api/tasks")
 async def list_tasks_endpoint(request: Request, user=Depends(get_verified_user)):
-    return {"tasks": request.app.state.task_manager.list()}
+    return {"tasks": await request.app.state.stream_task_manager.list()}
 
 
 ##################################

@@ -11,6 +11,7 @@ import json
 import inspect
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from uuid import uuid4
 
 from open_webui.models.message_metrics import MessageMetrics
 from fastapi import Request
@@ -66,9 +67,6 @@ from open_webui.utils.misc import (
 )
 from open_webui.utils.tools import get_tools_async
 from open_webui.utils.plugin import load_function_module_by_id
-
-
-from open_webui.tasks import create_task
 
 from open_webui.config import (
     DEFAULT_TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE,
@@ -2153,7 +2151,6 @@ async def process_chat_response(
 
                 await background_tasks_handler()
             except asyncio.CancelledError:
-                print("Task was cancelled!")
                 await event_emitter({"type": "task-cancelled"})
 
                 if not ENABLE_REALTIME_CHAT_SAVE:
@@ -2169,13 +2166,7 @@ async def process_chat_response(
             if response.background is not None:
                 await response.background()
 
-        # background_tasks.add_task(post_response_handler, response, events)
-        task_manager = getattr(request.app.state, "task_manager", None)
-        create_background_task = (
-            task_manager.create if task_manager is not None else create_task
-        )
-
-        task_id, _ = await create_background_task(
+        task_id, _ = await request.app.state.stream_task_manager.create(
             post_response_handler(response, events),
             metadata={
                 "chat_id": metadata.get("chat_id"),
