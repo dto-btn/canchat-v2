@@ -6,6 +6,7 @@
 	import { user } from '$lib/stores';
 	import { createIssue } from '$lib/apis/issues';
 	import { toast } from 'svelte-sonner';
+	import { getRequestToken } from '$lib/services/auth';
 
 	export let show = false;
 
@@ -80,7 +81,7 @@
 			loading = true;
 			error = '';
 
-			await createIssue(localStorage.token, {
+			await createIssue(getRequestToken(), {
 				email: $user?.email || '',
 				description,
 				stepsToReproduce,

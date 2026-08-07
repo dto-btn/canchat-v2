@@ -10,6 +10,7 @@
 
 	import { getGravatarUrl } from '$lib/apis/utils';
 	import { generateInitialsImage, canvasPixelTest, getUserTimezone } from '$lib/utils';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -46,7 +47,7 @@
 			}
 		}
 
-		const updatedUser = await updateUserProfile(localStorage.token, name, profileImageUrl).catch(
+		const updatedUser = await updateUserProfile(getRequestToken(), name, profileImageUrl).catch(
 			(error) => {
 				toast.error(`${error}`);
 				updateSuccess = false;
@@ -55,7 +56,7 @@
 
 		// Update timezone preference
 		if (selectedTimezone) {
-			await updateUserTimezone(localStorage.token, selectedTimezone).catch((error) => {
+			await updateUserTimezone(getRequestToken(), selectedTimezone).catch((error) => {
 				toast.error(`Failed to update timezone: ${error}`);
 				updateSuccess = false;
 			});
@@ -73,7 +74,7 @@
 		profileImageUrl = $user.profile_image_url;
 
 		// Load user's timezone preference or default to browser timezone
-		const userTimezone = await getUserTimezoneFromSettings(localStorage.token).catch(() => null);
+		const userTimezone = await getUserTimezoneFromSettings(getRequestToken()).catch(() => null);
 		selectedTimezone = userTimezone || getUserTimezone();
 	});
 </script>

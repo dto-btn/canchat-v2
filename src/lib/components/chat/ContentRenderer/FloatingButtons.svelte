@@ -12,6 +12,7 @@
 	import LightBlub from '$lib/components/icons/LightBlub.svelte';
 	import Markdown from '../Messages/Markdown.svelte';
 	import Skeleton from '../Messages/Skeleton.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	export let id = '';
 	export let model = null;
@@ -47,7 +48,7 @@
 		floatingInputValue = '';
 
 		responseContent = '';
-		const [res, controller] = await chatCompletion(localStorage.token, {
+		const [res, controller] = await chatCompletion(getRequestToken(), {
 			model: model,
 			messages: [
 				...messages,
@@ -123,7 +124,7 @@
 		prompt = `Explain this section to me in more detail\n\n\`\`\`\n${selectedText}\n\`\`\``;
 
 		responseContent = '';
-		const [res, controller] = await chatCompletion(localStorage.token, {
+		const [res, controller] = await chatCompletion(getRequestToken(), {
 			model: model,
 			messages: [
 				...messages,

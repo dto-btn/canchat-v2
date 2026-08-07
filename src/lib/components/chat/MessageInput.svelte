@@ -40,6 +40,7 @@
 	import { generateAutoCompletion } from '$lib/apis';
 	import Image from '../common/Image.svelte';
 	import { deleteFileById } from '$lib/apis/files';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -189,7 +190,7 @@
 		files = [...files, fileItem];
 		// Check if the file is an audio file and transcribe/convert it to text file
 		if (['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/x-m4a'].includes(file['type'])) {
-			const res = await transcribeAudio(localStorage.token, file).catch((error) => {
+			const res = await transcribeAudio(getRequestToken(), file).catch((error) => {
 				toast.error(`${error}`);
 				return null;
 			});
@@ -205,7 +206,7 @@
 
 		try {
 			// During the file upload, file content is automatically extracted.
-			const uploadedFile = await uploadFile(localStorage.token, file);
+			const uploadedFile = await uploadFile(getRequestToken(), file);
 
 			if (uploadedFile) {
 				if (uploadedFile.error) {
@@ -690,7 +691,7 @@
 														if (file.type !== 'collection' && !file?.collection) {
 															if (file.id) {
 																// This will handle both file deletion and Chroma cleanup
-																await deleteFileById(localStorage.token, file.id);
+																await deleteFileById(getRequestToken(), file.id);
 															}
 														}
 
@@ -780,7 +781,7 @@
 													}
 
 													const res = await generateAutoCompletion(
-														localStorage.token,
+														getRequestToken(),
 														selectedModelIds.at(0),
 														text,
 														history?.currentId
@@ -1212,7 +1213,7 @@
 																	return;
 																}
 
-																if ($config.audio.stt.engine === 'web') {
+																if (($config?.audio?.stt?.engine ?? '') === 'web') {
 																	toast.error(
 																		$i18n.t(
 																			'Call feature is not supported when using Web STT engine'

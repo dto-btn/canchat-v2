@@ -4,7 +4,8 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 
-	import { WEBUI_NAME, config, showSidebar, user } from '$lib/stores';
+	import { WEBUI_NAME, showSidebar, user } from '$lib/stores';
+	import { authBootstrapReady } from '$lib/stores/auth';
 	import MenuLines from '$lib/components/icons/MenuLines.svelte';
 	import { page } from '$app/stores';
 	import NavbarExtras from '$lib/components/common/NavbarExtras.svelte';
@@ -13,7 +14,26 @@
 
 	let loaded = false;
 
+	const waitForAuthBootstrap = async () => {
+		if ($authBootstrapReady) {
+			return;
+		}
+
+		await new Promise<void>((resolve) => {
+			const unsubscribe = authBootstrapReady.subscribe((ready) => {
+				if (!ready) {
+					return;
+				}
+
+				unsubscribe();
+				resolve();
+			});
+		});
+	};
+
 	onMount(async () => {
+		await waitForAuthBootstrap();
+
 		if ($user?.role !== 'admin') {
 			await goto('/');
 		}

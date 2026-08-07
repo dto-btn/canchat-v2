@@ -31,6 +31,7 @@
 	import ChevronRight from '../icons/ChevronRight.svelte';
 	import Spinner from '../common/Spinner.svelte';
 	import { capitalizeFirstLetter } from '$lib/utils';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -60,7 +61,7 @@
 	);
 
 	const shareHandler = async (tool) => {
-		const item = await getToolById(localStorage.token, tool.id).catch((error) => {
+		const item = await getToolById(getRequestToken(), tool.id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
@@ -86,7 +87,7 @@
 	};
 
 	const cloneHandler = async (tool) => {
-		const _tool = await getToolById(localStorage.token, tool.id).catch((error) => {
+		const _tool = await getToolById(getRequestToken(), tool.id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
@@ -102,7 +103,7 @@
 	};
 
 	const exportHandler = async (tool) => {
-		const _tool = await getToolById(localStorage.token, tool.id).catch((error) => {
+		const _tool = await getToolById(getRequestToken(), tool.id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
@@ -116,7 +117,7 @@
 	};
 
 	const deleteHandler = async (tool) => {
-		const res = await deleteToolById(localStorage.token, tool.id).catch((error) => {
+		const res = await deleteToolById(getRequestToken(), tool.id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
@@ -129,8 +130,8 @@
 	};
 
 	const init = async () => {
-		tools = await getToolList(localStorage.token);
-		_tools.set(await getTools(localStorage.token));
+		tools = await getToolList(getRequestToken());
+		_tools.set(await getTools(getRequestToken()));
 	};
 
 	onMount(async () => {
@@ -401,7 +402,7 @@
 				<button
 					class="flex text-xs items-center space-x-1 px-3 py-1.5 rounded-xl bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200 transition"
 					on:click={async () => {
-						const _tools = await exportTools(localStorage.token).catch((error) => {
+						const _tools = await exportTools(getRequestToken()).catch((error) => {
 							toast.error(`${error}`);
 							return null;
 						});
@@ -484,14 +485,14 @@
 			reader.onload = async (event) => {
 				const _tools = JSON.parse(event.target.result);
 				for (const tool of _tools) {
-					const res = await createNewTool(localStorage.token, tool).catch((error) => {
+					const res = await createNewTool(getRequestToken(), tool).catch((error) => {
 						toast.error(`${error}`);
 						return null;
 					});
 				}
 
 				toast.success($i18n.t('Tool imported successfully'));
-				tools.set(await getTools(localStorage.token));
+				tools.set(await getTools(getRequestToken()));
 			};
 
 			reader.readAsText(importFiles[0]);

@@ -11,6 +11,7 @@
 	import UserList from './Users/UserList.svelte';
 	import Groups from './Users/Groups.svelte';
 	import Domains from './Users/Settings/Domains.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -25,7 +26,7 @@
 
 	const getUsersHandler = async () => {
 		if (selectedTab === 'overview' || selectedTab === 'groups') {
-			users = await getUsers(localStorage.token);
+			users = await getUsers(getRequestToken());
 		}
 	};
 
@@ -33,7 +34,7 @@
 		if ($user?.role !== 'admin') {
 			await goto('/');
 		} else {
-			users = await getUsers(localStorage.token);
+			users = await getUsers(getRequestToken());
 		}
 		loaded = true;
 

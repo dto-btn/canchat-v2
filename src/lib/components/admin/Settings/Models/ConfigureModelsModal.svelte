@@ -17,6 +17,7 @@
 	import { getModelsConfig, setModelsConfig } from '$lib/apis/configs';
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import Minus from '$lib/components/icons/Minus.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	export let show = false;
 	export let initHandler = () => {};
@@ -53,7 +54,7 @@
 	};
 
 	const init = async () => {
-		config = await getModelsConfig(localStorage.token);
+		config = await getModelsConfig(getRequestToken());
 
 		if (config?.DEFAULT_MODELS) {
 			defaultModelIds = (config?.DEFAULT_MODELS).split(',').filter((id) => id);
@@ -76,7 +77,7 @@
 	const submitHandler = async () => {
 		loading = true;
 
-		const res = await setModelsConfig(localStorage.token, {
+		const res = await setModelsConfig(getRequestToken(), {
 			DEFAULT_MODELS: defaultModelIds.join(','),
 			MODEL_ORDER_LIST: modelIds
 		});
@@ -102,7 +103,7 @@
 	message={$i18n.t('This will delete all models including custom models and cannot be undone.')}
 	bind:show={showResetModal}
 	onConfirm={async () => {
-		const res = deleteAllModels(localStorage.token);
+		const res = deleteAllModels(getRequestToken());
 		if (res) {
 			toast.success($i18n.t('All models deleted successfully'));
 			initHandler();

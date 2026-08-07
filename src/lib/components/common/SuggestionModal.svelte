@@ -6,6 +6,7 @@
 	import { user } from '$lib/stores';
 	import { createSuggestion } from '$lib/apis/suggestions';
 	import { toast } from 'svelte-sonner';
+	import { getRequestToken } from '$lib/services/auth';
 
 	export let show = false;
 
@@ -78,7 +79,7 @@
 			loading = true;
 			error = '';
 
-			await createSuggestion(localStorage.token, {
+			await createSuggestion(getRequestToken(), {
 				email: $user?.email || '',
 				description,
 				files

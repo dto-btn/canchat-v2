@@ -14,6 +14,7 @@
 
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import VideoInputMenu from './CallOverlay/VideoInputMenu.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -151,7 +152,7 @@
 		await tick();
 		const file = blobToFile(audioBlob, 'recording.wav');
 
-		const res = await transcribeAudio(localStorage.token, file).catch((error) => {
+		const res = await transcribeAudio(getRequestToken(), file).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
@@ -439,16 +440,16 @@
 			try {
 				// Set the emoji for the content if needed
 				if ($settings?.showEmojiInCall ?? false) {
-					const emoji = await generateEmoji(localStorage.token, modelId, content, chatId);
+					const emoji = await generateEmoji(getRequestToken(), modelId, content, chatId);
 					if (emoji) {
 						emojiCache.set(content, emoji);
 					}
 				}
 
-				if ($config.audio.tts.engine !== '') {
+				if (($config?.audio?.tts?.engine ?? '') !== '') {
 					const res = await synthesizeOpenAISpeech(
-						localStorage.token,
-						$settings?.audio?.tts?.defaultVoice === $config.audio.tts.voice
+						getRequestToken(),
+						$settings?.audio?.tts?.defaultVoice === ($config?.audio?.tts?.voice ?? '')
 							? ($settings?.audio?.tts?.voice ?? $config?.audio?.tts?.voice)
 							: $config?.audio?.tts?.voice,
 						content
@@ -491,7 +492,7 @@
 						emoji = null;
 					}
 
-					if ($config.audio.tts.engine !== '') {
+					if (($config?.audio?.tts?.engine ?? '') !== '') {
 						try {
 							const audio = audioCache.get(content);
 							await playAudio(audio); // Here ensure that playAudio is indeed correct method to execute

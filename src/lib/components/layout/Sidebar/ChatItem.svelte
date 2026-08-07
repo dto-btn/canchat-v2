@@ -40,6 +40,7 @@
 	import Check from '$lib/components/icons/Check.svelte';
 	import XMark from '$lib/components/icons/XMark.svelte';
 	import Document from '$lib/components/icons/Document.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	export let className = '';
 
@@ -64,7 +65,7 @@
 	const loadChat = async () => {
 		if (!chat) {
 			draggable = false;
-			chat = await getChatById(localStorage.token, id);
+			chat = await getChatById(getRequestToken(), id);
 			draggable = true;
 		}
 	};
@@ -80,7 +81,7 @@
 			return;
 		}
 
-		await updateChatById(localStorage.token, id, { title });
+		await updateChatById(getRequestToken(), id, { title });
 
 		if (id === $chatId) {
 			_chatTitle.set(title);
@@ -89,13 +90,13 @@
 		dispatch('change', { type: 'rename', chatId: id, title });
 
 		currentChatPage.set(1);
-		await chats.set(await getChatList(localStorage.token, $currentChatPage));
-		await pinnedChats.set(await getPinnedChatList(localStorage.token));
+		await chats.set(await getChatList(getRequestToken(), $currentChatPage));
+		await pinnedChats.set(await getPinnedChatList(getRequestToken()));
 	};
 
 	const cloneChatHandler = async (id) => {
 		const res = await cloneChatById(
-			localStorage.token,
+			getRequestToken(),
 			id,
 			$i18n.t('Clone of {{TITLE}}', {
 				TITLE: title
@@ -109,21 +110,21 @@
 			goto(`/c/${res.id}`);
 
 			currentChatPage.set(1);
-			await chats.set(await getChatList(localStorage.token, $currentChatPage));
-			await pinnedChats.set(await getPinnedChatList(localStorage.token));
+			await chats.set(await getChatList(getRequestToken(), $currentChatPage));
+			await pinnedChats.set(await getPinnedChatList(getRequestToken()));
 			toast.success($i18n.t('Chat cloned successfully. You are now in the new chat.'));
 		}
 	};
 
 	const deleteChatHandler = async (id) => {
-		const res = await deleteChatById(localStorage.token, id).catch((error) => {
+		const res = await deleteChatById(getRequestToken(), id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
 
 		if (res) {
 			// Update stores reactively
-			tags.set(await getAllTags(localStorage.token));
+			tags.set(await getAllTags(getRequestToken()));
 
 			// If deleting the current chat, navigate away first
 			if ($chatId === id) {
@@ -135,15 +136,15 @@
 
 			// Update chat lists immediately to ensure reactive state
 			currentChatPage.set(1);
-			await chats.set(await getChatList(localStorage.token, $currentChatPage));
-			await pinnedChats.set(await getPinnedChatList(localStorage.token));
+			await chats.set(await getChatList(getRequestToken(), $currentChatPage));
+			await pinnedChats.set(await getPinnedChatList(getRequestToken()));
 
 			dispatch('change', { buttonID: null });
 		}
 	};
 
 	const archiveChatHandler = async (id) => {
-		await archiveChatById(localStorage.token, id);
+		await archiveChatById(getRequestToken(), id);
 		dispatch('change', { buttonID: null });
 		toast.success($i18n.t('Chat archived successfully'));
 	};

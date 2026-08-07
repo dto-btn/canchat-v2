@@ -6,6 +6,7 @@
 	import { toast } from 'svelte-sonner';
 	import { updateUserInfo } from '$lib/apis/users';
 	import { getUserPosition } from '$lib/utils';
+	import { getRequestToken } from '$lib/services/auth';
 	const dispatch = createEventDispatcher();
 
 	const i18n = getI18n();
@@ -109,7 +110,7 @@
 			});
 
 			if (position) {
-				await updateUserInfo(localStorage.token, { location: position });
+				await updateUserInfo(getRequestToken(), { location: position });
 				toast.success($i18n.t('User location successfully retrieved.'));
 			} else {
 				userLocation = false;

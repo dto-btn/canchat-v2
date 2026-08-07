@@ -14,6 +14,7 @@
 	import Drawer from '../common/Drawer.svelte';
 	import EllipsisVertical from '../icons/EllipsisVertical.svelte';
 	import Thread from './Thread.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	export let id = '';
 
@@ -49,12 +50,12 @@
 		typingUsers = [];
 		typingUsersTimeout = {};
 
-		channel = await getChannelById(localStorage.token, id).catch((error) => {
+		channel = await getChannelById(getRequestToken(), id).catch((error) => {
 			return null;
 		});
 
 		if (channel) {
-			messages = await getChannelMessages(localStorage.token, id, 0);
+			messages = await getChannelMessages(getRequestToken(), id, 0);
 
 			if (messages) {
 				scrollToBottom();
@@ -140,7 +141,7 @@
 			return;
 		}
 
-		const res = await sendMessage(localStorage.token, id, { content: content, data: data }).catch(
+		const res = await sendMessage(getRequestToken(), id, { content: content, data: data }).catch(
 			(error) => {
 				toast.error(`${error}`);
 				return null;
@@ -228,7 +229,7 @@
 								}}
 								onLoad={async () => {
 									const newMessages = await getChannelMessages(
-										localStorage.token,
+										getRequestToken(),
 										id,
 										messages.length
 									);

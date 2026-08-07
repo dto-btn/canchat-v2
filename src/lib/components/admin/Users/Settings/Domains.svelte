@@ -4,6 +4,7 @@
 	import { onMount } from 'svelte';
 	import { createDomain, getDomains, deleteDomainById, updateDomainById } from '$lib/apis/domains';
 	import { toast } from 'svelte-sonner';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -26,7 +27,7 @@
 		loading = true;
 		try {
 			// Load database domains (already sorted by department name on backend)
-			dbDomains = (await getDomains(localStorage.token)) || [];
+			dbDomains = (await getDomains(getRequestToken())) || [];
 		} catch (error) {
 			console.error('Failed to load domains:', error);
 			toast.error($i18n.t('Failed to load available domains'));
@@ -68,7 +69,7 @@
 
 		try {
 			// Add to database
-			await createDomain(localStorage.token, {
+			await createDomain(getRequestToken(), {
 				domain: domainName,
 				description: departmentName
 			});
@@ -99,7 +100,7 @@
 		if (!domainInfo) return;
 
 		try {
-			await deleteDomainById(localStorage.token, domainInfo.id);
+			await deleteDomainById(getRequestToken(), domainInfo.id);
 
 			// Reload domains
 			await loadDomains();
@@ -161,7 +162,7 @@
 
 		try {
 			// Update domain in database
-			await updateDomainById(localStorage.token, domainInfo.id, {
+			await updateDomainById(getRequestToken(), domainInfo.id, {
 				domain: domainName,
 				description: departmentName
 			});

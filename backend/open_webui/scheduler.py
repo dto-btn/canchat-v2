@@ -23,6 +23,9 @@ from open_webui.config import (
     REDIS_POOL_CLEANUP_LOCK_TIMEOUT,
     REDIS_POOL_CLEANUP_LOCK_RENEWAL_INTERVAL,
     REDIS_POOL_CLEANUP_PRUNE_SESSION_POOL,
+    REFRESH_SESSION_CLEANUP_ENABLED,
+    REFRESH_SESSION_CLEANUP_SCHEDULE_CRON,
+    REFRESH_SESSION_CLEANUP_SCHEDULE_TIMEZONE,
 )
 from open_webui.socket.utils import RedisLock, renew_lock_periodically
 
@@ -33,6 +36,7 @@ log.setLevel(SRC_LOG_LEVELS["SCHEDULER"])
 scheduler = None
 CLEANUP_JOB_ID = "chat_lifetime_cleanup"
 REDIS_POOL_CLEANUP_JOB_ID = "redis_pool_cleanup"
+REFRESH_SESSION_CLEANUP_JOB_ID = "refresh_session_cleanup"
 
 
 def describe_cron_schedule(cron_expr: str) -> str:
@@ -213,6 +217,76 @@ def update_cleanup_schedule():
 
 
 ####################################
+# Refresh Session Cleanup
+####################################
+
+
+async def automated_refresh_session_cleanup():
+    """Delete expired refresh sessions from persistent storage."""
+    try:
+        if not REFRESH_SESSION_CLEANUP_ENABLED:
+            log.info("Refresh session cleanup disabled - skipping run")
+            return
+
+        from open_webui.models.refresh_sessions_table import RefreshSessions
+
+        loop = asyncio.get_event_loop()
+        deleted_sessions = await loop.run_in_executor(
+            None,
+            RefreshSessions.delete_expired_sessions,
+        )
+
+        log.info(
+            "Expired refresh session cleanup completed: deleted=%s",
+            deleted_sessions,
+        )
+    except Exception as e:
+        log.error(f"Refresh session cleanup failed: {e}", exc_info=True)
+
+
+def schedule_refresh_session_cleanup():
+    """Schedule deletion of expired refresh sessions."""
+    try:
+        scheduler_instance = get_scheduler()
+
+        if scheduler_instance.get_job(REFRESH_SESSION_CLEANUP_JOB_ID):
+            scheduler_instance.remove_job(REFRESH_SESSION_CLEANUP_JOB_ID)
+            log.info("Removed existing refresh session cleanup schedule")
+
+        if not REFRESH_SESSION_CLEANUP_ENABLED:
+            log.info(
+                "Refresh session cleanup disabled "
+                "(REFRESH_SESSION_CLEANUP_ENABLED=false)"
+            )
+            return
+
+        trigger = CronTrigger.from_crontab(
+            REFRESH_SESSION_CLEANUP_SCHEDULE_CRON,
+            timezone=REFRESH_SESSION_CLEANUP_SCHEDULE_TIMEZONE,
+        )
+        scheduler_instance.add_job(
+            automated_refresh_session_cleanup,
+            trigger=trigger,
+            id=REFRESH_SESSION_CLEANUP_JOB_ID,
+            name="Refresh Session Cleanup",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=max(
+                1, int(CHAT_CLEANUP_SCHEDULER_MISFIRE_GRACE_SECONDS)
+            ),
+        )
+
+        log.info(
+            "Scheduled refresh session cleanup with cron '%s' (timezone: %s)",
+            REFRESH_SESSION_CLEANUP_SCHEDULE_CRON,
+            REFRESH_SESSION_CLEANUP_SCHEDULE_TIMEZONE,
+        )
+    except Exception as e:
+        log.error(f"Failed to update refresh session cleanup schedule: {str(e)}")
+
+
+####################################
 # Redis User/Session Pool Cleanup
 ####################################
 
@@ -366,6 +440,7 @@ def start_scheduler():
             log.info("Initializing scheduler not using Redis Locks...")
         get_scheduler()  # Initialize scheduler
         update_cleanup_schedule()  # Set up chat lifetime cleanup schedule
+        schedule_refresh_session_cleanup()  # Set up expired refresh session cleanup
         schedule_redis_pool_cleanup()  # Set up Redis pool cleanup schedule
         log.info("Scheduler initialization complete")
     except Exception as e:

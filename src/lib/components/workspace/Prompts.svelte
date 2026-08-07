@@ -28,6 +28,7 @@
 	import Tooltip from '../common/Tooltip.svelte';
 	import Pagination from '$lib/components/common/Pagination.svelte';
 	import { capitalizeFirstLetter } from '$lib/utils';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 	let promptsImportInputElement: HTMLInputElement;
@@ -104,7 +105,7 @@
 
 	const deleteHandler = async (prompt) => {
 		const command = prompt.command;
-		await deletePromptByCommand(localStorage.token, command);
+		await deletePromptByCommand(getRequestToken(), command);
 		await loadPrompts(); // Reload current page
 		await loadCount(); // Update total count
 	};
@@ -115,7 +116,7 @@
 		loading = true;
 		try {
 			const searchQuery = debouncedQuery?.trim() || undefined;
-			prompts = await getPromptList(localStorage.token, {
+			prompts = await getPromptList(getRequestToken(), {
 				page,
 				limit: itemsPerPage,
 				search: searchQuery
@@ -131,7 +132,7 @@
 	const loadCount = async () => {
 		try {
 			const searchQuery = debouncedQuery?.trim() || undefined;
-			const result = await getPromptsCount(localStorage.token, searchQuery);
+			const result = await getPromptsCount(getRequestToken(), searchQuery);
 			totalCount = result.count;
 		} catch (error) {
 			console.error('Error loading prompts count:', error);
@@ -139,7 +140,7 @@
 	};
 
 	const init = async () => {
-		groups = await getGroups(localStorage.token);
+		groups = await getGroups(getRequestToken());
 		await loadCount();
 		await loadPrompts();
 	};
@@ -393,7 +394,7 @@
 									cleanCommand = `${cleanCommand}-${generateRandomSuffix()}`;
 								}
 
-								await createNewPrompt(localStorage.token, {
+								await createNewPrompt(getRequestToken(), {
 									command: cleanCommand,
 									title: prompt.title,
 									content: prompt.content,
@@ -405,8 +406,8 @@
 								});
 							}
 
-							prompts = await getPromptList(localStorage.token);
-							await _prompts.set(await getPromptsLegacy(localStorage.token));
+							prompts = await getPromptList(getRequestToken());
+							await _prompts.set(await getPromptsLegacy(getRequestToken()));
 
 							importFiles = [];
 							promptsImportInputElement.value = '';

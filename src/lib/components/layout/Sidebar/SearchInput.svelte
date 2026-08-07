@@ -5,6 +5,7 @@
 	import { tags } from '$lib/stores';
 	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
 	import { fade } from 'svelte/transition';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const dispatch = createEventDispatcher();
 	const i18n = getI18n();
@@ -97,7 +98,7 @@
 
 	const initTags = async () => {
 		loading = true;
-		await tags.set(await getAllTags(localStorage.token));
+		await tags.set(await getAllTags(getRequestToken()));
 		loading = false;
 	};
 

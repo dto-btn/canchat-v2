@@ -195,6 +195,7 @@ class AbstractPostgresTest(AbstractIntegrationTest):
             "document",
             "model",
             "prompt",
+            "refresh_session",
             "tag",
             '"user"',
         ]

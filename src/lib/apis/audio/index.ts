@@ -27,14 +27,28 @@ export const getAudioConfig = async (token: string) => {
 	return res;
 };
 
-type OpenAIConfigForm = {
-	url: string;
-	key: string;
-	model: string;
-	speaker: string;
+export type AudioConfigPayload = {
+	tts: {
+		OPENAI_API_BASE_URL: string;
+		OPENAI_API_KEY: string;
+		API_KEY: string;
+		ENGINE: string;
+		MODEL: string;
+		VOICE: string;
+		SPLIT_ON: string;
+		AZURE_SPEECH_REGION: string;
+		AZURE_SPEECH_OUTPUT_FORMAT: string;
+	};
+	stt: {
+		OPENAI_API_BASE_URL: string;
+		OPENAI_API_KEY: string;
+		ENGINE: string;
+		MODEL: string;
+		WHISPER_MODEL: string;
+	};
 };
 
-export const updateAudioConfig = async (token: string, payload: OpenAIConfigForm) => {
+export const updateAudioConfig = async (token: string, payload: AudioConfigPayload) => {
 	let error = null;
 
 	const res = await fetch(`${AUDIO_API_BASE_URL}/config/update`, {
@@ -132,8 +146,8 @@ export const synthesizeOpenAISpeech = async (
 	return res;
 };
 
-interface AvailableModelsResponse {
-	models: { name: string; id: string }[] | { id: string }[];
+export interface AvailableModelsResponse {
+	models: { name?: string; id: string }[];
 }
 
 export const getModels = async (token: string = ''): Promise<AvailableModelsResponse> => {
@@ -161,10 +175,15 @@ export const getModels = async (token: string = ''): Promise<AvailableModelsResp
 		throw error;
 	}
 
-	return res;
+	return res ?? { models: [] };
 };
 
-export const getVoices = async (token: string = '') => {
+export type AudioVoiceOption = {
+	id: string;
+	name: string;
+};
+
+export const getVoices = async (token: string = ''): Promise<{ voices: AudioVoiceOption[] }> => {
 	let error = null;
 
 	const res = await fetch(`${AUDIO_API_BASE_URL}/voices`, {
@@ -189,5 +208,5 @@ export const getVoices = async (token: string = '') => {
 		throw error;
 	}
 
-	return res;
+	return res ?? { voices: [] };
 };

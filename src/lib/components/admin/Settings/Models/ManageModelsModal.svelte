@@ -11,6 +11,7 @@
 	import { getOllamaConfig } from '$lib/apis/ollama';
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import ManageMultipleOllama from './Manage/ManageMultipleOllama.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	export let show = false;
 
@@ -21,7 +22,7 @@
 		if ($user.role === 'admin') {
 			await Promise.all([
 				(async () => {
-					ollamaConfig = await getOllamaConfig(localStorage.token);
+					ollamaConfig = await getOllamaConfig(getRequestToken());
 				})()
 			]);
 

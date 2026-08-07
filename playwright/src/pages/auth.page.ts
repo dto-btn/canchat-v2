@@ -139,7 +139,7 @@ export class AuthPage extends BasePage {
 	 * Clears auth state and confirms redirection to the login page.
 	 */
 	async clearAuthAndReturnToLogin() {
-		await this.page.evaluate(() => localStorage.removeItem('token')).catch(() => {});
+		await this.page.evaluate(() => localStorage.clear()).catch(() => {});
 		await this.page
 			.context()
 			.clearCookies()

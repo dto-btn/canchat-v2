@@ -39,6 +39,7 @@
 	import ChevronLeft from '$lib/components/icons/ChevronLeft.svelte';
 	import LockClosed from '$lib/components/icons/LockClosed.svelte';
 	import AccessControlModal from '../common/AccessControlModal.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	let largeScreen = true;
 
@@ -130,7 +131,7 @@
 
 		// Check if the file is an audio file and transcribe/convert it to text file
 		if (['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/x-m4a'].includes(file['type'])) {
-			const res = await transcribeAudio(localStorage.token, file).catch((error) => {
+			const res = await transcribeAudio(getRequestToken(), file).catch((error) => {
 				toast.error(`${error}`);
 				return null;
 			});
@@ -142,7 +143,7 @@
 		}
 
 		try {
-			const uploadedFile = await uploadFile(localStorage.token, file).catch((e) => {
+			const uploadedFile = await uploadFile(getRequestToken(), file).catch((e) => {
 				toast.error(e);
 				return null;
 			});
@@ -331,7 +332,7 @@
 	// Helper function to maintain file paths within zip
 	const syncDirectoryHandler = async () => {
 		if ((knowledge?.files ?? []).length > 0) {
-			const res = await resetKnowledgeById(localStorage.token, id).catch((e) => {
+			const res = await resetKnowledgeById(getRequestToken(), id).catch((e) => {
 				toast.error(e);
 			});
 
@@ -348,7 +349,7 @@
 	};
 
 	const addFileHandler = async (fileId) => {
-		const updatedKnowledge = await addFileToKnowledgeById(localStorage.token, id, fileId).catch(
+		const updatedKnowledge = await addFileToKnowledgeById(getRequestToken(), id, fileId).catch(
 			(e) => {
 				toast.error(e);
 				return null;
@@ -367,7 +368,7 @@
 	const deleteFileHandler = async (fileId) => {
 		try {
 			// Remove from knowledge base only
-			const updatedKnowledge = await removeFileFromKnowledgeById(localStorage.token, id, fileId);
+			const updatedKnowledge = await removeFileFromKnowledgeById(getRequestToken(), id, fileId);
 
 			if (updatedKnowledge) {
 				knowledge = updatedKnowledge;
@@ -383,17 +384,15 @@
 		const fileId = selectedFile.id;
 		const content = selectedFile.data.content;
 
-		const res = updateFileDataContentById(localStorage.token, fileId, content).catch((e) => {
+		const res = updateFileDataContentById(getRequestToken(), fileId, content).catch((e) => {
 			toast.error(e);
 		});
 
-		const updatedKnowledge = await updateFileFromKnowledgeById(
-			localStorage.token,
-			id,
-			fileId
-		).catch((e) => {
-			toast.error(e);
-		});
+		const updatedKnowledge = await updateFileFromKnowledgeById(getRequestToken(), id, fileId).catch(
+			(e) => {
+				toast.error(e);
+			}
+		);
 
 		if (res && updatedKnowledge) {
 			knowledge = updatedKnowledge;
@@ -412,7 +411,7 @@
 				return;
 			}
 
-			const res = await updateKnowledgeById(localStorage.token, id, {
+			const res = await updateKnowledgeById(getRequestToken(), id, {
 				...knowledge,
 				name: knowledge.name,
 				description: knowledge.description,
@@ -423,7 +422,7 @@
 
 			if (res) {
 				toast.success($i18n.t('Knowledge updated successfully'));
-				_knowledge.set(await getKnowledgeBases(localStorage.token));
+				_knowledge.set(await getKnowledgeBases(getRequestToken()));
 			}
 		}, 1000);
 	};
@@ -509,7 +508,7 @@
 
 		id = $page.params.id;
 
-		const res = await getKnowledgeById(localStorage.token, id).catch((e) => {
+		const res = await getKnowledgeById(getRequestToken(), id).catch((e) => {
 			toast.error(e);
 			return null;
 		});

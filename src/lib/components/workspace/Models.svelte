@@ -28,6 +28,7 @@
 	import Switch from '../common/Switch.svelte';
 	import Spinner from '../common/Spinner.svelte';
 	import { capitalizeFirstLetter } from '$lib/utils';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -57,7 +58,7 @@
 		}));
 
 	const deleteModelHandler = async (model) => {
-		const res = await deleteModelById(localStorage.token, model.id).catch((e) => {
+		const res = await deleteModelById(getRequestToken(), model.id).catch((e) => {
 			toast.error(e);
 			return null;
 		});
@@ -66,8 +67,8 @@
 			toast.success($i18n.t(`Deleted {{name}}`, { name: model.id }));
 		}
 
-		await _models.set(await getModels(localStorage.token));
-		models = await getWorkspaceModels(localStorage.token);
+		await _models.set(await getModels(getRequestToken()));
+		models = await getWorkspaceModels(getRequestToken());
 	};
 
 	const cloneModelHandler = async (model) => {
@@ -98,7 +99,7 @@
 			hidden: !(info?.meta?.hidden ?? false)
 		};
 
-		const res = await updateModelById(localStorage.token, info.id, info);
+		const res = await updateModelById(getRequestToken(), info.id, info);
 
 		if (res) {
 			toast.success(
@@ -109,8 +110,8 @@
 			);
 		}
 
-		await _models.set(await getModels(localStorage.token));
-		models = await getWorkspaceModels(localStorage.token);
+		await _models.set(await getModels(getRequestToken()));
+		models = await getWorkspaceModels(getRequestToken());
 	};
 
 	const downloadModels = async (models) => {
@@ -128,8 +129,8 @@
 	};
 
 	onMount(async () => {
-		models = await getWorkspaceModels(localStorage.token);
-		let groups = await getGroups(localStorage.token);
+		models = await getWorkspaceModels(getRequestToken());
+		let groups = await getGroups(getRequestToken());
 		group_ids = groups.map((group) => group.id);
 
 		loaded = true;
@@ -339,9 +340,9 @@
 									<Switch
 										state={model.is_active}
 										on:change={async (e) => {
-											await toggleModelById(localStorage.token, model.id);
-											_models.set(await getModels(localStorage.token));
-											models = await getWorkspaceModels(localStorage.token);
+											await toggleModelById(getRequestToken(), model.id);
+											_models.set(await getModels(getRequestToken()));
+											models = await getWorkspaceModels(getRequestToken());
 										}}
 									/>
 								</Tooltip>
@@ -371,21 +372,21 @@
 							for (const model of savedModels) {
 								if (model?.info ?? false) {
 									if ($_models.find((m) => m.id === model.id)) {
-										await updateModelById(localStorage.token, model.id, model.info).catch(
+										await updateModelById(getRequestToken(), model.id, model.info).catch(
 											(error) => {
 												return null;
 											}
 										);
 									} else {
-										await createNewModel(localStorage.token, model.info).catch((error) => {
+										await createNewModel(getRequestToken(), model.info).catch((error) => {
 											return null;
 										});
 									}
 								}
 							}
 
-							await _models.set(await getModels(localStorage.token));
-							models = await getWorkspaceModels(localStorage.token);
+							await _models.set(await getModels(getRequestToken()));
+							models = await getWorkspaceModels(getRequestToken());
 						};
 
 						reader.readAsText(importFiles[0]);

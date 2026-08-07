@@ -10,6 +10,7 @@
 
 	import { splitStream } from '$lib/utils';
 	import Selector from '$lib/components/chat/ModelSelector/Selector.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -39,7 +40,7 @@
 		const model = $models.find((model) => model.id === selectedModelId);
 
 		const [res, controller] = await generateOpenAIChatCompletion(
-			localStorage.token,
+			getRequestToken(),
 			{
 				model: model.id,
 				stream: true,

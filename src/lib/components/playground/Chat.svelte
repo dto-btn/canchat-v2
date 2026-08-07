@@ -18,6 +18,7 @@
 	import Cog6 from '../icons/Cog6.svelte';
 	import Sidebar from '../common/Sidebar.svelte';
 	import ArrowRight from '../icons/ArrowRight.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -55,7 +56,7 @@
 		const model = $models.find((model) => model.id === selectedModelId);
 
 		const [res, controller] = await chatCompletion(
-			localStorage.token,
+			getRequestToken(),
 			{
 				model: model.id,
 				stream: true,

@@ -21,6 +21,7 @@
 	import Image from '../common/Image.svelte';
 	import { transcribeAudio } from '$lib/apis/audio';
 	import FilesOverlay from '../chat/MessageInput/FilesOverlay.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	export let placeholder = $i18n.t('Send a Message');
 	export let transparentBackground = false;
@@ -155,7 +156,7 @@
 		files = [...files, fileItem];
 		// Check if the file is an audio file and transcribe/convert it to text file
 		if (['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/x-m4a'].includes(file['type'])) {
-			const res = await transcribeAudio(localStorage.token, file).catch((error) => {
+			const res = await transcribeAudio(getRequestToken(), file).catch((error) => {
 				toast.error(`${error}`);
 				return null;
 			});
@@ -171,7 +172,7 @@
 
 		try {
 			// During the file upload, file content is automatically extracted.
-			const uploadedFile = await uploadFile(localStorage.token, file);
+			const uploadedFile = await uploadFile(getRequestToken(), file);
 
 			if (uploadedFile) {
 				if (uploadedFile.error) {

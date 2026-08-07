@@ -8,6 +8,7 @@
 	import { toast } from 'svelte-sonner';
 	import { knowledge } from '$lib/stores';
 	import AccessControl from '../common/AccessControl.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	let loading = false;
 
@@ -26,18 +27,15 @@
 			return;
 		}
 
-		const res = await createNewKnowledge(
-			localStorage.token,
-			name,
-			description,
-			accessControl
-		).catch((e) => {
-			toast.error(e);
-		});
+		const res = await createNewKnowledge(getRequestToken(), name, description, accessControl).catch(
+			(e) => {
+				toast.error(e);
+			}
+		);
 
 		if (res) {
 			toast.success($i18n.t('Knowledge created successfully.'));
-			knowledge.set(await getKnowledgeBases(localStorage.token));
+			knowledge.set(await getKnowledgeBases(getRequestToken()));
 			goto(`/workspace/knowledge/${res.id}`);
 		}
 

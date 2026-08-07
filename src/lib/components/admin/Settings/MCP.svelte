@@ -30,6 +30,7 @@
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import Plus from '$lib/components/icons/Plus.svelte';
 	import Modal from '$lib/components/common/Modal.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n: any = getI18n();
 
@@ -114,7 +115,7 @@
 			// Remove trailing slashes
 			MCP_BASE_URLS = MCP_BASE_URLS.map((url) => url.replace(/\/$/, ''));
 
-			const res = await updateMCPConfig(localStorage.token, {
+			const res = await updateMCPConfig(getRequestToken(), {
 				ENABLE_MCP_API: ENABLE_MCP_API,
 				MCP_BASE_URLS: MCP_BASE_URLS,
 				MCP_API_CONFIGS: MCP_API_CONFIGS
@@ -128,7 +129,7 @@
 
 				// Refresh tools list to reflect MCP tool availability
 				try {
-					const updatedTools = await getTools(localStorage.token);
+					const updatedTools = await getTools(getRequestToken());
 					tools.set(updatedTools);
 					console.log('Tools refreshed after MCP setting change');
 				} catch (error) {
@@ -139,7 +140,7 @@
 	};
 
 	const updateMCPURLsHandler = async () => {
-		const res = await updateMCPURLs(localStorage.token, MCP_BASE_URLS).catch((error) => {
+		const res = await updateMCPURLs(getRequestToken(), MCP_BASE_URLS).catch((error) => {
 			toast.error(localizeApiError(error));
 		});
 
@@ -150,7 +151,7 @@
 
 	const getMCPToolsHandler = async () => {
 		mcpToolsLoading = true;
-		const res = await getMCPTools(localStorage.token).catch((error) => {
+		const res = await getMCPTools(getRequestToken()).catch((error) => {
 			toast.error(localizeApiError(error));
 			return [];
 		});
@@ -161,7 +162,7 @@
 
 	const getBuiltinServersHandler = async () => {
 		builtinServersLoading = true;
-		const res = await getBuiltinServers(localStorage.token).catch((error) => {
+		const res = await getBuiltinServers(getRequestToken()).catch((error) => {
 			console.error('Error fetching built-in servers:', error);
 			return { servers: [] };
 		});
@@ -172,7 +173,7 @@
 
 	const getExternalServersHandler = async () => {
 		externalServersLoading = true;
-		const res = await getExternalServers(localStorage.token).catch((error) => {
+		const res = await getExternalServers(getRequestToken()).catch((error) => {
 			console.error('Error fetching external servers:', error);
 			return { servers: [] };
 		});
@@ -182,7 +183,7 @@
 	};
 
 	const restartBuiltinServerHandler = async (serverName: string) => {
-		const res = await restartBuiltinServer(localStorage.token, serverName).catch((error) => {
+		const res = await restartBuiltinServer(getRequestToken(), serverName).catch((error) => {
 			toast.error(`Failed to restart ${serverName}: ${localizeApiError(error)}`);
 			return null;
 		});
@@ -302,10 +303,10 @@
 			let res;
 			if (editingServer) {
 				// Update existing server
-				res = await updateExternalServer(localStorage.token, editingServer.id, serverData);
+				res = await updateExternalServer(getRequestToken(), editingServer.id, serverData);
 			} else {
 				// Create new server
-				res = await createExternalServer(localStorage.token, serverData);
+				res = await createExternalServer(getRequestToken(), serverData);
 			}
 
 			if (res) {
@@ -320,7 +321,7 @@
 
 				// Refresh tools list
 				try {
-					const updatedTools = await getTools(localStorage.token);
+					const updatedTools = await getTools(getRequestToken());
 					tools.set(updatedTools);
 				} catch (error) {
 					console.error('Failed to refresh tools:', error);
@@ -341,7 +342,7 @@
 		}
 
 		try {
-			const res = await deleteExternalServer(localStorage.token, serverId);
+			const res = await deleteExternalServer(getRequestToken(), serverId);
 			if (res) {
 				toast.success('Server deleted successfully');
 				await getExternalServersHandler();
@@ -349,7 +350,7 @@
 
 				// Refresh tools list
 				try {
-					const updatedTools = await getTools(localStorage.token);
+					const updatedTools = await getTools(getRequestToken());
 					tools.set(updatedTools);
 				} catch (error) {
 					console.error('Failed to refresh tools:', error);
@@ -362,7 +363,7 @@
 
 	const startServerHandler = async (serverId: string, serverName: string) => {
 		try {
-			const res = await startExternalServer(localStorage.token, serverId);
+			const res = await startExternalServer(getRequestToken(), serverId);
 			if (res) {
 				toast.success(`Server "${serverName}" started successfully`);
 				await getExternalServersHandler();
@@ -375,7 +376,7 @@
 
 	const stopServerHandler = async (serverId: string, serverName: string) => {
 		try {
-			const res = await stopExternalServer(localStorage.token, serverId);
+			const res = await stopExternalServer(getRequestToken(), serverId);
 			if (res) {
 				toast.success(`Server "${serverName}" stopped successfully`);
 				await getExternalServersHandler();
@@ -388,7 +389,7 @@
 
 	const restartExternalServerHandler = async (serverId: string, serverName: string) => {
 		try {
-			const res = await restartExternalServer(localStorage.token, serverId);
+			const res = await restartExternalServer(getRequestToken(), serverId);
 			if (res) {
 				toast.success(`Server "${serverName}" restarted successfully`);
 				await getExternalServersHandler();
@@ -400,7 +401,7 @@
 	};
 
 	onMount(async () => {
-		const res = await getMCPConfig(localStorage.token);
+		const res = await getMCPConfig(getRequestToken());
 
 		if (res) {
 			ENABLE_MCP_API = res.ENABLE_MCP_API;

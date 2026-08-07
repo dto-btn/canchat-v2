@@ -24,6 +24,7 @@
 	import ChevronUp from '$lib/components/icons/ChevronUp.svelte';
 	import ChevronDown from '$lib/components/icons/ChevronDown.svelte';
 	import MagnifyingGlass from '$lib/components/icons/MagnifyingGlass.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	export let feedbacks: any[] = [];
 	export let totalFeedbackCount: number = 0;
@@ -82,7 +83,7 @@
 	//////////////////////
 
 	const deleteFeedbackHandler = async (feedbackId: string) => {
-		const response = await deleteFeedbackById(localStorage.token, feedbackId).catch((err) => {
+		const response = await deleteFeedbackById(getRequestToken(), feedbackId).catch((err) => {
 			toast.error(err);
 			return null;
 		});
@@ -94,7 +95,7 @@
 	};
 
 	const exportHandler = async () => {
-		const _feedbacks = await exportAllFeedbacks(localStorage.token).catch((err) => {
+		const _feedbacks = await exportAllFeedbacks(getRequestToken()).catch((err) => {
 			toast.error(err);
 			return null;
 		});

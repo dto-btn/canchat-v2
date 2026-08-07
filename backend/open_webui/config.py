@@ -356,6 +356,18 @@ JWT_EXPIRES_IN = PersistentConfig(
     "JWT_EXPIRES_IN", "auth.jwt_expiry", os.environ.get("JWT_EXPIRES_IN", "-1")
 )
 
+ACCESS_TOKEN_EXPIRES_IN = PersistentConfig(
+    "ACCESS_TOKEN_EXPIRES_IN",
+    "auth.access_token_expiry",
+    os.environ.get("ACCESS_TOKEN_EXPIRES_IN", "30m"),
+)
+
+REFRESH_TOKEN_EXPIRES_IN = PersistentConfig(
+    "REFRESH_TOKEN_EXPIRES_IN",
+    "auth.refresh_token_expiry",
+    os.environ.get("REFRESH_TOKEN_EXPIRES_IN", "7d"),
+)
+
 ####################################
 # OAuth config
 ####################################
@@ -1393,6 +1405,23 @@ REDIS_POOL_CLEANUP_LOCK_RENEWAL_INTERVAL = int(
 # Leaving the option to clean up session pool if similar issues arise in the future.
 REDIS_POOL_CLEANUP_PRUNE_SESSION_POOL = (
     os.environ.get("REDIS_POOL_CLEANUP_PRUNE_SESSION_POOL", "False").lower() == "true"
+)
+
+
+####################################
+# Refresh Session Cleanup
+####################################
+
+REFRESH_SESSION_CLEANUP_ENABLED = (
+    os.environ.get("REFRESH_SESSION_CLEANUP_ENABLED", "True").lower() == "true"
+)
+
+REFRESH_SESSION_CLEANUP_SCHEDULE_CRON = os.environ.get(
+    "REFRESH_SESSION_CLEANUP_SCHEDULE_CRON", "47 1 * * *"
+)
+
+REFRESH_SESSION_CLEANUP_SCHEDULE_TIMEZONE = os.environ.get(
+    "REFRESH_SESSION_CLEANUP_SCHEDULE_TIMEZONE", "America/Toronto"
 )
 
 

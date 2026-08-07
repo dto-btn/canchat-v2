@@ -25,6 +25,7 @@
 	import Plus from '$lib/components/icons/Plus.svelte';
 	import ChevronUp from '$lib/components/icons/ChevronUp.svelte';
 	import ChevronDown from '$lib/components/icons/ChevronDown.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -59,23 +60,23 @@
 	};
 
 	const updateRoleHandler = async (id, role) => {
-		const res = await updateUserRole(localStorage.token, id, role).catch((error) => {
+		const res = await updateUserRole(getRequestToken(), id, role).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
 
 		if (res) {
-			users = await getUsers(localStorage.token);
+			users = await getUsers(getRequestToken());
 		}
 	};
 
 	const deleteUserHandler = async (id) => {
-		const res = await deleteUserById(localStorage.token, id).catch((error) => {
+		const res = await deleteUserById(getRequestToken(), id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
 		if (res) {
-			users = await getUsers(localStorage.token);
+			users = await getUsers(getRequestToken());
 		}
 	};
 
@@ -141,7 +142,7 @@
 		{selectedUser}
 		sessionUser={$user}
 		on:save={async () => {
-			users = await getUsers(localStorage.token);
+			users = await getUsers(getRequestToken());
 		}}
 	/>
 {/key}
@@ -149,7 +150,7 @@
 <AddUserModal
 	bind:show={showAddUserModal}
 	on:save={async () => {
-		users = await getUsers(localStorage.token);
+		users = await getUsers(getRequestToken());
 	}}
 />
 <UserChatsModal bind:show={showUserChatsModal} user={selectedUser} />
