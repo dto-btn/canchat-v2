@@ -4,6 +4,7 @@
 	import { getRAGConfig } from '$lib/apis/retrieval';
 	import Switch from '$lib/components/common/Switch.svelte';
 	import { onMount } from 'svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -13,7 +14,7 @@
 
 	onMount(async () => {
 		loading = true;
-		const res = await getRAGConfig(localStorage.token);
+		const res = await getRAGConfig(getRequestToken());
 		if (res) {
 			config.enabled = res?.enable_wikipedia_grounding ?? true;
 		}

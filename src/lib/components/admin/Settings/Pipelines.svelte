@@ -20,6 +20,7 @@
 
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import Switch from '$lib/components/common/Switch.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n: Writable<i18nType> = getI18n();
 
@@ -52,7 +53,7 @@
 			}
 
 			const res = await updatePipelineValves(
-				localStorage.token,
+				getRequestToken(),
 				pipeline.id,
 				valves,
 				selectedPipelinesUrlIdx
@@ -63,7 +64,7 @@
 			if (res) {
 				toast.success($i18n.t('Valves updated successfully'));
 				setPipelines();
-				models.set(await getModels(localStorage.token));
+				models.set(await getModels(getRequestToken()));
 				saveHandler();
 			}
 		} else {
@@ -76,15 +77,11 @@
 		valves_spec = null;
 
 		valves_spec = await getPipelineValvesSpec(
-			localStorage.token,
+			getRequestToken(),
 			pipelines[idx].id,
 			selectedPipelinesUrlIdx
 		);
-		valves = await getPipelineValves(
-			localStorage.token,
-			pipelines[idx].id,
-			selectedPipelinesUrlIdx
-		);
+		valves = await getPipelineValves(getRequestToken(), pipelines[idx].id, selectedPipelinesUrlIdx);
 
 		for (const property in valves_spec.properties) {
 			if (valves_spec.properties[property]?.type === 'array') {
@@ -99,7 +96,7 @@
 		valves_spec = null;
 
 		if (PIPELINES_LIST.length > 0) {
-			pipelines = await getPipelines(localStorage.token, selectedPipelinesUrlIdx);
+			pipelines = await getPipelines(getRequestToken(), selectedPipelinesUrlIdx);
 
 			if (pipelines.length > 0) {
 				selectedPipelineIdx = 0;
@@ -113,7 +110,7 @@
 	const addPipelineHandler = async () => {
 		downloading = true;
 		const res = await downloadPipeline(
-			localStorage.token,
+			getRequestToken(),
 			pipelineDownloadUrl,
 			selectedPipelinesUrlIdx
 		).catch((error) => {
@@ -124,7 +121,7 @@
 		if (res) {
 			toast.success($i18n.t('Pipeline downloaded successfully'));
 			setPipelines();
-			models.set(await getModels(localStorage.token));
+			models.set(await getModels(getRequestToken()));
 		}
 
 		downloading = false;
@@ -135,7 +132,7 @@
 
 		if (pipelineFiles && pipelineFiles.length !== 0) {
 			const file = pipelineFiles[0];
-			const res = await uploadPipeline(localStorage.token, file, selectedPipelinesUrlIdx).catch(
+			const res = await uploadPipeline(getRequestToken(), file, selectedPipelinesUrlIdx).catch(
 				(error) => {
 					console.log(error);
 					toast.error('Something went wrong :/');
@@ -146,7 +143,7 @@
 			if (res) {
 				toast.success($i18n.t('Pipeline downloaded successfully'));
 				setPipelines();
-				models.set(await getModels(localStorage.token));
+				models.set(await getModels(getRequestToken()));
 			}
 		} else {
 			toast.error($i18n.t('No file selected'));
@@ -164,7 +161,7 @@
 
 	const deletePipelineHandler = async () => {
 		const res = await deletePipeline(
-			localStorage.token,
+			getRequestToken(),
 			pipelines[selectedPipelineIdx].id,
 			selectedPipelinesUrlIdx
 		).catch((error) => {
@@ -175,12 +172,12 @@
 		if (res) {
 			toast.success($i18n.t('Pipeline deleted successfully'));
 			setPipelines();
-			models.set(await getModels(localStorage.token));
+			models.set(await getModels(getRequestToken()));
 		}
 	};
 
 	onMount(async () => {
-		PIPELINES_LIST = await getPipelinesList(localStorage.token);
+		PIPELINES_LIST = await getPipelinesList(getRequestToken());
 		if (PIPELINES_LIST.length > 0) {
 			selectedPipelinesUrlIdx = PIPELINES_LIST[0]['idx'].toString();
 		}

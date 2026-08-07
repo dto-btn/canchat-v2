@@ -11,6 +11,7 @@
 	import { getModels } from '$lib/apis';
 	import { compareVersion, extractFrontmatter } from '$lib/utils';
 	import { WEBUI_VERSION } from '$lib/constants';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -33,7 +34,7 @@
 			return;
 		}
 
-		const res = await createNewFunction(localStorage.token, {
+		const res = await createNewFunction(getRequestToken(), {
 			id: data.id,
 			name: data.name,
 			meta: data.meta,
@@ -45,8 +46,8 @@
 
 		if (res) {
 			toast.success($i18n.t('Function created successfully'));
-			functions.set(await getFunctions(localStorage.token));
-			models.set(await getModels(localStorage.token));
+			functions.set(await getFunctions(getRequestToken()));
+			models.set(await getModels(getRequestToken()));
 
 			await goto('/admin/functions');
 		}

@@ -9,6 +9,7 @@
 	import { updateUserById, updateUserRole } from '$lib/apis/users';
 
 	import Modal from '$lib/components/common/Modal.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 	const dispatch = createEventDispatcher();
@@ -31,7 +32,7 @@
 		const roleChanged = selectedUser.role !== _user.role;
 
 		// Update user basic info (name, email, password, profile_image_url)
-		const res = await updateUserById(localStorage.token, selectedUser.id, _user).catch((error) => {
+		const res = await updateUserById(getRequestToken(), selectedUser.id, _user).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
@@ -42,7 +43,7 @@
 
 		// Update role if it changed
 		if (roleChanged) {
-			const roleRes = await updateUserRole(localStorage.token, selectedUser.id, _user.role).catch(
+			const roleRes = await updateUserRole(getRequestToken(), selectedUser.id, _user.role).catch(
 				(error) => {
 					toast.error(`Role update failed: ${error}`);
 					return null;

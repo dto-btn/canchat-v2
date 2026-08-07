@@ -1,6 +1,16 @@
 <script lang="ts">
+	import { userSignOut } from '$lib/apis/auths';
+	import { user } from '$lib/stores';
 	import { getUserRole } from '$lib/apis/users';
 	import { onMount } from 'svelte';
+	import {
+		broadcastAuthSyncEvent,
+		clearAuthRecoveryCheckpoint,
+		clearAuthState,
+		endLogout,
+		getRequestToken,
+		startLogout
+	} from '$lib/services/auth';
 
 	const translations = {
 		'en-GB': {
@@ -32,7 +42,7 @@
 	onMount(() => {
 		const checkUserRole = async () => {
 			try {
-				const role = await getUserRole(localStorage.token);
+				const role = await getUserRole(getRequestToken());
 				if (role !== 'pending') {
 					location.href = '/';
 				}
@@ -84,8 +94,19 @@
 						<button
 							class="text-xs text-center w-full mt-3 text-gray-700 dark:text-gray-200 underline"
 							on:click={async () => {
-								localStorage.removeItem('token');
-								location.href = '/auth';
+								startLogout();
+
+								try {
+									await userSignOut();
+									clearAuthRecoveryCheckpoint();
+									broadcastAuthSyncEvent('logout');
+									await user.set(undefined);
+									clearAuthState();
+									location.href = '/auth';
+								} catch (error) {
+									endLogout();
+									throw error;
+								}
 							}}
 						>
 							{currentTranslation.signout}

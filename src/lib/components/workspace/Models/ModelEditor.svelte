@@ -17,6 +17,7 @@
 	import { getKnowledgeBases } from '$lib/apis/knowledge';
 	import AccessControl from '../common/AccessControl.svelte';
 	import { toast } from 'svelte-sonner';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -181,9 +182,9 @@
 	};
 
 	onMount(async () => {
-		await tools.set(await getTools(localStorage.token));
-		await functions.set(await getFunctions(localStorage.token));
-		await knowledgeCollections.set(await getKnowledgeBases(localStorage.token));
+		await tools.set(await getTools(getRequestToken()));
+		await functions.set(await getFunctions(getRequestToken()));
+		await knowledgeCollections.set(await getKnowledgeBases(getRequestToken()));
 
 		// Scroll to top 'workspace-container' element
 		const workspaceContainer = document.getElementById('workspace-container');

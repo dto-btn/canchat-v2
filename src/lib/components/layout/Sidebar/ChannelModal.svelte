@@ -10,6 +10,7 @@
 	import { toast } from 'svelte-sonner';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import { getRequestToken } from '$lib/services/auth';
 	const i18n = getI18n();
 
 	export let show = false;
@@ -52,7 +53,7 @@
 	const deleteHandler = async () => {
 		showDeleteConfirmDialog = false;
 
-		const res = await deleteChannelById(localStorage.token, channel.id).catch((error) => {
+		const res = await deleteChannelById(getRequestToken(), channel.id).catch((error) => {
 			toast.error(error.message);
 		});
 

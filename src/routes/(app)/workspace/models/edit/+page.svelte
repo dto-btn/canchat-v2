@@ -14,13 +14,14 @@
 
 	import { getModels } from '$lib/apis';
 	import ModelEditor from '$lib/components/workspace/Models/ModelEditor.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	let model = null;
 
 	onMount(async () => {
 		const _id = $page.url.searchParams.get('id');
 		if (_id) {
-			model = await getModelById(localStorage.token, _id).catch((e) => {
+			model = await getModelById(getRequestToken(), _id).catch((e) => {
 				return null;
 			});
 
@@ -33,10 +34,10 @@
 	});
 
 	const onSubmit = async (modelInfo) => {
-		const res = await updateModelById(localStorage.token, modelInfo.id, modelInfo);
+		const res = await updateModelById(getRequestToken(), modelInfo.id, modelInfo);
 
 		if (res) {
-			await models.set(await getModels(localStorage.token));
+			await models.set(await getModels(getRequestToken()));
 			toast.success($i18n.t('Model updated successfully'));
 			await goto('/workspace/models');
 		}

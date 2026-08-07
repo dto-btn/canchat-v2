@@ -45,6 +45,7 @@
 	import LightBlub from '$lib/components/icons/LightBlub.svelte';
 	import IssueModal from '$lib/components/common/IssueModal.svelte';
 	import SuggestionModal from '$lib/components/common/SuggestionModal.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	interface MessageType {
 		id: string;
@@ -239,7 +240,7 @@
 
 		speaking = true;
 
-		if ($config.audio.tts.engine !== '') {
+		if (($config?.audio?.tts?.engine ?? '') !== '') {
 			loadingSpeech = true;
 
 			const messageContentParts: string[] = getMessageContentParts(
@@ -269,8 +270,8 @@
 
 			for (const [idx, sentence] of messageContentParts.entries()) {
 				const res = await synthesizeOpenAISpeech(
-					localStorage.token,
-					$settings?.audio?.tts?.defaultVoice === $config.audio.tts.voice
+					getRequestToken(),
+					$settings?.audio?.tts?.defaultVoice === ($config?.audio?.tts?.voice ?? '')
 						? ($settings?.audio?.tts?.voice ?? $config?.audio?.tts?.voice)
 						: $config?.audio?.tts?.voice,
 					sentence
@@ -366,7 +367,7 @@
 
 	const generateImage = async (message: MessageType) => {
 		generatingImage = true;
-		const res = await imageGenerations(localStorage.token, message.content).catch((error) => {
+		const res = await imageGenerations(getRequestToken(), message.content).catch((error) => {
 			toast.error(`${error}`);
 		});
 
@@ -400,7 +401,7 @@
 			}
 		};
 
-		const chat = await getChatById(localStorage.token, chatId).catch((error) => {
+		const chat = await getChatById(getRequestToken(), chatId).catch((error) => {
 			toast.error(`${error}`);
 		});
 		if (!chat) {
@@ -469,14 +470,14 @@
 		let feedback = null;
 		if (message?.feedbackId) {
 			feedback = await updateFeedbackById(
-				localStorage.token,
+				getRequestToken(),
 				message.feedbackId,
 				feedbackItem
 			).catch((error) => {
 				toast.error(`${error}`);
 			});
 		} else {
-			feedback = await createNewFeedback(localStorage.token, feedbackItem).catch((error) => {
+			feedback = await createNewFeedback(getRequestToken(), feedbackItem).catch((error) => {
 				toast.error(`${error}`);
 			});
 
@@ -495,7 +496,7 @@
 			if (!updatedMessage.annotation?.tags) {
 				tagGenerationInProgress = true;
 				// attempt to generate tags
-				const tags = await generateTags(localStorage.token, message.model, messages, chatId).catch(
+				const tags = await generateTags(getRequestToken(), message.model, messages, chatId).catch(
 					(error) => {
 						console.error(error);
 						return [];
@@ -508,7 +509,7 @@
 
 					saveMessage(message.id, updatedMessage);
 					await updateFeedbackById(
-						localStorage.token,
+						getRequestToken(),
 						updatedMessage.feedbackId,
 						feedbackItem
 					).catch((error) => {
@@ -526,7 +527,7 @@
 		// If message has feedbackId but no annotation, fetch feedback data
 		if (message?.feedbackId && !message?.annotation?.rating) {
 			try {
-				const feedback = await getFeedbackById(localStorage.token, message.feedbackId);
+				const feedback = await getFeedbackById(getRequestToken(), message.feedbackId);
 				if (feedback && feedback.data) {
 					// Update message annotation with feedback data
 					const updatedMessage = {
@@ -817,7 +818,7 @@
 							</div>
 						{:else}
 							<div class="w-full flex flex-col relative" id="response-content-container">
-								{#if message.content === '' && !message.error}
+								{#if message.content === '' && !message.error && !message.done}
 									<Skeleton />
 								{:else if message.content && message.error !== true}
 									<!-- always show message contents even if there's an error -->

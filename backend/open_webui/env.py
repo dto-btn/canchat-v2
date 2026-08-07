@@ -375,6 +375,22 @@ WEBUI_SESSION_COOKIE_SECURE = os.environ.get(
     os.environ.get("WEBUI_SESSION_COOKIE_SECURE", "false").lower() == "true",
 )
 
+WEBUI_REFRESH_TOKEN_COOKIE_NAME = os.environ.get(
+    "WEBUI_REFRESH_TOKEN_COOKIE_NAME", "refresh_token"
+)
+
+WEBUI_REFRESH_TOKEN_COOKIE_SAME_SITE = os.environ.get(
+    "WEBUI_REFRESH_TOKEN_COOKIE_SAME_SITE", WEBUI_SESSION_COOKIE_SAME_SITE
+)
+
+WEBUI_REFRESH_TOKEN_COOKIE_SECURE = (
+    os.environ.get(
+        "WEBUI_REFRESH_TOKEN_COOKIE_SECURE",
+        str(WEBUI_SESSION_COOKIE_SECURE),
+    ).lower()
+    == "true"
+)
+
 if WEBUI_AUTH and WEBUI_SECRET_KEY == "":
     raise ValueError(ERROR_MESSAGES.ENV_VAR_NOT_FOUND)
 

@@ -31,6 +31,7 @@
 	import { autoFormatNumber } from '$lib/utils';
 	import Spinner from '../common/Spinner.svelte';
 	import ChartDataLabels from 'chartjs-plugin-datalabels';
+	import { getRequestToken } from '$lib/services/auth';
 
 	// Replace date-fns with native date formatting
 	function formatDate(date) {
@@ -492,20 +493,20 @@
 
 			// Load summary metrics
 			try {
-				totalUsers = await getTotalUsers(localStorage.token, updatedDomain);
-				totalPrompts = await getTotalPrompts(localStorage.token, updatedDomain);
+				totalUsers = await getTotalUsers(getRequestToken(), updatedDomain);
+				totalPrompts = await getTotalPrompts(getRequestToken(), updatedDomain);
 				// Pass date range to getTotalTokens for proper filtering
 				totalTokens = await getTotalTokens(
-					localStorage.token,
+					getRequestToken(),
 					updatedDomain,
 					startDate,
 					endDate,
 					selectedMcpProcess ?? undefined
 				);
-				dailyUsers = await getDailyUsers(localStorage.token, updatedDomain);
-				dailyPrompts = await getDailyPrompts(localStorage.token, updatedDomain);
+				dailyUsers = await getDailyUsers(getRequestToken(), updatedDomain);
+				dailyPrompts = await getDailyPrompts(getRequestToken(), updatedDomain);
 				dailyTokens = await getDailyTokens(
-					localStorage.token,
+					getRequestToken(),
 					updatedDomain,
 					selectedMcpProcess ?? undefined
 				);
@@ -519,9 +520,9 @@
 			// Load model-specific data if a model is selected
 			if (selectedModel) {
 				try {
-					modelPrompts = await getModelPrompts(localStorage.token, selectedModel, updatedDomain);
+					modelPrompts = await getModelPrompts(getRequestToken(), selectedModel, updatedDomain);
 					modelDailyPrompts = await getModelDailyPrompts(
-						localStorage.token,
+						getRequestToken(),
 						selectedModel,
 						updatedDomain
 					);
@@ -539,21 +540,21 @@
 
 			// Fetch historical data for charts
 			try {
-				enrolledUsersData = await getHistoricalUsers(localStorage.token, days, updatedDomain);
+				enrolledUsersData = await getHistoricalUsers(getRequestToken(), days, updatedDomain);
 				dailyActiveUsersData = await getHistoricalDailyUsers(
-					localStorage.token,
+					getRequestToken(),
 					days,
 					updatedDomain
 				);
 				departmentUsageData = await getUserByDomain(
-					localStorage.token,
+					getRequestToken(),
 					toEpoch(startDate),
 					toEpoch(endDate),
 					updatedDomain
 				);
-				dailyPromptsData = await getHistoricalPrompts(localStorage.token, days, updatedDomain);
+				dailyPromptsData = await getHistoricalPrompts(getRequestToken(), days, updatedDomain);
 				dailyTokensData = await getHistoricalTokens(
-					localStorage.token,
+					getRequestToken(),
 					days,
 					updatedDomain,
 					selectedMcpProcess ?? undefined
@@ -562,7 +563,7 @@
 				// Fetch model-specific historical data if a model is selected
 				if (selectedModel) {
 					modelPromptsData = await getModelHistoricalPrompts(
-						localStorage.token,
+						getRequestToken(),
 						days,
 						selectedModel,
 						updatedDomain
@@ -571,7 +572,7 @@
 
 				// Fetch inter-prompt latency data (don't filter by model since this is a user behavior metric)
 				interPromptLatencyData = await getInterPromptLatencyHistogram(
-					localStorage.token,
+					getRequestToken(),
 					updatedDomain,
 					null // Don't filter by model for inter-prompt latency
 				);
@@ -877,16 +878,16 @@
 
 		// Additional data loading for model-specific tab
 		if (tab === 'models' && selectedModel) {
-			getModelPrompts(localStorage.token, selectedModel, selectedDomain)
+			getModelPrompts(getRequestToken(), selectedModel, selectedDomain)
 				.then((data) => {
 					modelPrompts = data;
-					return getModelDailyPrompts(localStorage.token, selectedModel, selectedDomain);
+					return getModelDailyPrompts(getRequestToken(), selectedModel, selectedDomain);
 				})
 				.then((data) => {
 					modelDailyPrompts = data;
 					// Use the existing date range when calculating model historical data
 					const days = calculateDaysFromDateRange(startDate, endDate);
-					return getModelHistoricalPrompts(localStorage.token, days, selectedModel, selectedDomain);
+					return getModelHistoricalPrompts(getRequestToken(), days, selectedModel, selectedDomain);
 				})
 				.then((data) => {
 					modelPromptsData = data;
@@ -952,7 +953,7 @@
 
 		try {
 			rangeMetrics = await getRangeMetrics(
-				localStorage.token,
+				getRequestToken(),
 				startDate,
 				endDate,
 				selectedDomain,
@@ -1000,7 +1001,7 @@
 			// Load MCP processes for the MCP toggle/process filter on the Tokens tab
 			(async () => {
 				try {
-					mcpProcesses = await getMcpProcesses(localStorage.token);
+					mcpProcesses = await getMcpProcesses(getRequestToken());
 				} catch (mcpErr) {
 					console.warn('Could not load MCP processes:', mcpErr);
 					mcpProcesses = [];
@@ -1013,8 +1014,8 @@
 
 			(async () => {
 				try {
-					domains = await getDomains(localStorage.token);
-					models = await getModels(localStorage.token);
+					domains = await getDomains(getRequestToken());
+					models = await getModels(getRequestToken());
 					// Set the first model as the selected model if available
 					if (models.length > 0) {
 						selectedModel = models[0];
@@ -1107,7 +1108,7 @@
 			// For analysts, always use their domain regardless of selectedDomain
 			const exportDomain = $user?.role === 'analyst' ? $user?.email?.split('@')[1] : selectedDomain;
 
-			const blob = await exportMetricsData(localStorage.token, startDate, endDate, exportDomain);
+			const blob = await exportMetricsData(getRequestToken(), startDate, endDate, exportDomain);
 
 			// Create download link
 			const url = window.URL.createObjectURL(blob);
@@ -1137,7 +1138,7 @@
 
 	async function loadExportLogs() {
 		try {
-			exportLogs = await getExportLogs(localStorage.token);
+			exportLogs = await getExportLogs(getRequestToken());
 		} catch (error) {
 			console.error('Failed to load export logs:', error);
 		}

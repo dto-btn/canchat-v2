@@ -1,63 +1,27 @@
-import { WEBUI_BASE_URL, TERMS_VERSION } from '$lib/constants';
+import { apiJson } from '$lib/apis/client';
+import { TERMS_VERSION, WEBUI_API_BASE_URL } from '$lib/constants';
 
-export const getTermsStatus = async (token: string) => {
-	let error = null;
-	const termsVersion = TERMS_VERSION?.trim() || '0.0.0';
-
-	const res = await fetch(
-		`${WEBUI_BASE_URL}/api/v1/terms/status/${encodeURIComponent(termsVersion)}`,
-		{
-			method: 'GET',
-			headers: {
-				Accept: 'application/json',
-				'Content-Type': 'application/json',
-				authorization: `Bearer ${token}`
-			}
-		}
-	)
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			error = err;
-			console.log(err);
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
+export type TermsStatus = {
+	id: string;
+	user_id: string;
+	accepted_at: number;
+	version: string;
 };
 
-export const acceptTerms = async (token: string) => {
-	let error = null;
-	const termsVersion = TERMS_VERSION?.trim() || '0.0.0';
+const termsVersion = () => TERMS_VERSION?.trim() || '0.0.0';
+const termsApiUrl = (path: string) => `${WEBUI_API_BASE_URL}/terms${path}`;
 
-	const res = await fetch(`${WEBUI_BASE_URL}/api/v1/terms/accept`, {
+export const getTermsStatus = async (token: string = '') => {
+	return apiJson<TermsStatus | null>(termsApiUrl(`/status/${encodeURIComponent(termsVersion())}`), {
+		method: 'GET',
+		token
+	});
+};
+
+export const acceptTerms = async (token: string = '') => {
+	return apiJson<TermsStatus>(termsApiUrl('/accept'), {
 		method: 'POST',
-		headers: {
-			Accept: 'application/json',
-			'Content-Type': 'application/json',
-			authorization: `Bearer ${token}`
-		},
-		body: JSON.stringify({ version: termsVersion })
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			error = err;
-			console.log(err);
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
+		token,
+		body: JSON.stringify({ version: termsVersion() })
+	});
 };

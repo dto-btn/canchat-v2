@@ -13,6 +13,7 @@
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import DeleteConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -31,17 +32,17 @@
 	};
 
 	const deleteChatHandler = async (chatId) => {
-		const res = await deleteChatById(localStorage.token, chatId).catch((error) => {
+		const res = await deleteChatById(getRequestToken(), chatId).catch((error) => {
 			toast.error(`${error}`);
 		});
 
-		chats = await getChatListByUserId(localStorage.token, user.id);
+		chats = await getChatListByUserId(getRequestToken(), user.id);
 	};
 
 	$: if (show) {
 		(async () => {
 			if (user.id) {
-				chats = await getChatListByUserId(localStorage.token, user.id);
+				chats = await getChatListByUserId(getRequestToken(), user.id);
 			}
 		})();
 	} else {

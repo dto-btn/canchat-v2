@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 	import { goto } from '$app/navigation';
 	import { acceptTerms, getTermsStatus } from '$lib/apis/terms';
@@ -11,6 +11,7 @@
 	} from '$lib/constants';
 	import { toast } from 'svelte-sonner';
 	import { onMount } from 'svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -20,10 +21,13 @@
 	let termsStatusUnavailable = false;
 	let acceptTermsFailureCount = 0;
 
-	const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+	const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-	const runWithRetry = async (operation, maxAttempts = TERMS_MAX_RETRY_ATTEMPTS) => {
-		let lastError;
+	const runWithRetry = async <T,>(
+		operation: (attempt: number) => Promise<T>,
+		maxAttempts = TERMS_MAX_RETRY_ATTEMPTS
+	): Promise<T> => {
+		let lastError: unknown;
 		for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
 			try {
 				return await operation(attempt);
@@ -48,7 +52,7 @@
 
 		try {
 			const status = await runWithRetry(
-				() => getTermsStatus(localStorage.token),
+				() => getTermsStatus(getRequestToken()),
 				TERMS_MAX_RETRY_ATTEMPTS
 			);
 			accepted = !!status?.accepted_at;
@@ -62,7 +66,7 @@
 	async function handleAccept() {
 		accepting = true;
 		try {
-			await runWithRetry(() => acceptTerms(localStorage.token), TERMS_MAX_RETRY_ATTEMPTS);
+			await runWithRetry(() => acceptTerms(getRequestToken()), TERMS_MAX_RETRY_ATTEMPTS);
 			acceptTermsFailureCount = 0;
 			toast.success('Conditions acceptées. Redirection vers CANChat.');
 			await goto('/');
