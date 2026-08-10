@@ -82,15 +82,14 @@
 
 	{#if $user?.role === 'admin'}
 		<button
-			class="absolute z-10 right-2 invisible group-hover:visible self-center flex items-center dark:text-gray-300"
+			class="absolute z-10 right-2 invisible group-hover:visible self-center flex items-center p-0.5 dark:text-gray-300 dark:hover:bg-gray-850 rounded-lg touch-auto"
+			type="button"
 			on:click={(e) => {
 				e.stopPropagation();
 				showEditChannelModal = true;
 			}}
 		>
-			<button class="p-0.5 dark:hover:bg-gray-850 rounded-lg touch-auto" on:click={(e) => {}}>
-				<Cog6 className="size-3.5" />
-			</button>
+			<Cog6 className="size-3.5" />
 		</button>
 	{/if}
 </div>
