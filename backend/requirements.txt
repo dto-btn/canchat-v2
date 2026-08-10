@@ -21,7 +21,7 @@ transformers==5.5.0
 # Agentic Frameworks & Context Protocol
 # ==========================================
 ## CrewAI MCP Integration
-crewai[azure-ai-inference]==1.15.14
+crewai[azure-ai-inference]==1.15.2
 crewai-tools[mcp]>=0.76.0 # >0.76.0 require lancedb~=0.5.4 and are way past that
 litellm==1.92.0  # Required by CrewAI for Azure OpenAI integration. 1.83.1+ requires pydantic that is in conflict with crewai
 
@@ -32,7 +32,7 @@ langchain-core==1.4.6
 langchain-text-splitters==1.1.2
 ## MCP (Model Context Protocol)
 fastmcp==3.2.0
-mcp==1.28.1 #required by crewai
+mcp==1.26.0 #required by crewai
 
 txtai[graph]==9.0.0
 
@@ -49,7 +49,7 @@ google-auth-httplib2==0.3.0
 google-auth-oauthlib==1.2.4
 google-cloud-storage==2.19.0
 googleapis-common-protos==1.63.2
-httplib2==0.32.0
+httplib2==0.31.1
 
 # ==========================================
 # Core Web Frameworks & Servers
@@ -78,14 +78,14 @@ sqlalchemy==2.0.32
 # Document Parsing & Extraction
 # ==========================================
 docling==2.94.0
-docling-core==2.74.1
+docling-core==2.74.0 # 2.74.1+ has an transitive dependency issue with crewai-cli
 docling-ibm-models==3.13.0
 docx2txt==0.8
 extract_msg==0.55.0
 faster-whisper==1.0.3
 fpdf2==2.8.2
 Markdown==3.8.1
-nltk==3.10.0
+nltk==3.9.4
 opencv-python-headless==4.10.0.84
 openpyxl==3.1.5
 pandas==2.2.3
@@ -124,7 +124,7 @@ validators==0.34.0
 # ==========================================
 aiocache==0.12.3
 aiofiles==24.1.0 #crewai requires 24.1.0
-aiohttp==3.14.3
+aiohttp==3.14.1
 async-timeout==5.0.1
 requests==2.33.0
 websocket-client>=0.32.0
@@ -144,7 +144,7 @@ opentelemetry-exporter-otlp==1.42.0
 argon2-cffi==23.1.0
 authlib==1.6.12
 bcrypt==4.2.0
-cryptography==50.0.0
+cryptography==48.0.1
 ldap3==2.9.1
 passlib[bcrypt]==1.7.4
 PyJWT[crypto]>=2.10.1,<3.0
@@ -167,10 +167,10 @@ filelock==3.20.3
 fonttools==4.60.2
 greenlet==3.3.0
 grpcio>=1.49.1,<=1.67.1
-h2==4.4.1
+h2==4.3.0
 jinja2==3.1.6
 marshmallow==3.26.2
 protobuf==5.29.6
-pyasn1==0.6.4
-setuptools==83.0.0
+pyasn1==0.6.3
+setuptools==78.1.1
 urllib3==2.7.0
