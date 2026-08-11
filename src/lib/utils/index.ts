@@ -1205,7 +1205,7 @@ export const getCurrentDateTimeForTimezone = (timeZone: string = 'America/Toront
 	};
 };
 
-export const createMessagesList = (history: any, messageId: any) => {
+export const createMessagesList = (history: any, messageId: any): any[] => {
 	if (messageId === null) {
 		return [];
 	}

@@ -823,7 +823,7 @@
 		}
 	};
 
-	const createMessagesList = (responseMessageId: any) => {
+	const createMessagesList = (responseMessageId: any): any[] => {
 		if (responseMessageId === null) {
 			return [];
 		}
