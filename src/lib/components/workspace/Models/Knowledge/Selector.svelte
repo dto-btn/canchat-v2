@@ -16,13 +16,13 @@
 
 	let query = '';
 
-	let items = [];
-	let filteredItems = [];
+	let items: any[] = [];
+	let filteredItems: any[] = [];
 
-	let fuse = null;
+	let fuse: any = null;
 	$: if (fuse) {
 		filteredItems = query
-			? fuse.search(query).map((e) => {
+			? fuse.search(query).map((e: any) => {
 					return e.item;
 				})
 			: items;
@@ -45,16 +45,20 @@
 
 						...legacy_documents
 							.reduce((a, item) => {
-								return [...new Set([...a, ...(item?.meta?.tags ?? []).map((tag) => tag.name)])];
+								return [
+									...new Set([...a, ...(item?.meta?.tags ?? []).map((tag: any) => tag.name)])
+								];
 							}, [])
-							.map((tag) => ({
+							.map((tag: any) => ({
 								name: tag,
 								legacy: true,
 								type: 'collection',
 								description: 'Deprecated (legacy collection), please create a new knowledge base.',
 
 								collection_names: legacy_documents
-									.filter((item) => (item?.meta?.tags ?? []).map((tag) => tag.name).includes(tag))
+									.filter((item) =>
+										(item?.meta?.tags ?? []).map((tag: any) => tag.name).includes(tag)
+									)
 									.map((item) => item.id)
 							}))
 					]

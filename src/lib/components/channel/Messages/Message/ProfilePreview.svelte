@@ -9,7 +9,7 @@
 	export let side = 'right';
 	export let align = 'top';
 
-	export let user = null;
+	export let user: any = null;
 	let show = false;
 
 	const dispatch = createEventDispatcher();

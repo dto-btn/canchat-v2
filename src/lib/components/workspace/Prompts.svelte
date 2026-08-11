@@ -39,13 +39,13 @@
 	let importV1Files = '';
 	let query = '';
 
-	let prompts = [];
-	let groups = [];
+	let prompts: any[] = [];
+	let groups: any[] = [];
 	let totalCount = 0;
 	let loading = false;
 
 	let showDeleteConfirm = false;
-	let deletePrompt = null;
+	let deletePrompt: any = null;
 
 	let page = 1;
 	const itemsPerPage = 20;
@@ -90,7 +90,7 @@
 		return result;
 	};
 
-	const sanitizeCommandString = (inputString) => {
+	const sanitizeCommandString = (inputString: any) => {
 		// Replace any non-alphanumeric characters with hyphens and ensure no consecutive hyphens
 		return inputString
 			.replace(/[^a-zA-Z0-9-]/g, '-') // Replace special chars with hyphens
@@ -98,12 +98,12 @@
 			.replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
 	};
 
-	const cloneHandler = async (prompt) => {
+	const cloneHandler = async (prompt: any) => {
 		sessionStorage.prompt = JSON.stringify(prompt);
 		goto('/workspace/prompts/create');
 	};
 
-	const deleteHandler = async (prompt) => {
+	const deleteHandler = async (prompt: any) => {
 		const command = prompt.command;
 		await deletePromptByCommand(getRequestToken(), command);
 		await loadPrompts(); // Reload current page
@@ -121,7 +121,7 @@
 				limit: itemsPerPage,
 				search: searchQuery
 			});
-		} catch (error) {
+		} catch (error: any) {
 			console.error('Error loading prompts:', error);
 			toast.error('Failed to load prompts');
 		} finally {
@@ -134,7 +134,7 @@
 			const searchQuery = debouncedQuery?.trim() || undefined;
 			const result = await getPromptsCount(getRequestToken(), searchQuery);
 			totalCount = result.count;
-		} catch (error) {
+		} catch (error: any) {
 			console.error('Error loading prompts count:', error);
 		}
 	};
@@ -145,7 +145,7 @@
 		await loadPrompts();
 	};
 
-	const getPromptGroupName = (prompt) => {
+	const getPromptGroupName = (prompt: any) => {
 		if (prompt.access_control === null) return null;
 
 		// Check for both read and write group access with safe property access
@@ -162,7 +162,7 @@
 		return null;
 	};
 
-	const isGroupPrompt = (prompt) => {
+	const isGroupPrompt = (prompt: any) => {
 		return (
 			prompt.access_control !== null &&
 			(prompt.access_control?.read?.group_ids?.length > 0 ||
@@ -170,7 +170,7 @@
 		);
 	};
 
-	$: getPromptDisplayText = (prompt) => {
+	$: getPromptDisplayText = (prompt: any) => {
 		if (prompt.access_control === null) {
 			return $i18n.t('Public');
 		}

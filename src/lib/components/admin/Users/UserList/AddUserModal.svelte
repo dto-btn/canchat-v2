@@ -17,7 +17,7 @@
 
 	let loading = false;
 	let tab = '';
-	let inputFiles;
+	let inputFiles: any;
 
 	let _user = {
 		name: '',
@@ -72,7 +72,7 @@
 					let userCount = 0;
 
 					for (const [idx, row] of rows.entries()) {
-						const columns = row.split(',').map((col) => col.trim());
+						const columns = row.split(',').map((col: any) => col.trim());
 						if (idx > 0) {
 							if (
 								columns.length === 4 &&

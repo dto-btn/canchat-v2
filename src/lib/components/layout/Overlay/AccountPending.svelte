@@ -12,7 +12,7 @@
 		startLogout
 	} from '$lib/services/auth';
 
-	const translations = {
+	const translations: Record<string, Record<string, string>> = {
 		'en-GB': {
 			welcome: 'Welcome to CANChat',
 			message: 'Please wait while we activate your account.',
@@ -31,7 +31,7 @@
 		}
 	};
 
-	let currentLang = 'en-GB';
+	let currentLang: keyof typeof translations = 'en-GB';
 	$: currentLangDisplay = currentLang === 'en-GB' ? 'Français' : 'English';
 	$: currentTranslation = translations[currentLang];
 
@@ -46,7 +46,7 @@
 				if (role !== 'pending') {
 					location.href = '/';
 				}
-			} catch (error) {
+			} catch (error: any) {
 				console.error('Error checking user role:', error);
 			}
 		};

@@ -8,9 +8,9 @@
 
 	const i18n = getI18n();
 
-	export let allowedDomains = [];
+	export let allowedDomains: any[] = [];
 
-	let dbDomains = [];
+	let dbDomains: any[] = [];
 	let loading = true;
 	let searchQuery = '';
 
@@ -24,7 +24,7 @@
 		try {
 			// Load database domains (already sorted by department name on backend)
 			dbDomains = (await getDomains(getRequestToken())) || [];
-		} catch (error) {
+		} catch (error: any) {
 			console.error('Failed to load domains:', error);
 			toast.error(i18n.t('Failed to load available domains'));
 		}
@@ -32,7 +32,7 @@
 	};
 
 	// Handle checkbox changes
-	const handleDomainToggle = (domain, isChecked) => {
+	const handleDomainToggle = (domain: any, isChecked: any) => {
 		if (isChecked) {
 			if (!allowedDomains.includes(domain)) {
 				allowedDomains = [...allowedDomains, domain];

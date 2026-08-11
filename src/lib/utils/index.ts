@@ -112,7 +112,7 @@ function escapeRegExp(string: string): string {
 	return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-export const replaceTokens = (content, sourceIds, char, user) => {
+export const replaceTokens = (content: any, sourceIds: any, char: any, user: any) => {
 	const charToken = /{{char}}/gi;
 	const userToken = /{{user}}/gi;
 	const videoIdToken = /{{VIDEO_FILE_ID_([a-f0-9-]+)}}/gi; // Regex to capture the video ID
@@ -129,13 +129,13 @@ export const replaceTokens = (content, sourceIds, char, user) => {
 	}
 
 	// Replace video ID tags with corresponding <video> elements
-	content = content.replace(videoIdToken, (match, fileId) => {
+	content = content.replace(videoIdToken, (match: any, fileId: any) => {
 		const videoUrl = `${WEBUI_BASE_URL}/api/v1/files/${fileId}/content`;
 		return `<video src="${videoUrl}" controls></video>`;
 	});
 
 	// Replace HTML ID tags with corresponding HTML content
-	content = content.replace(htmlIdToken, (match, fileId) => {
+	content = content.replace(htmlIdToken, (match: any, fileId: any) => {
 		const htmlUrl = `${WEBUI_BASE_URL}/api/v1/files/${fileId}/content/html`;
 		return `<iframe src="${htmlUrl}" width="100%" frameborder="0" onload="this.style.height=(this.contentWindow.document.body.scrollHeight+20)+'px';"></iframe>`;
 	});
@@ -252,11 +252,11 @@ export function unescapeHtml(html: string) {
 	return doc.documentElement.textContent;
 }
 
-export const capitalizeFirstLetter = (string) => {
+export const capitalizeFirstLetter = (string: any) => {
 	return string.charAt(0).toUpperCase() + string.slice(1);
 };
 
-export const splitStream = (splitOn) => {
+export const splitStream = (splitOn: any) => {
 	let buffer = '';
 	return new TransformStream({
 		transform(chunk, controller) {
@@ -271,8 +271,8 @@ export const splitStream = (splitOn) => {
 	});
 };
 
-export const convertMessagesToHistory = (messages) => {
-	const history = {
+export const convertMessagesToHistory = (messages: any) => {
+	const history: Record<string, any> = {
 		messages: {},
 		currentId: null
 	};
@@ -314,7 +314,7 @@ export const convertMessagesToHistory = (messages) => {
 	return history;
 };
 
-export const getGravatarURL = (email) => {
+export const getGravatarURL = (email: any) => {
 	// Trim leading and trailing whitespace from
 	// an email address and force all characters
 	// to lower case
@@ -368,7 +368,7 @@ export const canvasPixelTest = () => {
 	return true;
 };
 
-export const compressImage = async (imageUrl, maxWidth, maxHeight) => {
+export const compressImage = async (imageUrl: any, maxWidth: any, maxHeight: any) => {
 	return new Promise((resolve, reject) => {
 		const img = new Image();
 		img.onload = () => {
@@ -429,7 +429,7 @@ export const compressImage = async (imageUrl, maxWidth, maxHeight) => {
 		img.src = imageUrl;
 	});
 };
-export const generateInitialsImage = (name) => {
+export const generateInitialsImage = (name: any) => {
 	const canvas = document.createElement('canvas');
 	const ctx = canvas.getContext('2d');
 	canvas.width = 100;
@@ -464,7 +464,7 @@ export const generateInitialsImage = (name) => {
 	return canvas.toDataURL();
 };
 
-export const formatDate = (inputDate) => {
+export const formatDate = (inputDate: any) => {
 	const date = dayjs(inputDate);
 	const now = dayjs();
 
@@ -477,7 +477,7 @@ export const formatDate = (inputDate) => {
 	}
 };
 
-export const copyToClipboard = async (text) => {
+export const copyToClipboard = async (text: any) => {
 	let result = false;
 	if (!navigator.clipboard) {
 		const textArea = document.createElement('textarea');
@@ -516,7 +516,7 @@ export const copyToClipboard = async (text) => {
 	return result;
 };
 
-export const compareVersion = (latest, current) => {
+export const compareVersion = (latest: any, current: any) => {
 	return current === '0.0.0'
 		? false
 		: current.localeCompare(latest, undefined, {
@@ -526,7 +526,7 @@ export const compareVersion = (latest, current) => {
 			}) < 0;
 };
 
-export const findWordIndices = (text) => {
+export const findWordIndices = (text: any) => {
 	const regex = /\[([^\]]+)\]/g;
 	const matches = [];
 	let match;
@@ -542,7 +542,7 @@ export const findWordIndices = (text) => {
 	return matches;
 };
 
-export const removeLastWordFromString = (inputString, wordString) => {
+export const removeLastWordFromString = (inputString: any, wordString: any) => {
 	// Split the string by newline characters to handle lines separately
 	const lines = inputString.split('\n');
 
@@ -571,12 +571,12 @@ export const removeLastWordFromString = (inputString, wordString) => {
 	return resultString;
 };
 
-export const removeFirstHashWord = (inputString) => {
+export const removeFirstHashWord = (inputString: any) => {
 	// Split the string into an array of words
 	const words = inputString.split(' ');
 
 	// Find the index of the first word that starts with #
-	const index = words.findIndex((word) => word.startsWith('#'));
+	const index = words.findIndex((word: any) => word.startsWith('#'));
 
 	// Remove the first word with #
 	if (index !== -1) {
@@ -589,7 +589,7 @@ export const removeFirstHashWord = (inputString) => {
 	return resultString;
 };
 
-export const transformFileName = (fileName) => {
+export const transformFileName = (fileName: any) => {
 	// Convert to lowercase
 	const lowerCaseFileName = fileName.toLowerCase();
 
@@ -602,7 +602,7 @@ export const transformFileName = (fileName) => {
 	return finalFileName;
 };
 
-export const calculateSHA256 = async (file) => {
+export const calculateSHA256 = async (file: any) => {
 	// Create a FileReader to read the file asynchronously
 	const reader = new FileReader();
 
@@ -636,7 +636,7 @@ export const calculateSHA256 = async (file) => {
 	}
 };
 
-export const getImportOrigin = (_chats) => {
+export const getImportOrigin = (_chats: any) => {
 	// Check what external service chat imports are from
 	if ('mapping' in _chats[0]) {
 		return 'openai';
@@ -667,10 +667,10 @@ export const getUserPosition = async (raw = false) => {
 	}
 };
 
-const convertOpenAIMessages = (convo) => {
+const convertOpenAIMessages = (convo: any) => {
 	// Parse OpenAI chat messages and create chat dictionary for creating new chats
 	const mapping = convo['mapping'];
-	const messages = [];
+	const messages: any[] = [];
 	let currentId = '';
 	let lastId = null;
 
@@ -725,7 +725,7 @@ const convertOpenAIMessages = (convo) => {
 	return chat;
 };
 
-const validateChat = (chat) => {
+const validateChat = (chat: any) => {
 	// Because ChatGPT sometimes has features we can't use like DALL-E or might have corrupted messages, need to validate
 	const messages = chat.messages;
 
@@ -756,7 +756,7 @@ const validateChat = (chat) => {
 	return true;
 };
 
-export const convertOpenAIChats = (_chats) => {
+export const convertOpenAIChats = (_chats: any) => {
 	// Create a list of dictionaries with each conversation from import
 	const chats = [];
 	let failed = 0;
@@ -833,7 +833,7 @@ export const cleanText = (content: string) => {
 	return removeFormattings(removeEmojis(content.trim()));
 };
 
-export const removeDetailsWithReasoning = (content) => {
+export const removeDetailsWithReasoning = (content: any) => {
 	return content.replace(/<details\s+type="reasoning"[^>]*>.*?<\/details>/gis, '').trim();
 };
 
@@ -925,7 +925,7 @@ export const getMessageContentParts = (content: string, split_on: string = 'punc
 	return messageContentParts;
 };
 
-export const blobToFile = (blob, fileName) => {
+export const blobToFile = (blob: any, fileName: any) => {
 	// Create a new File object from the Blob
 	const file = new File([blob], fileName, { type: blob.type });
 	return file;
@@ -1044,7 +1044,7 @@ export const approximateToHumanReadable = (nanoseconds: number) => {
 	return results.reverse().join(' ');
 };
 
-export const getTimeRange = (timestamp) => {
+export const getTimeRange = (timestamp: any) => {
 	const now = new Date();
 	const date = new Date(timestamp * 1000); // Convert Unix timestamp to milliseconds
 
@@ -1080,8 +1080,8 @@ export const getTimeRange = (timestamp) => {
  * @param content {string} - The content string with potential frontmatter.
  * @returns {Object} - The extracted frontmatter as a dictionary.
  */
-export const extractFrontmatter = (content) => {
-	const frontmatter = {};
+export const extractFrontmatter = (content: any) => {
+	const frontmatter: Record<string, any> = {};
 	let frontmatterStarted = false;
 	let frontmatterEnded = false;
 	const frontmatterPattern = /^\s*([a-z_]+):\s*(.*)\s*$/i;
@@ -1119,11 +1119,15 @@ export const extractFrontmatter = (content) => {
 };
 
 // Function to determine the best matching language
-export const bestMatchingLanguage = (supportedLanguages, preferredLanguages, defaultLocale) => {
-	const languages = supportedLanguages.map((lang) => lang.code);
+export const bestMatchingLanguage = (
+	supportedLanguages: any,
+	preferredLanguages: any,
+	defaultLocale: any
+) => {
+	const languages = supportedLanguages.map((lang: any) => lang.code);
 
 	const match = preferredLanguages
-		.map((prefLang) => languages.find((lang) => lang.startsWith(prefLang)))
+		.map((prefLang: any) => languages.find((lang: any) => lang.startsWith(prefLang)))
 		.find(Boolean);
 
 	return match || defaultLocale;
@@ -1201,7 +1205,7 @@ export const getCurrentDateTimeForTimezone = (timeZone: string = 'America/Toront
 	};
 };
 
-export const createMessagesList = (history, messageId) => {
+export const createMessagesList = (history: any, messageId: any) => {
 	if (messageId === null) {
 		return [];
 	}
@@ -1214,7 +1218,7 @@ export const createMessagesList = (history, messageId) => {
 	}
 };
 
-export const formatFileSize = (size) => {
+export const formatFileSize = (size: any) => {
 	if (size == null) return 'Unknown size';
 	if (typeof size !== 'number' || size < 0) return 'Invalid size';
 	if (size === 0) return '0 B';
@@ -1228,6 +1232,6 @@ export const formatFileSize = (size) => {
 	return `${size.toFixed(1)} ${units[unitIndex]}`;
 };
 
-export const getLineCount = (text) => {
+export const getLineCount = (text: any) => {
 	return text ? text.split('\n').length : 0;
 };

@@ -8,7 +8,7 @@
 	import PromptViewer from '$lib/components/workspace/Prompts/PromptViewer.svelte';
 	import { getRequestToken } from '$lib/services/auth';
 
-	let prompt = null;
+	let prompt: any = null;
 
 	onMount(async () => {
 		const command = $page.url.searchParams.get('command');

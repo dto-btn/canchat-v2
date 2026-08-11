@@ -5,12 +5,12 @@
 
 	import Modal from '$lib/components/common/Modal.svelte';
 	import Textarea from '$lib/components/common/Textarea.svelte';
-	export let onSubmit: Function = () => {};
+	export let onSubmit: (value: unknown) => void = () => {};
 	export let show = false;
 
 	let name = '';
 	let description = '';
-	let userIds = [];
+	let userIds: any[] = [];
 
 	let loading = false;
 
