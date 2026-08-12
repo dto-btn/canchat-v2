@@ -36,7 +36,7 @@
 		searchValue = '';
 	}}
 	selected={items.find((item) => item.value === value)}
-	onSelectedChange={(selectedItem) => {
+	onSelectedChange={(selectedItem: any) => {
 		value = selectedItem.value;
 	}}
 >

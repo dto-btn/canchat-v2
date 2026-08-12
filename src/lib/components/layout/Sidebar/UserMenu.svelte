@@ -75,7 +75,7 @@
 			sideOffset={8}
 			side="bottom"
 			align="start"
-			transition={(e) => fade(e, { duration: 100 })}
+			transition={(e: any) => fade(e, { duration: 100 })}
 		>
 			<DropdownMenu.Item
 				class="flex rounded-md py-2 px-3 w-full hover:bg-gray-50 dark:hover:bg-gray-800 transition"
