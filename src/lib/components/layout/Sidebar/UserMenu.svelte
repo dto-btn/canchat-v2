@@ -43,6 +43,8 @@
 		}, 10);
 	};
 
+	const menuTransition = (event: any) => fade(event, { duration: 100 });
+
 	let liveRegionText = '';
 </script>
 
@@ -75,7 +77,7 @@
 			sideOffset={8}
 			side="bottom"
 			align="start"
-			transition={(e: any) => fade(e, { duration: 100 })}
+			transition={menuTransition}
 		>
 			<DropdownMenu.Item
 				class="flex rounded-md py-2 px-3 w-full hover:bg-gray-50 dark:hover:bg-gray-800 transition"
