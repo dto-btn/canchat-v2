@@ -5,6 +5,28 @@ Tous les changements notables apportés à ce projet seront documentés dans ce 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage sémantique](https://semver.org/lang/fr/spec/v2.0.0.html).
 
+## [0.5.7-ccv2-1.16.0] - 2026-08-12
+
+### Ajouté
+
+- **📄 Conditions d'utilisation** : Ajout d'une page de conditions d'utilisation avec un lien de retour vers l'application.
+- **🌐 Affichage des modèles en français** : Ajout de noms d'affichage en français pour les modèles.
+- **🌐 Affichage des étiquettes de modèles en français** : Ajout de noms d'affichage en français pour les étiquettes de modèles.
+
+### Modifié
+
+- **📦 Dépendances** : Mise à jour des dépendances pour corriger les vulnérabilités.
+
+### Corrigé
+
+- **🔒 Rafraîchissement des jetons** : Ajout d'un rafraîchissement sécurisé des jetons, avec récupération silencieuse et restauration de session entre les onglets.
+- **🗃️ Basculement Redis** : Empêche Redis de basculer vers un état en mémoire.
+- **🐳 Dockerfile** : Mise à jour du conteneur afin qu'il s'exécute sans privilèges de superutilisateur.
+
+### Retiré
+
+- **🗑️ API Electron** : Suppression de l'API Electron.
+
 ## [0.5.7-ccv2-1.15.1] - 2026-06-19
 
 ### Modifié
