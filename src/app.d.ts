@@ -11,7 +11,7 @@ declare module '@sveltejs/svelte-virtual-list' {
 			itemHeight?: number;
 			rowHeight?: number;
 		},
-		{},
+		Record<string, never>,
 		{ default: { item: unknown } }
 	> {}
 }
