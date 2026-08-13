@@ -7,6 +7,7 @@
 	import { blobToFile } from '$lib/utils';
 
 	import { transcribeAudio } from '$lib/apis/audio';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -138,7 +139,7 @@
 		await tick();
 		const file = blobToFile(audioBlob, 'recording.wav');
 
-		const res = await transcribeAudio(localStorage.token, file).catch((error) => {
+		const res = await transcribeAudio(getRequestToken(), file).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
@@ -176,7 +177,10 @@
 		};
 		mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
 		mediaRecorder.onstop = async () => {
-			if ($config.audio.stt.engine === 'web' || ($settings?.audio?.stt?.engine ?? '') === 'web') {
+			if (
+				($config?.audio?.stt?.engine ?? '') === 'web' ||
+				($settings?.audio?.stt?.engine ?? '') === 'web'
+			) {
 				audioChunks = [];
 			} else {
 				if (confirmed) {
@@ -192,7 +196,10 @@
 			}
 		};
 		mediaRecorder.start();
-		if ($config.audio.stt.engine === 'web' || ($settings?.audio?.stt?.engine ?? '') === 'web') {
+		if (
+			($config?.audio?.stt?.engine ?? '') === 'web' ||
+			($settings?.audio?.stt?.engine ?? '') === 'web'
+		) {
 			if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
 				// Create a SpeechRecognition object
 				speechRecognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();

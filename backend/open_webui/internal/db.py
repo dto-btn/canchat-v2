@@ -32,8 +32,10 @@ class JSONField(types.TypeDecorator):
         return json.dumps(value)
 
     def process_result_value(self, value: Optional[_T], dialect: Dialect) -> Any:
-        if value is not None:
+        if value is not None and isinstance(value, (str, bytes, bytearray)):
             return json.loads(value)
+
+        return value
 
     def copy(self, **kw: Any) -> Self:
         return JSONField(self.impl.length)
@@ -42,8 +44,10 @@ class JSONField(types.TypeDecorator):
         return json.dumps(value)
 
     def python_value(self, value):
-        if value is not None:
+        if value is not None and isinstance(value, (str, bytes, bytearray)):
             return json.loads(value)
+
+        return value
 
 
 # Workaround to handle the peewee migration

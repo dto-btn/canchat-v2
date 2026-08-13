@@ -15,55 +15,83 @@
 	import Plus from '$lib/components/icons/Plus.svelte';
 	import Model from './Evaluations/Model.svelte';
 	import ArenaModelModal from './Evaluations/ArenaModelModal.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
-	let config = null;
+	type ArenaModel = Record<string, unknown>;
+	type EvaluationConfig = {
+		ENABLE_EVALUATION_ARENA_MODELS: boolean;
+		EVALUATION_ARENA_MODELS: ArenaModel[];
+		[key: string]: unknown;
+	};
+
+	let config: EvaluationConfig | null = null;
 	let showAddModel = false;
 
+	const refreshModels = async () => {
+		models.set(await getModels(getRequestToken()));
+	};
+
 	const submitHandler = async () => {
-		config = await updateConfig(localStorage.token, config).catch((err) => {
+		if (!config) {
+			return;
+		}
+
+		config = (await updateConfig(getRequestToken(), config).catch((err) => {
 			toast.error(err);
 			return null;
-		});
+		})) as EvaluationConfig | null;
 
 		if (config) {
 			toast.success('Settings saved successfully');
-			models.set(await getModels(localStorage.token));
+			await refreshModels();
 		}
 	};
 
-	const addModelHandler = async (model) => {
+	const addModelHandler = async (model: ArenaModel) => {
+		if (!config) {
+			return;
+		}
+
 		config.EVALUATION_ARENA_MODELS.push(model);
 		config.EVALUATION_ARENA_MODELS = [...config.EVALUATION_ARENA_MODELS];
 
 		await submitHandler();
-		models.set(await getModels(localStorage.token));
+		await refreshModels();
 	};
 
-	const editModelHandler = async (model, modelIdx) => {
+	const editModelHandler = async (model: ArenaModel, modelIdx: number) => {
+		if (!config) {
+			return;
+		}
+
 		config.EVALUATION_ARENA_MODELS[modelIdx] = model;
 		config.EVALUATION_ARENA_MODELS = [...config.EVALUATION_ARENA_MODELS];
 
 		await submitHandler();
-		models.set(await getModels(localStorage.token));
+		await refreshModels();
 	};
 
-	const deleteModelHandler = async (modelIdx) => {
+	const deleteModelHandler = async (modelIdx: number) => {
+		if (!config) {
+			return;
+		}
+
 		config.EVALUATION_ARENA_MODELS = config.EVALUATION_ARENA_MODELS.filter(
-			(m, mIdx) => mIdx !== modelIdx
+			(_model, currentIndex) => currentIndex !== modelIdx
 		);
 
 		await submitHandler();
-		models.set(await getModels(localStorage.token));
+		await refreshModels();
 	};
 
 	onMount(async () => {
-		if ($user.role === 'admin') {
-			config = await getConfig(localStorage.token).catch((err) => {
+		if ($user?.role === 'admin') {
+			config = ((await getConfig(getRequestToken()).catch((err) => {
 				toast.error(err);
 				return null;
-			});
+			})) ?? null) as EvaluationConfig | null;
 		}
 	});
 </script>
@@ -126,7 +154,7 @@
 									on:edit={(e) => {
 										editModelHandler(e.detail, index);
 									}}
-									on:delete={(e) => {
+									on:delete={(_e) => {
 										deleteModelHandler(index);
 									}}
 								/>

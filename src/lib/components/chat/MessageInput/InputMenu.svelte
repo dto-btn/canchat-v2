@@ -19,6 +19,7 @@
 	import Cog6Solid from '$lib/components/icons/Cog6Solid.svelte';
 	import CameraSolid from '$lib/components/icons/CameraSolid.svelte';
 	import PhotoSolid from '$lib/components/icons/PhotoSolid.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -114,7 +115,7 @@
 
 	const init = async () => {
 		if ($_tools === null) {
-			await _tools.set(await getTools(localStorage.token));
+			await _tools.set(await getTools(getRequestToken()));
 		}
 
 		tools = $_tools.reduce((a, tool, i, arr) => {

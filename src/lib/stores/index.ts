@@ -1,6 +1,7 @@
 import { APP_NAME } from '$lib/constants';
 import { type Writable, writable } from 'svelte/store';
 import type { ModelConfig } from '$lib/apis';
+import type { Channel } from '$lib/apis/channels';
 import type { Banner } from '$lib/types';
 import type { Socket } from 'socket.io-client';
 
@@ -28,7 +29,7 @@ export const USAGE_POOL: Writable<null | string[]> = writable(null);
 export const theme = writable('system');
 
 export const shortCodesToEmojis = writable(
-	Object.entries(emojiShortCodes).reduce((acc, [key, value]) => {
+	Object.entries(emojiShortCodes).reduce<Record<string, string>>((acc, [key, value]) => {
 		if (typeof value === 'string') {
 			acc[value] = key;
 		} else {
@@ -48,7 +49,7 @@ export const ariaMessage = writable('');
 export const chatId = writable('');
 export const chatTitle = writable('');
 
-export const channels = writable([]);
+export const channels: Writable<Channel[]> = writable([]);
 export const chats = writable([]);
 export const pinnedChats = writable([]);
 export const tags = writable([]);
@@ -92,6 +93,7 @@ export type Model = OpenAIModel | OllamaModel;
 type BaseModel = {
 	id: string;
 	name: string;
+	name_fr?: string;
 	info?: ModelConfig;
 	owned_by: 'ollama' | 'openai' | 'arena';
 };
@@ -196,11 +198,12 @@ type Document = {
 	title: string;
 };
 
-type Config = {
+export type Config = {
 	status: boolean;
 	name: string;
 	version: string;
 	default_locale: string;
+	onboarding?: boolean;
 	default_models: string;
 	default_prompt_suggestions: PromptSuggestion[];
 	docs_url: string;
@@ -210,9 +213,11 @@ type Config = {
 	features: {
 		auth: boolean;
 		auth_trusted_header: boolean;
+		enable_ldap?: boolean;
 		enable_api_key: boolean;
 		enable_signup: boolean;
 		enable_login_form: boolean;
+		enable_websocket?: boolean;
 		enable_web_search?: boolean;
 		enable_google_drive_integration: boolean;
 		enable_image_generation: boolean;
@@ -233,10 +238,15 @@ type PromptSuggestion = {
 	lang: string;
 };
 
-type SessionUser = {
+export type SessionUser = {
 	id: string;
 	email: string;
 	name: string;
 	role: string;
 	profile_image_url: string;
+	token?: string;
+	token_type?: string;
+	expires_at?: number | null;
+	permissions?: Record<string, unknown>;
+	domain?: string;
 };

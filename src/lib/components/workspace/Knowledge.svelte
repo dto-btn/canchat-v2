@@ -28,6 +28,7 @@
 	import Spinner from '../common/Spinner.svelte';
 	import { capitalizeFirstLetter } from '$lib/utils';
 	import Tooltip from '../common/Tooltip.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	let loaded = false;
 
@@ -55,19 +56,19 @@
 	}
 
 	const deleteHandler = async (item) => {
-		const res = await deleteKnowledgeById(localStorage.token, item.id).catch((e) => {
+		const res = await deleteKnowledgeById(getRequestToken(), item.id).catch((e) => {
 			toast.error(e);
 		});
 
 		if (res) {
-			knowledgeBases = await getKnowledgeBaseList(localStorage.token);
-			knowledge.set(await getKnowledgeBases(localStorage.token));
+			knowledgeBases = await getKnowledgeBaseList(getRequestToken());
+			knowledge.set(await getKnowledgeBases(getRequestToken()));
 			toast.success($i18n.t('Knowledge deleted successfully.'));
 		}
 	};
 
 	onMount(async () => {
-		knowledgeBases = await getKnowledgeBaseList(localStorage.token);
+		knowledgeBases = await getKnowledgeBaseList(getRequestToken());
 		loaded = true;
 	});
 </script>

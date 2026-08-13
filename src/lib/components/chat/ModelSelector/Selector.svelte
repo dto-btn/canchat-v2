@@ -22,6 +22,7 @@
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import ChatBubbleOval from '$lib/components/icons/ChatBubbleOval.svelte';
 	import { goto } from '$app/navigation';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 	const dispatch = createEventDispatcher();
@@ -60,12 +61,13 @@
 				...item,
 				modelName: item.model?.name,
 				tags: item.model?.info?.meta?.tags?.map((tag) => tag.name).join(' '),
+				tags_fr: item.model?.info?.meta?.tags_fr?.map((tag) => tag.name).join(' '),
 				desc: item.model?.info?.meta?.description
 			};
 			return _item;
 		}),
 		{
-			keys: ['value', 'tags', 'modelName'],
+			keys: ['value', 'tags', 'tags_fr', 'modelName'],
 			threshold: 0.4
 		}
 	);
@@ -94,7 +96,7 @@
 			return;
 		}
 
-		const [res, controller] = await pullModel(localStorage.token, sanitizedModelTag, '0').catch(
+		const [res, controller] = await pullModel(getRequestToken(), sanitizedModelTag, '0').catch(
 			(error) => {
 				toast.error(`${error}`);
 				return null;
@@ -183,7 +185,7 @@
 					})
 				);
 
-				models.set(await getModels(localStorage.token));
+				models.set(await getModels(getRequestToken()));
 			} else {
 				toast.error($i18n.t('Download canceled'));
 			}
@@ -197,7 +199,7 @@
 	};
 
 	onMount(async () => {
-		ollamaVersion = await getOllamaVersion(localStorage.token).catch((error) => false);
+		ollamaVersion = await getOllamaVersion(getRequestToken()).catch((error) => false);
 	});
 
 	const cancelModelPullHandler = async (model: string) => {
@@ -211,7 +213,7 @@
 			MODEL_DOWNLOAD_POOL.set({
 				...$MODEL_DOWNLOAD_POOL
 			});
-			await deleteModel(localStorage.token, model);
+			await deleteModel(getRequestToken(), model);
 			toast.success(`${model} download has been canceled`);
 		}
 	};
@@ -228,6 +230,12 @@
 
 	function getModelDesc(itemId) {
 		return descriptions.find((d) => d.id === itemId)?.desc || '';
+	}
+
+	function getModelTags(item) {
+		const frTags = item.model?.info?.meta?.tags_fr ?? [];
+		const enTags = item.model?.info?.meta?.tags ?? [];
+		return $i18n.language === 'fr-CA' && frTags.length > 0 ? frTags : enTags;
 	}
 </script>
 
@@ -322,9 +330,9 @@
 						}}
 					>
 						<div class="flex flex-col">
-							{#if $mobile && (item?.model?.info?.meta?.tags ?? []).length > 0}
+							{#if $mobile && getModelTags(item).length > 0}
 								<div class="flex gap-0.5 self-start h-full mb-1.5 -translate-x-1">
-									{#each item.model?.info?.meta.tags as tag}
+									{#each getModelTags(item) as tag}
 										<div
 											class=" text-xs font-bold px-1 rounded uppercase line-clamp-1 bg-gray-500/20 text-gray-700 dark:text-gray-200"
 										>
@@ -424,9 +432,9 @@
 									</Tooltip>
 								{/if}
 
-								{#if !$mobile && (item?.model?.info?.meta?.tags ?? []).length > 0}
+								{#if !$mobile && getModelTags(item).length > 0}
 									<div class="flex gap-0.5 self-center items-center h-full translate-y-[0.5px]">
-										{#each item.model?.info?.meta.tags as tag}
+										{#each getModelTags(item) as tag}
 											<Tooltip content={tag.name}>
 												<div
 													class=" text-xs font-bold px-1 rounded uppercase line-clamp-1 bg-gray-500/20 text-gray-700 dark:text-gray-200"

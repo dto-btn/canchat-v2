@@ -14,7 +14,7 @@ env:
 
 jobs:
   build-main-image:
-    runs-on: arc-ssc-dsai
+    runs-on: arc-ssc-dsai-tko
 
     # Set a timeout for the job
     timeout-minutes: 30
@@ -63,11 +63,12 @@ jobs:
           flavor: |
             latest=${{ github.ref == 'refs/heads/main' }}
       - name: Clean up local cache until the last 2 weeks
+        continue-on-error: true
         run: |
           echo "Cleaning up Docker cache..."
           docker buildx prune --filter type=local --filter until=336h --force
           echo "Overall disk usage on the cache volume:"
-          test -d /var/lib/docker/cache && df -h /var/lib/docker/cache
+          df -h /var/lib/docker/cache
       - name: Build Docker image (latest)
         uses: docker/build-push-action@v7
         id: build
@@ -80,6 +81,8 @@ jobs:
           cache-from: type=local,src=/var/lib/docker/cache
           build-args: |
             BUILD_HASH=${{ github.sha }}
+            UID=1001
+            GID=1001
           tags: ${{ steps.meta.outputs.tags }}
 
   backup-build-main-image:
@@ -141,4 +144,6 @@ jobs:
           no-cache: true  # Disable caching due to large/unstable images causing disk space issues
           build-args: |
             BUILD_HASH=${{ github.sha }}
+            UID=1001
+            GID=1001
           tags: ${{ steps.meta.outputs.tags }}

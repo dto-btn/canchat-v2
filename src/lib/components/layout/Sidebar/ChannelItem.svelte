@@ -10,6 +10,7 @@
 
 	import Cog6 from '$lib/components/icons/Cog6.svelte';
 	import ChannelModal from './ChannelModal.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	export let onUpdate: Function = () => {};
 
@@ -27,7 +28,7 @@
 	edit={true}
 	{onUpdate}
 	onSubmit={async ({ name, access_control }) => {
-		const res = await updateChannelById(localStorage.token, channel.id, {
+		const res = await updateChannelById(getRequestToken(), channel.id, {
 			name,
 			access_control
 		}).catch((error) => {

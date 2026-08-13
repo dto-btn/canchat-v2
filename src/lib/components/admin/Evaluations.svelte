@@ -7,6 +7,7 @@
 	import Feedbacks from './Evaluations/Feedbacks.svelte';
 
 	import { getAllFeedbacks, getFeedbacksCount } from '$lib/apis/evaluations';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -20,7 +21,7 @@
 
 	const loadFeedbacks = async (page = 1, search = '') => {
 		try {
-			feedbacks = await getAllFeedbacks(localStorage.token, {
+			feedbacks = await getAllFeedbacks(getRequestToken(), {
 				page,
 				limit: feedbacksPerPage,
 				search: search?.trim() || undefined
@@ -33,7 +34,7 @@
 
 	const loadFeedbacksCount = async (search = '') => {
 		try {
-			const result = await getFeedbacksCount(localStorage.token, search?.trim() || undefined);
+			const result = await getFeedbacksCount(getRequestToken(), search?.trim() || undefined);
 			totalFeedbackCount = result.count;
 		} catch (error) {
 			console.error('Error loading feedbacks count:', error);

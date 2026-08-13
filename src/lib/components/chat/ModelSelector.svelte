@@ -7,6 +7,7 @@
 	import Tooltip from '../common/Tooltip.svelte';
 
 	import { updateUserSettings } from '$lib/apis/users';
+	import { getRequestToken } from '$lib/services/auth';
 	const i18n = getI18n();
 
 	export let selectedModels = [''];
@@ -21,10 +22,18 @@
 			return;
 		}
 		settings.set({ ...$settings, models: selectedModels });
-		await updateUserSettings(localStorage.token, { ui: $settings });
+		await updateUserSettings(getRequestToken(), { ui: $settings });
 
 		toast.success($i18n.t('Default model updated'));
 	};
+
+	$: items = $models
+		.sort((a, b) => a.name.localeCompare(b.name))
+		.map((model) => ({
+			value: model.id,
+			label: $i18n.language === 'fr-CA' ? model?.info?.name_fr || model.name : model.name,
+			model: model
+		}));
 
 	$: if (selectedModels.length > 0 && $models.length > 0) {
 		selectedModels = selectedModels.map((model) =>
@@ -41,13 +50,7 @@
 					<Selector
 						id={`${selectedModelIdx}`}
 						placeholder={$i18n.t('Select a model')}
-						items={$models
-							.sort((a, b) => a.name.localeCompare(b.name))
-							.map((model) => ({
-								value: model.id,
-								label: model.name,
-								model: model
-							}))}
+						{items}
 						showTemporaryChatControl={$user.role === 'user'
 							? ($user?.permissions?.chat?.temporary ?? true)
 							: true}

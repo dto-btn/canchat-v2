@@ -50,6 +50,7 @@
 
 	let models = [];
 	let modelDescription = '';
+	let modelName = '';
 
 	const selectSuggestionPrompt = async (p) => {
 		let text = p;
@@ -98,8 +99,19 @@
 			? sanitizeResponseContent(model?.info?.meta?.description_fr ?? '')
 			: sanitizeResponseContent(model?.info?.meta?.description ?? '');
 
+	const getModelName = (model) =>
+		$i18n.language === 'fr-CA'
+			? model?.info?.name_fr && model?.info?.name_fr !== ''
+				? model?.info?.name_fr
+				: model?.name
+			: model?.name;
+
 	// Create a reactive statement that updates descriptions when locale changes
-	$: ($i18n.language, (modelDescription = getModelDesc(models[selectedModelIdx])));
+	$: {
+		$i18n.language;
+		modelDescription = getModelDesc(models[selectedModelIdx]);
+		modelName = getModelName(models[selectedModelIdx]);
+	}
 
 	$: {
 		// Whenever the model changes, trigger a suggestion reshuffle
@@ -131,7 +143,11 @@
 					<div class="flex -space-x-4 mb-0.5" in:fade={{ duration: 100 }}>
 						{#each models as model, modelIdx}
 							<Tooltip
-								content={(models[modelIdx]?.info?.meta?.tags ?? [])
+								content={($i18n.language === 'fr-CA' &&
+								(models[modelIdx]?.info?.meta?.tags_fr ?? []).length > 0
+									? models[modelIdx]?.info?.meta?.tags_fr
+									: (models[modelIdx]?.info?.meta?.tags ?? [])
+								)
 									.map((tag) => tag.name.toUpperCase())
 									.join(', ')}
 								placement="top"
@@ -158,8 +174,8 @@
 				</div>
 
 				<h2 class=" text-3xl sm:text-4xl line-clamp-1" in:fade={{ duration: 100 }}>
-					{#if models[selectedModelIdx]?.name}
-						{models[selectedModelIdx]?.name}
+					{#if modelName}
+						{modelName}
 					{:else}
 						{$i18n.t('Hello, {{name}}', { name: $user.name })}
 					{/if}

@@ -9,6 +9,7 @@
 	import { compareVersion, extractFrontmatter } from '$lib/utils';
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -31,7 +32,7 @@
 			return;
 		}
 
-		const res = await createNewTool(localStorage.token, {
+		const res = await createNewTool(getRequestToken(), {
 			id: data.id,
 			name: data.name,
 			meta: data.meta,
@@ -44,7 +45,7 @@
 
 		if (res) {
 			toast.success($i18n.t('Tool created successfully'));
-			tools.set(await getTools(localStorage.token));
+			tools.set(await getTools(getRequestToken()));
 
 			await goto('/workspace/tools');
 		}

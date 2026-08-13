@@ -17,6 +17,7 @@
 	import { getKnowledgeBases } from '$lib/apis/knowledge';
 	import AccessControl from '../common/AccessControl.svelte';
 	import { toast } from 'svelte-sonner';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -41,6 +42,7 @@
 
 	let id = '';
 	let name = '';
+	let name_fr = '';
 
 	$: if (!edit) {
 		if (name) {
@@ -55,6 +57,7 @@
 		id: '',
 		base_model_id: null,
 		name: '',
+		name_fr: '',
 		meta: {
 			profile_image_url: '/static/favicon.png',
 			description: '',
@@ -110,6 +113,7 @@
 
 		info.id = id;
 		info.name = name;
+		info.name_fr = name_fr;
 
 		if (id === '') {
 			toast.error('Model ID is required.');
@@ -178,9 +182,9 @@
 	};
 
 	onMount(async () => {
-		await tools.set(await getTools(localStorage.token));
-		await functions.set(await getFunctions(localStorage.token));
-		await knowledgeCollections.set(await getKnowledgeBases(localStorage.token));
+		await tools.set(await getTools(getRequestToken()));
+		await functions.set(await getFunctions(getRequestToken()));
+		await knowledgeCollections.set(await getKnowledgeBases(getRequestToken()));
 
 		// Scroll to top 'workspace-container' element
 		const workspaceContainer = document.getElementById('workspace-container');
@@ -190,6 +194,7 @@
 
 		if (model) {
 			name = model.name;
+			name_fr = model.name_fr || '';
 			await tick();
 
 			id = model.id;
@@ -250,7 +255,8 @@
 							? model
 							: {
 									id: model.id,
-									name: model.name
+									name: model.name,
+									name_fr: model.name_fr || ''
 								}
 					)
 				)
@@ -454,6 +460,19 @@
 						</div>
 					</div>
 
+					<div class="my-1">
+						<div class=" text-sm font-semibold mb-1">
+							{$i18n.t('Model Name in French (Canada)')}
+						</div>
+						<div>
+							<input
+								class="text-sm w-full bg-transparent outline-none"
+								placeholder={$i18n.t('Enter the model name in French (fr-ca)')}
+								bind:value={name_fr}
+							/>
+						</div>
+					</div>
+
 					{#if preset}
 						<div class="my-1">
 							<div class=" text-sm font-semibold mb-1">{$i18n.t('Base Model (From)')}</div>
@@ -505,7 +524,11 @@
 					</div>
 
 					<div class=" mt-2 my-1">
+						<div class="mb-1 flex w-full justify-between items-center">
+							<div class=" self-center text-sm font-semibold">{$i18n.t('Tags')}</div>
+						</div>
 						<div class="">
+							<div class="text-xs text-gray-500 mb-1">{$i18n.t('English Tags')}</div>
 							<Tags
 								tags={info?.meta?.tags ?? []}
 								on:delete={(e) => {
@@ -518,6 +541,26 @@
 										info.meta.tags = [{ name: tagName }];
 									} else {
 										info.meta.tags = [...info.meta.tags, { name: tagName }];
+									}
+								}}
+							/>
+						</div>
+						<div class="mt-2">
+							<div class="text-xs text-gray-500 mb-1">{$i18n.t('French Tags')}</div>
+							<Tags
+								tags={info?.meta?.tags_fr ?? []}
+								on:delete={(e) => {
+									const tagName = e.detail;
+									info.meta.tags_fr = (info.meta.tags_fr ?? []).filter(
+										(tag) => tag.name !== tagName
+									);
+								}}
+								on:add={(e) => {
+									const tagName = e.detail;
+									if (!(info?.meta?.tags_fr ?? null)) {
+										info.meta.tags_fr = [{ name: tagName }];
+									} else {
+										info.meta.tags_fr = [...info.meta.tags_fr, { name: tagName }];
 									}
 								}}
 							/>

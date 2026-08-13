@@ -7,6 +7,7 @@
 
 	import Switch from '$lib/components/common/Switch.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	// Default values for permissions
 	const defaultPermissions = {
@@ -44,8 +45,8 @@
 	const checkMCPEnabled = async () => {
 		try {
 			const [mcpConfig, builtinServersData] = await Promise.all([
-				getMCPConfig(localStorage.token),
-				getBuiltinServers(localStorage.token)
+				getMCPConfig(getRequestToken()),
+				getBuiltinServers(getRequestToken())
 			]);
 			mcpEnabled = mcpConfig?.ENABLE_MCP_API || false;
 			sharepointServers = (builtinServersData?.servers ?? [])

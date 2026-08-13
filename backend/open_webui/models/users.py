@@ -81,6 +81,7 @@ class UserResponse(BaseModel):
     email: str
     role: str
     profile_image_url: str
+    domain: Optional[str] = None
 
 
 class UserNameResponse(BaseModel):
@@ -207,6 +208,19 @@ class UsersTable:
             with get_db() as db:
                 user = db.query(User).order_by(User.created_at).first()
                 return UserModel.model_validate(user)
+        except Exception:
+            return None
+
+    def get_first_admin_user(self) -> Optional[UserModel]:
+        try:
+            with get_db() as db:
+                user = (
+                    db.query(User)
+                    .filter(User.role == "admin")
+                    .order_by(User.created_at)
+                    .first()
+                )
+                return UserModel.model_validate(user) if user else None
         except Exception:
             return None
 

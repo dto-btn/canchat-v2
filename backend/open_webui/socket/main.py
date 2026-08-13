@@ -106,20 +106,17 @@ def _initialize_socket_state():
                 time.sleep(retry_delay_seconds)
             else:
                 log.error(
-                    "Failed to initialize Redis websocket backend after %s attempts: %s. Falling back to local websocket manager and local pools.",
+                    "Failed to initialize Redis websocket backend after %s attempts: %s. Aborting startup because WEBSOCKET_MANAGER is set to redis.",
                     max_attempts,
                     e,
                 )
+                raise RuntimeError(
+                    "Redis websocket backend initialization failed while WEBSOCKET_MANAGER=redis"
+                ) from e
 
-    return (
-        "local",
-        _build_socket_server(),
-        {},
-        {},
-        {},
-        _lock_noop,
-        _lock_noop,
-        _lock_noop,
+    # Defensive guard: redis mode must never silently downgrade to local.
+    raise RuntimeError(
+        "Unreachable state: Redis websocket backend was not initialized while WEBSOCKET_MANAGER=redis"
     )
 
 
@@ -353,6 +350,38 @@ def get_models_in_use():
     # List models that are currently in use
     models_in_use = list(USAGE_POOL.keys())
     return models_in_use
+
+
+def _remove_sid_from_user_pool(user_id: str, sid: str):
+    current_sids = USER_POOL.get(user_id, [])
+    if not isinstance(current_sids, list):
+        current_sids = []
+
+    remaining_sids = [_sid for _sid in current_sids if _sid != sid]
+    if remaining_sids:
+        USER_POOL[user_id] = remaining_sids
+    elif user_id in USER_POOL:
+        del USER_POOL[user_id]
+
+
+def _upsert_socket_session(sid: str, session_data: dict):
+    previous_session = SESSION_POOL.get(sid)
+    previous_user_id = (
+        previous_session.get("id") if isinstance(previous_session, dict) else None
+    )
+    user_id = session_data["id"]
+
+    if previous_user_id and previous_user_id != user_id:
+        _remove_sid_from_user_pool(previous_user_id, sid)
+
+    SESSION_POOL[sid] = session_data
+
+    current_sids = USER_POOL.get(user_id, [])
+    if not isinstance(current_sids, list):
+        current_sids = []
+
+    if sid not in current_sids:
+        USER_POOL[user_id] = current_sids + [sid]
 
 
 @sio.on("usage")
@@ -605,7 +634,7 @@ async def connect(sid, environ, auth):
             if f"_temp_token_{sid}" in SESSION_POOL:
                 del SESSION_POOL[f"_temp_token_{sid}"]
 
-        SESSION_POOL[sid] = session_data
+        _upsert_socket_session(sid, session_data)
 
         # Verify token was stored
         stored_session = SESSION_POOL.get(sid)
@@ -617,11 +646,6 @@ async def connect(sid, environ, auth):
             log.error(
                 f"❌ ERROR: graph_access_token NOT in SESSION_POOL after storage! This is a Redis/storage issue."
             )
-
-        if user.id in USER_POOL:
-            USER_POOL[user.id] = USER_POOL[user.id] + [sid]
-        else:
-            USER_POOL[user.id] = [sid]
 
         await sio.emit("user-list", {"user_ids": list(USER_POOL.keys())})
         await sio.emit("usage", {"models": get_models_in_use()})
@@ -664,12 +688,7 @@ async def user_join(sid, data):
         )
 
     # Single atomic update to Redis
-    SESSION_POOL[sid] = new_session
-
-    if user.id in USER_POOL:
-        USER_POOL[user.id] = USER_POOL[user.id] + [sid]
-    else:
-        USER_POOL[user.id] = [sid]
+    _upsert_socket_session(sid, new_session)
 
     # Join all the channels
     channels = Channels.get_channels_by_user_id(user.id)
