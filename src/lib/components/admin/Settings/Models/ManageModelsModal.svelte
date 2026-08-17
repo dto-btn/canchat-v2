@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	import { createEventDispatcher, onMount } from 'svelte';
@@ -15,8 +15,8 @@
 
 	export let show = false;
 
-	let selected = null;
-	let ollamaConfig = null;
+	let selected: any = null;
+	let ollamaConfig: any = null;
 
 	onMount(async () => {
 		if ($user.role === 'admin') {

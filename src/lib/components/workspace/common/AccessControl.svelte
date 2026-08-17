@@ -20,12 +20,12 @@
 	};
 
 	let selectedGroupId = '';
-	let groups = [];
+	let groups: any[] = [];
 
 	onMount(async () => {
 		try {
 			groups = await getGroups(getRequestToken());
-		} catch (error) {
+		} catch (error: any) {
 			console.error('Error loading groups:', error);
 		}
 	});

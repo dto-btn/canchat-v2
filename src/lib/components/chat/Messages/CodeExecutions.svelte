@@ -5,9 +5,9 @@
 	import XMark from '$lib/components/icons/XMark.svelte';
 	import EllipsisHorizontal from '$lib/components/icons/EllipsisHorizontal.svelte';
 
-	export let codeExecutions = [];
+	export let codeExecutions: any[] = [];
 
-	let selectedCodeExecution = null;
+	let selectedCodeExecution: any = null;
 	let showCodeExecutionModal = false;
 
 	$: if (codeExecutions) {

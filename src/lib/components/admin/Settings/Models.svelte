@@ -30,21 +30,23 @@
 	import ManageModelsModal from './Models/ManageModelsModal.svelte';
 	import { getRequestToken } from '$lib/services/auth';
 
-	let importFiles;
+	let importFiles: any;
 	let modelsImportInputElement: HTMLInputElement;
 
-	let models = null;
-	let workspaceModels = null;
-	let baseModels = null;
-	let filteredModels = [];
-	let selectedModelId = null;
+	let models: any = null;
+	let workspaceModels: any = null;
+	let baseModels: any = null;
+	let filteredModels: any[] = [];
+	let selectedModelId: any = null;
 	let showConfigModal = false;
 	let showManageModal = false;
 	let searchValue = '';
 
 	$: filteredModels = models
-		?.filter((m) => searchValue === '' || m.name.toLowerCase().includes(searchValue.toLowerCase()))
-		.map((model) => ({
+		?.filter(
+			(m: any) => searchValue === '' || m.name.toLowerCase().includes(searchValue.toLowerCase())
+		)
+		.map((model: any) => ({
 			...model,
 			name: ($i18n.language === 'fr-CA'
 				? model?.name_fr || model?.name || ''
@@ -56,7 +58,7 @@
 			).trim()
 		}));
 
-	const downloadModels = async (models) => {
+	const downloadModels = async (models: any) => {
 		let blob = new Blob([JSON.stringify(models)], {
 			type: 'application/json'
 		});
@@ -68,8 +70,8 @@
 		baseModels = await getModels(getRequestToken(), true);
 
 		models = baseModels
-			.map((m) => {
-				const workspaceModel = workspaceModels.find((wm) => wm.id === m.id);
+			.map((m: any) => {
+				const workspaceModel = workspaceModels.find((wm: any) => wm.id === m.id);
 
 				if (workspaceModel) {
 					return {
@@ -85,13 +87,13 @@
 					};
 				}
 			})
-			.sort((a, b) => a.name.localeCompare(b.name));
+			.sort((a: any, b: any) => a.name.localeCompare(b.name));
 	};
 
-	const upsertModelHandler = async (model) => {
+	const upsertModelHandler = async (model: any) => {
 		model.base_model_id = null;
 
-		if (workspaceModels.find((m) => m.id === model.id)) {
+		if (workspaceModels.find((m: any) => m.id === model.id)) {
 			const res = await updateModelById(getRequestToken(), model.id, model).catch(() => null);
 
 			if (res) {
@@ -109,7 +111,7 @@
 		await init();
 	};
 
-	const toggleModelHandler = async (model) => {
+	const toggleModelHandler = async (model: any) => {
 		if (!Object.keys(model).includes('base_model_id')) {
 			await createNewModel(getRequestToken(), {
 				id: model.id,
@@ -131,6 +133,15 @@
 	onMount(async () => {
 		init();
 	});
+
+	const handleModelEditorSubmit = (model: any) => {
+		upsertModelHandler(model);
+		selectedModelId = null;
+	};
+
+	const getSelectedModel = () => {
+		return models.find((modelItem: { id: string }) => modelItem.id === selectedModelId);
+	};
 </script>
 
 <ConfigureModelsModal bind:show={showConfigModal} initHandler={init} />
@@ -374,12 +385,9 @@
 	{:else}
 		<ModelEditor
 			edit
-			model={models.find((m) => m.id === selectedModelId)}
+			model={getSelectedModel()}
 			preset={false}
-			onSubmit={(model) => {
-				upsertModelHandler(model);
-				selectedModelId = null;
-			}}
+			onSubmit={handleModelEditorSubmit}
 			onBack={() => {
 				selectedModelId = null;
 			}}

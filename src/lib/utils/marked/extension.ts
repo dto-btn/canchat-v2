@@ -19,7 +19,7 @@ function findMatchingClosingTag(src: string, openTag: string, closeTag: string):
 function parseAttributes(tag: string): { [key: string]: string } {
 	const attributes: { [key: string]: string } = {};
 	const attrRegex = /(\w+)="(.*?)"/g;
-	let match;
+	let match: any;
 	while ((match = attrRegex.exec(tag)) !== null) {
 		attributes[match[1]] = match[2];
 	}

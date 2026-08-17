@@ -135,6 +135,13 @@
 		localStorage.setItem('theme', _theme);
 		applyTheme(_theme);
 	};
+
+	const stopParams = (params: { stop?: string | null }) => {
+		if (params.stop) {
+			return params.stop.split(',').filter((e) => e);
+		}
+		return undefined;
+	};
 </script>
 
 <div class="flex flex-col h-full justify-between text-sm">
@@ -301,7 +308,7 @@
 					params: {
 						stream_response: params.stream_response !== null ? params.stream_response : undefined,
 						seed: (params.seed !== null ? params.seed : undefined) ?? undefined,
-						stop: params.stop ? params.stop.split(',').filter((e) => e) : undefined,
+						stop: stopParams(params),
 						temperature: params.temperature !== null ? params.temperature : undefined,
 						frequency_penalty:
 							params.frequency_penalty !== null ? params.frequency_penalty : undefined,

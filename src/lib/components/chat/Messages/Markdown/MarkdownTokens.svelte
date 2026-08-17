@@ -33,15 +33,17 @@
 		return 'h' + depth;
 	};
 
-	const exportTableToCSVHandler = (token, tokenIdx = 0) => {
+	const exportTableToCSVHandler = (token: any, tokenIdx = 0) => {
 		// Extract header row text and escape for CSV.
-		const header = token.header.map((headerCell) => `"${headerCell.text.replace(/"/g, '""')}"`);
+		const header = token.header.map(
+			(headerCell: any) => `"${headerCell.text.replace(/"/g, '""')}"`
+		);
 
 		// Create an array for rows that will hold the mapped cell text.
-		const rows = token.rows.map((row) =>
-			row.map((cell) => {
+		const rows = token.rows.map((row: any) =>
+			row.map((cell: any) => {
 				// Map tokens into a single text
-				const cellContent = cell.tokens.map((token) => token.text).join('');
+				const cellContent = cell.tokens.map((token: any) => token.text).join('');
 				// Escape double quotes and wrap the content in double quotes
 				return `"${cellContent.replace(/"/g, '""')}"`;
 			})

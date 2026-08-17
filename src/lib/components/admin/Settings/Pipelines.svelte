@@ -29,16 +29,16 @@
 	let downloading = false;
 	let uploading = false;
 
-	let pipelineFiles;
+	let pipelineFiles: any;
 
-	let PIPELINES_LIST = null;
+	let PIPELINES_LIST: any = null;
 	let selectedPipelinesUrlIdx = '';
 
-	let pipelines = null;
+	let pipelines: any = null;
 
-	let valves = null;
-	let valves_spec = null;
-	let selectedPipelineIdx = null;
+	let valves: any = null;
+	let valves_spec: any = null;
+	let selectedPipelineIdx: any = null;
 
 	let pipelineDownloadUrl = '';
 
@@ -48,7 +48,7 @@
 		if (pipeline && (pipeline?.valves ?? false)) {
 			for (const property in valves_spec.properties) {
 				if (valves_spec.properties[property]?.type === 'array') {
-					valves[property] = valves[property].split(',').map((v) => v.trim());
+					valves[property] = valves[property].split(',').map((v: any) => v.trim());
 				}
 			}
 
@@ -72,7 +72,7 @@
 		}
 	};
 
-	const getValves = async (idx) => {
+	const getValves = async (idx: any) => {
 		valves = null;
 		valves_spec = null;
 

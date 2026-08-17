@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	import { onMount } from 'svelte';
@@ -15,7 +15,7 @@
 
 	const i18n = getI18n();
 
-	let users = [];
+	let users: any[] = [];
 
 	let selectedTab = 'overview';
 	let loaded = false;
