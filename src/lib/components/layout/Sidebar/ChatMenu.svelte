@@ -27,6 +27,7 @@
 	import { downloadChatAsPDF } from '$lib/apis/utils';
 	import Download from '$lib/components/icons/Download.svelte';
 	import { toast } from 'svelte-sonner';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -44,7 +45,7 @@
 	let pinned = false;
 
 	const pinHandler = async () => {
-		await toggleChatPinnedStatusById(localStorage.token, chatId);
+		await toggleChatPinnedStatusById(getRequestToken(), chatId);
 		dispatch('change', { buttonID });
 		if (pinned) {
 			toast.success($i18n.t('Chat unpinned. It will now appear in the regular list.'));
@@ -54,13 +55,13 @@
 	};
 
 	const checkPinned = async () => {
-		pinned = await getChatPinnedStatusById(localStorage.token, chatId);
+		pinned = await getChatPinnedStatusById(getRequestToken(), chatId);
 	};
 
-	const getChatAsText = async (chat) => {
+	const getChatAsText = async (chat: any) => {
 		const history = chat.chat.history;
 		const messages = createMessagesList(history, history.currentId);
-		const chatText = messages.reduce((a, message, i, arr) => {
+		const chatText = messages.reduce((a: any, message: any, i: any, arr: any) => {
 			return `${a}### ${message.role.toUpperCase()}\n${message.content}\n\n`;
 		}, '');
 
@@ -68,7 +69,7 @@
 	};
 
 	const downloadTxt = async () => {
-		const chat = await getChatById(localStorage.token, chatId);
+		const chat = await getChatById(getRequestToken(), chatId);
 		if (!chat) {
 			return;
 		}
@@ -82,7 +83,7 @@
 	};
 
 	const downloadPdf = async () => {
-		const chat = await getChatById(localStorage.token, chatId);
+		const chat = await getChatById(getRequestToken(), chatId);
 		if (!chat) {
 			return;
 		}

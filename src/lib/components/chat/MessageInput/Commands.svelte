@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 
 	const dispatch = createEventDispatcher();
@@ -12,12 +12,13 @@
 	import Knowledge from './Commands/Knowledge.svelte';
 	import Models from './Commands/Models.svelte';
 	import Spinner from '$lib/components/common/Spinner.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	export let prompt = '';
-	export let files = [];
+	export let files: any[] = [];
 
 	let loading = false;
-	let commandElement = null;
+	let commandElement: any = null;
 
 	export const selectUp = () => {
 		commandElement?.selectUp();
@@ -45,7 +46,7 @@
 				// The global store should maintain the full dataset for compatibility
 			})(),
 			(async () => {
-				knowledge.set(await getKnowledgeBases(localStorage.token));
+				knowledge.set(await getKnowledgeBases(getRequestToken()));
 			})()
 		]);
 		loading = false;

@@ -11,12 +11,13 @@
 
 	import Modal from './common/Modal.svelte';
 	import { updateUserSettings } from '$lib/apis/users';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
 	export let show = false;
 
-	let changelog = null;
+	let changelog: any = null;
 
 	onMount(async () => {
 		const res = await getChangelog($i18n.language);
@@ -112,7 +113,7 @@
 				on:click={async () => {
 					localStorage.version = $config.version;
 					await settings.set({ ...$settings, ...{ version: $config.version } });
-					await updateUserSettings(localStorage.token, { ui: $settings });
+					await updateUserSettings(getRequestToken(), { ui: $settings });
 					show = false;
 				}}
 				class="px-3.5 py-1.5 text-sm font-medium bg-black hover:bg-gray-900 text-white dark:bg-white dark:text-black dark:hover:bg-gray-100 transition rounded-full"

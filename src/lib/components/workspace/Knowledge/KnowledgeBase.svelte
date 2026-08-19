@@ -39,10 +39,11 @@
 	import ChevronLeft from '$lib/components/icons/ChevronLeft.svelte';
 	import LockClosed from '$lib/components/icons/LockClosed.svelte';
 	import AccessControlModal from '../common/AccessControlModal.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	let largeScreen = true;
 
-	let pane;
+	let pane: any;
 	let showSidepanel = true;
 	let minSize = 0;
 
@@ -56,7 +57,7 @@
 		files: any[];
 	};
 
-	let id = null;
+	let id: any = null;
 	let knowledge: Knowledge | null = null;
 	let query = '';
 
@@ -64,9 +65,9 @@
 	let showSyncConfirmModal = false;
 	let showAccessControlModal = false;
 
-	let inputFiles = null;
+	let inputFiles: any = null;
 
-	let filteredItems = [];
+	let filteredItems: any[] = [];
 	$: if (knowledge && knowledge.files) {
 		fuse = new Fuse(knowledge.files, {
 			keys: ['meta.name', 'meta.description']
@@ -75,14 +76,14 @@
 
 	$: if (fuse) {
 		filteredItems = query
-			? fuse.search(query).map((e) => {
+			? fuse.search(query).map((e: any) => {
 					return e.item;
 				})
 			: (knowledge?.files ?? []);
 	}
 
-	let selectedFile = null;
-	let selectedFileId = null;
+	let selectedFile: any = null;
+	let selectedFileId: any = null;
 
 	$: if (selectedFileId) {
 		const file = (knowledge?.files ?? []).find((file) => file.id === selectedFileId);
@@ -96,18 +97,18 @@
 		selectedFile = null;
 	}
 
-	let fuse = null;
-	let debounceTimeout = null;
-	let mediaQuery;
+	let fuse: any = null;
+	let debounceTimeout: any = null;
+	let mediaQuery: any;
 	let dragged = false;
 
-	const createFileFromText = (name, content) => {
+	const createFileFromText = (name: any, content: any) => {
 		const blob = new Blob([content], { type: 'text/plain' });
 		const file = blobToFile(blob, `${name}.txt`);
 		return file;
 	};
 
-	const uploadFileHandler = async (file) => {
+	const uploadFileHandler = async (file: any) => {
 		const tempItemId = uuidv4();
 		const fileItem = {
 			type: 'file',
@@ -130,7 +131,7 @@
 
 		// Check if the file is an audio file and transcribe/convert it to text file
 		if (['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/x-m4a'].includes(file['type'])) {
-			const res = await transcribeAudio(localStorage.token, file).catch((error) => {
+			const res = await transcribeAudio(getRequestToken(), file).catch((error) => {
 				toast.error(`${error}`);
 				return null;
 			});
@@ -142,7 +143,7 @@
 		}
 
 		try {
-			const uploadedFile = await uploadFile(localStorage.token, file).catch((e) => {
+			const uploadedFile = await uploadFile(getRequestToken(), file).catch((e) => {
 				toast.error(e);
 				return null;
 			});
@@ -161,7 +162,7 @@
 			} else {
 				toast.error($i18n.t('Failed to upload file.'));
 			}
-		} catch (e) {
+		} catch (e: any) {
 			toast.error(e);
 		}
 	};
@@ -178,14 +179,14 @@
 				// Firefox fallback
 				await handleFirefoxUpload();
 			}
-		} catch (error) {
+		} catch (error: any) {
 			handleUploadError(error);
 		}
 	};
 
 	// Helper function to check if a path contains hidden folders
-	const hasHiddenFolder = (path) => {
-		return path.split('/').some((part) => part.startsWith('.'));
+	const hasHiddenFolder = (path: any) => {
+		return path.split('/').some((part: any) => part.startsWith('.'));
 	};
 
 	// Modern browsers implementation using File System Access API
@@ -201,7 +202,7 @@
 		};
 
 		// Recursive function to count all files excluding hidden ones
-		async function countFiles(dirHandle) {
+		async function countFiles(dirHandle: any) {
 			for await (const entry of dirHandle.values()) {
 				// Skip hidden files and directories
 				if (entry.name.startsWith('.')) continue;
@@ -218,7 +219,7 @@
 		}
 
 		// Recursive function to process directories excluding hidden files and folders
-		async function processDirectory(dirHandle, path = '') {
+		async function processDirectory(dirHandle: any, path = '') {
 			for await (const entry of dirHandle.values()) {
 				// Skip hidden files and directories
 				if (entry.name.startsWith('.')) continue;
@@ -270,7 +271,7 @@
 
 			input.onchange = async () => {
 				try {
-					const files = Array.from(input.files)
+					const files = Array.from(input.files ?? [])
 						// Filter out files from hidden folders
 						.filter((file) => !hasHiddenFolder(file.webkitRelativePath));
 
@@ -302,8 +303,8 @@
 
 					// Clean up
 					document.body.removeChild(input);
-					resolve();
-				} catch (error) {
+					resolve(undefined);
+				} catch (error: any) {
 					reject(error);
 				}
 			};
@@ -319,7 +320,7 @@
 	};
 
 	// Error handler
-	const handleUploadError = (error) => {
+	const handleUploadError = (error: any) => {
 		if (error.name === 'AbortError') {
 			toast.info('Directory selection was cancelled');
 		} else {
@@ -331,7 +332,7 @@
 	// Helper function to maintain file paths within zip
 	const syncDirectoryHandler = async () => {
 		if ((knowledge?.files ?? []).length > 0) {
-			const res = await resetKnowledgeById(localStorage.token, id).catch((e) => {
+			const res = await resetKnowledgeById(getRequestToken(), id).catch((e) => {
 				toast.error(e);
 			});
 
@@ -347,8 +348,8 @@
 		}
 	};
 
-	const addFileHandler = async (fileId) => {
-		const updatedKnowledge = await addFileToKnowledgeById(localStorage.token, id, fileId).catch(
+	const addFileHandler = async (fileId: any) => {
+		const updatedKnowledge = await addFileToKnowledgeById(getRequestToken(), id, fileId).catch(
 			(e) => {
 				toast.error(e);
 				return null;
@@ -360,20 +361,22 @@
 			toast.success($i18n.t('File added successfully.'));
 		} else {
 			toast.error($i18n.t('Failed to add file.'));
-			knowledge.files = knowledge.files.filter((file) => file.id !== fileId);
+			if (knowledge) {
+				knowledge.files = knowledge.files.filter((file) => file.id !== fileId);
+			}
 		}
 	};
 
-	const deleteFileHandler = async (fileId) => {
+	const deleteFileHandler = async (fileId: any) => {
 		try {
 			// Remove from knowledge base only
-			const updatedKnowledge = await removeFileFromKnowledgeById(localStorage.token, id, fileId);
+			const updatedKnowledge = await removeFileFromKnowledgeById(getRequestToken(), id, fileId);
 
 			if (updatedKnowledge) {
 				knowledge = updatedKnowledge;
 				toast.success($i18n.t('File removed successfully.'));
 			}
-		} catch (e) {
+		} catch (e: any) {
 			console.error('Error in deleteFileHandler:', e);
 			toast.error(e);
 		}
@@ -383,17 +386,15 @@
 		const fileId = selectedFile.id;
 		const content = selectedFile.data.content;
 
-		const res = updateFileDataContentById(localStorage.token, fileId, content).catch((e) => {
+		const res = updateFileDataContentById(getRequestToken(), fileId, content).catch((e) => {
 			toast.error(e);
 		});
 
-		const updatedKnowledge = await updateFileFromKnowledgeById(
-			localStorage.token,
-			id,
-			fileId
-		).catch((e) => {
-			toast.error(e);
-		});
+		const updatedKnowledge = await updateFileFromKnowledgeById(getRequestToken(), id, fileId).catch(
+			(e) => {
+				toast.error(e);
+			}
+		);
 
 		if (res && updatedKnowledge) {
 			knowledge = updatedKnowledge;
@@ -412,7 +413,7 @@
 				return;
 			}
 
-			const res = await updateKnowledgeById(localStorage.token, id, {
+			const res = await updateKnowledgeById(getRequestToken(), id, {
 				...knowledge,
 				name: knowledge.name,
 				description: knowledge.description,
@@ -423,12 +424,12 @@
 
 			if (res) {
 				toast.success($i18n.t('Knowledge updated successfully'));
-				_knowledge.set(await getKnowledgeBases(localStorage.token));
+				_knowledge.set(await getKnowledgeBases(getRequestToken()));
 			}
 		}, 1000);
 	};
 
-	const handleMediaQuery = async (e) => {
+	const handleMediaQuery = async (e: any) => {
 		if (e.matches) {
 			largeScreen = true;
 		} else {
@@ -436,7 +437,7 @@
 		}
 	};
 
-	const onDragOver = (e) => {
+	const onDragOver = (e: any) => {
 		e.preventDefault();
 
 		// Check if a file is being draggedOver.
@@ -451,7 +452,7 @@
 		dragged = false;
 	};
 
-	const onDrop = async (e) => {
+	const onDrop = async (e: any) => {
 		e.preventDefault();
 		dragged = false;
 
@@ -509,7 +510,7 @@
 
 		id = $page.params.id;
 
-		const res = await getKnowledgeById(localStorage.token, id).catch((e) => {
+		const res = await getKnowledgeById(getRequestToken(), id).catch((e) => {
 			toast.error(e);
 			return null;
 		});

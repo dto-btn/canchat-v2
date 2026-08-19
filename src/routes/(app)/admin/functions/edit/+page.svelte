@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	import { toast } from 'svelte-sonner';
@@ -14,12 +14,13 @@
 	import { getModels } from '$lib/apis';
 	import { compareVersion, extractFrontmatter } from '$lib/utils';
 	import { WEBUI_VERSION } from '$lib/constants';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
-	let func = null;
+	let func: any = null;
 
-	const saveHandler = async (data) => {
+	const saveHandler = async (data: any) => {
 		const manifest = extractFrontmatter(data.content);
 		if (compareVersion(manifest?.required_open_webui_version ?? '0.0.0', WEBUI_VERSION)) {
 			toast.error(
@@ -34,7 +35,7 @@
 			return;
 		}
 
-		const res = await updateFunctionById(localStorage.token, func.id, {
+		const res = await updateFunctionById(getRequestToken(), func.id, {
 			id: data.id,
 			name: data.name,
 			meta: data.meta,
@@ -46,8 +47,8 @@
 
 		if (res) {
 			toast.success($i18n.t('Function updated successfully'));
-			functions.set(await getFunctions(localStorage.token));
-			models.set(await getModels(localStorage.token));
+			functions.set(await getFunctions(getRequestToken()));
+			models.set(await getModels(getRequestToken()));
 		}
 	};
 
@@ -55,7 +56,7 @@
 		const id = $page.url.searchParams.get('id');
 
 		if (id) {
-			func = await getFunctionById(localStorage.token, id).catch((error) => {
+			func = await getFunctionById(getRequestToken(), id).catch((error) => {
 				toast.error(`${error}`);
 				goto('/admin/functions');
 				return null;

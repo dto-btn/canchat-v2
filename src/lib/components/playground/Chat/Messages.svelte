@@ -5,7 +5,7 @@
 
 	const i18n = getI18n();
 
-	export let messages = [];
+	export let messages: any[] = [];
 	let textAreaElement: HTMLTextAreaElement;
 	onMount(() => {
 		messages.forEach((message, idx) => {

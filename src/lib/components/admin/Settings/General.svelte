@@ -6,6 +6,9 @@
 		getAdminConfig,
 		getLdapConfig,
 		getLdapServer,
+		type AdminConfig,
+		type LdapConfig,
+		type LdapServerConfig,
 		updateAdminConfig,
 		updateLdapConfig,
 		updateLdapServer
@@ -15,17 +18,21 @@
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
-	export let saveHandler: Function;
+	type SaveHandler = () => void | Promise<void>;
+	type LdapServerForm = Omit<LdapServerConfig, 'port'> & { port: string | number | null };
 
-	let adminConfig = null;
+	export let saveHandler: SaveHandler;
+
+	let adminConfig: AdminConfig | null = null;
 	let webhookUrl = '';
 
 	// LDAP
 	let ENABLE_LDAP = false;
-	let LDAP_SERVER = {
+	let LDAP_SERVER: LdapServerForm = {
 		label: '',
 		host: '',
 		port: '',
@@ -40,9 +47,33 @@
 		ciphers: ''
 	};
 
+	const normalizeLdapServer = (server: LdapServerConfig): LdapServerForm => ({
+		...LDAP_SERVER,
+		...server,
+		port: server.port ?? ''
+	});
+
+	const localizeApiError = (error: unknown) => {
+		if (typeof error === 'string' && error.trim()) {
+			return error;
+		}
+
+		if (error && typeof error === 'object') {
+			if ('detail' in error && typeof error.detail === 'string') {
+				return error.detail;
+			}
+
+			if ('message' in error && typeof error.message === 'string') {
+				return error.message;
+			}
+		}
+
+		return $i18n.t('Failed to update settings');
+	};
+
 	const updateLdapServerHandler = async () => {
 		if (!ENABLE_LDAP) return;
-		const res = await updateLdapServer(localStorage.token, LDAP_SERVER).catch((error) => {
+		const res = await updateLdapServer(getRequestToken(), LDAP_SERVER).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
@@ -52,40 +83,50 @@
 	};
 
 	const updateHandler = async () => {
-		webhookUrl = await updateWebhookUrl(localStorage.token, webhookUrl);
-		const res = await updateAdminConfig(localStorage.token, adminConfig);
+		if (!adminConfig) {
+			return;
+		}
+
+		const nextWebhookUrl = await updateWebhookUrl(getRequestToken(), webhookUrl);
+		const res = await updateAdminConfig(getRequestToken(), adminConfig).catch((error) => {
+			toast.error(localizeApiError(error));
+			return null;
+		});
+
+		if (!res) {
+			return;
+		}
+
+		webhookUrl = nextWebhookUrl;
+		adminConfig = res;
 		await updateLdapServerHandler();
 
-		if (res) {
-			saveHandler();
-		} else {
-			toast.error(i18n.t('Failed to update settings'));
-		}
+		await saveHandler();
 	};
 
 	onMount(async () => {
 		await Promise.all([
 			(async () => {
-				adminConfig = await getAdminConfig(localStorage.token);
+				adminConfig = await getAdminConfig(getRequestToken());
 			})(),
 
 			(async () => {
-				webhookUrl = await getWebhookUrl(localStorage.token);
+				webhookUrl = await getWebhookUrl(getRequestToken());
 			})(),
 			(async () => {
-				LDAP_SERVER = await getLdapServer(localStorage.token);
+				LDAP_SERVER = normalizeLdapServer(await getLdapServer(getRequestToken()));
 			})()
 		]);
 
-		const ldapConfig = await getLdapConfig(localStorage.token);
-		ENABLE_LDAP = ldapConfig.ENABLE_LDAP;
+		const ldapConfig = (await getLdapConfig(getRequestToken())) as LdapConfig;
+		ENABLE_LDAP = Boolean(ldapConfig.ENABLE_LDAP);
 	});
 </script>
 
 <form
 	class="flex flex-col h-full justify-between space-y-3 text-sm"
 	on:submit|preventDefault={async () => {
-		updateHandler();
+		await updateHandler();
 	}}
 >
 	<div class=" space-y-3 overflow-y-scroll scrollbar-hidden h-full">
@@ -206,7 +247,9 @@
 
 				<div class=" w-full justify-between">
 					<div class="flex w-full justify-between">
-						<div class=" self-center text-xs font-medium">{$i18n.t('JWT Expiration')}</div>
+						<div class=" self-center text-xs font-medium">
+							{$i18n.t('Access Token Expiration')}
+						</div>
 					</div>
 
 					<div class="flex mt-2 space-x-2">
@@ -214,7 +257,7 @@
 							class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 							type="text"
 							placeholder={`e.g.) "30m","1h", "10d". `}
-							bind:value={adminConfig.JWT_EXPIRES_IN}
+							bind:value={adminConfig.ACCESS_TOKEN_EXPIRES_IN}
 						/>
 					</div>
 
@@ -222,6 +265,32 @@
 						{$i18n.t('Valid time units:')}
 						<span class=" text-gray-300 font-medium"
 							>{$i18n.t("'s', 'm', 'h', 'd', 'w' or '-1' for no expiration.")}</span
+						>
+					</div>
+				</div>
+
+				<hr class=" border-gray-50 dark:border-gray-850 my-2" />
+
+				<div class=" w-full justify-between">
+					<div class="flex w-full justify-between">
+						<div class=" self-center text-xs font-medium">
+							{$i18n.t('Refresh Token Expiration')}
+						</div>
+					</div>
+
+					<div class="flex mt-2 space-x-2">
+						<input
+							class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
+							type="text"
+							placeholder={`e.g.) "7d", "30d". `}
+							bind:value={adminConfig.REFRESH_TOKEN_EXPIRES_IN}
+						/>
+					</div>
+
+					<div class="mt-2 text-xs text-gray-400 dark:text-gray-500">
+						{$i18n.t('Valid time units:')}
+						<span class=" text-gray-300 font-medium"
+							>{$i18n.t("'s', 'm', 'h', 'd', 'w'. Refresh tokens must remain finite.")}</span
 						>
 					</div>
 				</div>
@@ -266,7 +335,7 @@
 						<Switch
 							bind:state={ENABLE_LDAP}
 							on:change={async () => {
-								updateLdapConfig(localStorage.token, ENABLE_LDAP);
+								updateLdapConfig(getRequestToken(), ENABLE_LDAP);
 							}}
 						/>
 					</div>

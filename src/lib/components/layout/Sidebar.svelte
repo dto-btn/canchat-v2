@@ -5,6 +5,7 @@
 	import { v4 as uuidv4 } from 'uuid';
 
 	import { goto } from '$app/navigation';
+	import { getRequestToken } from '$lib/services/auth';
 	import {
 		user,
 		chats,
@@ -61,7 +62,7 @@
 
 	const BREAKPOINT = 768;
 
-	let navElement;
+	let navElement: any;
 	let search = '';
 
 	let shiftKey = false;
@@ -85,10 +86,10 @@
 	let chatListLoading = false;
 	let allChatsLoaded = false;
 
-	let folders = {};
+	let folders: Record<string, any> = {};
 
 	const initFolders = async () => {
-		const folderList = await getFolders(localStorage.token).catch((error) => {
+		const folderList = await getFolders(getRequestToken()).catch((error) => {
 			toast.error(`${error}`);
 			return [];
 		});
@@ -115,7 +116,7 @@
 					: [folder.id];
 
 				// Sort the children by updated_at field
-				folders[folder.parent_id].childrenIds.sort((a, b) => {
+				folders[folder.parent_id].childrenIds.sort((a: any, b: any) => {
 					return folders[b].updated_at - folders[a].updated_at;
 				});
 			}
@@ -145,7 +146,7 @@
 		const tempId = uuidv4();
 		folders = {
 			...folders,
-			tempId: {
+			[tempId]: {
 				id: tempId,
 				name: name,
 				created_at: Date.now(),
@@ -153,7 +154,7 @@
 			}
 		};
 
-		const res = await createNewFolder(localStorage.token, name).catch((error) => {
+		const res = await createNewFolder(getRequestToken(), name).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
@@ -164,22 +165,22 @@
 	};
 
 	const initChannels = async () => {
-		await channels.set(await getChannels(localStorage.token));
+		await channels.set(await getChannels(getRequestToken()));
 	};
 
 	const initChatList = async () => {
 		// Reset pagination variables
-		tags.set(await getAllTags(localStorage.token));
-		pinnedChats.set(await getPinnedChatList(localStorage.token));
+		tags.set(await getAllTags(getRequestToken()));
+		pinnedChats.set(await getPinnedChatList(getRequestToken()));
 		initFolders();
 
 		currentChatPage.set(1);
 		allChatsLoaded = false;
 
 		if (search) {
-			await chats.set(await getChatListBySearchText(localStorage.token, search, $currentChatPage));
+			await chats.set(await getChatListBySearchText(getRequestToken(), search, $currentChatPage));
 		} else {
-			await chats.set(await getChatList(localStorage.token, $currentChatPage));
+			await chats.set(await getChatList(getRequestToken(), $currentChatPage));
 		}
 
 		// Enable pagination
@@ -191,12 +192,12 @@
 
 		currentChatPage.set($currentChatPage + 1);
 
-		let newChatList = [];
+		let newChatList: any[] = [];
 
 		if (search) {
-			newChatList = await getChatListBySearchText(localStorage.token, search, $currentChatPage);
+			newChatList = await getChatListBySearchText(getRequestToken(), search, $currentChatPage);
 		} else {
-			newChatList = await getChatList(localStorage.token, $currentChatPage);
+			newChatList = await getChatList(getRequestToken(), $currentChatPage);
 		}
 
 		// once the bottom of the list has been reached (no results) there is no need to continue querying
@@ -206,7 +207,7 @@
 		chatListLoading = false;
 	};
 
-	let searchDebounceTimeout;
+	let searchDebounceTimeout: any;
 
 	const searchDebounceHandler = async () => {
 		chats.set(null);
@@ -237,26 +238,26 @@
 					})
 					.join(' ');
 
-				await chats.set(await getChatListBySearchText(localStorage.token, normalizedSearch));
+				await chats.set(await getChatListBySearchText(getRequestToken(), normalizedSearch));
 				ariaMessage.set($chats.length + $i18n.t(' chat found'));
 				if ($chats.length === 0) {
-					tags.set(await getAllTags(localStorage.token));
+					tags.set(await getAllTags(getRequestToken()));
 				}
 			}, 1000);
 		}
 	};
 
-	const importChatHandler = async (items, pinned = false, folderId = null) => {
+	const importChatHandler = async (items: any, pinned = false, folderId = null) => {
 		for (const item of items) {
 			if (item.chat) {
-				await importChat(localStorage.token, item.chat, item?.meta ?? {}, pinned, folderId);
+				await importChat(getRequestToken(), item.chat, item?.meta ?? {}, pinned, folderId);
 			}
 		}
 
 		initChatList();
 	};
 
-	const inputFilesHandler = async (files) => {
+	const inputFilesHandler = async (files: any) => {
 		for (const file of files) {
 			const reader = new FileReader();
 			reader.onload = async (e) => {
@@ -274,7 +275,7 @@
 		}
 	};
 
-	const tagEventHandler = async (type, tagName, chatId) => {
+	const tagEventHandler = async (type: any, tagName: any, chatId: any) => {
 		if (type === 'delete') {
 			initChatList();
 		} else if (type === 'add') {
@@ -282,7 +283,7 @@
 		}
 	};
 
-	const toggleChatSelection = (chatId) => {
+	const toggleChatSelection = (chatId: any) => {
 		const index = selectedChatIds.indexOf(chatId);
 		if (index >= 0) {
 			// Remove from selection
@@ -299,7 +300,7 @@
 
 	const selectAllChats = () => {
 		const folderChatIds = Object.values(folders).flatMap((folder) =>
-			(folder.items?.chats ?? []).map((chat) => chat.id)
+			(folder.items?.chats ?? []).map((chat: any) => chat.id)
 		);
 		const allChatIds = [
 			...new Set([
@@ -342,7 +343,7 @@
 
 		try {
 			const result = await processDeletion(() =>
-				deleteMultipleChats(localStorage.token, chatIdsArray)
+				deleteMultipleChats(getRequestToken(), chatIdsArray)
 			);
 
 			if (result.failed_deletions.length > 0) {
@@ -376,14 +377,14 @@
 			if (result.deleted_count > 0) {
 				clearSelection();
 			}
-		} catch (error) {
+		} catch (error: any) {
 			toast.error($i18n.t('Error deleting chats: {{error}}', { error: error }));
 		}
 	};
 
 	let draggedOver = false;
 
-	const onDragOver = (e) => {
+	const onDragOver = (e: any) => {
 		e.preventDefault();
 
 		// Check if a file is being draggedOver.
@@ -398,7 +399,7 @@
 		draggedOver = false;
 	};
 
-	const onDrop = async (e) => {
+	const onDrop = async (e: any) => {
 		e.preventDefault();
 		// Perform file drop check and handle it accordingly
 		if (e.dataTransfer?.files) {
@@ -412,8 +413,8 @@
 		draggedOver = false; // Reset draggedOver status after drop
 	};
 
-	let touchstart;
-	let touchend;
+	let touchstart: any;
+	let touchend: any;
 
 	function checkDirection() {
 		const screenWidth = window.innerWidth;
@@ -428,22 +429,22 @@
 		}
 	}
 
-	const onTouchStart = (e) => {
+	const onTouchStart = (e: any) => {
 		touchstart = e.changedTouches[0];
 	};
 
-	const onTouchEnd = (e) => {
+	const onTouchEnd = (e: any) => {
 		touchend = e.changedTouches[0];
 		checkDirection();
 	};
 
-	const onKeyDown = (e) => {
+	const onKeyDown = (e: any) => {
 		if (e.key === 'Shift') {
 			shiftKey = true;
 		}
 	};
 
-	const onKeyUp = (e) => {
+	const onKeyUp = (e: any) => {
 		if (e.key === 'Shift') {
 			shiftKey = false;
 		}
@@ -456,7 +457,7 @@
 		clearSelection();
 	};
 
-	const changeFocus = async (elementId) => {
+	const changeFocus = async (elementId: any) => {
 		requestAnimationFrame(() => {
 			const element = document.getElementById(elementId);
 			if (element) {
@@ -476,7 +477,7 @@
 			if ($showSidebar && !value) {
 				const navElement = document.getElementsByTagName('nav')[0];
 				if (navElement) {
-					navElement.style['-webkit-app-region'] = 'drag';
+					navElement.style.setProperty('-webkit-app-region', 'drag');
 				}
 			}
 
@@ -495,12 +496,12 @@
 			if (navElement) {
 				if ($mobile) {
 					if (!value) {
-						navElement.style['-webkit-app-region'] = 'drag';
+						navElement.style.setProperty('-webkit-app-region', 'drag');
 					} else {
-						navElement.style['-webkit-app-region'] = 'no-drag';
+						navElement.style.setProperty('-webkit-app-region', 'no-drag');
 					}
 				} else {
-					navElement.style['-webkit-app-region'] = 'drag';
+					navElement.style.setProperty('-webkit-app-region', 'drag');
 				}
 			}
 		});
@@ -552,7 +553,7 @@
 <ChannelModal
 	bind:show={showCreateChannel}
 	onSubmit={async ({ name, access_control }) => {
-		const res = await createNewChannel(localStorage.token, {
+		const res = await createNewChannel(getRequestToken(), {
 			name: name,
 			access_control: access_control
 		}).catch((error) => {
@@ -561,7 +562,7 @@
 		});
 
 		if (res) {
-			$socket.emit('join-channels', { auth: { token: $user.token } });
+			$socket?.emit('join-channels', { auth: { token: getRequestToken() } });
 			await initChannels();
 			showCreateChannel = false;
 		}
@@ -811,16 +812,16 @@
 					const { type, id, item } = e.detail;
 
 					if (type === 'chat') {
-						let chat = await getChatById(localStorage.token, id).catch((error) => {
+						let chat = await getChatById(getRequestToken(), id).catch((error) => {
 							return null;
 						});
 						if (!chat && item) {
-							chat = await importChat(localStorage.token, item.chat, item?.meta ?? {});
+							chat = await importChat(getRequestToken(), item.chat, item?.meta ?? {});
 						}
 
 						if (chat) {
 							if (chat.folder_id) {
-								const res = await updateChatFolderIdById(localStorage.token, chat.id, null).catch(
+								const res = await updateChatFolderIdById(getRequestToken(), chat.id, null).catch(
 									(error) => {
 										toast.error(`${error}`);
 										return null;
@@ -829,7 +830,7 @@
 							}
 
 							if (chat.pinned) {
-								const res = await toggleChatPinnedStatusById(localStorage.token, chat.id);
+								const res = await toggleChatPinnedStatusById(getRequestToken(), chat.id);
 							}
 
 							initChatList();
@@ -839,7 +840,7 @@
 							return;
 						}
 
-						const res = await updateFolderParentIdById(localStorage.token, id, null).catch(
+						const res = await updateFolderParentIdById(getRequestToken(), id, null).catch(
 							(error) => {
 								toast.error(`${error}`);
 								return null;
@@ -871,17 +872,17 @@
 								const { type, id, item } = e.detail;
 
 								if (type === 'chat') {
-									let chat = await getChatById(localStorage.token, id).catch((error) => {
+									let chat = await getChatById(getRequestToken(), id).catch((error) => {
 										return null;
 									});
 									if (!chat && item) {
-										chat = await importChat(localStorage.token, item.chat, item?.meta ?? {});
+										chat = await importChat(getRequestToken(), item.chat, item?.meta ?? {});
 									}
 
 									if (chat) {
 										if (chat.folder_id) {
 											const res = await updateChatFolderIdById(
-												localStorage.token,
+												getRequestToken(),
 												chat.id,
 												null
 											).catch((error) => {
@@ -891,7 +892,7 @@
 										}
 
 										if (!chat.pinned) {
-											const res = await toggleChatPinnedStatusById(localStorage.token, chat.id);
+											const res = await toggleChatPinnedStatusById(getRequestToken(), chat.id);
 										}
 
 										initChatList();

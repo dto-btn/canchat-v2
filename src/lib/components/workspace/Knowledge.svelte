@@ -28,17 +28,18 @@
 	import Spinner from '../common/Spinner.svelte';
 	import { capitalizeFirstLetter } from '$lib/utils';
 	import Tooltip from '../common/Tooltip.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	let loaded = false;
 
 	let query = '';
-	let selectedItem = null;
+	let selectedItem: any = null;
 	let showDeleteConfirm = false;
 
-	let fuse = null;
+	let fuse: any = null;
 
-	let knowledgeBases = [];
-	let filteredItems = [];
+	let knowledgeBases: any[] = [];
+	let filteredItems: any[] = [];
 
 	$: if (knowledgeBases) {
 		fuse = new Fuse(knowledgeBases, {
@@ -48,26 +49,26 @@
 
 	$: if (fuse) {
 		filteredItems = query
-			? fuse.search(query).map((e) => {
+			? fuse.search(query).map((e: any) => {
 					return e.item;
 				})
 			: knowledgeBases;
 	}
 
-	const deleteHandler = async (item) => {
-		const res = await deleteKnowledgeById(localStorage.token, item.id).catch((e) => {
+	const deleteHandler = async (item: any) => {
+		const res = await deleteKnowledgeById(getRequestToken(), item.id).catch((e) => {
 			toast.error(e);
 		});
 
 		if (res) {
-			knowledgeBases = await getKnowledgeBaseList(localStorage.token);
-			knowledge.set(await getKnowledgeBases(localStorage.token));
+			knowledgeBases = await getKnowledgeBaseList(getRequestToken());
+			knowledge.set(await getKnowledgeBases(getRequestToken()));
 			toast.success($i18n.t('Knowledge deleted successfully.'));
 		}
 	};
 
 	onMount(async () => {
-		knowledgeBases = await getKnowledgeBaseList(localStorage.token);
+		knowledgeBases = await getKnowledgeBaseList(getRequestToken());
 		loaded = true;
 	});
 </script>

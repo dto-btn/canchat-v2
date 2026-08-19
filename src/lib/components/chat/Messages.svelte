@@ -14,6 +14,7 @@
 	import Spinner from '../common/Spinner.svelte';
 
 	import ChatPlaceholder from './ChatPlaceholder.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -22,12 +23,12 @@
 	export let chatId = '';
 	export let user = $_user;
 
-	export let prompt;
-	export let history = {};
-	export let selectedModels;
+	export let prompt: any;
+	export let history: Record<string, any> = {};
+	export let selectedModels: any;
 	export let selectedToolIds: string[] = [];
 
-	let messages = [];
+	let messages: any[] = [];
 
 	export let sendPrompt: Function;
 	export let continueResponse: Function;
@@ -42,7 +43,7 @@
 	export let readOnly = false;
 
 	export let bottomPadding = false;
-	export let autoScroll;
+	export let autoScroll: any;
 
 	let messagesCount = 20;
 	let messagesLoading = false;
@@ -61,7 +62,7 @@
 	};
 
 	$: if (history.currentId) {
-		let _messages = [];
+		let _messages: any[] = [];
 
 		let message = history.messages[history.currentId];
 		while (message && _messages.length <= messagesCount) {
@@ -89,16 +90,16 @@
 	const updateChat = async () => {
 		history = history;
 		await tick();
-		await updateChatById(localStorage.token, chatId, {
+		await updateChatById(getRequestToken(), chatId, {
 			history: history,
 			messages: messages
 		});
 
 		currentChatPage.set(1);
-		await chats.set(await getChatList(localStorage.token, $currentChatPage));
+		await chats.set(await getChatList(getRequestToken(), $currentChatPage));
 	};
 
-	const showPreviousMessage = async (message) => {
+	const showPreviousMessage = async (message: any) => {
 		if (message.parentId !== null) {
 			let messageId =
 				history.messages[message.parentId].childrenIds[
@@ -146,7 +147,7 @@
 		ariaMessage.set($i18n.t('Navigating to previous response'));
 	};
 
-	const showNextMessage = async (message) => {
+	const showNextMessage = async (message: any) => {
 		if (message.parentId !== null) {
 			let messageId =
 				history.messages[message.parentId].childrenIds[
@@ -198,7 +199,7 @@
 		ariaMessage.set($i18n.t('Navigating to next response'));
 	};
 
-	const rateMessage = async (messageId, rating) => {
+	const rateMessage = async (messageId: any, rating: any) => {
 		history.messages[messageId].annotation = {
 			...history.messages[messageId].annotation,
 			rating: rating
@@ -207,7 +208,7 @@
 		await updateChat();
 	};
 
-	const editMessage = async (messageId, content, submit = true) => {
+	const editMessage = async (messageId: any, content: any, submit = true) => {
 		if (history.messages[messageId].role === 'user') {
 			if (submit) {
 				// New user message
@@ -281,35 +282,35 @@
 		}
 	};
 
-	const actionMessage = async (actionId, message, event = null) => {
+	const actionMessage = async (actionId: any, message: any, event = null) => {
 		await chatActionHandler(chatId, actionId, message.model, message.id, event);
 	};
 
-	const saveMessage = async (messageId, message) => {
+	const saveMessage = async (messageId: any, message: any) => {
 		history.messages[messageId] = message;
 		await updateChat();
 	};
 
-	const deleteMessage = async (messageId) => {
+	const deleteMessage = async (messageId: any) => {
 		const messageToDelete = history.messages[messageId];
 		const parentMessageId = messageToDelete.parentId;
 		const childMessageIds = messageToDelete.childrenIds ?? [];
 
 		// Collect all grandchildren
 		const grandchildrenIds = childMessageIds.flatMap(
-			(childId) => history.messages[childId]?.childrenIds ?? []
+			(childId: any) => history.messages[childId]?.childrenIds ?? []
 		);
 
 		// Update parent's children
 		if (parentMessageId && history.messages[parentMessageId]) {
 			history.messages[parentMessageId].childrenIds = [
-				...history.messages[parentMessageId].childrenIds.filter((id) => id !== messageId),
+				...history.messages[parentMessageId].childrenIds.filter((id: any) => id !== messageId),
 				...grandchildrenIds
 			];
 		}
 
 		// Update grandchildren's parent
-		grandchildrenIds.forEach((grandchildId) => {
+		grandchildrenIds.forEach((grandchildId: any) => {
 			if (history.messages[grandchildId]) {
 				history.messages[grandchildId].parentId = parentMessageId;
 			}
@@ -337,41 +338,38 @@
 			}, 100);
 		}
 	};
+
+	const submitPlaceholderPrompt = async (p: any) => {
+		let text = p;
+
+		if (p.includes('{{CLIPBOARD}}')) {
+			const clipboardText = await navigator.clipboard.readText().catch((err) => {
+				toast.error($i18n.t('Failed to read clipboard contents'));
+				return '{{CLIPBOARD}}';
+			});
+
+			text = p.replaceAll('{{CLIPBOARD}}', clipboardText);
+		}
+
+		prompt = text;
+
+		await tick();
+
+		const chatInputContainerElement = document.getElementById('chat-input-container');
+		if (chatInputContainerElement) {
+			chatInputContainerElement.style.height = '';
+			chatInputContainerElement.style.height =
+				Math.min(chatInputContainerElement.scrollHeight, 200) + 'px';
+			chatInputContainerElement.focus();
+		}
+
+		await tick();
+	};
 </script>
 
 <div class={className}>
 	{#if Object.keys(history?.messages ?? {}).length == 0}
-		<ChatPlaceholder
-			modelIds={selectedModels}
-			submitPrompt={async (p) => {
-				let text = p;
-
-				if (p.includes('{{CLIPBOARD}}')) {
-					const clipboardText = await navigator.clipboard.readText().catch((err) => {
-						toast.error($i18n.t('Failed to read clipboard contents'));
-						return '{{CLIPBOARD}}';
-					});
-
-					text = p.replaceAll('{{CLIPBOARD}}', clipboardText);
-				}
-
-				prompt = text;
-
-				await tick();
-
-				const chatInputContainerElement = document.getElementById('chat-input-container');
-				if (chatInputContainerElement) {
-					prompt = p;
-
-					chatInputContainerElement.style.height = '';
-					chatInputContainerElement.style.height =
-						Math.min(chatInputContainerElement.scrollHeight, 200) + 'px';
-					chatInputContainerElement.focus();
-				}
-
-				await tick();
-			}}
-		/>
+		<ChatPlaceholder modelIds={selectedModels} submitPrompt={submitPlaceholderPrompt} />
 	{:else}
 		<div class="w-full pt-2">
 			{#key chatId}

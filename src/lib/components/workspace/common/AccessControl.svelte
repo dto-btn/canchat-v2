@@ -10,6 +10,7 @@
 	import XMark from '$lib/components/icons/XMark.svelte';
 	import Badge from '$lib/components/common/Badge.svelte';
 	import { user } from '$lib/stores';
+	import { getRequestToken } from '$lib/services/auth';
 
 	export let onChange: Function = () => {};
 
@@ -19,12 +20,12 @@
 	};
 
 	let selectedGroupId = '';
-	let groups = [];
+	let groups: any[] = [];
 
 	onMount(async () => {
 		try {
-			groups = await getGroups(localStorage.token);
-		} catch (error) {
+			groups = await getGroups(getRequestToken());
+		} catch (error: any) {
 			console.error('Error loading groups:', error);
 		}
 	});

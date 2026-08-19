@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	import { toast } from 'svelte-sonner';
@@ -10,10 +10,11 @@
 	import { getModels } from '$lib/apis';
 
 	import ModelEditor from '$lib/components/workspace/Models/ModelEditor.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
-	const onSubmit = async (modelInfo) => {
+	const onSubmit = async (modelInfo: any) => {
 		if ($models.find((m) => m.id === modelInfo.id)) {
 			toast.error(
 				`Error: A model with the ID '${modelInfo.id}' already exists. Please select a different ID to proceed.`
@@ -27,13 +28,13 @@
 		}
 
 		if (modelInfo) {
-			const res = await createNewModel(localStorage.token, {
+			const res = await createNewModel(getRequestToken(), {
 				...modelInfo,
 				meta: {
 					...modelInfo.meta,
 					profile_image_url: modelInfo.meta.profile_image_url ?? '/static/favicon.png',
 					suggestion_prompts: modelInfo.meta.suggestion_prompts
-						? modelInfo.meta.suggestion_prompts.filter((prompt) => prompt.content !== '')
+						? modelInfo.meta.suggestion_prompts.filter((prompt: any) => prompt.content !== '')
 						: null
 				},
 				params: { ...modelInfo.params }
@@ -43,14 +44,14 @@
 			});
 
 			if (res) {
-				await models.set(await getModels(localStorage.token));
+				await models.set(await getModels(getRequestToken()));
 				toast.success($i18n.t('Model created successfully!'));
 				await goto('/workspace/models');
 			}
 		}
 	};
 
-	let model = null;
+	let model: any = null;
 
 	onMount(async () => {
 		window.addEventListener('message', async (event) => {

@@ -10,6 +10,7 @@
 	import { getLanguages } from '$lib/i18n';
 
 	import { banners as _banners } from '$lib/stores';
+	import type { Config } from '$lib/stores';
 	import type { Banner } from '$lib/types';
 
 	import { getBanners, setBanners } from '$lib/apis/configs';
@@ -17,6 +18,7 @@
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import Switch from '$lib/components/common/Switch.svelte';
 	import Textarea from '$lib/components/common/Textarea.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const dispatch = createEventDispatcher();
 
@@ -36,30 +38,32 @@
 		QUERY_GENERATION_PROMPT_TEMPLATE: ''
 	};
 
-	let promptSuggestions = [];
+	type InterfacePromptSuggestion = Config['default_prompt_suggestions'][number];
+
+	let promptSuggestions: InterfacePromptSuggestion[] = [];
 	let banners: Banner[] = [];
 	let languages: Awaited<ReturnType<typeof getLanguages>> = [];
 	let bannerTypes: string[] = ['Info', 'Warning', 'Error', 'Success'];
 
 	const updateInterfaceHandler = async () => {
-		taskConfig = await updateTaskConfig(localStorage.token, taskConfig);
+		taskConfig = await updateTaskConfig(getRequestToken(), taskConfig);
 
-		promptSuggestions = await setDefaultPromptSuggestions(localStorage.token, promptSuggestions);
+		promptSuggestions = await setDefaultPromptSuggestions(getRequestToken(), promptSuggestions);
 		await updateBanners();
 
 		await config.set(await getBackendConfig());
 	};
 
 	onMount(async () => {
-		taskConfig = await getTaskConfig(localStorage.token);
+		taskConfig = await getTaskConfig(getRequestToken());
 
 		promptSuggestions = $config?.default_prompt_suggestions;
-		banners = await getBanners(localStorage.token);
+		banners = await getBanners(getRequestToken());
 		languages = await getLanguages();
 	});
 
 	const updateBanners = async () => {
-		_banners.set(await setBanners(localStorage.token, banners));
+		_banners.set(await setBanners(getRequestToken(), banners));
 	};
 </script>
 
@@ -105,7 +109,7 @@
 							placeholder={$i18n.t('Select a model')}
 						>
 							<option value="" selected>{$i18n.t('Current Model')}</option>
-							{#each $models.filter((m) => m.owned_by === 'ollama') as model}
+							{#each ($models ?? []).filter((m) => m.owned_by === 'ollama') as model}
 								<option value={model.id} class="bg-gray-100 dark:bg-gray-700">
 									{model.name}
 								</option>
@@ -121,7 +125,7 @@
 							placeholder={$i18n.t('Select a model')}
 						>
 							<option value="" selected>{$i18n.t('Current Model')}</option>
-							{#each $models as model}
+							{#each $models ?? [] as model}
 								<option value={model.id} class="bg-gray-100 dark:bg-gray-700">
 									{model.name}
 								</option>
@@ -418,7 +422,8 @@
 									<select
 										class="px-3 py-1.5 text-xs w-full bg-transparent outline-none border-r border-gray-100 dark:border-gray-800"
 										bind:value={prompt.lang}
-										placeholder={$i18n.languages[prompt.lang] || 'Unknown Language'}
+										placeholder={languages.find((language) => language.code === prompt.lang)
+											?.title ?? 'Unknown Language'}
 									>
 										{#each languages as language}
 											<option value={language.code}>{language.title}</option>

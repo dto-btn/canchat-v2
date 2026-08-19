@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	import { createEventDispatcher, onMount } from 'svelte';
@@ -11,17 +11,18 @@
 	import { getOllamaConfig } from '$lib/apis/ollama';
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import ManageMultipleOllama from './Manage/ManageMultipleOllama.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	export let show = false;
 
-	let selected = null;
-	let ollamaConfig = null;
+	let selected: any = null;
+	let ollamaConfig: any = null;
 
 	onMount(async () => {
 		if ($user.role === 'admin') {
 			await Promise.all([
 				(async () => {
-					ollamaConfig = await getOllamaConfig(localStorage.token);
+					ollamaConfig = await getOllamaConfig(getRequestToken());
 				})()
 			]);
 

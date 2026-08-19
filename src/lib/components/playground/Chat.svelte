@@ -18,6 +18,7 @@
 	import Cog6 from '../icons/Cog6.svelte';
 	import Sidebar from '../common/Sidebar.svelte';
 	import ArrowRight from '../icons/ArrowRight.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -37,7 +38,7 @@
 	let role = 'user';
 	let message = '';
 
-	let messages = [];
+	let messages: any[] = [];
 
 	const scrollToBottom = () => {
 		const element = messagesContainerElement;
@@ -55,7 +56,7 @@
 		const model = $models.find((model) => model.id === selectedModelId);
 
 		const [res, controller] = await chatCompletion(
-			localStorage.token,
+			getRequestToken(),
 			{
 				model: model.id,
 				stream: true,
@@ -72,7 +73,7 @@
 			`${WEBUI_BASE_URL}/api`
 		);
 
-		let responseMessage;
+		let responseMessage: any;
 		if (messages.at(-1)?.role === 'assistant') {
 			responseMessage = messages.at(-1);
 		} else {
@@ -128,7 +129,7 @@
 							}
 						}
 					}
-				} catch (error) {
+				} catch (error: any) {
 					console.log(error);
 				}
 

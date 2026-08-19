@@ -19,6 +19,7 @@
 	import Cog6Solid from '$lib/components/icons/Cog6Solid.svelte';
 	import CameraSolid from '$lib/components/icons/CameraSolid.svelte';
 	import PhotoSolid from '$lib/components/icons/PhotoSolid.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -81,8 +82,8 @@
 		}
 	})();
 
-	let tools = {};
-	let wikiGroundingTooltip;
+	let tools: Record<string, any> = {};
+	let wikiGroundingTooltip: any;
 	let show = false;
 
 	let showImageGeneration = false;
@@ -114,10 +115,10 @@
 
 	const init = async () => {
 		if ($_tools === null) {
-			await _tools.set(await getTools(localStorage.token));
+			await _tools.set(await getTools(getRequestToken()));
 		}
 
-		tools = $_tools.reduce((a, tool, i, arr) => {
+		tools = $_tools.reduce((a: any, tool: any, i: any, arr: any) => {
 			a[tool.id] = {
 				name: tool.name,
 				originalDescription: tool.meta.description, // Keep original

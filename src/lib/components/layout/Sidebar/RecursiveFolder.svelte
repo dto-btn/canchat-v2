@@ -35,6 +35,7 @@
 	import FolderMenu from './Folders/FolderMenu.svelte';
 	import DeleteConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	interface Chat {
 		id: string;
@@ -110,7 +111,7 @@
 										folderId: folderId,
 										items: fileContent
 									});
-								} catch (error) {
+								} catch (error: any) {
 									console.error('Error parsing JSON file:', error);
 								}
 							};
@@ -134,7 +135,7 @@
 								return;
 							}
 							// Move the folder
-							const res = await updateFolderParentIdById(localStorage.token, id, folderId).catch(
+							const res = await updateFolderParentIdById(getRequestToken(), id, folderId).catch(
 								(error) => {
 									toast.error(`${error}`);
 									return null;
@@ -147,15 +148,15 @@
 						} else if (type === 'chat') {
 							open = true;
 
-							let chat = await getChatById(localStorage.token, id).catch((error) => {
+							let chat = await getChatById(getRequestToken(), id).catch((error) => {
 								return null;
 							});
 							if (!chat && item) {
-								chat = await importChat(localStorage.token, item.chat, item?.meta ?? {});
+								chat = await importChat(getRequestToken(), item.chat, item?.meta ?? {});
 							}
 
 							// Move the chat
-							const res = await updateChatFolderIdById(localStorage.token, chat.id, folderId).catch(
+							const res = await updateChatFolderIdById(getRequestToken(), chat.id, folderId).catch(
 								(error) => {
 									toast.error(`${error}`);
 									return null;
@@ -241,7 +242,7 @@
 
 	onDestroy(() => {
 		if (folderElement) {
-			folderElement.addEventListener('dragover', onDragOver);
+			folderElement.removeEventListener('dragover', onDragOver);
 			folderElement.removeEventListener('drop', onDrop);
 			folderElement.removeEventListener('dragleave', onDragLeave);
 
@@ -254,7 +255,7 @@
 	let showDeleteConfirm = false;
 
 	const deleteHandler = async () => {
-		const res = await deleteFolderById(localStorage.token, folderId).catch((error) => {
+		const res = await deleteFolderById(getRequestToken(), folderId).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
@@ -281,7 +282,7 @@
 		name = name.trim();
 		folders[folderId].name = name;
 
-		const res = await updateFolderNameById(localStorage.token, folderId, name).catch((error) => {
+		const res = await updateFolderNameById(getRequestToken(), folderId, name).catch((error) => {
 			toast.error(`${error}`);
 
 			folders[folderId].name = currentName;
@@ -296,7 +297,7 @@
 	};
 
 	const isExpandedUpdateHandler = async () => {
-		const res = await updateFolderIsExpandedById(localStorage.token, folderId, open).catch(
+		const res = await updateFolderIsExpandedById(getRequestToken(), folderId, open).catch(
 			(error) => {
 				toast.error(`${error}`);
 				return null;
@@ -330,7 +331,7 @@
 	};
 
 	const exportHandler = async () => {
-		const chats = await getChatsByFolderId(localStorage.token, folderId).catch((error) => {
+		const chats = await getChatsByFolderId(getRequestToken(), folderId).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});

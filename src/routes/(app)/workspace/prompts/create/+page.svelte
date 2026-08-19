@@ -10,10 +10,11 @@
 
 	import { createNewPrompt, getPrompts } from '$lib/apis/prompts';
 	import PromptEditor from '$lib/components/workspace/Prompts/PromptEditor.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
-	let prompt = null;
-	const onSubmit = async (_prompt) => {
-		const prompt = await createNewPrompt(localStorage.token, _prompt).catch((error) => {
+	let prompt: any = null;
+	const onSubmit = async (_prompt: any) => {
+		const prompt = await createNewPrompt(getRequestToken(), _prompt).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
@@ -21,7 +22,7 @@
 		if (prompt) {
 			toast.success($i18n.t('Prompt created successfully'));
 
-			await prompts.set(await getPrompts(localStorage.token));
+			await prompts.set(await getPrompts(getRequestToken()));
 			await goto('/workspace/prompts');
 		}
 	};

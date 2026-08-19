@@ -9,19 +9,20 @@
 
 	import Modal from '../common/Modal.svelte';
 	import Link from '../icons/Link.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
-	export let chatId;
+	export let chatId: any;
 
-	let chat = null;
-	let shareUrl = null;
+	let chat: any = null;
+	let shareUrl: any = null;
 	const i18n = getI18n();
 
 	const shareLocalChat = async () => {
 		const _chat = chat;
 
-		const sharedChat = await shareChatById(localStorage.token, chatId);
+		const sharedChat = await shareChatById(getRequestToken(), chatId);
 		shareUrl = `${window.location.origin}/s/${sharedChat.id}`;
-		chat = await getChatById(localStorage.token, chatId);
+		chat = await getChatById(getRequestToken(), chatId);
 
 		return shareUrl;
 	};
@@ -53,7 +54,7 @@
 
 	export let show = false;
 
-	const isDifferentChat = (_chat) => {
+	const isDifferentChat = (_chat: any) => {
 		if (!chat) {
 			return true;
 		}
@@ -66,7 +67,7 @@
 	$: if (show) {
 		(async () => {
 			if (chatId) {
-				const _chat = await getChatById(localStorage.token, chatId);
+				const _chat = await getChatById(getRequestToken(), chatId);
 				if (isDifferentChat(_chat)) {
 					chat = _chat;
 				}
@@ -117,10 +118,10 @@
 						<button
 							class="underline"
 							on:click={async () => {
-								const res = await deleteSharedChatById(localStorage.token, chatId);
+								const res = await deleteSharedChatById(getRequestToken(), chatId);
 
 								if (res) {
-									chat = await getChatById(localStorage.token, chatId);
+									chat = await getChatById(getRequestToken(), chatId);
 								}
 							}}
 							>{$i18n.t('delete this link')}

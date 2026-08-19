@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	import { goto } from '$app/navigation';
@@ -8,12 +8,13 @@
 	import { toast } from 'svelte-sonner';
 	import { knowledge } from '$lib/stores';
 	import AccessControl from '../common/AccessControl.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	let loading = false;
 
 	let name = '';
 	let description = '';
-	let accessControl = null;
+	let accessControl: any = null;
 
 	const submitHandler = async () => {
 		loading = true;
@@ -26,18 +27,15 @@
 			return;
 		}
 
-		const res = await createNewKnowledge(
-			localStorage.token,
-			name,
-			description,
-			accessControl
-		).catch((e) => {
-			toast.error(e);
-		});
+		const res = await createNewKnowledge(getRequestToken(), name, description, accessControl).catch(
+			(e) => {
+				toast.error(e);
+			}
+		);
 
 		if (res) {
 			toast.success($i18n.t('Knowledge created successfully.'));
-			knowledge.set(await getKnowledgeBases(localStorage.token));
+			knowledge.set(await getKnowledgeBases(getRequestToken()));
 			goto(`/workspace/knowledge/${res.id}`);
 		}
 

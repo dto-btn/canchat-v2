@@ -21,6 +21,7 @@
 
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import Valves from '$lib/components/common/Valves.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const dispatch = createEventDispatcher();
 
@@ -33,10 +34,10 @@
 
 	let loading = false;
 
-	let valvesSpec = null;
-	let valves = {};
+	let valvesSpec: any = null;
+	let valves: Record<string, any> = {};
 
-	let debounceTimer;
+	let debounceTimer: any;
 
 	const debounceSubmitHandler = async () => {
 		if (debounceTimer) {
@@ -52,11 +53,11 @@
 	const getUserValves = async () => {
 		loading = true;
 		if (tab === 'tools') {
-			valves = await getToolUserValvesById(localStorage.token, selectedId);
-			valvesSpec = await getToolUserValvesSpecById(localStorage.token, selectedId);
+			valves = await getToolUserValvesById(getRequestToken(), selectedId);
+			valvesSpec = await getToolUserValvesSpecById(getRequestToken(), selectedId);
 		} else if (tab === 'functions') {
-			valves = await getFunctionUserValvesById(localStorage.token, selectedId);
-			valvesSpec = await getFunctionUserValvesSpecById(localStorage.token, selectedId);
+			valves = await getFunctionUserValvesById(getRequestToken(), selectedId);
+			valvesSpec = await getFunctionUserValvesSpecById(getRequestToken(), selectedId);
 		}
 
 		if (valvesSpec) {
@@ -76,12 +77,12 @@
 			// Convert string to array
 			for (const property in valvesSpec.properties) {
 				if (valvesSpec.properties[property]?.type === 'array') {
-					valves[property] = (valves[property] ?? '').split(',').map((v) => v.trim());
+					valves[property] = (valves[property] ?? '').split(',').map((v: any) => v.trim());
 				}
 			}
 
 			if (tab === 'tools') {
-				const res = await updateToolUserValvesById(localStorage.token, selectedId, valves).catch(
+				const res = await updateToolUserValvesById(getRequestToken(), selectedId, valves).catch(
 					(error) => {
 						toast.error(`${error}`);
 						return null;
@@ -93,14 +94,12 @@
 					valves = res;
 				}
 			} else if (tab === 'functions') {
-				const res = await updateFunctionUserValvesById(
-					localStorage.token,
-					selectedId,
-					valves
-				).catch((error) => {
-					toast.error(`${error}`);
-					return null;
-				});
+				const res = await updateFunctionUserValvesById(getRequestToken(), selectedId, valves).catch(
+					(error) => {
+						toast.error(`${error}`);
+						return null;
+					}
+				);
 
 				if (res) {
 					toast.success($i18n.t('Valves updated'));
@@ -126,10 +125,10 @@
 		loading = true;
 
 		if ($functions === null) {
-			functions.set(await getFunctions(localStorage.token));
+			functions.set(await getFunctions(getRequestToken()));
 		}
 		if ($tools === null) {
-			tools.set(await getTools(localStorage.token));
+			tools.set(await getTools(getRequestToken()));
 		}
 
 		loading = false;

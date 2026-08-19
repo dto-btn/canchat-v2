@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import {
 		addTagById,
 		deleteTagById,
@@ -13,18 +13,19 @@
 
 	import Tags from '../common/Tags.svelte';
 	import { toast } from 'svelte-sonner';
+	import { getRequestToken } from '$lib/services/auth';
 
 	export let chatId = '';
-	let tags = [];
+	let tags: any[] = [];
 
 	const getTags = async () => {
-		return await getTagsById(localStorage.token, chatId).catch(async (error) => {
+		return await getTagsById(getRequestToken(), chatId).catch(async (error) => {
 			return [];
 		});
 	};
 
-	const addTag = async (tagName) => {
-		const res = await addTagById(localStorage.token, chatId, tagName).catch(async (error) => {
+	const addTag = async (tagName: any) => {
+		const res = await addTagById(getRequestToken(), chatId, tagName).catch(async (error) => {
 			toast.error(`${error}`);
 			return null;
 		});
@@ -33,24 +34,24 @@
 		}
 
 		tags = await getTags();
-		await updateChatById(localStorage.token, chatId, {
+		await updateChatById(getRequestToken(), chatId, {
 			tags: tags
 		});
 
-		await _tags.set(await getAllTags(localStorage.token));
+		await _tags.set(await getAllTags(getRequestToken()));
 		dispatch('add', {
 			name: tagName
 		});
 	};
 
-	const deleteTag = async (tagName) => {
-		const res = await deleteTagById(localStorage.token, chatId, tagName);
+	const deleteTag = async (tagName: any) => {
+		const res = await deleteTagById(getRequestToken(), chatId, tagName);
 		tags = await getTags();
-		await updateChatById(localStorage.token, chatId, {
+		await updateChatById(getRequestToken(), chatId, {
 			tags: tags
 		});
 
-		await _tags.set(await getAllTags(localStorage.token));
+		await _tags.set(await getAllTags(getRequestToken()));
 		dispatch('delete', {
 			name: tagName
 		});

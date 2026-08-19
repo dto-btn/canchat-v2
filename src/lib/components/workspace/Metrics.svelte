@@ -31,9 +31,10 @@
 	import { autoFormatNumber } from '$lib/utils';
 	import Spinner from '../common/Spinner.svelte';
 	import ChartDataLabels from 'chartjs-plugin-datalabels';
+	import { getRequestToken } from '$lib/services/auth';
 
 	// Replace date-fns with native date formatting
-	function formatDate(date) {
+	function formatDate(date: any) {
 		return date.toISOString().split('T')[0]; // Returns YYYY-MM-DD format
 	}
 
@@ -42,7 +43,7 @@
 	}
 
 	// Helper function to get minimum end date (at least one day after start date)
-	function getMinEndDate(startDateStr) {
+	function getMinEndDate(startDateStr: any) {
 		if (!startDateStr) return '';
 		const startDate = new Date(startDateStr);
 		const minEndDate = new Date(startDate.getTime() + 24 * 60 * 60 * 1000); // Add one day
@@ -50,7 +51,7 @@
 	}
 
 	// Handler for start date changes - ensures end date is always after start date
-	function handleStartDateChange(event) {
+	function handleStartDateChange(event: any) {
 		const newStartDate = event.target.value;
 		startDate = newStartDate;
 
@@ -227,7 +228,7 @@
 				labels: {
 					color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#1f2937',
 					font: { size: 14 },
-					generateLabels: (c) => {
+					generateLabels: (c: any) => {
 						const items = Chart.defaults.plugins.legend.labels.generateLabels(c);
 						return items.map((i) => {
 							i.text = `${i.text} ${i.text === $i18n.t('Last Active Users') ? $i18n.t('(Users whose last recorded activity was during the selected period)') : i.text === $i18n.t('Active Users') ? $i18n.t('(Users who prompted during selected period)') : $i18n.t('(All enrolled users to date)')}`;
@@ -249,7 +250,7 @@
 				anchor: 'end' as const,
 				align: 'right' as const,
 				offset: 6,
-				formatter: (value) => (value === 0 ? null : value),
+				formatter: (value: any) => (value === 0 ? null : value),
 				font: {
 					weight: 'bold' as const,
 					size: 14
@@ -278,7 +279,7 @@
 				position: 'top' as const,
 				offset: false,
 				beginAtZero: true,
-				afterBuildTicks: (axis) => {
+				afterBuildTicks: (axis: any) => {
 					const bottomAxis = axis.chart?.scales?.x;
 					if (!bottomAxis) return;
 					axis.min = bottomAxis.min;
@@ -298,7 +299,7 @@
 			},
 			y: {
 				beginAtZero: true,
-				afterFit: (scale) => {
+				afterFit: (scale: any) => {
 					scale.width = 330;
 				},
 				ticks: {
@@ -447,13 +448,13 @@
 	let showCustomDateRange = false;
 
 	// Advanced metrics
-	let rangeMetrics = null;
+	let rangeMetrics: any = null;
 
 	// Change default tab name from 'cost' to 'business' for clarity
 	let activeTab = 'users'; // Changed from 'business' to 'users'
 
 	// Helper function to calculate days between dates
-	function calculateDaysFromDateRange(start, end) {
+	function calculateDaysFromDateRange(start: any, end: any) {
 		if (start && end) {
 			const startDate = new Date(start);
 			const endDate = new Date(end);
@@ -492,24 +493,24 @@
 
 			// Load summary metrics
 			try {
-				totalUsers = await getTotalUsers(localStorage.token, updatedDomain);
-				totalPrompts = await getTotalPrompts(localStorage.token, updatedDomain);
+				totalUsers = await getTotalUsers(getRequestToken(), updatedDomain);
+				totalPrompts = await getTotalPrompts(getRequestToken(), updatedDomain);
 				// Pass date range to getTotalTokens for proper filtering
 				totalTokens = await getTotalTokens(
-					localStorage.token,
+					getRequestToken(),
 					updatedDomain,
 					startDate,
 					endDate,
 					selectedMcpProcess ?? undefined
 				);
-				dailyUsers = await getDailyUsers(localStorage.token, updatedDomain);
-				dailyPrompts = await getDailyPrompts(localStorage.token, updatedDomain);
+				dailyUsers = await getDailyUsers(getRequestToken(), updatedDomain);
+				dailyPrompts = await getDailyPrompts(getRequestToken(), updatedDomain);
 				dailyTokens = await getDailyTokens(
-					localStorage.token,
+					getRequestToken(),
 					updatedDomain,
 					selectedMcpProcess ?? undefined
 				);
-			} catch (err) {
+			} catch (err: any) {
 				console.error('Error fetching summary metrics:', err);
 			} finally {
 				isLoadingTokensData = false;
@@ -519,13 +520,13 @@
 			// Load model-specific data if a model is selected
 			if (selectedModel) {
 				try {
-					modelPrompts = await getModelPrompts(localStorage.token, selectedModel, updatedDomain);
+					modelPrompts = await getModelPrompts(getRequestToken(), selectedModel, updatedDomain);
 					modelDailyPrompts = await getModelDailyPrompts(
-						localStorage.token,
+						getRequestToken(),
 						selectedModel,
 						updatedDomain
 					);
-				} catch (err) {
+				} catch (err: any) {
 					console.error('Error fetching model metrics:', err);
 				}
 			}
@@ -539,21 +540,21 @@
 
 			// Fetch historical data for charts
 			try {
-				enrolledUsersData = await getHistoricalUsers(localStorage.token, days, updatedDomain);
+				enrolledUsersData = await getHistoricalUsers(getRequestToken(), days, updatedDomain);
 				dailyActiveUsersData = await getHistoricalDailyUsers(
-					localStorage.token,
+					getRequestToken(),
 					days,
 					updatedDomain
 				);
 				departmentUsageData = await getUserByDomain(
-					localStorage.token,
+					getRequestToken(),
 					toEpoch(startDate),
 					toEpoch(endDate),
 					updatedDomain
 				);
-				dailyPromptsData = await getHistoricalPrompts(localStorage.token, days, updatedDomain);
+				dailyPromptsData = await getHistoricalPrompts(getRequestToken(), days, updatedDomain);
 				dailyTokensData = await getHistoricalTokens(
-					localStorage.token,
+					getRequestToken(),
 					days,
 					updatedDomain,
 					selectedMcpProcess ?? undefined
@@ -562,7 +563,7 @@
 				// Fetch model-specific historical data if a model is selected
 				if (selectedModel) {
 					modelPromptsData = await getModelHistoricalPrompts(
-						localStorage.token,
+						getRequestToken(),
 						days,
 						selectedModel,
 						updatedDomain
@@ -571,11 +572,11 @@
 
 				// Fetch inter-prompt latency data (don't filter by model since this is a user behavior metric)
 				interPromptLatencyData = await getInterPromptLatencyHistogram(
-					localStorage.token,
+					getRequestToken(),
 					updatedDomain,
 					null // Don't filter by model for inter-prompt latency
 				);
-			} catch (err) {
+			} catch (err: any) {
 				console.error('Error fetching historical data:', err);
 			} finally {
 				isLoadingTokensChart = false;
@@ -586,7 +587,7 @@
 			setTimeout(() => {
 				initializeCharts();
 			}, 50);
-		} catch (error) {
+		} catch (error: any) {
 			console.error('Error updating charts:', error);
 			isLoadingTokensData = false;
 			isLoadingTokensChart = false;
@@ -877,16 +878,16 @@
 
 		// Additional data loading for model-specific tab
 		if (tab === 'models' && selectedModel) {
-			getModelPrompts(localStorage.token, selectedModel, selectedDomain)
+			getModelPrompts(getRequestToken(), selectedModel, selectedDomain)
 				.then((data) => {
 					modelPrompts = data;
-					return getModelDailyPrompts(localStorage.token, selectedModel, selectedDomain);
+					return getModelDailyPrompts(getRequestToken(), selectedModel, selectedDomain);
 				})
 				.then((data) => {
 					modelDailyPrompts = data;
 					// Use the existing date range when calculating model historical data
 					const days = calculateDaysFromDateRange(startDate, endDate);
-					return getModelHistoricalPrompts(localStorage.token, days, selectedModel, selectedDomain);
+					return getModelHistoricalPrompts(getRequestToken(), days, selectedModel, selectedDomain);
 				})
 				.then((data) => {
 					modelPromptsData = data;
@@ -911,7 +912,7 @@
 		}
 	}
 
-	function handleDateRangeChange(event) {
+	function handleDateRangeChange(event: any) {
 		const range = event.target.value;
 		selectedDateRange = range;
 
@@ -952,7 +953,7 @@
 
 		try {
 			rangeMetrics = await getRangeMetrics(
-				localStorage.token,
+				getRequestToken(),
 				startDate,
 				endDate,
 				selectedDomain,
@@ -962,7 +963,7 @@
 
 			// Also update the chart data based on the selected date range
 			await updateCharts(selectedDomain, selectedModel);
-		} catch (error) {
+		} catch (error: any) {
 			console.error('Error fetching range metrics:', error);
 		}
 	}
@@ -1000,8 +1001,8 @@
 			// Load MCP processes for the MCP toggle/process filter on the Tokens tab
 			(async () => {
 				try {
-					mcpProcesses = await getMcpProcesses(localStorage.token);
-				} catch (mcpErr) {
+					mcpProcesses = await getMcpProcesses(getRequestToken());
+				} catch (mcpErr: any) {
 					console.warn('Could not load MCP processes:', mcpErr);
 					mcpProcesses = [];
 				}
@@ -1013,8 +1014,8 @@
 
 			(async () => {
 				try {
-					domains = await getDomains(localStorage.token);
-					models = await getModels(localStorage.token);
+					domains = await getDomains(getRequestToken());
+					models = await getModels(getRequestToken());
 					// Set the first model as the selected model if available
 					if (models.length > 0) {
 						selectedModel = models[0];
@@ -1022,14 +1023,14 @@
 					await updateCharts(selectedDomain, selectedModel);
 					updateRangeMetrics(); // Load initial range metrics
 					componentLoaded = true;
-				} catch (error) {
+				} catch (error: any) {
 					console.error('Error initializing charts:', error);
 					componentLoaded = true;
 				}
 			})();
 			// Store the observer in a variable for cleanup
 			return () => observer.disconnect();
-		} catch (error) {
+		} catch (error: any) {
 			console.error('Error initializing charts:', error);
 			// Even if there's an error, mark as loaded to show the UI
 			componentLoaded = true;
@@ -1053,14 +1054,14 @@
 	});
 
 	// Update domain change handler to simplify
-	function handleDomainChange(event) {
+	function handleDomainChange(event: any) {
 		const newDomain = event.target.value || null;
 		selectedDomain = newDomain;
 		updateCharts(selectedDomain, selectedModel);
 	}
 
 	// Handler for model selection changes
-	function handleModelChange(event) {
+	function handleModelChange(event: any) {
 		const newModel = event.target.value || null;
 		selectedModel = newModel;
 		updateCharts(selectedDomain, selectedModel);
@@ -1107,7 +1108,7 @@
 			// For analysts, always use their domain regardless of selectedDomain
 			const exportDomain = $user?.role === 'analyst' ? $user?.email?.split('@')[1] : selectedDomain;
 
-			const blob = await exportMetricsData(localStorage.token, startDate, endDate, exportDomain);
+			const blob = await exportMetricsData(getRequestToken(), startDate, endDate, exportDomain);
 
 			// Create download link
 			const url = window.URL.createObjectURL(blob);
@@ -1127,7 +1128,7 @@
 			) {
 				await loadExportLogs();
 			}
-		} catch (error) {
+		} catch (error: any) {
 			console.error('Export failed:', error);
 			alert($i18n.t('Export failed. Please try again.'));
 		} finally {
@@ -1137,8 +1138,8 @@
 
 	async function loadExportLogs() {
 		try {
-			exportLogs = await getExportLogs(localStorage.token);
-		} catch (error) {
+			exportLogs = await getExportLogs(getRequestToken());
+		} catch (error: any) {
 			console.error('Failed to load export logs:', error);
 		}
 	}

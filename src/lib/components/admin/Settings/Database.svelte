@@ -10,20 +10,21 @@
 	import { toast } from 'svelte-sonner';
 	import { getAllUserChats } from '$lib/apis/chats';
 	import { exportConfig, importConfig } from '$lib/apis/configs';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
 	export let saveHandler: Function;
 
 	const exportAllUserChats = async () => {
-		let blob = new Blob([JSON.stringify(await getAllUserChats(localStorage.token))], {
+		let blob = new Blob([JSON.stringify(await getAllUserChats(getRequestToken()))], {
 			type: 'application/json'
 		});
 		saveAs(blob, `all-chats-export-${Date.now()}.json`);
 	};
 
 	onMount(async () => {
-		// permissions = await getUserPermissions(localStorage.token);
+		// permissions = await getUserPermissions(getRequestToken());
 	});
 </script>
 
@@ -47,7 +48,7 @@
 					const reader = new FileReader();
 
 					reader.onload = async (e) => {
-						const res = await importConfig(localStorage.token, JSON.parse(e.target.result)).catch(
+						const res = await importConfig(getRequestToken(), JSON.parse(e.target.result)).catch(
 							(error) => {
 								toast.error(`${error}`);
 							}
@@ -94,7 +95,7 @@
 				type="button"
 				class=" flex rounded-md py-2 px-3 w-full hover:bg-gray-200 dark:hover:bg-gray-800 transition"
 				on:click={async () => {
-					const config = await exportConfig(localStorage.token);
+					const config = await exportConfig(getRequestToken());
 					const blob = new Blob([JSON.stringify(config)], {
 						type: 'application/json'
 					});
@@ -133,7 +134,7 @@
 						on:click={() => {
 							// exportAllUserChats();
 
-							downloadDatabase(localStorage.token).catch((error) => {
+							downloadDatabase(getRequestToken()).catch((error) => {
 								toast.error(`${error}`);
 							});
 						}}

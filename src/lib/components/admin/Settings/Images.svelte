@@ -18,16 +18,17 @@
 	import SensitiveInput from '$lib/components/common/SensitiveInput.svelte';
 	import Switch from '$lib/components/common/Switch.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 	const dispatch = createEventDispatcher();
 
 	const i18n = getI18n();
 
 	let loading = false;
 
-	let config = null;
-	let imageGenerationConfig = null;
+	let config: any = null;
+	let imageGenerationConfig: any = null;
 
-	let models = null;
+	let models: any = null;
 
 	let samplers = [
 		'DPM++ 2M',
@@ -100,14 +101,14 @@
 	];
 
 	const getModels = async () => {
-		models = await getImageGenerationModels(localStorage.token).catch((error) => {
+		models = await getImageGenerationModels(getRequestToken()).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
 	};
 
 	const updateConfigHandler = async () => {
-		const res = await updateConfig(localStorage.token, config)
+		const res = await updateConfig(getRequestToken(), config)
 			.catch((error) => {
 				toast.error(`${error}`);
 				return null;
@@ -122,19 +123,19 @@
 		}
 
 		if (config.enabled) {
-			backendConfig.set(await getBackendConfig());
+			backendConfig.set(await getBackendConfig(getRequestToken()));
 			getModels();
 		}
 	};
 
-	const validateJSON = (json) => {
+	const validateJSON = (json: any) => {
 		try {
 			const obj = JSON.parse(json);
 
 			if (obj && typeof obj === 'object') {
 				return true;
 			}
-		} catch (e) {}
+		} catch (e: any) {}
 		return false;
 	};
 
@@ -160,13 +161,13 @@
 			});
 		}
 
-		await updateConfig(localStorage.token, config).catch((error) => {
+		await updateConfig(getRequestToken(), config).catch((error) => {
 			toast.error(`${error}`);
 			loading = false;
 			return null;
 		});
 
-		await updateImageGenerationConfig(localStorage.token, imageGenerationConfig).catch((error) => {
+		await updateImageGenerationConfig(getRequestToken(), imageGenerationConfig).catch((error) => {
 			toast.error(`${error}`);
 			loading = false;
 			return null;
@@ -179,7 +180,7 @@
 
 	onMount(async () => {
 		if ($user.role === 'admin') {
-			const res = await getConfig(localStorage.token).catch((error) => {
+			const res = await getConfig(getRequestToken()).catch((error) => {
 				toast.error(`${error}`);
 				return null;
 			});
@@ -201,7 +202,8 @@
 			}
 
 			requiredWorkflowNodes = requiredWorkflowNodes.map((node) => {
-				const n = config.comfyui.COMFYUI_WORKFLOW_NODES.find((n) => n.type === node.type) ?? node;
+				const n =
+					config.comfyui.COMFYUI_WORKFLOW_NODES.find((n: any) => n.type === node.type) ?? node;
 
 				return {
 					type: n.type,
@@ -210,7 +212,7 @@
 				};
 			});
 
-			const imageConfigRes = await getImageGenerationConfig(localStorage.token).catch((error) => {
+			const imageConfigRes = await getImageGenerationConfig(getRequestToken()).catch((error) => {
 				toast.error(`${error}`);
 				return null;
 			});
@@ -317,7 +319,7 @@
 								type="button"
 								on:click={async () => {
 									await updateConfigHandler();
-									const res = await verifyConfigUrl(localStorage.token).catch((error) => {
+									const res = await verifyConfigUrl(getRequestToken()).catch((error) => {
 										toast.error(`${error}`);
 										return null;
 									});
@@ -453,7 +455,7 @@
 								type="button"
 								on:click={async () => {
 									await updateConfigHandler();
-									const res = await verifyConfigUrl(localStorage.token).catch((error) => {
+									const res = await verifyConfigUrl(getRequestToken()).catch((error) => {
 										toast.error(`${error}`);
 										return null;
 									});

@@ -8,6 +8,7 @@
 	import { getVoices as _getVoices } from '$lib/apis/audio';
 
 	import Switch from '$lib/components/common/Switch.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 	const dispatch = createEventDispatcher();
 
 	const i18n = getI18n();
@@ -22,15 +23,20 @@
 
 	let STTEngine = '';
 
-	let voices = [];
+	let voices: any[] = [];
 	let voice = '';
+	let configTTSEngine = '';
+	let configTTSVoice = '';
 
 	// Audio speed control
 	let playbackRate = 1;
 	const speedOptions = [2, 1.75, 1.5, 1.25, 1, 0.75, 0.5];
 
+	$: configTTSEngine = $config?.audio?.tts?.engine ?? '';
+	$: configTTSVoice = $config?.audio?.tts?.voice ?? '';
+
 	const getVoices = async () => {
-		if ($config.audio.tts.engine === '') {
+		if (configTTSEngine === '') {
 			const getVoicesLoop = setInterval(async () => {
 				voices = await speechSynthesis.getVoices();
 
@@ -40,7 +46,7 @@
 				}
 			}, 100);
 		} else {
-			const res = await _getVoices(localStorage.token).catch((e) => {
+			const res = await _getVoices(getRequestToken()).catch((e) => {
 				toast.error(e);
 			});
 
@@ -68,13 +74,13 @@
 
 		STTEngine = $settings?.audio?.stt?.engine ?? '';
 
-		if ($settings?.audio?.tts?.defaultVoice === $config.audio.tts.voice) {
-			voice = $settings?.audio?.tts?.voice ?? $config.audio.tts.voice ?? '';
+		if ($settings?.audio?.tts?.defaultVoice === configTTSVoice) {
+			voice = $settings?.audio?.tts?.voice ?? configTTSVoice;
 		} else {
-			voice = $config.audio.tts.voice ?? '';
+			voice = configTTSVoice;
 		}
 
-		nonLocalVoices = $settings.audio?.tts?.nonLocalVoices ?? false;
+		nonLocalVoices = $settings?.audio?.tts?.nonLocalVoices ?? false;
 
 		await getVoices();
 	});
@@ -91,8 +97,8 @@
 				tts: {
 					playbackRate: playbackRate,
 					voice: voice !== '' ? voice : undefined,
-					defaultVoice: $config?.audio?.tts?.voice ?? '',
-					nonLocalVoices: $config.audio.tts.engine === '' ? nonLocalVoices : undefined
+					defaultVoice: configTTSVoice,
+					nonLocalVoices: configTTSEngine === '' ? nonLocalVoices : undefined
 				}
 			}
 		});
@@ -182,7 +188,7 @@
 
 		<hr class=" dark:border-gray-850" />
 
-		{#if $config.audio.tts.engine === ''}
+		{#if configTTSEngine === ''}
 			<div>
 				<h3 id="set-voice" class=" mb-2.5 text-sm font-medium">{$i18n.t('Set Voice')}</h3>
 				<label for="voice-select" class="sr-only">
@@ -216,7 +222,7 @@
 					</div>
 				</div>
 			</div>
-		{:else if $config.audio.tts.engine !== ''}
+		{:else if configTTSEngine !== ''}
 			<div>
 				<div class=" mb-2.5 text-sm font-medium">{$i18n.t('Set Voice')}</div>
 				<div class="flex w-full">

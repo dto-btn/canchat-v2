@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	import { WEBUI_BASE_URL } from '$lib/constants';
@@ -25,13 +25,14 @@
 	import Plus from '$lib/components/icons/Plus.svelte';
 	import ChevronUp from '$lib/components/icons/ChevronUp.svelte';
 	import ChevronDown from '$lib/components/icons/ChevronDown.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
-	export let users = [];
+	export let users: any[] = [];
 
 	let search = '';
-	let selectedUser = null;
+	let selectedUser: any = null;
 
 	let page = 1;
 
@@ -41,7 +42,7 @@
 	let showUserChatsModal = false;
 	let showEditUserModal = false;
 
-	$: badgeType = (role) => {
+	$: badgeType = (role: any) => {
 		switch (role) {
 			case 'admin':
 				return 'info';
@@ -58,31 +59,31 @@
 		}
 	};
 
-	const updateRoleHandler = async (id, role) => {
-		const res = await updateUserRole(localStorage.token, id, role).catch((error) => {
+	const updateRoleHandler = async (id: any, role: any) => {
+		const res = await updateUserRole(getRequestToken(), id, role).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
 
 		if (res) {
-			users = await getUsers(localStorage.token);
+			users = await getUsers(getRequestToken());
 		}
 	};
 
-	const deleteUserHandler = async (id) => {
-		const res = await deleteUserById(localStorage.token, id).catch((error) => {
+	const deleteUserHandler = async (id: any) => {
+		const res = await deleteUserById(getRequestToken(), id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
 		if (res) {
-			users = await getUsers(localStorage.token);
+			users = await getUsers(getRequestToken());
 		}
 	};
 
 	let sortKey = 'created_at'; // default sort key
 	let sortOrder = 'asc'; // default sort order
 
-	function setSortKey(key) {
+	function setSortKey(key: any) {
 		if (sortKey === key) {
 			sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
 		} else {
@@ -91,8 +92,8 @@
 		}
 	}
 
-	let filteredUsers;
-	let paginatedUsers;
+	let filteredUsers: any;
+	let paginatedUsers: any;
 
 	// First filter and sort users
 	$: filteredUsers = users
@@ -141,7 +142,7 @@
 		{selectedUser}
 		sessionUser={$user}
 		on:save={async () => {
-			users = await getUsers(localStorage.token);
+			users = await getUsers(getRequestToken());
 		}}
 	/>
 {/key}
@@ -149,7 +150,7 @@
 <AddUserModal
 	bind:show={showAddUserModal}
 	on:save={async () => {
-		users = await getUsers(localStorage.token);
+		users = await getUsers(getRequestToken());
 	}}
 />
 <UserChatsModal bind:show={showUserChatsModal} user={selectedUser} />

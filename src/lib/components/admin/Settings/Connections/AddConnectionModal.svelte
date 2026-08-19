@@ -15,6 +15,7 @@
 	import SensitiveInput from '$lib/components/common/SensitiveInput.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import Switch from '$lib/components/common/Switch.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	export let onSubmit: Function = () => {};
 	export let onDelete: Function = () => {};
@@ -24,7 +25,7 @@
 	export let ollama = false;
 	export let mcp = false;
 
-	export let connection = null;
+	export let connection: any = null;
 
 	let url = '';
 	let key = '';
@@ -33,12 +34,12 @@
 	let enable = true;
 
 	let modelId = '';
-	let modelIds = [];
+	let modelIds: any[] = [];
 
 	let loading = false;
 
 	const verifyOllamaHandler = async () => {
-		const res = await verifyOllamaConnection(localStorage.token, url, key).catch((error) => {
+		const res = await verifyOllamaConnection(getRequestToken(), url, key).catch((error) => {
 			toast.error(`${error}`);
 		});
 
@@ -48,7 +49,7 @@
 	};
 
 	const verifyOpenAIHandler = async () => {
-		const res = await verifyOpenAIConnection(localStorage.token, url, key).catch((error) => {
+		const res = await verifyOpenAIConnection(getRequestToken(), url, key).catch((error) => {
 			toast.error(`${error}`);
 		});
 
@@ -58,7 +59,7 @@
 	};
 
 	const verifyMCPHandler = async () => {
-		const res = await verifyMCPConnection(localStorage.token, url, key).catch((error) => {
+		const res = await verifyMCPConnection(getRequestToken(), url, key).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});

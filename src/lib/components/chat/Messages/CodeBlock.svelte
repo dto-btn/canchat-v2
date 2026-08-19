@@ -23,7 +23,7 @@
 	export let save = false;
 	export let run = true;
 
-	export let token;
+	export let token: any;
 	export let lang = '';
 	export let code = '';
 
@@ -40,16 +40,16 @@
 		_code = code;
 	};
 
-	let _token = null;
+	let _token: any = null;
 
-	let mermaidHtml = null;
+	let mermaidHtml: any = null;
 
-	let highlightedCode = null;
+	let highlightedCode: any = null;
 	let executing = false;
 
-	let stdout = null;
-	let stderr = null;
-	let result = null;
+	let stdout: any = null;
+	let stderr: any = null;
+	let result: any = null;
 
 	let copied = false;
 	let saved = false;
@@ -74,7 +74,7 @@
 		}, 1000);
 	};
 
-	const checkPythonCode = (str) => {
+	const checkPythonCode = (str: any) => {
 		// Check if the string contains typical Python syntax characters
 		const pythonSyntax = [
 			'def ',
@@ -99,7 +99,7 @@
 			' with '
 		];
 
-		for (let syntax of pythonSyntax) {
+		for (const syntax of pythonSyntax) {
 			if (str.includes(syntax)) {
 				return true;
 			}
@@ -109,7 +109,7 @@
 		return false;
 	};
 
-	const executePython = async (code) => {
+	const executePython = async (code: any) => {
 		if (!code.includes('input') && !code.includes('matplotlib')) {
 			executePythonAsWorker(code);
 		} else {
@@ -119,7 +119,9 @@
 
 			executing = true;
 
-			document.pyodideMplTarget = document.getElementById(`plt-canvas-${id}`);
+			const pyodideMplTarget = document.getElementById(`plt-canvas-${id}`);
+			(document as Document & { pyodideMplTarget?: Element | null }).pyodideMplTarget =
+				pyodideMplTarget;
 
 			let pyodide = await loadPyodide({
 				indexURL: '/pyodide/',
@@ -175,7 +177,7 @@ __builtins__.input = input`);
 				if (pltCanvasElement?.innerHTML !== '') {
 					pltCanvasElement.classList.add('pt-4');
 				}
-			} catch (error) {
+			} catch (error: any) {
 				console.error('Error:', error);
 				stderr = error;
 			}
@@ -184,7 +186,7 @@ __builtins__.input = input`);
 		}
 	};
 
-	const executePythonAsWorker = async (code) => {
+	const executePythonAsWorker = async (code: any) => {
 		result = null;
 		stdout = null;
 		stderr = null;
@@ -232,7 +234,7 @@ __builtins__.input = input`);
 		};
 	};
 
-	let debounceTimeout;
+	let debounceTimeout: any;
 
 	const drawMermaidDiagram = async () => {
 		try {
@@ -240,7 +242,7 @@ __builtins__.input = input`);
 				const { svg } = await mermaid.render(`mermaid-${uuidv4()}`, code);
 				mermaidHtml = svg;
 			}
-		} catch (error) {
+		} catch (error: any) {
 			console.log('Error:', error);
 		}
 	};

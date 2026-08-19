@@ -14,6 +14,8 @@
 	import { getTools } from '$lib/apis/tools';
 	import { getBanners } from '$lib/apis/configs';
 	import { getUserSettings } from '$lib/apis/users';
+	import { getRequestToken } from '$lib/services/auth';
+	import { authBootstrapReady } from '$lib/stores/auth';
 
 	import {
 		config,
@@ -32,142 +34,221 @@
 	import SettingsModal from '$lib/components/chat/SettingsModal.svelte';
 	import ChangelogModal from '$lib/components/ChangelogModal.svelte';
 	import AccountPending from '$lib/components/layout/Overlay/AccountPending.svelte';
+	import { getTermsStatus } from '$lib/apis/terms';
 
 	const i18n = getI18n();
+	const APP_ROLES = ['user', 'admin', 'analyst', 'global_analyst'] as const;
+
+	type LocalChatDatabase = Awaited<ReturnType<typeof openDB>>;
+	type SettingsState = Parameters<(typeof settings)['set']>[0];
+	type ModelsState = Parameters<(typeof models)['set']>[0];
+	type ToolsState = Parameters<(typeof tools)['set']>[0];
+	type PromptsState = Parameters<(typeof prompts)['set']>[0];
 
 	let loaded = false;
-	let DB = null;
-	let localDBChats = [];
+	let DB: LocalChatDatabase | null = null;
+	let localDBChats: unknown[] = [];
 
-	let version;
+	const hasAppAccess = (role?: string | null) => {
+		return Boolean(role && APP_ROLES.includes(role as (typeof APP_ROLES)[number]));
+	};
 
-	onMount(async () => {
-		if ($user === undefined) {
-			await goto('/auth');
-		} else if (['user', 'admin', 'analyst', 'global_analyst'].includes($user.role)) {
-			try {
-				// Check if IndexedDB exists
-				DB = await openDB('Chats', 1);
+	const readLocalStorageSettings = () => {
+		try {
+			return JSON.parse(localStorage.getItem('settings') ?? '{}') as SettingsState;
+		} catch (error) {
+			console.error('Failed to parse settings from localStorage', error);
+			return {} as SettingsState;
+		}
+	};
 
-				if (DB) {
-					const chats = await DB.getAllFromIndex('chats', 'timestamp');
-					localDBChats = chats.map((item, idx) => chats[chats.length - 1 - idx]);
-
-					if (localDBChats.length === 0) {
-						await deleteDB('Chats');
-					}
-				}
-			} catch (error) {
-				// IndexedDB Not Found
-			}
-
-			const userSettings = await getUserSettings(localStorage.token).catch((error) => {
-				console.error(error);
-				return null;
-			});
-
-			if (userSettings) {
-				settings.set(userSettings.ui);
-			} else {
-				let localStorageSettings = {} as Parameters<(typeof settings)['set']>[0];
-
-				try {
-					localStorageSettings = JSON.parse(localStorage.getItem('settings') ?? '{}');
-				} catch (e: unknown) {
-					console.error('Failed to parse settings from localStorage', e);
-				}
-
-				settings.set(localStorageSettings);
-			}
-
-			models.set(await getModels(localStorage.token));
-			banners.set(await getBanners(localStorage.token));
-			tools.set(await getTools(localStorage.token));
-			// Load all prompts for global store (now using original endpoint)
-			prompts.set(await getPromptsLegacy(localStorage.token));
-
-			document.addEventListener('keydown', async function (event) {
-				const isCtrlPressed = event.ctrlKey || event.metaKey; // metaKey is for Cmd key on Mac
-				// Check if the Shift key is pressed
-				const isShiftPressed = event.shiftKey;
-
-				// Check if Ctrl + Shift + O is pressed
-				if (isCtrlPressed && isShiftPressed && event.key.toLowerCase() === 'o') {
-					event.preventDefault();
-					document.getElementById('sidebar-new-chat-button')?.click();
-				}
-
-				// Check if Shift + Esc is pressed
-				if (isShiftPressed && event.key === 'Escape') {
-					event.preventDefault();
-					document.getElementById('chat-input')?.focus();
-				}
-
-				// Check if Ctrl + Shift + ; is pressed
-				if (isCtrlPressed && isShiftPressed && event.key === ';') {
-					event.preventDefault();
-					const button = [...document.getElementsByClassName('copy-code-button')]?.at(-1);
-					button?.click();
-				}
-
-				// Check if Ctrl + Shift + C is pressed
-				if (isCtrlPressed && isShiftPressed && event.key.toLowerCase() === 'c') {
-					event.preventDefault();
-					const button = [...document.getElementsByClassName('copy-response-button')]?.at(-1);
-					button?.click();
-				}
-
-				// Check if Ctrl + Shift + S is pressed
-				if (isCtrlPressed && isShiftPressed && event.key.toLowerCase() === 's') {
-					event.preventDefault();
-					document.getElementById('sidebar-toggle-button')?.click();
-				}
-
-				// Check if Ctrl + Shift + Backspace is pressed
-				if (
-					isCtrlPressed &&
-					isShiftPressed &&
-					(event.key === 'Backspace' || event.key === 'Delete')
-				) {
-					event.preventDefault();
-					document.getElementById('delete-chat-button')?.click();
-				}
-
-				// Check if Ctrl + . is pressed
-				if (isCtrlPressed && event.key === '.') {
-					event.preventDefault();
-					showSettings.set(!$showSettings);
-				}
-
-				// Check if Ctrl + / is pressed
-				if (isCtrlPressed && event.key === '/') {
-					event.preventDefault();
-					document.getElementById('show-shortcuts-button')?.click();
-				}
-
-				// Check if Ctrl + Shift + ' is pressed
-				if (isCtrlPressed && isShiftPressed && event.key.toLowerCase() === `'`) {
-					event.preventDefault();
-					temporaryChatEnabled.set(!$temporaryChatEnabled);
-					await goto('/');
-					const newChatButton = document.getElementById('new-chat-button');
-					setTimeout(() => {
-						newChatButton?.click();
-					}, 0);
-				}
-			});
-
-			if ($user.role === 'admin' && ($settings?.showChangelog ?? true)) {
-				showChangelog.set($settings?.version !== $config.version);
-			}
-
-			if ($page.url.searchParams.get('temporary-chat') === 'true') {
-				temporaryChatEnabled.set(true);
-			}
-			await tick();
+	const waitForAuthBootstrap = async () => {
+		if ($authBootstrapReady) {
+			return;
 		}
 
-		loaded = true;
+		await new Promise<void>((resolve) => {
+			const unsubscribe = authBootstrapReady.subscribe((ready) => {
+				if (!ready) {
+					return;
+				}
+
+				unsubscribe();
+				resolve();
+			});
+		});
+	};
+
+	onMount(async () => {
+		try {
+			await waitForAuthBootstrap();
+
+			if ($user === undefined) {
+				await goto('/auth');
+			} else if (hasAppAccess($user.role)) {
+				try {
+					// Check if IndexedDB exists
+					DB = await openDB('Chats', 1);
+
+					if (DB) {
+						const chats = await DB.getAllFromIndex('chats', 'timestamp');
+						localDBChats = chats.map((item, idx) => chats[chats.length - 1 - idx]);
+
+						if (localDBChats.length === 0) {
+							await deleteDB('Chats');
+						}
+					}
+				} catch (error) {
+					// IndexedDB Not Found
+				}
+
+				const termsAccepted = await getTermsStatus(getRequestToken()).catch((error) => {
+					console.error('Failed to load Terms of Use status:', error);
+					return null;
+				});
+
+				if (!termsAccepted) {
+					const termsOfUseUrl = $i18n.language === 'fr-CA' ? '/conditions' : '/terms';
+					await goto(termsOfUseUrl);
+					return;
+				}
+
+				const fallbackSettings = readLocalStorageSettings();
+				const token = getRequestToken();
+				const [userSettingsResult, modelsResult, bannersResult, toolsResult, promptsResult] =
+					await Promise.allSettled([
+						getUserSettings(token),
+						getModels(token),
+						getBanners(token),
+						getTools(token),
+						getPromptsLegacy(token)
+					]);
+
+				if (
+					userSettingsResult.status === 'fulfilled' &&
+					userSettingsResult.value &&
+					typeof userSettingsResult.value === 'object' &&
+					'ui' in userSettingsResult.value &&
+					userSettingsResult.value.ui
+				) {
+					settings.set(userSettingsResult.value.ui as SettingsState);
+				} else {
+					if (userSettingsResult.status === 'rejected') {
+						console.error(userSettingsResult.reason);
+					}
+					settings.set(fallbackSettings);
+				}
+
+				models.set(
+					modelsResult.status === 'fulfilled'
+						? (modelsResult.value as ModelsState)
+						: ([] as ModelsState)
+				);
+				banners.set(bannersResult.status === 'fulfilled' ? bannersResult.value : []);
+				tools.set(
+					toolsResult.status === 'fulfilled'
+						? (toolsResult.value as ToolsState)
+						: ([] as unknown as ToolsState)
+				);
+				prompts.set(
+					promptsResult.status === 'fulfilled'
+						? (promptsResult.value as PromptsState)
+						: ([] as PromptsState)
+				);
+
+				document.addEventListener('keydown', async function (event: KeyboardEvent) {
+					const isCtrlPressed = event.ctrlKey || event.metaKey; // metaKey is for Cmd key on Mac
+					// Check if the Shift key is pressed
+					const isShiftPressed = event.shiftKey;
+
+					// Check if Ctrl + Shift + O is pressed
+					if (isCtrlPressed && isShiftPressed && event.key.toLowerCase() === 'o') {
+						event.preventDefault();
+						document.getElementById('sidebar-new-chat-button')?.click();
+					}
+
+					// Check if Shift + Esc is pressed
+					if (isShiftPressed && event.key === 'Escape') {
+						event.preventDefault();
+						document.getElementById('chat-input')?.focus();
+					}
+
+					// Check if Ctrl + Shift + ; is pressed
+					if (isCtrlPressed && isShiftPressed && event.key === ';') {
+						event.preventDefault();
+						const button = [...document.getElementsByClassName('copy-code-button')]?.at(-1) as
+							| HTMLElement
+							| undefined;
+						button?.click();
+					}
+
+					// Check if Ctrl + Shift + C is pressed
+					if (isCtrlPressed && isShiftPressed && event.key.toLowerCase() === 'c') {
+						event.preventDefault();
+						const button = [...document.getElementsByClassName('copy-response-button')]?.at(-1) as
+							| HTMLElement
+							| undefined;
+						button?.click();
+					}
+
+					// Check if Ctrl + Shift + S is pressed
+					if (isCtrlPressed && isShiftPressed && event.key.toLowerCase() === 's') {
+						event.preventDefault();
+						document.getElementById('sidebar-toggle-button')?.click();
+					}
+
+					// Check if Ctrl + Shift + Backspace is pressed
+					if (
+						isCtrlPressed &&
+						isShiftPressed &&
+						(event.key === 'Backspace' || event.key === 'Delete')
+					) {
+						event.preventDefault();
+						document.getElementById('delete-chat-button')?.click();
+					}
+
+					// Check if Ctrl + . is pressed
+					if (isCtrlPressed && event.key === '.') {
+						event.preventDefault();
+						showSettings.set(!$showSettings);
+					}
+
+					// Check if Ctrl + / is pressed
+					if (isCtrlPressed && event.key === '/') {
+						event.preventDefault();
+						document.getElementById('show-shortcuts-button')?.click();
+					}
+
+					// Check if Ctrl + Shift + ' is pressed
+					if (isCtrlPressed && isShiftPressed && event.key.toLowerCase() === `'`) {
+						event.preventDefault();
+						temporaryChatEnabled.set(!$temporaryChatEnabled);
+						await goto('/');
+						const newChatButton = document.getElementById('new-chat-button');
+						setTimeout(() => {
+							newChatButton?.click();
+						}, 0);
+					}
+				});
+
+				const extendedSettings = $settings as typeof $settings & {
+					showChangelog?: boolean;
+					version?: string;
+				};
+				if ($user.role === 'admin' && (extendedSettings.showChangelog ?? true)) {
+					showChangelog.set((extendedSettings.version ?? '') !== ($config?.version ?? ''));
+				}
+
+				if ($page.url.searchParams.get('temporary-chat') === 'true') {
+					temporaryChatEnabled.set(true);
+				}
+				await tick();
+			}
+		} catch (error) {
+			console.error('Failed to initialize app layout', error);
+		} finally {
+			loaded = true;
+		}
 	});
 </script>
 
@@ -178,8 +259,8 @@
 	<div
 		class=" text-gray-700 dark:text-gray-100 bg-white dark:bg-gray-900 h-screen max-h-[100dvh] overflow-auto flex flex-row justify-end"
 	>
-		{#if loaded}
-			{#if !['user', 'admin', 'analyst', 'global_analyst'].includes($user.role)}
+		{#if loaded && $user}
+			{#if !hasAppAccess($user.role)}
 				<AccountPending />
 			{:else if localDBChats.length > 0}
 				<div class="fixed w-full h-full flex z-50">
@@ -211,6 +292,10 @@
 												type: 'application/json'
 											});
 											saveAs(blob, `chat-export-${Date.now()}.json`);
+
+											if (!DB) {
+												return;
+											}
 
 											const tx = DB.transaction('chats', 'readwrite');
 											await Promise.all([tx.store.clear(), tx.done]);

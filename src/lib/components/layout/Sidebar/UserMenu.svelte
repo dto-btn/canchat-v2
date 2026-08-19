@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { getI18n } from '$lib/utils/context';
 
 	import { DropdownMenu } from 'bits-ui';
@@ -11,11 +12,19 @@
 		activeUserIds,
 		USAGE_POOL,
 		mobile,
-		showSidebar
+		showSidebar,
+		user
 	} from '$lib/stores';
 	import { fade } from 'svelte/transition';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import { userSignOut } from '$lib/apis/auths';
+	import {
+		broadcastAuthSyncEvent,
+		clearAuthRecoveryCheckpoint,
+		clearAuthState,
+		endLogout,
+		startLogout
+	} from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -28,11 +37,13 @@
 
 	const dispatch = createEventDispatcher();
 
-	const changeFocus = async (elementId) => {
+	const changeFocus = async (elementId: string) => {
 		setTimeout(() => {
 			document.getElementById(elementId)?.focus();
 		}, 10);
 	};
+
+	const menuTransition = (event: any) => fade(event, { duration: 100 });
 
 	let liveRegionText = '';
 </script>
@@ -66,7 +77,7 @@
 			sideOffset={8}
 			side="bottom"
 			align="start"
-			transition={(e) => fade(e, { duration: 100 })}
+			transition={menuTransition}
 		>
 			<DropdownMenu.Item
 				class="flex rounded-md py-2 px-3 w-full hover:bg-gray-50 dark:hover:bg-gray-800 transition"
@@ -188,10 +199,20 @@
 			<DropdownMenu.Item
 				class="flex rounded-md py-2 px-3 w-full hover:bg-gray-50 dark:hover:bg-gray-800 transition"
 				on:click={async () => {
-					await userSignOut();
-					localStorage.removeItem('token');
-					location.href = '/auth';
-					show = false;
+					startLogout();
+
+					try {
+						await userSignOut();
+						clearAuthRecoveryCheckpoint();
+						broadcastAuthSyncEvent('logout');
+						await user.set(undefined);
+						clearAuthState();
+						await goto('/auth');
+						show = false;
+					} catch (error) {
+						endLogout();
+						throw error;
+					}
 				}}
 			>
 				<div class=" self-center mr-3">
@@ -216,7 +237,7 @@
 				<div class=" self-center truncate">{$i18n.t('Sign Out')}</div>
 			</DropdownMenu.Item>
 
-			{#if $activeUserIds?.length > 0}
+			{#if ($activeUserIds?.length ?? 0) > 0}
 				<hr class=" border-gray-50 dark:border-gray-850 my-1 p-0" />
 
 				<Tooltip

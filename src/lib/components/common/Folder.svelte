@@ -25,17 +25,17 @@
 
 	export let className = '';
 
-	let folderElement;
+	let folderElement: any;
 
 	let draggedOver = false;
 
-	const onDragOver = (e) => {
+	const onDragOver = (e: any) => {
 		e.preventDefault();
 		e.stopPropagation();
 		draggedOver = true;
 	};
 
-	const onDrop = (e) => {
+	const onDrop = (e: any) => {
 		e.preventDefault();
 		e.stopPropagation();
 
@@ -54,7 +54,7 @@
 									const fileContent = JSON.parse(event.target.result);
 									open = true;
 									dispatch('import', fileContent);
-								} catch (error) {
+								} catch (error: any) {
 									console.error('Error parsing JSON file:', error);
 								}
 							};
@@ -79,7 +79,7 @@
 		}
 	};
 
-	const onDragLeave = (e) => {
+	const onDragLeave = (e: any) => {
 		e.preventDefault();
 		e.stopPropagation();
 
@@ -96,10 +96,10 @@
 	});
 
 	onDestroy(() => {
-		if (!dragAndDrop) {
+		if (!dragAndDrop || !folderElement) {
 			return;
 		}
-		folderElement.addEventListener('dragover', onDragOver);
+		folderElement.removeEventListener('dragover', onDragOver);
 		folderElement.removeEventListener('drop', onDrop);
 		folderElement.removeEventListener('dragleave', onDragLeave);
 	});

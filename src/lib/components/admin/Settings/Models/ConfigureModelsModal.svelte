@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	import { toast } from 'svelte-sonner';
@@ -17,15 +17,16 @@
 	import { getModelsConfig, setModelsConfig } from '$lib/apis/configs';
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import Minus from '$lib/components/icons/Minus.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	export let show = false;
-	export let initHandler = () => {};
+	export let initHandler: () => void = () => {};
 
-	let config = null;
+	let config: any = null;
 
 	let selectedModelId = '';
-	let defaultModelIds = [];
-	let modelIds = [];
+	let defaultModelIds: any[] = [];
+	let modelIds: any[] = [];
 
 	let loading = false;
 	let showResetModal = false;
@@ -53,10 +54,10 @@
 	};
 
 	const init = async () => {
-		config = await getModelsConfig(localStorage.token);
+		config = await getModelsConfig(getRequestToken());
 
 		if (config?.DEFAULT_MODELS) {
-			defaultModelIds = (config?.DEFAULT_MODELS).split(',').filter((id) => id);
+			defaultModelIds = (config?.DEFAULT_MODELS).split(',').filter((id: any) => id);
 		} else {
 			defaultModelIds = [];
 		}
@@ -68,7 +69,7 @@
 
 		modelIds = [
 			// Add all IDs from MODEL_ORDER_LIST that exist in allModelIds
-			...modelOrderList.filter((id) => orderedSet.has(id) && allModelIds.includes(id)),
+			...modelOrderList.filter((id: any) => orderedSet.has(id) && allModelIds.includes(id)),
 			// Add remaining IDs not in MODEL_ORDER_LIST, sorted alphabetically
 			...allModelIds.filter((id) => !orderedSet.has(id)).sort((a, b) => a.localeCompare(b))
 		];
@@ -76,7 +77,7 @@
 	const submitHandler = async () => {
 		loading = true;
 
-		const res = await setModelsConfig(localStorage.token, {
+		const res = await setModelsConfig(getRequestToken(), {
 			DEFAULT_MODELS: defaultModelIds.join(','),
 			MODEL_ORDER_LIST: modelIds
 		});
@@ -102,7 +103,7 @@
 	message={$i18n.t('This will delete all models including custom models and cannot be undone.')}
 	bind:show={showResetModal}
 	onConfirm={async () => {
-		const res = deleteAllModels(localStorage.token);
+		const res = deleteAllModels(getRequestToken());
 		if (res) {
 			toast.success($i18n.t('All models deleted successfully'));
 			initHandler();

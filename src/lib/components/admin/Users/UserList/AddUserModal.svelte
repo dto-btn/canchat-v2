@@ -8,6 +8,7 @@
 	import { WEBUI_BASE_URL } from '$lib/constants';
 
 	import Modal from '$lib/components/common/Modal.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 	const dispatch = createEventDispatcher();
@@ -16,7 +17,7 @@
 
 	let loading = false;
 	let tab = '';
-	let inputFiles;
+	let inputFiles: any;
 
 	let _user = {
 		name: '',
@@ -44,7 +45,7 @@
 			loading = true;
 
 			const res = await addUser(
-				localStorage.token,
+				getRequestToken(),
 				_user.name,
 				_user.email,
 				_user.password,
@@ -71,7 +72,7 @@
 					let userCount = 0;
 
 					for (const [idx, row] of rows.entries()) {
-						const columns = row.split(',').map((col) => col.trim());
+						const columns = row.split(',').map((col: any) => col.trim());
 						if (idx > 0) {
 							if (
 								columns.length === 4 &&
@@ -80,7 +81,7 @@
 								)
 							) {
 								const res = await addUser(
-									localStorage.token,
+									getRequestToken(),
 									columns[0],
 									columns[1],
 									columns[2],

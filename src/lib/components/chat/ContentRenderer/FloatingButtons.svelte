@@ -12,11 +12,16 @@
 	import LightBlub from '$lib/components/icons/LightBlub.svelte';
 	import Markdown from '../Messages/Markdown.svelte';
 	import Skeleton from '../Messages/Skeleton.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	export let id = '';
-	export let model = null;
-	export let messages = [];
-	export let onAdd = () => {};
+	export let model: any = null;
+	export let messages: any[] = [];
+	export let onAdd: (payload: {
+		modelId: string;
+		parentId: string;
+		messages: any[];
+	}) => void = () => {};
 
 	let floatingInput = false;
 
@@ -24,7 +29,7 @@
 	let floatingInputValue = '';
 
 	let prompt = '';
-	let responseContent = null;
+	let responseContent: any = null;
 	let responseDone = false;
 
 	const autoScroll = async () => {
@@ -47,7 +52,7 @@
 		floatingInputValue = '';
 
 		responseContent = '';
-		const [res, controller] = await chatCompletion(localStorage.token, {
+		const [res, controller] = await chatCompletion(getRequestToken(), {
 			model: model,
 			messages: [
 				...messages,
@@ -99,7 +104,7 @@
 
 										autoScroll();
 									}
-								} catch (e) {
+								} catch (e: any) {
 									console.error(e);
 								}
 							}
@@ -123,7 +128,7 @@
 		prompt = `Explain this section to me in more detail\n\n\`\`\`\n${selectedText}\n\`\`\``;
 
 		responseContent = '';
-		const [res, controller] = await chatCompletion(localStorage.token, {
+		const [res, controller] = await chatCompletion(getRequestToken(), {
 			model: model,
 			messages: [
 				...messages,
@@ -175,7 +180,7 @@
 
 										autoScroll();
 									}
-								} catch (e) {
+								} catch (e: any) {
 									console.error(e);
 								}
 							}

@@ -5,6 +5,7 @@
 	import { tags } from '$lib/stores';
 	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
 	import { fade } from 'svelte/transition';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const dispatch = createEventDispatcher();
 	const i18n = getI18n();
@@ -97,11 +98,11 @@
 
 	const initTags = async () => {
 		loading = true;
-		await tags.set(await getAllTags(localStorage.token));
+		await tags.set(await getAllTags(getRequestToken()));
 		loading = false;
 	};
 
-	const documentClickHandler = (e) => {
+	const documentClickHandler = (e: any) => {
 		const searchContainer = document.getElementById('search-container');
 		const chatSearch = document.getElementById('chat-search');
 
@@ -114,7 +115,7 @@
 	};
 
 	// Handle storage events for locale changes
-	const handleStorageChange = (event) => {
+	const handleStorageChange = (event: any) => {
 		if (event?.detail?.locale || (event?.key === 'locale' && event?.newValue)) {
 			// Force options and tagPrefixes to update by triggering reactivity
 			options = [

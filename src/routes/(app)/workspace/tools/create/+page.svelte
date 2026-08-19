@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	import { goto } from '$app/navigation';
@@ -9,14 +9,15 @@
 	import { compareVersion, extractFrontmatter } from '$lib/utils';
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
 	let mounted = false;
 	let clone = false;
-	let tool = null;
+	let tool: any = null;
 
-	const saveHandler = async (data) => {
+	const saveHandler = async (data: any) => {
 		const manifest = extractFrontmatter(data.content);
 		if (compareVersion(manifest?.required_open_webui_version ?? '0.0.0', WEBUI_VERSION)) {
 			toast.error(
@@ -31,7 +32,7 @@
 			return;
 		}
 
-		const res = await createNewTool(localStorage.token, {
+		const res = await createNewTool(getRequestToken(), {
 			id: data.id,
 			name: data.name,
 			meta: data.meta,
@@ -44,7 +45,7 @@
 
 		if (res) {
 			toast.success($i18n.t('Tool created successfully'));
-			tools.set(await getTools(localStorage.token));
+			tools.set(await getTools(getRequestToken()));
 
 			await goto('/workspace/tools');
 		}

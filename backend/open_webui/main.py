@@ -85,6 +85,7 @@ from open_webui.routers import (
     knowledge,
     prompts,
     evaluations,
+    terms,
     tools,
     users,
     jira,
@@ -222,6 +223,8 @@ from open_webui.config import (
     ADMIN_EMAIL,
     SHOW_ADMIN_DETAILS,
     JWT_EXPIRES_IN,
+    ACCESS_TOKEN_EXPIRES_IN,
+    REFRESH_TOKEN_EXPIRES_IN,
     ENABLE_SIGNUP,
     ENABLE_LOGIN_FORM,
     ENABLE_API_KEY,
@@ -315,8 +318,8 @@ from open_webui.utils.middleware import process_chat_payload, process_chat_respo
 from open_webui.utils.access_control import has_access
 
 from open_webui.utils.auth import (
-    decode_token,
     get_admin_user,
+    get_current_user_optional,
     get_verified_user,
 )
 from open_webui.utils.oauth import oauth_manager
@@ -629,6 +632,8 @@ app.state.config.ENABLE_API_KEY_ENDPOINT_RESTRICTIONS = (
 app.state.config.API_KEY_ALLOWED_ENDPOINTS = API_KEY_ALLOWED_ENDPOINTS
 
 app.state.config.JWT_EXPIRES_IN = JWT_EXPIRES_IN
+app.state.config.ACCESS_TOKEN_EXPIRES_IN = ACCESS_TOKEN_EXPIRES_IN
+app.state.config.REFRESH_TOKEN_EXPIRES_IN = REFRESH_TOKEN_EXPIRES_IN
 
 app.state.config.SHOW_ADMIN_DETAILS = SHOW_ADMIN_DETAILS
 app.state.config.ADMIN_EMAIL = ADMIN_EMAIL
@@ -1145,6 +1150,7 @@ app.include_router(
 app.include_router(utils.router, prefix="/api/v1/utils", tags=["utils"])
 app.include_router(jira.router, prefix="/api/v1/jira", tags=["jira"])
 app.include_router(metrics.router, prefix="/api/v1/metrics", tags=["metrics"])
+app.include_router(terms.router, prefix="/api/v1/terms", tags=["terms"])
 app.include_router(crew_mcp.router, prefix="/api/v1/crew-mcp", tags=["crew-mcp"])
 
 
@@ -1328,20 +1334,7 @@ async def list_tasks_endpoint(request: Request, user=Depends(get_verified_user))
 
 
 @app.get("/api/config")
-async def get_app_config(request: Request):
-    user = None
-    if "token" in request.cookies:
-        token = request.cookies.get("token")
-        try:
-            data = decode_token(token)
-        except Exception as e:
-            log.debug(e)
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token",
-            )
-        if data is not None and "id" in data:
-            user = Users.get_user_by_id(data["id"])
+async def get_app_config(request: Request, user=Depends(get_current_user_optional)):
 
     onboarding = False
     if user is None:

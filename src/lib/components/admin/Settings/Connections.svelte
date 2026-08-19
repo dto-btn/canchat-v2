@@ -20,26 +20,27 @@
 	import OpenAIConnection from './Connections/OpenAIConnection.svelte';
 	import AddConnectionModal from './Connections/AddConnectionModal.svelte';
 	import OllamaConnection from './Connections/OllamaConnection.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
 	const getModels = async () => {
-		const models = await _getModels(localStorage.token);
+		const models = await _getModels(getRequestToken());
 		return models;
 	};
 
 	// External
 	let OLLAMA_BASE_URLS = [''];
-	let OLLAMA_API_CONFIGS = {};
+	let OLLAMA_API_CONFIGS: Record<string, any> = {};
 
 	let OPENAI_API_KEYS = [''];
 	let OPENAI_API_BASE_URLS = [''];
-	let OPENAI_API_CONFIGS = {};
+	let OPENAI_API_CONFIGS: Record<string, any> = {};
 
 	let ENABLE_OPENAI_API: null | boolean = null;
 	let ENABLE_OLLAMA_API: null | boolean = null;
 
-	let pipelineUrls = {};
+	let pipelineUrls: Record<string, any> = {};
 	let showAddOpenAIConnectionModal = false;
 	let showAddOllamaConnectionModal = false;
 
@@ -64,7 +65,7 @@
 				}
 			}
 
-			const res = await updateOpenAIConfig(localStorage.token, {
+			const res = await updateOpenAIConfig(getRequestToken(), {
 				ENABLE_OPENAI_API: ENABLE_OPENAI_API,
 				OPENAI_API_BASE_URLS: OPENAI_API_BASE_URLS,
 				OPENAI_API_KEYS: OPENAI_API_KEYS,
@@ -85,7 +86,7 @@
 			// Remove trailing slashes
 			OLLAMA_BASE_URLS = OLLAMA_BASE_URLS.map((url) => url.replace(/\/$/, ''));
 
-			const res = await updateOllamaConfig(localStorage.token, {
+			const res = await updateOllamaConfig(getRequestToken(), {
 				ENABLE_OLLAMA_API: ENABLE_OLLAMA_API,
 				OLLAMA_BASE_URLS: OLLAMA_BASE_URLS,
 				OLLAMA_API_CONFIGS: OLLAMA_API_CONFIGS
@@ -100,7 +101,7 @@
 		}
 	};
 
-	const addOpenAIConnectionHandler = async (connection) => {
+	const addOpenAIConnectionHandler = async (connection: any) => {
 		OPENAI_API_BASE_URLS = [...OPENAI_API_BASE_URLS, connection.url];
 		OPENAI_API_KEYS = [...OPENAI_API_KEYS, connection.key];
 		OPENAI_API_CONFIGS[OPENAI_API_BASE_URLS.length] = connection.config;
@@ -108,7 +109,7 @@
 		await updateOpenAIHandler();
 	};
 
-	const addOllamaConnectionHandler = async (connection) => {
+	const addOllamaConnectionHandler = async (connection: any) => {
 		OLLAMA_BASE_URLS = [...OLLAMA_BASE_URLS, connection.url];
 		OLLAMA_API_CONFIGS[OLLAMA_BASE_URLS.length] = connection.config;
 
@@ -117,15 +118,15 @@
 
 	onMount(async () => {
 		if ($user.role === 'admin') {
-			let ollamaConfig = {};
-			let openaiConfig = {};
+			let ollamaConfig: Record<string, any> = {};
+			let openaiConfig: Record<string, any> = {};
 
 			await Promise.all([
 				(async () => {
-					ollamaConfig = await getOllamaConfig(localStorage.token);
+					ollamaConfig = await getOllamaConfig(getRequestToken());
 				})(),
 				(async () => {
-					openaiConfig = await getOpenAIConfig(localStorage.token);
+					openaiConfig = await getOpenAIConfig(getRequestToken());
 				})()
 			]);
 
@@ -153,7 +154,7 @@
 					if (!(OPENAI_API_CONFIGS[idx]?.enable ?? true)) {
 						return;
 					}
-					const res = await getOpenAIModels(localStorage.token, idx);
+					const res = await getOpenAIModels(getRequestToken(), idx);
 					if (res.pipelines) {
 						pipelineUrls[url] = true;
 					}

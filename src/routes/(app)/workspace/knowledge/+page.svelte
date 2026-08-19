@@ -4,11 +4,12 @@
 
 	import { getKnowledgeBases } from '$lib/apis/knowledge';
 	import Knowledge from '$lib/components/workspace/Knowledge.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	onMount(async () => {
 		await Promise.all([
 			(async () => {
-				knowledge.set(await getKnowledgeBases(localStorage.token));
+				knowledge.set(await getKnowledgeBases(getRequestToken()));
 			})()
 		]);
 	});

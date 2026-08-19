@@ -6,6 +6,7 @@
 
 	import { config } from '$lib/stores';
 	import { getBackendConfig } from '$lib/apis';
+	import { getRequestToken } from '$lib/services/auth';
 	import Database from './Settings/Database.svelte';
 
 	import General from './Settings/General.svelte';
@@ -415,7 +416,7 @@
 					toast.success($i18n.t('Settings saved successfully!'));
 
 					await tick();
-					await config.set(await getBackendConfig());
+					await config.set((await getBackendConfig(getRequestToken())) ?? undefined);
 				}}
 			/>
 		{:else if selectedTab === 'connections'}
@@ -440,7 +441,7 @@
 					toast.success($i18n.t('Settings saved successfully!'));
 
 					await tick();
-					await config.set(await getBackendConfig());
+					await config.set((await getBackendConfig(getRequestToken())) ?? undefined);
 				}}
 			/>
 		{:else if selectedTab === 'web'}
@@ -449,7 +450,7 @@
 					toast.success($i18n.t('Settings saved successfully!'));
 
 					await tick();
-					await config.set(await getBackendConfig());
+					await config.set((await getBackendConfig()) ?? undefined);
 				}}
 			/>
 		{:else if selectedTab === 'grounding'}
@@ -458,7 +459,7 @@
 					toast.success($i18n.t('Settings saved successfully!'));
 
 					await tick();
-					await config.set(await getBackendConfig());
+					await config.set((await getBackendConfig(getRequestToken())) ?? undefined);
 				}}
 			/>
 		{:else if selectedTab === 'interface'}

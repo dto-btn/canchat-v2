@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	import { createEventDispatcher, tick } from 'svelte';
@@ -13,7 +13,7 @@
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import ChevronLeft from '$lib/components/icons/ChevronLeft.svelte';
 
-	let formElement = null;
+	let formElement: any = null;
 	let loading = false;
 	let showConfirm = false;
 
@@ -40,7 +40,7 @@
 		id = name.replace(/\s+/g, '_').toLowerCase();
 	}
 
-	let codeEditor;
+	let codeEditor: any;
 	let boilerplate = `"""
 title: Example Filter
 author: open-webui

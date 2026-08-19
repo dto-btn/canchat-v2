@@ -4,6 +4,7 @@
 	import WikipediaGroundingConfig from './grounding/WikipediaGroundingConfig.svelte';
 	import { updateRAGConfig } from '$lib/apis/retrieval';
 	import { toast } from 'svelte-sonner';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
@@ -16,7 +17,7 @@
 		loading = true;
 
 		try {
-			const res = await updateRAGConfig(localStorage.token, {
+			const res = await updateRAGConfig(getRequestToken(), {
 				enable_wikipedia_grounding: wikipediaConfig.enabled
 			});
 

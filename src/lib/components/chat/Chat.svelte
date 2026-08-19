@@ -37,7 +37,6 @@
 		chatTitle,
 		showArtifacts,
 		tools,
-		suggestionCycle,
 		initNewChatAction
 	} from '$lib/stores';
 	import {
@@ -72,19 +71,20 @@
 	import ChatControls from './ChatControls.svelte';
 	import EventConfirmDialog from '../common/ConfirmDialog.svelte';
 	import Placeholder from './Placeholder.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	export let chatIdProp = '';
 
 	let loaded = false;
 	const eventTarget = new EventTarget();
-	let controlPane;
-	let controlPaneComponent;
+	let controlPane: any;
+	let controlPaneComponent: any;
 
 	let autoScroll = true;
 	let processing = '';
 	let messagesContainerElement: HTMLDivElement;
 
-	let navbarElement;
+	let navbarElement: any;
 
 	let showEventConfirmation = false;
 	let eventConfirmationTitle = '';
@@ -92,13 +92,13 @@
 	let eventConfirmationInput = false;
 	let eventConfirmationInputPlaceholder = '';
 	let eventConfirmationInputValue = '';
-	let eventCallback = null;
+	let eventCallback: any = null;
 
 	let chatIdUnsubscriber: Unsubscriber | undefined;
 
 	let selectedModels = [''];
 	let atSelectedModel: Model | undefined;
-	let selectedModelIds = [];
+	let selectedModelIds: any[] = [];
 	$: selectedModelIds = atSelectedModel !== undefined ? [atSelectedModel.id] : selectedModels;
 
 	let chat = null;
@@ -107,7 +107,7 @@
 	let stoppedResponseIds: Record<string, boolean> = {};
 
 	// Default transient state values
-	const TRANSIENT_DEFAULTS = {
+	const TRANSIENT_DEFAULTS: any = {
 		prompt: '',
 		files: [],
 		selectedToolIds: [],
@@ -128,12 +128,12 @@
 	let webSearchEnabled = TRANSIENT_DEFAULTS.webSearchEnabled;
 	let wikiGroundingEnabled = TRANSIENT_DEFAULTS.wikiGroundingEnabled;
 	let wikiGroundingMode = TRANSIENT_DEFAULTS.wikiGroundingMode;
-	let history = structuredClone(TRANSIENT_DEFAULTS.history);
+	let history: any = structuredClone(TRANSIENT_DEFAULTS.history);
 	let chatFiles = TRANSIENT_DEFAULTS.chatFiles;
-	let params = TRANSIENT_DEFAULTS.params;
+	let params: Record<string, any> = TRANSIENT_DEFAULTS.params;
 
 	// Chat Input Handler for draft saving
-	const handleInputChange = (input) => {
+	const handleInputChange = (input: any) => {
 		if ($chatId) {
 			if (input.prompt) {
 				localStorage.setItem(`chat-input-${$chatId}`, JSON.stringify(input));
@@ -164,12 +164,12 @@
 			resetTransientChatInputState();
 
 			// Restore from localStorage if available
-			let storedInput = null;
+			let storedInput: any = null;
 			const storedData = localStorage.getItem(`chat-input-${chatIdProp}`);
 			if (storedData) {
 				try {
 					storedInput = JSON.parse(storedData);
-				} catch (e) {}
+				} catch (e: any) {}
 			}
 
 			// Override with stored values if available
@@ -220,7 +220,7 @@
 
 	const setToolIds = async () => {
 		if (!$tools) {
-			tools.set(await getTools(localStorage.token));
+			tools.set(await getTools(getRequestToken()));
 		}
 
 		if (selectedModels.length !== 1) {
@@ -228,13 +228,13 @@
 		}
 		const model = $models.find((m) => m.id === selectedModels[0]);
 		if (model) {
-			selectedToolIds = (model?.info?.meta?.toolIds ?? []).filter((id) =>
-				$tools.find((t) => t.id === id)
+			selectedToolIds = (model?.info?.meta?.toolIds ?? []).filter((id: any) =>
+				$tools.find((t: any) => t.id === id)
 			);
 		}
 	};
 
-	const showMessage = async (message) => {
+	const showMessage = async (message: any) => {
 		const _chatId = JSON.parse(JSON.stringify($chatId));
 		let _messageId = JSON.parse(JSON.stringify(message.id));
 
@@ -350,7 +350,7 @@
 						}
 
 						const existingCodeExecutionIndex = message.code_executions.findIndex(
-							(execution) => execution.id === data.id
+							(execution: any) => execution.id === data.id
 						);
 
 						if (existingCodeExecutionIndex !== -1) {
@@ -373,10 +373,10 @@
 				} else if (type === 'chat:title') {
 					chatTitle.set(data);
 					currentChatPage.set(1);
-					await chats.set(await getChatList(localStorage.token, $currentChatPage));
+					await chats.set(await getChatList(getRequestToken(), $currentChatPage));
 				} else if (type === 'chat:tags') {
-					chat = await getChatById(localStorage.token, $chatId);
-					allTags.set(await getAllTags(localStorage.token));
+					chat = await getChatById(getRequestToken(), $chatId);
+					allTags.set(await getAllTags(getRequestToken()));
 				} else if (type === 'message') {
 					message.content += data.content;
 				} else if (type === 'replace') {
@@ -408,7 +408,7 @@
 						if (cb) {
 							cb(result);
 						}
-					} catch (error) {
+					} catch (error: any) {
 						console.error('Error executing code:', error);
 					}
 				} else if (type === 'input') {
@@ -513,7 +513,7 @@
 					wikiGroundingEnabled = input.wikiGroundingEnabled || false;
 					imageGenerationEnabled = input.imageGenerationEnabled;
 				}
-			} catch (e) {
+			} catch (e: any) {
 				resetTransientChatInputState();
 			}
 		}
@@ -526,7 +526,7 @@
 					} else {
 						controlPane.collapse();
 					}
-				} catch (e) {
+				} catch (e: any) {
 					// ignore
 				}
 			}
@@ -553,7 +553,7 @@
 
 	// File upload functions
 
-	const uploadGoogleDriveFile = async (fileData) => {
+	const uploadGoogleDriveFile = async (fileData: any) => {
 		// Validate input
 		if (!fileData?.id || !fileData?.name || !fileData?.url || !fileData?.headers?.Authorization) {
 			throw new Error('Invalid file data provided');
@@ -612,7 +612,7 @@
 			}
 
 			// Upload file to server
-			const uploadedFile = await uploadFile(localStorage.token, file);
+			const uploadedFile = await uploadFile(getRequestToken(), file);
 
 			if (!uploadedFile) {
 				throw new Error('Server returned null response for file upload');
@@ -628,8 +628,8 @@
 
 			files = files;
 			toast.success($i18n.t('File uploaded successfully'));
-		} catch (e) {
-			files = files.filter((f) => f.itemId !== tempItemId);
+		} catch (e: any) {
+			files = files.filter((f: any) => f.itemId !== tempItemId);
 			toast.error(
 				$i18n.t('Error uploading file: {{error}}', {
 					error: e.message || 'Unknown error'
@@ -638,7 +638,7 @@
 		}
 	};
 
-	const uploadWeb = async (url) => {
+	const uploadWeb = async (url: any) => {
 		const fileItem = {
 			type: 'doc',
 			name: url,
@@ -650,7 +650,7 @@
 
 		try {
 			files = [...files, fileItem];
-			const res = await processWeb(localStorage.token, '', url);
+			const res = await processWeb(getRequestToken(), '', url);
 
 			if (res) {
 				fileItem.status = 'uploaded';
@@ -662,14 +662,14 @@
 
 				files = files;
 			}
-		} catch (e) {
+		} catch (e: any) {
 			// Remove the failed doc from the files array
-			files = files.filter((f) => f.name !== url);
+			files = files.filter((f: any) => f.name !== url);
 			toast.error(JSON.stringify(e));
 		}
 	};
 
-	const uploadYoutubeTranscription = async (url) => {
+	const uploadYoutubeTranscription = async (url: any) => {
 		const fileItem = {
 			type: 'doc',
 			name: url,
@@ -682,7 +682,7 @@
 
 		try {
 			files = [...files, fileItem];
-			const res = await processYoutubeVideo(localStorage.token, url);
+			const res = await processYoutubeVideo(getRequestToken(), url);
 
 			if (res) {
 				fileItem.status = 'uploaded';
@@ -693,9 +693,9 @@
 				};
 				files = files;
 			}
-		} catch (e) {
+		} catch (e: any) {
 			// Remove the failed doc from the files array
-			files = files.filter((f) => f.name !== url);
+			files = files.filter((f: any) => f.name !== url);
 			toast.error(e);
 		}
 	};
@@ -823,7 +823,7 @@
 			$models.map((m) => m.id).includes(modelId) ? modelId : ''
 		);
 
-		const userSettings = await getUserSettings(localStorage.token);
+		const userSettings = await getUserSettings(getRequestToken());
 
 		if (userSettings) {
 			settings.set(userSettings.ui);
@@ -836,13 +836,13 @@
 
 	const loadChat = async () => {
 		chatId.set(chatIdProp);
-		chat = await getChatById(localStorage.token, $chatId).catch(async (error) => {
+		chat = await getChatById(getRequestToken(), $chatId).catch(async (error) => {
 			await goto('/');
 			return null;
 		});
 
 		if (chat) {
-			tags = await getTagsById(localStorage.token, $chatId).catch(async (error) => {
+			tags = await getTagsById(getRequestToken(), $chatId).catch(async (error) => {
 				return [];
 			});
 
@@ -860,7 +860,7 @@
 
 				chatTitle.set(chatContent.title);
 
-				const userSettings = await getUserSettings(localStorage.token);
+				const userSettings = await getUserSettings(getRequestToken());
 
 				if (userSettings) {
 					await settings.set(userSettings.ui);
@@ -893,7 +893,7 @@
 		}
 	};
 
-	const createMessagesList = (responseMessageId) => {
+	const createMessagesList = (responseMessageId: any): any[] => {
 		if (responseMessageId === null) {
 			return [];
 		}
@@ -906,10 +906,15 @@
 		}
 	};
 
-	const chatCompletedHandler = async (chatId, modelId, responseMessageId, messages) => {
-		const res = await chatCompleted(localStorage.token, {
+	const chatCompletedHandler = async (
+		chatId: any,
+		modelId: any,
+		responseMessageId: any,
+		messages: any
+	) => {
+		const res = await chatCompleted(getRequestToken(), {
 			model: modelId,
-			messages: messages.map((m) => ({
+			messages: messages.map((m: any) => ({
 				id: m.id,
 				role: m.role,
 				content: m.content,
@@ -947,7 +952,7 @@
 
 		if ($chatId == chatId) {
 			if (!$temporaryChatEnabled) {
-				chat = await updateChatById(localStorage.token, chatId, {
+				chat = await updateChatById(getRequestToken(), chatId, {
 					models: selectedModels,
 					messages: messages,
 					history: history,
@@ -956,17 +961,23 @@
 				});
 
 				currentChatPage.set(1);
-				await chats.set(await getChatList(localStorage.token, $currentChatPage));
+				await chats.set(await getChatList(getRequestToken(), $currentChatPage));
 			}
 		}
 	};
 
-	const chatActionHandler = async (chatId, actionId, modelId, responseMessageId, event = null) => {
+	const chatActionHandler = async (
+		chatId: any,
+		actionId: any,
+		modelId: any,
+		responseMessageId: any,
+		event = null
+	) => {
 		const messages = createMessagesList(responseMessageId);
 
-		const res = await chatAction(localStorage.token, actionId, {
+		const res = await chatAction(getRequestToken(), actionId, {
 			model: modelId,
-			messages: messages.map((m) => ({
+			messages: messages.map((m: any) => ({
 				id: m.id,
 				role: m.role,
 				content: m.content,
@@ -999,7 +1010,7 @@
 
 		if ($chatId == chatId) {
 			if (!$temporaryChatEnabled) {
-				chat = await updateChatById(localStorage.token, chatId, {
+				chat = await updateChatById(getRequestToken(), chatId, {
 					models: selectedModels,
 					messages: messages,
 					history: history,
@@ -1008,7 +1019,7 @@
 				});
 
 				currentChatPage.set(1);
-				await chats.set(await getChatList(localStorage.token, $currentChatPage));
+				await chats.set(await getChatList(getRequestToken(), $currentChatPage));
 			}
 		}
 	};
@@ -1023,7 +1034,7 @@
 		}, 1000);
 	};
 
-	const createMessagePair = async (userPrompt) => {
+	const createMessagePair = async (userPrompt: any) => {
 		prompt = '';
 		if (selectedModels.length === 0) {
 			toast.error($i18n.t('Model not selected'));
@@ -1083,7 +1094,7 @@
 		}
 	};
 
-	const addMessages = async ({ modelId, parentId, messages }) => {
+	const addMessages = async ({ modelId, parentId, messages }: any) => {
 		const model = $models.filter((m) => m.id === modelId).at(0);
 
 		let parentMessage = history.messages[parentId];
@@ -1146,7 +1157,7 @@
 		}
 	};
 
-	const chatCompletionEventHandler = async (data, message, chatId) => {
+	const chatCompletionEventHandler = async (data: any, message: any, chatId: any) => {
 		const { id, done, choices, content, sources, selected_model_id, error, usage } = data;
 
 		if (error) {
@@ -1282,7 +1293,7 @@
 	// Chat functions
 	//////////////////////////
 
-	const submitPrompt = async (userPrompt, { _raw = false } = {}) => {
+	const submitPrompt = async (userPrompt: any, { _raw = false } = {}) => {
 		const messages = createMessagesList(history.currentId);
 		const _selectedModels = selectedModels.map((modelId) =>
 			$models.map((m) => m.id).includes(modelId) ? modelId : ''
@@ -1311,7 +1322,7 @@
 		}
 		if (
 			files.length > 0 &&
-			files.filter((file) => file.type !== 'image' && file.status === 'uploading').length > 0
+			files.filter((file: any) => file.type !== 'image' && file.status === 'uploading').length > 0
 		) {
 			toast.error(
 				$i18n.t(`Oops! There are files still uploading. Please wait for the upload to complete.`)
@@ -1341,11 +1352,13 @@
 		}
 
 		const _files = JSON.parse(JSON.stringify(files));
-		chatFiles.push(..._files.filter((item) => ['doc', 'file', 'collection'].includes(item.type)));
+		chatFiles.push(
+			..._files.filter((item: any) => ['doc', 'file', 'collection'].includes(item.type))
+		);
 		chatFiles = chatFiles.filter(
 			// Remove duplicates
-			(item, index, array) =>
-				array.findIndex((i) => JSON.stringify(i) === JSON.stringify(item)) === index
+			(item: any, index: any, array: any[]) =>
+				array.findIndex((i: any) => JSON.stringify(i) === JSON.stringify(item)) === index
 		);
 
 		files = [];
@@ -1457,8 +1470,8 @@
 				if (model) {
 					const messages = createMessagesList(parentId);
 					// If there are image files, check if model is vision capable
-					const hasImages = messages.some((message) =>
-						message.files?.some((file) => file.type === 'image')
+					const hasImages = messages.some((message: any) =>
+						message.files?.some((file: any) => file.type === 'image')
 					);
 
 					if (hasImages && !(model.info?.meta?.capabilities?.vision ?? true)) {
@@ -1473,7 +1486,7 @@
 						responseMessageIds[`${modelId}-${modelIdx ? modelIdx : _modelIdx}`];
 					let responseMessage = history.messages[responseMessageId];
 
-					let userContext = null;
+					let userContext: any = null;
 					responseMessage.userContext = userContext;
 
 					// Web search/wiki grounding are exclusive with tool execution
@@ -1554,7 +1567,7 @@
 								if ($chatId && !$temporaryChatEnabled) {
 									const messages = createMessagesList(responseMessageId);
 
-									chat = await updateChatById(localStorage.token, $chatId, {
+									chat = await updateChatById(getRequestToken(), $chatId, {
 										models: selectedModels,
 										messages: messages,
 										history: history,
@@ -1563,7 +1576,7 @@
 									});
 
 									currentChatPage.set(1);
-									await chats.set(await getChatList(localStorage.token, $currentChatPage));
+									await chats.set(await getChatList(getRequestToken(), $currentChatPage));
 								}
 
 								// Don't call chatCompletedHandler for CrewAI responses to avoid 400 error
@@ -1571,7 +1584,7 @@
 							} else {
 								throw new Error($i18n.t('CrewAI returned no result'));
 							}
-						} catch (error) {
+						} catch (error: any) {
 							console.error('CrewAI Error:', error);
 							const errorMessage = (error as Error).message || String(error);
 							const localizedErrorMessage = $i18n.t(errorMessage);
@@ -1590,7 +1603,7 @@
 							await tick();
 							if ($chatId && !$temporaryChatEnabled) {
 								const messages = createMessagesList(responseMessageId);
-								chat = await updateChatById(localStorage.token, $chatId, {
+								chat = await updateChatById(getRequestToken(), $chatId, {
 									models: selectedModels,
 									messages: messages,
 									history: history,
@@ -1618,24 +1631,26 @@
 		);
 
 		currentChatPage.set(1);
-		chats.set(await getChatList(localStorage.token, $currentChatPage));
+		chats.set(await getChatList(getRequestToken(), $currentChatPage));
 	};
 
-	const sendPromptSocket = async (model, responseMessageId, _chatId) => {
+	const sendPromptSocket = async (model: any, responseMessageId: any, _chatId: any) => {
 		const responseMessage = history.messages[responseMessageId];
 		const userMessage = history.messages[responseMessage.parentId];
 
 		let files = JSON.parse(JSON.stringify(chatFiles));
 		files.push(
-			...(userMessage?.files ?? []).filter((item) =>
+			...(userMessage?.files ?? []).filter((item: any) =>
 				['doc', 'file', 'collection'].includes(item.type)
 			),
-			...(responseMessage?.files ?? []).filter((item) => ['web_search_results'].includes(item.type))
+			...(responseMessage?.files ?? []).filter((item: any) =>
+				['web_search_results'].includes(item.type)
+			)
 		);
 		// Remove duplicates
 		files = files.filter(
-			(item, index, array) =>
-				array.findIndex((i) => JSON.stringify(i) === JSON.stringify(item)) === index
+			(item: any, index: any, array: any) =>
+				array.findIndex((i: any) => JSON.stringify(i) === JSON.stringify(item)) === index
 		);
 
 		scrollToBottom();
@@ -1667,7 +1682,7 @@
 								params?.system ?? $settings?.system ?? '',
 								$user.name,
 								$settings?.userLocation
-									? await getAndUpdateUserLocation(localStorage.token)
+									? await getAndUpdateUserLocation(getRequestToken())
 									: undefined,
 								userTimezone
 							);
@@ -1678,7 +1693,7 @@
 						}`
 					}
 				: undefined,
-			...createMessagesList(responseMessageId).map((message) => ({
+			...createMessagesList(responseMessageId).map((message: any) => ({
 				...message,
 				content: removeDetailsWithReasoning(message.content)
 			}))
@@ -1686,7 +1701,7 @@
 			.filter((message) => message?.content?.trim())
 			.map((message, idx, arr) => ({
 				role: message.role,
-				...((message.files?.filter((file) => file.type === 'image').length > 0 ?? false) &&
+				...((message.files?.filter((file: any) => file.type === 'image').length > 0 ?? false) &&
 				message.role === 'user'
 					? {
 							content: [
@@ -1695,8 +1710,8 @@
 									text: message?.merged?.content ?? message.content
 								},
 								...message.files
-									.filter((file) => file.type === 'image')
-									.map((file) => ({
+									.filter((file: any) => file.type === 'image')
+									.map((file: any) => ({
 										type: 'image_url',
 										image_url: {
 											url: file.url
@@ -1711,7 +1726,7 @@
 
 		// Regular OpenAI completion
 		const res = await generateOpenAIChatCompletion(
-			localStorage.token,
+			getRequestToken(),
 			{
 				stream: stream,
 				model: model.id,
@@ -1724,8 +1739,10 @@
 					keep_alive: $settings.keepAlive ?? undefined,
 					stop:
 						(params?.stop ?? $settings?.params?.stop ?? undefined)
-							? (params?.stop.split(',').map((token) => token.trim()) ?? $settings.params.stop).map(
-									(str) => decodeURIComponent(JSON.parse('"' + str.replace(/\"/g, '\\"') + '"'))
+							? (
+									params?.stop.split(',').map((token: any) => token.trim()) ?? $settings.params.stop
+								).map((str: any) =>
+									decodeURIComponent(JSON.parse('"' + str.replace(/\"/g, '\\"') + '"'))
 								)
 							: undefined
 				},
@@ -1800,9 +1817,9 @@
 		scrollToBottom();
 	};
 
-	const handleOpenAIError = async (error, responseMessage) => {
+	const handleOpenAIError = async (error: any, responseMessage: any) => {
 		let errorMessage = '';
-		let innerError;
+		let innerError: any;
 
 		if (error) {
 			innerError = error;
@@ -1833,7 +1850,7 @@
 
 		if (responseMessage.statusHistory) {
 			responseMessage.statusHistory = responseMessage.statusHistory.filter(
-				(status) => status.action !== 'knowledge_search'
+				(status: any) => status.action !== 'knowledge_search'
 			);
 		}
 
@@ -1870,7 +1887,7 @@
 		await finalizeStoppedResponse(responseIdToStop);
 	};
 
-	const submitMessage = async (parentId, prompt) => {
+	const submitMessage = async (parentId: any, prompt: any) => {
 		let userPrompt = prompt;
 		let userMessageId = uuidv4();
 
@@ -1897,7 +1914,7 @@
 		await sendPrompt(userPrompt, userMessageId);
 	};
 
-	const regenerateResponse = async (message) => {
+	const regenerateResponse = async (message: any) => {
 		if (history.currentId) {
 			let userMessage = history.messages[message.parentId];
 			let userPrompt = userMessage.content;
@@ -1934,7 +1951,7 @@
 		}
 	};
 
-	const mergeResponses = async (messageId, responses, _chatId) => {
+	const mergeResponses = async (messageId: any, responses: any, _chatId: any) => {
 		const message = history.messages[messageId];
 		const mergedResponse = {
 			status: true,
@@ -1945,7 +1962,7 @@
 
 		try {
 			const [res, controller] = await generateMoACompletion(
-				localStorage.token,
+				getRequestToken(),
 				message.model,
 				history.messages[message.parentId].content,
 				responses
@@ -1975,14 +1992,14 @@
 			} else {
 				console.error(res);
 			}
-		} catch (e) {
+		} catch (e: any) {
 			console.error(e);
 		}
 	};
 
 	const initChatHandler = async () => {
 		if (!$temporaryChatEnabled) {
-			chat = await createNewChat(localStorage.token, {
+			chat = await createNewChat(getRequestToken(), {
 				id: $chatId,
 				title: $i18n.t('New Chat'),
 				models: selectedModels,
@@ -1995,7 +2012,7 @@
 			});
 
 			currentChatPage.set(1);
-			await chats.set(await getChatList(localStorage.token, $currentChatPage));
+			await chats.set(await getChatList(getRequestToken(), $currentChatPage));
 			await chatId.set(chat.id);
 
 			window.history.replaceState(history.state, '', `/c/${chat.id}`);
@@ -2005,10 +2022,10 @@
 		await tick();
 	};
 
-	const saveChatHandler = async (_chatId) => {
+	const saveChatHandler = async (_chatId: any) => {
 		if ($chatId == _chatId) {
 			if (!$temporaryChatEnabled) {
-				chat = await updateChatById(localStorage.token, _chatId, {
+				chat = await updateChatById(getRequestToken(), _chatId, {
 					models: selectedModels,
 					history: history,
 					messages: createMessagesList(history.currentId),
@@ -2017,7 +2034,7 @@
 				});
 
 				currentChatPage.set(1);
-				await chats.set(await getChatList(localStorage.token, $currentChatPage));
+				await chats.set(await getChatList(getRequestToken(), $currentChatPage));
 			}
 		}
 	};

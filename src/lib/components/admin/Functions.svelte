@@ -33,35 +33,36 @@
 	import Search from '../icons/Search.svelte';
 	import Plus from '../icons/Plus.svelte';
 	import ChevronRight from '../icons/ChevronRight.svelte';
+	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
 
 	let shiftKey = false;
 
 	let functionsImportInputElement: HTMLInputElement;
-	let importFiles;
+	let importFiles: any;
 
 	let showConfirm = false;
 	let query = '';
 
 	let showManifestModal = false;
 	let showValvesModal = false;
-	let selectedFunction = null;
+	let selectedFunction: any = null;
 
 	let showDeleteConfirm = false;
 
-	let filteredItems = [];
+	let filteredItems: any[] = [];
 	$: filteredItems = $functions
 		.filter(
-			(f) =>
+			(f: any) =>
 				query === '' ||
 				f.name.toLowerCase().includes(query.toLowerCase()) ||
 				f.id.toLowerCase().includes(query.toLowerCase())
 		)
-		.sort((a, b) => a.type.localeCompare(b.type) || a.name.localeCompare(b.name));
+		.sort((a: any, b: any) => a.type.localeCompare(b.type) || a.name.localeCompare(b.name));
 
-	const shareHandler = async (func) => {
-		const item = await getFunctionById(localStorage.token, func.id).catch((error) => {
+	const shareHandler = async (func: any) => {
+		const item = await getFunctionById(getRequestToken(), func.id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
@@ -73,7 +74,7 @@
 		const tab = await window.open(`${url}/functions/create`, '_blank');
 
 		// Define the event handler function
-		const messageHandler = (event) => {
+		const messageHandler = (event: any) => {
 			if (event.origin !== url) return;
 			if (event.data === 'loaded') {
 				tab.postMessage(JSON.stringify(item), '*');
@@ -86,8 +87,8 @@
 		window.addEventListener('message', messageHandler, false);
 	};
 
-	const cloneHandler = async (func) => {
-		const _function = await getFunctionById(localStorage.token, func.id).catch((error) => {
+	const cloneHandler = async (func: any) => {
+		const _function = await getFunctionById(getRequestToken(), func.id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
@@ -102,8 +103,8 @@
 		}
 	};
 
-	const exportHandler = async (func) => {
-		const _function = await getFunctionById(localStorage.token, func.id).catch((error) => {
+	const exportHandler = async (func: any) => {
+		const _function = await getFunctionById(getRequestToken(), func.id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
@@ -116,8 +117,8 @@
 		}
 	};
 
-	const deleteHandler = async (func) => {
-		const res = await deleteFunctionById(localStorage.token, func.id).catch((error) => {
+	const deleteHandler = async (func: any) => {
+		const res = await deleteFunctionById(getRequestToken(), func.id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
@@ -125,13 +126,13 @@
 		if (res) {
 			toast.success($i18n.t('Function deleted successfully'));
 
-			functions.set(await getFunctions(localStorage.token));
-			models.set(await getModels(localStorage.token));
+			functions.set(await getFunctions(getRequestToken()));
+			models.set(await getModels(getRequestToken()));
 		}
 	};
 
-	const toggleGlobalHandler = async (func) => {
-		const res = await toggleGlobalById(localStorage.token, func.id).catch((error) => {
+	const toggleGlobalHandler = async (func: any) => {
+		const res = await toggleGlobalById(getRequestToken(), func.id).catch((error) => {
 			toast.error(`${error}`);
 		});
 
@@ -146,19 +147,19 @@
 					: toast.success($i18n.t('Function is now globally disabled'));
 			}
 
-			functions.set(await getFunctions(localStorage.token));
-			models.set(await getModels(localStorage.token));
+			functions.set(await getFunctions(getRequestToken()));
+			models.set(await getModels(getRequestToken()));
 		}
 	};
 
 	onMount(() => {
-		const onKeyDown = (event) => {
+		const onKeyDown = (event: any) => {
 			if (event.key === 'Shift') {
 				shiftKey = true;
 			}
 		};
 
-		const onKeyUp = (event) => {
+		const onKeyUp = (event: any) => {
 			if (event.key === 'Shift') {
 				shiftKey = false;
 			}
@@ -358,8 +359,8 @@
 						<Switch
 							bind:state={func.is_active}
 							on:change={async (e) => {
-								toggleFunctionById(localStorage.token, func.id);
-								models.set(await getModels(localStorage.token));
+								toggleFunctionById(getRequestToken(), func.id);
+								models.set(await getModels(getRequestToken()));
 							}}
 						/>
 					</Tooltip>
@@ -416,7 +417,7 @@
 		<button
 			class="flex text-xs items-center space-x-1 px-3 py-1.5 rounded-xl bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200 transition"
 			on:click={async () => {
-				const _functions = await exportFunctions(localStorage.token).catch((error) => {
+				const _functions = await exportFunctions(getRequestToken()).catch((error) => {
 					toast.error(`${error}`);
 					return null;
 				});
@@ -495,7 +496,7 @@
 	id={selectedFunction?.id ?? null}
 	on:save={async () => {
 		await tick();
-		models.set(await getModels(localStorage.token));
+		models.set(await getModels(getRequestToken()));
 	}}
 />
 
@@ -507,15 +508,15 @@
 			const _functions = JSON.parse(event.target.result);
 
 			for (const func of _functions) {
-				const res = await createNewFunction(localStorage.token, func).catch((error) => {
+				const res = await createNewFunction(getRequestToken(), func).catch((error) => {
 					toast.error(`${error}`);
 					return null;
 				});
 			}
 
 			toast.success($i18n.t('Functions imported successfully'));
-			functions.set(await getFunctions(localStorage.token));
-			models.set(await getModels(localStorage.token));
+			functions.set(await getFunctions(getRequestToken()));
+			models.set(await getModels(getRequestToken()));
 		};
 
 		reader.readAsText(importFiles[0]);
