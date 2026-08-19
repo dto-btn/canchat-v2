@@ -11,6 +11,7 @@ export class AuthPage extends BasePage {
 	onboardingButton!: Locator;
 	signOutButtonPendingUser!: Locator;
 	changeLanguageButtonPendingUser!: Locator;
+	acceptTermsButton!: Locator;
 	readonly isFirstRunButton: Locator;
 
 	constructor(page: Page, lang: Language = 'en-GB') {
@@ -27,6 +28,9 @@ export class AuthPage extends BasePage {
 	override updateLanguage(lang: Language) {
 		super.updateLanguage(lang);
 
+		this.acceptTermsButton = this.page.getByRole('button', {
+			name: this.t['I Accept Terms'] || 'I Accept Terms'
+		});
 		this.emailInput = this.page.getByRole('textbox', {
 			name: this.t['Enter Your Email'] || 'Enter Your Email'
 		});
@@ -159,6 +163,9 @@ export class AuthPage extends BasePage {
 		await this.emailInput.fill(email);
 		await this.passwordInput.fill(pass);
 		await this.createAccountButton.click();
+
+		//Accept CANChat Terms of use
+		await this.acceptTermsButton.click();
 
 		// Handle "Ok, Let's Go!" onboarding popup
 		await this.onboardingButton.waitFor({ state: 'visible', timeout: 5000 });

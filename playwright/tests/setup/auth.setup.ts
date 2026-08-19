@@ -96,6 +96,11 @@ async function generateUserAuthFiles(page: Page, authPage: AuthPage, basePage: a
 
 		await saveAuthState(userPage, `${user.username}.json`);
 
+		// Accept Term of Use popup
+		if (user.username != 'pending') {
+			await userAuthPage.acceptTermsButton.click();
+		}
+
 		await context.close();
 	}
 }
