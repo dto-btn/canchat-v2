@@ -332,17 +332,7 @@
 				const data = event?.data?.data ?? null;
 
 				if (type === 'task-cancelled') {
-					markResponseStopped(message.id);
 					await finalizeStoppedResponse(message.id);
-					return;
-				}
-
-				if (
-					isResponseStopped(event.message_id) &&
-					type !== 'chat:title' &&
-					type !== 'chat:tags' &&
-					type !== 'notification'
-				) {
 					return;
 				}
 
@@ -1796,16 +1786,14 @@
 		});
 
 		if (res?.task_id) {
-			if (isResponseStopped(responseMessageId)) {
-				await stopResponseTask(res.task_id);
-				clearResponseTracking(responseMessageId);
-				return;
-			}
-
 			taskIdsByMessageId = {
 				...taskIdsByMessageId,
 				[responseMessageId]: res.task_id
 			};
+
+			if (isResponseStopped(responseMessageId)) {
+				await stopResponseTask(res.task_id);
+			}
 		}
 
 		await tick();
@@ -1874,11 +1862,12 @@
 
 		markResponseStopped(responseIdToStop);
 
-		await finalizeStoppedResponse(responseIdToStop);
-
 		if (responseTaskId) {
 			await stopResponseTask(responseTaskId);
+			return;
 		}
+
+		await finalizeStoppedResponse(responseIdToStop);
 	};
 
 	const submitMessage = async (parentId, prompt) => {

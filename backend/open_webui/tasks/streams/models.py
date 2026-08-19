@@ -1,7 +1,7 @@
 import asyncio
 import time
 from enum import Enum
-from typing import Any, Coroutine, Optional
+from typing import Any, Coroutine, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -13,8 +13,15 @@ class StreamStatus(str, Enum):
 
 
 class StopStreamCommand(BaseModel):
+    type: Literal["stop_stream"] = "stop_stream"
     stream_id: str
-    target_instance_id: Optional[str] = None
+    source_instance_id: str
+
+
+class StopCompletedEvent(BaseModel):
+    type: Literal["stop_completed"] = "stop_completed"
+    stream_id: str
+    terminal_state: str  # "cancelled" | "completed" | "failed"
 
 
 class StreamRecord(BaseModel):

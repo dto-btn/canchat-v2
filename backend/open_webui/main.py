@@ -1309,7 +1309,7 @@ async def stop_task_endpoint(
     user=Depends(get_verified_user),
 ):
     try:
-        result = await request.app.state.stream_task_manager.stop_request(task_id)
+        result = await request.app.state.stream_task_manager.stop(task_id)
         return result
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))

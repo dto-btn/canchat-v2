@@ -1,6 +1,6 @@
 import asyncio
 
-from open_webui.tasks.streams.models import StopStreamCommand
+from open_webui.tasks.streams.command_bus.base import StreamBusMessage
 
 
 class LocalCommandBus:
@@ -18,8 +18,8 @@ class LocalCommandBus:
         async with self._lock:
             self._subs.discard(queue)
 
-    async def publish(self, command: StopStreamCommand) -> None:
+    async def publish(self, message: StreamBusMessage) -> None:
         async with self._lock:
             subscribers = list(self._subs)
         for queue in subscribers:
-            await queue.put(command)
+            await queue.put(message)

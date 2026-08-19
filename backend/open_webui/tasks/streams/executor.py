@@ -12,11 +12,11 @@ class StreamExecutor:
         self._registry = registry
 
     async def execute(self, stream_id: str) -> asyncio.Task:
-        rec = await self._registry.get(stream_id)
-        if rec is None:
+        record = await self._registry.get(stream_id)
+        if record is None:
             raise ValueError(f"Task with ID {stream_id} not found.")
 
-        task = asyncio.create_task(rec.coroutine, name=f"stream:{stream_id}")
+        task = asyncio.create_task(record.coroutine, name=f"stream:{stream_id}")
         if task is None:
             raise ValueError(
                 f"Failed to create asyncio task for stream ID {stream_id}."
@@ -26,36 +26,37 @@ class StreamExecutor:
             asyncio.create_task(self._finalize(stream_id, done_task))
 
         task.add_done_callback(_done_callback)
-
         await self._registry.update(stream_id, task=task, status=StreamStatus.RUNNING)
-
         return task
 
-    async def stop(self, stream_id: str) -> bool:
-        rec = await self._registry.get(stream_id)
-        if rec is None:
+    async def stop(self, stream_id: str) -> str:
+        """Cancel the task and return its terminal state."""
+        record = await self._registry.get(stream_id)
+        if record is None:
             raise ValueError(f"Task with ID {stream_id} not found.")
 
-        if rec.task is None:
+        if record.task is None:
             raise ValueError(
                 f"Task with ID {stream_id} has no associated asyncio task."
             )
 
-        if rec.task.done():
+        if record.task.done():
+            state = _terminal_state(record.task)
             await self._registry.remove(stream_id)
-            return True
+            log.debug("Stream '%s' was already complete: %s", stream_id, state)
+            return state
 
         await self._registry.mark_cancelling(stream_id)
-
-        # Cancel request sent.
-        rec.task.cancel()
-
-        # Awaiting for the cancellation completion.
+        log.debug("Stopping stream '%s' by cancelling its task", stream_id)
+        record.task.cancel()
         try:
-            await rec.task
+            await record.task
         except asyncio.CancelledError:
+            log.debug("Stream '%s' cancellation observed", stream_id)
             pass
-        return True
+        await self._registry.remove(stream_id)
+        # Always "cancelled": we initiated the stop even if the task swallowed the error.
+        return "cancelled"
 
     async def _finalize(self, stream_id: str, task: asyncio.Task) -> None:
         try:
@@ -82,5 +83,12 @@ class StreamExecutor:
             )
             await self._registry.remove(stream_id)
         except KeyError:
-            # Stream may already be removed by explicit stop() path.
             log.debug("Stream '%s' already removed before finalize", stream_id)
+
+
+def _terminal_state(task: asyncio.Task) -> str:
+    if task.cancelled():
+        return "cancelled"
+    if task.exception() is not None:
+        return "failed"
+    return "completed"

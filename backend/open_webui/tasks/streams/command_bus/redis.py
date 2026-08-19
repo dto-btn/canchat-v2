@@ -2,13 +2,13 @@ import asyncio
 import json
 import logging
 
-from open_webui.tasks.streams.models import StopStreamCommand
+from open_webui.tasks.streams.models import StopCompletedEvent, StopStreamCommand
 
 log = logging.getLogger(__name__)
 
 
 class RedisCommandBus:
-    """Redis pub/sub adapter for stop-stream commands."""
+    """Redis pub/sub adapter for stream coordination commands."""
 
     def __init__(
         self,
@@ -22,7 +22,7 @@ class RedisCommandBus:
         self._reader_task: asyncio.Task | None = None
         self._queue: asyncio.Queue | None = None
 
-    async def _ensure_client(self):
+    async def _ensure_client(self) -> None:
         if self._redis is not None:
             return
         try:
@@ -31,7 +31,6 @@ class RedisCommandBus:
             raise RuntimeError(
                 "Redis command bus requires the 'redis' package with asyncio support"
             ) from exc
-
         self._redis = redis.from_url(self.redis_url, decode_responses=True)
 
     async def subscribe(self) -> asyncio.Queue:
@@ -72,33 +71,31 @@ class RedisCommandBus:
 
         self._queue = None
 
-    async def publish(self, command: StopStreamCommand) -> None:
+    async def publish(self, message) -> None:
         await self._ensure_client()
-        payload = json.dumps(command.model_dump())
-        await self._redis.publish(self.channel, payload)
+        await self._redis.publish(self.channel, message.model_dump_json())
 
     async def _reader_loop(self) -> None:
         while True:
-            if self._pubsub is None or self._queue is None:
-                return
             try:
-                message = await self._pubsub.get_message(
-                    ignore_subscribe_messages=True,
-                    timeout=1.0,
-                )
-                if message is None:
-                    await asyncio.sleep(0)
-                    continue
-
-                data = message.get("data")
-                if not data:
-                    continue
-
-                try:
-                    cmd = StopStreamCommand.model_validate_json(data)
-                except Exception:
-                    cmd = StopStreamCommand.model_validate(json.loads(data))
-                await self._queue.put(cmd)
+                async for raw in self._pubsub.listen():
+                    if not isinstance(raw, dict) or raw.get("type") != "message":
+                        continue
+                    data = raw.get("data")
+                    if not data:
+                        continue
+                    try:
+                        payload = json.loads(data)
+                        msg_type = payload.get("type")
+                        if msg_type == "stop_stream":
+                            msg = StopStreamCommand.model_validate(payload)
+                        elif msg_type == "stop_completed":
+                            msg = StopCompletedEvent.model_validate(payload)
+                        else:
+                            continue
+                        await self._queue.put(msg)
+                    except Exception:
+                        pass
             except asyncio.CancelledError:
                 raise
             except Exception as exc:

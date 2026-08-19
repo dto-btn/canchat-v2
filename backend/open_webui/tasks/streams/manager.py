@@ -6,7 +6,7 @@ from uuid import uuid4
 from open_webui.tasks.streams.command_bus.base import CommandBus
 from open_webui.tasks.streams.command_bus.local import LocalCommandBus
 from open_webui.tasks.streams.executor import StreamExecutor
-from open_webui.tasks.streams.models import StopStreamCommand
+from open_webui.tasks.streams.models import StopCompletedEvent, StopStreamCommand
 from open_webui.tasks.streams.registry import StreamRegistry
 
 log = logging.getLogger(__name__)
@@ -18,23 +18,26 @@ class StreamManager:
         registry: Optional[StreamRegistry] = None,
         executor: Optional[StreamExecutor] = None,
         bus: Optional[CommandBus] = None,
-        instance_id: str = "local-" + uuid4().hex[:8],
+        instance_id: Optional[str] = None,
+        remote_stop_timeout: float = 5.0,
     ) -> None:
         self._registry = registry or StreamRegistry()
         self._executor = executor or StreamExecutor(self._registry)
         self._bus = bus or LocalCommandBus()
-        self._instance_id = instance_id
+        self._instance_id = instance_id or str(uuid4())
+        self._remote_stop_timeout = remote_stop_timeout
 
         self._listener_task: Optional[asyncio.Task] = None
         self._queue: Optional[asyncio.Queue] = None
+        self._pending_stops: dict[str, asyncio.Future] = {}
 
     async def start(self) -> None:
-        await self.start_listener()
+        await self._start_listener()
 
     async def close(self) -> None:
-        await self.stop_listener()
+        await self._stop_listener()
 
-    async def start_listener(self) -> None:
+    async def _start_listener(self) -> None:
         if self._listener_task and not self._listener_task.done():
             return
         self._queue = await self._bus.subscribe()
@@ -43,7 +46,7 @@ class StreamManager:
             name="stream-task-listener",
         )
 
-    async def stop_listener(self) -> None:
+    async def _stop_listener(self) -> None:
         if self._listener_task:
             self._listener_task.cancel()
             try:
@@ -65,42 +68,65 @@ class StreamManager:
         return stream_id, task
 
     async def stop(self, stream_id: str) -> dict[str, Any]:
-        rec = await self._registry.get(stream_id)
-        if rec is None:
-            raise ValueError(f"Task with ID {stream_id} not found.")
+        """Stop a stream. Handles both local and remote (cross-pod) tasks."""
+        if await self._registry.get(stream_id) is not None:
+            return await self._stop_local(stream_id)
+
+        # Not in local registry: publish to bus and wait for the owning pod to confirm.
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future[str] = loop.create_future()
+        self._pending_stops[stream_id] = future
 
         try:
-            stopped = await self._executor.stop(stream_id)
-            if not stopped:
-                raise ValueError(f"Task with ID {stream_id} not found.")
-
-            return {
-                "status": True,
-                "message": f"Task {stream_id} successfully stopped.",
-            }
-        except ValueError as exc:
-            return {"status": False, "message": str(exc)}
-
-    async def stop_request(
-        self,
-        stream_id: str,
-        target_instance_id: str | None = None,
-    ) -> None:
-        try:
-            cmd = StopStreamCommand(
-                stream_id=stream_id,
-                target_instance_id=target_instance_id,
+            log.debug("Publishing stop command for stream '%s'", stream_id)
+            await self._bus.publish(
+                StopStreamCommand(
+                    stream_id=stream_id,
+                    source_instance_id=self._instance_id,
+                )
             )
-            await self._bus.publish(cmd)
+            terminal_state = await asyncio.wait_for(
+                future, timeout=self._remote_stop_timeout
+            )
+        except asyncio.TimeoutError:
+            log.debug(
+                "Timed out waiting for stop confirmation for stream '%s'",
+                stream_id,
+            )
+            raise ValueError(f"Task with ID {stream_id} not found.")
         except Exception as exc:
             log.error("Failed to publish stop command for '%s': %s", stream_id, exc)
+            raise
+        finally:
+            self._pending_stops.pop(stream_id, None)
+
+        msg = (
+            f"Task {stream_id} already {terminal_state}."
+            if terminal_state in ("completed", "failed")
+            else f"Task {stream_id} successfully stopped."
+        )
+        return {"status": True, "message": msg, "state": terminal_state}
+
+    async def _stop_local(self, stream_id: str) -> dict[str, Any]:
+        record = await self._registry.get(stream_id)
+        if record is None:
+            raise ValueError(f"Task with ID {stream_id} not found.")
+
+        terminal_state = await self._executor.stop(stream_id)
+
+        msg = (
+            f"Task {stream_id} already {terminal_state}."
+            if terminal_state in ("completed", "failed")
+            else f"Task {stream_id} successfully stopped."
+        )
+        return {"status": True, "message": msg, "state": terminal_state}
 
     async def list(self) -> list[dict[str, Any]]:
         return await self._registry.list()
 
     async def get(self, stream_id: str) -> Optional[dict[str, Any]]:
-        rec = await self._registry.get(stream_id)
-        return None if rec is None else rec.public()
+        record = await self._registry.get(stream_id)
+        return None if record is None else record.public()
 
     async def _listen_loop(self) -> None:
         if self._queue is None:
@@ -108,25 +134,42 @@ class StreamManager:
             return
 
         while True:
-            cmd = await self._queue.get()
-            if isinstance(cmd, StopStreamCommand):
-                if (
-                    cmd.target_instance_id
-                    and cmd.target_instance_id != self._instance_id
-                ):
-                    continue
+            message = await self._queue.get()
+
+            if isinstance(message, StopStreamCommand):
+                if message.source_instance_id == self._instance_id:
+                    continue  # self-echo: we published this, skip it
+
                 try:
-                    log.debug(f"Received stop command for stream '{cmd.stream_id}'")
-                    await self.stop(cmd.stream_id)
+                    log.debug(
+                        "Received stop command for stream '%s'", message.stream_id
+                    )
+                    terminal_state = await self._executor.stop(message.stream_id)
+                    await self._bus.publish(
+                        StopCompletedEvent(
+                            stream_id=message.stream_id,
+                            terminal_state=terminal_state,
+                        )
+                    )
                 except ValueError as exc:
                     log.debug(
                         "Ignoring stop command for unknown stream '%s': %s",
-                        cmd.stream_id,
+                        message.stream_id,
                         exc,
                     )
                 except Exception as exc:
                     log.warning(
                         "Failed to process stop command for '%s': %s",
-                        cmd.stream_id,
+                        message.stream_id,
                         exc,
                     )
+
+            elif isinstance(message, StopCompletedEvent):
+                future = self._pending_stops.get(message.stream_id)
+                if future and not future.done():
+                    log.debug(
+                        "Received stop completion for stream '%s': %s",
+                        message.stream_id,
+                        message.terminal_state,
+                    )
+                    future.set_result(message.terminal_state)
