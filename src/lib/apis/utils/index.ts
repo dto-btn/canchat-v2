@@ -14,17 +14,13 @@ const triggerDownload = (blob: Blob, filename: string) => {
 
 export const getGravatarUrl = async (email: string) => {
 	return apiJson(`${WEBUI_API_BASE_URL}/utils/gravatar?email=${encodeURIComponent(email)}`, {
-		method: 'GET',
-		includeAuth: false,
-		retryOnUnauthorized: false
+		method: 'GET'
 	});
 };
 
 export const formatPythonCode = async (code: string) => {
 	return apiJson(`${WEBUI_API_BASE_URL}/utils/code/format`, {
 		method: 'POST',
-		includeAuth: false,
-		retryOnUnauthorized: false,
 		body: JSON.stringify({
 			code
 		})
@@ -34,8 +30,6 @@ export const formatPythonCode = async (code: string) => {
 export const downloadChatAsPDF = async (title: string, messages: object[]) => {
 	return apiBlob(`${WEBUI_API_BASE_URL}/utils/pdf`, {
 		method: 'POST',
-		includeAuth: false,
-		retryOnUnauthorized: false,
 		body: JSON.stringify({
 			title,
 			messages
@@ -46,8 +40,6 @@ export const downloadChatAsPDF = async (title: string, messages: object[]) => {
 export const getHTMLFromMarkdown = async (md: string) => {
 	const res = await apiJson<{ html: string }>(`${WEBUI_API_BASE_URL}/utils/markdown`, {
 		method: 'POST',
-		includeAuth: false,
-		retryOnUnauthorized: false,
 		body: JSON.stringify({
 			md: md
 		})
