@@ -64,7 +64,7 @@ export class AuthPage extends BasePage {
 	 * @param pass The password for the account.
 	 */
 	async login(email: string, pass: string) {
-		await this.goto('/auth');
+		await this.goto(`/auth?lang=${this.lang}`);
 		await this.emailInput.fill(email);
 		await this.passwordInput.fill(pass);
 		await this.signInButton.click();
@@ -143,12 +143,11 @@ export class AuthPage extends BasePage {
 	 * Clears auth state and confirms redirection to the login page.
 	 */
 	async clearAuthAndReturnToLogin() {
-		await this.page.evaluate(() => localStorage.clear()).catch(() => {});
 		await this.page
 			.context()
 			.clearCookies()
 			.catch(() => {});
-		await this.page.reload();
+		await this.goto(`/auth?lang=${this.lang}`);
 		await expect(this.page).toHaveURL(/\/auth/);
 	}
 

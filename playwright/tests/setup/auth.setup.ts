@@ -9,34 +9,18 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // --- Paths & Data ---
-const authDir = path.join(__dirname, '../../.auth');
 const usersFile = path.join(__dirname, '../../src/test-data/users.json');
 const usersData = JSON.parse(fs.readFileSync(usersFile, 'utf-8'));
 
 const adminUser = usersData.users.find((u: any) => u.username === 'admin');
 const standardUsers = usersData.users.filter((u: any) => u.username !== 'admin');
-const requiredAuthFiles = ['admin.json', 'user.json', 'analyst.json', 'globalanalyst.json'];
 
-setup('global setup: seed data & authenticate', async ({ page }) => {
+setup('global setup: seed data & initialize', async ({ page }) => {
 	const authPage = new AuthPage(page);
 	const adminPage = new AdminPage(page);
 
-	await fs.promises.mkdir(authDir, { recursive: true });
-	const authFilesMissing = requiredAuthFiles.some(
-		(fileName) => !fs.existsSync(path.join(authDir, fileName))
-	);
-
 	await authPage.goto('/auth');
 	const isFirstRun = await authPage.isFirstRunButton.isVisible();
-
-	if (!isFirstRun && authFilesMissing) {
-		console.log('CanChat already initialized. Missing auth files detected.');
-		await authPage.login(adminUser.email, adminUser.password);
-		await saveAuthState(page, 'admin.json');
-		await generateUserAuthFiles(page, authPage, adminPage);
-		console.log('Auth files regenerated.');
-		return;
-	}
 
 	if (!isFirstRun) {
 		console.log('CanChat already initialized. Skipping Global Setup');
@@ -46,12 +30,10 @@ setup('global setup: seed data & authenticate', async ({ page }) => {
 	console.log('First run detected. Starting initialization...');
 	await performAdminRegistration(page, authPage);
 	await seedUserAccounts(page, adminPage);
-	await saveAuthState(page, 'admin.json');
-
 	await enableAvailableModels(adminPage);
 	await adminPage.signOut();
 
-	await generateUserAuthFiles(page, authPage, adminPage);
+	await acceptInitialUserTerms(page);
 
 	console.log('Global Setup Complete!');
 });
@@ -80,21 +62,23 @@ async function seedUserAccounts(page: Page, adminPage: AdminPage) {
 	}
 }
 
-async function generateUserAuthFiles(page: Page, authPage: AuthPage, basePage: any) {
+async function acceptInitialUserTerms(page: Page) {
 	const browser = page.context().browser();
 
 	for (const user of standardUsers) {
-		console.log(`Authenticating ${user.username}...`);
+		if (user.username === 'pending') {
+			continue;
+		}
 
-		// Use a fresh context for each user to prevent state leakage
+		console.log(`Accepting initial terms for ${user.username}...`);
+
+		// Use a fresh context for each user
 		const context = await browser!.newContext();
 		const userPage = await context.newPage();
 		const userAuthPage = new AuthPage(userPage);
 
 		await userAuthPage.goto('/auth');
 		await userAuthPage.login(user.email, user.password);
-
-		await saveAuthState(userPage, `${user.username}.json`);
 
 		// Accept Term of Use popup
 		if (user.username != 'pending') {
@@ -103,11 +87,6 @@ async function generateUserAuthFiles(page: Page, authPage: AuthPage, basePage: a
 
 		await context.close();
 	}
-}
-
-async function saveAuthState(page: Page, fileName: string) {
-	await page.context().storageState({ path: path.join(authDir, fileName) });
-	console.log('Authentication state saved.');
 }
 
 async function enableAvailableModels(adminPage: AdminPage) {

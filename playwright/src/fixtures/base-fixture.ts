@@ -1,5 +1,4 @@
 import {
-	mergeTests,
 	type BrowserContext,
 	type TestInfo,
 	test as baseTest,
@@ -8,10 +7,10 @@ import {
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { authFixture } from './auth-fixture';
 import { ChatPage } from '../pages/chat.page';
 import { AdminPage } from '../pages/admin.page';
 import { Language } from '../pages/base.page';
+import { authenticateContext, testUsers } from '../utils/auth-utils';
 
 // Define coverage output directory
 const istanbulCLIOutput = path.join(process.cwd(), '.nyc_output');
@@ -75,6 +74,18 @@ async function saveCoverage(context: BrowserContext) {
 	}
 }
 
+/**
+ * Ensure browser context initializes with the matching locale in localStorage
+ */
+async function applyLocale(context: BrowserContext, locale?: string) {
+	if (!locale) return;
+	await context.addInitScript((loc) => {
+		try {
+			window.localStorage.setItem('locale', loc);
+		} catch (e) {}
+	}, locale);
+}
+
 type PageFixtures = {
 	adminPage: AdminPage;
 	userPage: ChatPage;
@@ -83,14 +94,15 @@ type PageFixtures = {
 	guestPage: ChatPage;
 };
 
-export const test = mergeTests(authFixture, baseTest).extend<PageFixtures>({
+export const test = baseTest.extend<PageFixtures>({
 	// --- Admin Fixture ---
-	adminPage: async ({ browser, authFiles, locale }, use, testInfo: TestInfo) => {
+	adminPage: async ({ browser, locale }, use, testInfo: TestInfo) => {
 		const context = await browser.newContext({
-			storageState: authFiles.admin,
 			locale: locale,
 			permissions: testInfo.project.use.permissions
 		});
+		await applyLocale(context, locale);
+		await authenticateContext(context, testUsers.admin);
 		await setupCoverage(context);
 		await hideToastNotifications(context);
 
@@ -105,12 +117,13 @@ export const test = mergeTests(authFixture, baseTest).extend<PageFixtures>({
 	},
 
 	// --- Standard User Fixture ---
-	userPage: async ({ browser, authFiles, locale }, use, testInfo: TestInfo) => {
+	userPage: async ({ browser, locale }, use, testInfo: TestInfo) => {
 		const context = await browser.newContext({
-			storageState: authFiles.user,
 			locale: locale,
 			permissions: testInfo.project.use.permissions
 		});
+		await applyLocale(context, locale);
+		await authenticateContext(context, testUsers.user);
 		await setupCoverage(context);
 		await hideToastNotifications(context);
 
@@ -125,12 +138,13 @@ export const test = mergeTests(authFixture, baseTest).extend<PageFixtures>({
 	},
 
 	// --- Analyst Fixture ---
-	analystPage: async ({ browser, authFiles, locale }, use, testInfo: TestInfo) => {
+	analystPage: async ({ browser, locale }, use, testInfo: TestInfo) => {
 		const context = await browser.newContext({
-			storageState: authFiles.analyst,
 			locale: locale,
 			permissions: testInfo.project.use.permissions
 		});
+		await applyLocale(context, locale);
+		await authenticateContext(context, testUsers.analyst);
 		await setupCoverage(context);
 		await hideToastNotifications(context);
 
@@ -145,12 +159,13 @@ export const test = mergeTests(authFixture, baseTest).extend<PageFixtures>({
 	},
 
 	// --- Global Analyst Fixture ---
-	globalAnalystPage: async ({ browser, authFiles, locale }, use, testInfo: TestInfo) => {
+	globalAnalystPage: async ({ browser, locale }, use, testInfo: TestInfo) => {
 		const context = await browser.newContext({
-			storageState: authFiles.globalAnalyst,
 			locale: locale,
 			permissions: testInfo.project.use.permissions
 		});
+		await applyLocale(context, locale);
+		await authenticateContext(context, testUsers.globalAnalyst);
 		await setupCoverage(context);
 		await hideToastNotifications(context);
 
@@ -167,14 +182,16 @@ export const test = mergeTests(authFixture, baseTest).extend<PageFixtures>({
 	// --- Guest/No-Auth Fixture ---
 	guestPage: async ({ browser, locale }, use, testInfo: TestInfo) => {
 		const context = await browser.newContext({
+			locale: locale,
 			permissions: testInfo.project.use.permissions
 		});
+		await applyLocale(context, locale);
 		await setupCoverage(context);
 		await hideToastNotifications(context);
 
 		const page = await context.newPage();
 		const chatPage = new ChatPage(page, locale as Language);
-		await chatPage.goto('/auth');
+		await chatPage.goto(`/auth?lang=${locale}`);
 
 		await use(chatPage);
 
