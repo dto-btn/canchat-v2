@@ -95,16 +95,29 @@ async function enableAvailableModels(adminPage: AdminPage) {
 	await adminPage.navigateToAdminSettings('Settings', 'Connections');
 
 	const modelsToEnable = [
-		'gpt-5-chat-latest',
-		'gpt-5.1-chat-latest',
-		'gpt-5.2-chat-latest',
-		'gpt-5.3-chat-latest'
+		'gpt-4o-mini',
+		'gpt-4.1-mini',
+		'gpt-5-mini',
+		'gpt-5.4-mini',
+		'o3-mini',
+		'o4-mini'
 	];
 	let defaultModelSet = false;
 
 	for (const model of modelsToEnable) {
 		try {
 			await adminPage.openModelSettings(model);
+			const { isDeprecated, shutdownDate } = await adminPage.isModelDeprecated();
+
+			if (isDeprecated) {
+				console.log(
+					`Skipping model ${model} - model is deprecated (Shutdown Date: ${shutdownDate}).`
+				);
+				continue;
+			}
+
+			const deprecationInfo = shutdownDate ? ` (Retires on: ${shutdownDate})` : '';
+
 			await adminPage.updateModelDescription({
 				en: `${model} English Description`,
 				fr: `${model} French Description`
@@ -117,7 +130,7 @@ async function enableAvailableModels(adminPage: AdminPage) {
 				await adminPage.setDefaultChatModel();
 				defaultModelSet = true;
 			}
-			console.log(`Successfully enabled model: ${model}`);
+			console.log(`Successfully enabled model: ${model}${deprecationInfo}`);
 		} catch (error) {
 			console.log(`Skipping model ${model} - not available or failed to enable.`);
 		}
