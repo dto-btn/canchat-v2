@@ -1,9 +1,4 @@
-import {
-	type BrowserContext,
-	type TestInfo,
-	test as baseTest,
-	expect
-} from '@playwright/test';
+import { type BrowserContext, type TestInfo, test as baseTest, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
