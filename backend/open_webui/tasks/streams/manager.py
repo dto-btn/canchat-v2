@@ -69,50 +69,41 @@ class StreamManager:
 
     async def stop(self, stream_id: str) -> dict[str, Any]:
         """Stop a stream. Handles both local and remote (cross-pod) tasks."""
-        if await self._registry.get(stream_id) is not None:
-            return await self._stop_local(stream_id)
-
-        # Not in local registry: publish to bus and wait for the owning pod to confirm.
-        loop = asyncio.get_running_loop()
-        future: asyncio.Future[str] = loop.create_future()
-        self._pending_stops[stream_id] = future
-
-        try:
-            log.debug("Publishing stop command for stream '%s'", stream_id)
-            await self._bus.publish(
-                StopStreamCommand(
-                    stream_id=stream_id,
-                    source_instance_id=self._instance_id,
-                )
-            )
-            terminal_state = await asyncio.wait_for(
-                future, timeout=self._remote_stop_timeout
-            )
-        except asyncio.TimeoutError:
-            log.debug(
-                "Timed out waiting for stop confirmation for stream '%s'",
-                stream_id,
-            )
-            raise ValueError(f"Task with ID {stream_id} not found.")
-        except Exception as exc:
-            log.error("Failed to publish stop command for '%s': %s", stream_id, exc)
-            raise
-        finally:
-            self._pending_stops.pop(stream_id, None)
-
-        msg = (
-            f"Task {stream_id} already {terminal_state}."
-            if terminal_state in ("completed", "failed")
-            else f"Task {stream_id} successfully stopped."
-        )
-        return {"status": True, "message": msg, "state": terminal_state}
-
-    async def _stop_local(self, stream_id: str) -> dict[str, Any]:
         record = await self._registry.get(stream_id)
-        if record is None:
-            raise ValueError(f"Task with ID {stream_id} not found.")
+        if record is not None:
+            terminal_state = await self._executor.stop(stream_id)
+        else:
+            # Not in local registry: publish to bus and wait for the owning pod to confirm.
+            loop = asyncio.get_running_loop()
+            future: asyncio.Future[str] = loop.create_future()
+            self._pending_stops[stream_id] = future
 
-        terminal_state = await self._executor.stop(stream_id)
+            try:
+                log.debug("Publishing stop command for stream '%s'", stream_id)
+                await self._bus.publish(
+                    StopStreamCommand(
+                        stream_id=stream_id,
+                        source_instance_id=self._instance_id,
+                    )
+                )
+                terminal_state = await asyncio.wait_for(
+                    future, timeout=self._remote_stop_timeout
+                )
+            except asyncio.TimeoutError:
+                log.debug(
+                    "Timed out waiting for stop confirmation for stream '%s'",
+                    stream_id,
+                )
+                raise ValueError(f"Task with ID {stream_id} not found.")
+            except Exception as exc:
+                log.error(
+                    "Failed to publish stop command for '%s': %s",
+                    stream_id,
+                    exc,
+                )
+                raise
+            finally:
+                self._pending_stops.pop(stream_id, None)
 
         msg = (
             f"Task {stream_id} already {terminal_state}."

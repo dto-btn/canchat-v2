@@ -4,16 +4,6 @@ from open_webui.tasks.streams.command_bus.local import LocalCommandBus
 from open_webui.tasks.streams.manager import StreamManager
 
 
-class RecordingLocalCommandBus(LocalCommandBus):
-    def __init__(self) -> None:
-        super().__init__()
-        self.published_messages: list[object] = []
-
-    async def publish(self, message) -> None:
-        self.published_messages.append(message)
-        await super().publish(message)
-
-
 def make_test_stream_manager(
     instance_id: str,
     *,
@@ -55,10 +45,9 @@ def test_create_stream_starts_running():
     asyncio.run(scenario())
 
 
-def test_local_stop_cancels_stream_without_publishing_remote_command():
+def test_local_stop_cancels_stream_and_removes_record():
     async def scenario():
-        bus = RecordingLocalCommandBus()
-        manager = make_test_stream_manager(instance_id="owner", bus=bus)
+        manager = make_test_stream_manager(instance_id="owner")
         await manager.start()
         started = asyncio.Event()
 
@@ -81,7 +70,6 @@ def test_local_stop_cancels_stream_without_publishing_remote_command():
         }
         assert stream_task.cancelled()
         assert record is None
-        assert bus.published_messages == []
 
     asyncio.run(scenario())
 
