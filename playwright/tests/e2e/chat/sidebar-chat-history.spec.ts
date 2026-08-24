@@ -109,12 +109,14 @@ test.describe('Sidebar and Chat History Features', () => {
 		const tagSearchValue = await userPage.searchInput.inputValue();
 		expect(tagSearchValue).toContain(tagPrefix);
 
+		// Dismiss the search dropdown overlay so results are unobstructed
+		await userPage.searchInput.press('Escape');
+		await userPage.waitToSettle(500);
+
 		// 9. User observes the chat conversation are filtered
 		await expect(userPage.chatHistoryItems.first()).toBeVisible();
 
 		// 10. User clicks on one of the available conversation
-		await userPage.waitToSettle(1000);
-		await userPage.searchInput.press('Escape');
 		await userPage.chatHistoryItems.first().click({ force: true });
 
 		// 11. User observes that the conversation opens
