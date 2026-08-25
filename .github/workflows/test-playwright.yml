@@ -128,16 +128,22 @@ jobs:
 
       - name: Merge Playwright Reports
         if: always()
+        continue-on-error: true
         run: |
           mkdir -p ./all-blob-reports
-          cp -r ./blob-report-parallel/* ./all-blob-reports/ || true
-          cp -r ./blob-report-serial/* ./all-blob-reports/ || true
+          cp -r ./blob-report-parallel/* ./all-blob-reports/ 2>/dev/null || true
+          cp -r ./blob-report-serial/* ./all-blob-reports/ 2>/dev/null || true
 
-          PLAYWRIGHT_JSON_OUTPUT_NAME=results.json npx playwright merge-reports --reporter=html,json ./all-blob-reports
-          mkdir -p playwright-report
-          mv results.json playwright-report/results.json || true
+          if [ "$(ls -A ./all-blob-reports 2>/dev/null)" ]; then
+            PLAYWRIGHT_JSON_OUTPUT_NAME=results.json npx playwright merge-reports --reporter=html,json ./all-blob-reports
+            mkdir -p playwright-report
+            mv results.json playwright-report/results.json || true
+          else
+            echo "No blob reports found to merge."
+          fi
 
       - name: Get timestamp
+        if: always()
         id: timestamps
         shell: bash
         run: |
@@ -146,26 +152,33 @@ jobs:
       - name: Upload Report
         id: upload_report
         uses: actions/upload-artifact@v7
-        if: ${{ !cancelled() }}
+        if: always()
         with:
-          name: playwright-report-${{ steps.timestamps.outputs.timestamp }}
-          path: ./playwright-report/
+          name: playwright-report-${{ steps.timestamps.outputs.timestamp || github.run_id }}
+          path: |
+            ./playwright-report/
+            ./test-results/
           retention-days: 30
       
       - name: Create results summary
         uses: daun/playwright-report-summary@v4
-        if: ${{ !cancelled() }}
+        if: always()
+        continue-on-error: true
         id: playwright_summary
         with:
           report-file: ./playwright-report/results.json
           create-comment: false
  
       - name: Output test summary to action
-        if: ${{ !cancelled() }}
+        if: always()
         run: |
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "# Playwright Report" >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.playwright_summary.outputs.summary }}" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ steps.playwright_summary.outputs.summary }}" ]; then
+            echo "${{ steps.playwright_summary.outputs.summary }}" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "[Download Playwright Report](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/${{ steps.upload_report.outputs.artifact-id }})"  >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ steps.upload_report.outputs.artifact-id }}" ]; then
+            echo "[Download Playwright Report](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/${{ steps.upload_report.outputs.artifact-id }})"  >> $GITHUB_STEP_SUMMARY
+          fi
