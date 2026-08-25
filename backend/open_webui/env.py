@@ -422,6 +422,21 @@ def _default_stream_instance_id() -> str:
 
 TASK_COORDINATION_BACKEND = os.environ.get("TASK_COORDINATION_BACKEND", "local").lower()
 TASK_COORDINATION_URL = os.environ.get("TASK_COORDINATION_URL", "")
+
+try:
+    TASK_COORDINATION_REDIS_CONNECT_TIMEOUT: float = float(
+        os.environ.get("TASK_COORDINATION_REDIS_CONNECT_TIMEOUT", "2")
+    )
+except (ValueError, TypeError):
+    TASK_COORDINATION_REDIS_CONNECT_TIMEOUT = 2.0
+
+try:
+    TASK_COORDINATION_REDIS_HEALTH_CHECK_INTERVAL: int = int(
+        os.environ.get("TASK_COORDINATION_REDIS_HEALTH_CHECK_INTERVAL", "30")
+    )
+except (ValueError, TypeError):
+    TASK_COORDINATION_REDIS_HEALTH_CHECK_INTERVAL = 30
+
 STREAM_INSTANCE_ID = os.environ.get("STREAM_INSTANCE_ID", _default_stream_instance_id())
 
 AIOHTTP_CLIENT_TIMEOUT = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", "")

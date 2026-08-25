@@ -14,9 +14,21 @@ class RedisCommandBus:
         self,
         redis_url: str,
         channel: str = "open-webui:stream-commands",
+        socket_connect_timeout: float = 2.0,
+        # socket_timeout=None: no read deadline on the subscriber; listen() is a
+        # blocking long-poll and would raise TimeoutError on every idle interval.
+        socket_timeout: float | None = None,
+        socket_keepalive: bool = True,
+        retry_on_timeout: bool = True,
+        health_check_interval: int = 30,
     ) -> None:
         self.redis_url = redis_url
         self.channel = channel
+        self._socket_connect_timeout = socket_connect_timeout
+        self._socket_timeout = socket_timeout
+        self._socket_keepalive = socket_keepalive
+        self._retry_on_timeout = retry_on_timeout
+        self._health_check_interval = health_check_interval
         self._redis = None
         self._pubsub = None
         self._reader_task: asyncio.Task | None = None
@@ -31,7 +43,15 @@ class RedisCommandBus:
             raise RuntimeError(
                 "Redis command bus requires the 'redis' package with asyncio support"
             ) from exc
-        self._redis = redis.from_url(self.redis_url, decode_responses=True)
+        self._redis = redis.from_url(
+            self.redis_url,
+            decode_responses=True,
+            socket_connect_timeout=self._socket_connect_timeout,
+            socket_timeout=self._socket_timeout,
+            socket_keepalive=self._socket_keepalive,
+            retry_on_timeout=self._retry_on_timeout,
+            health_check_interval=self._health_check_interval,
+        )
 
     async def subscribe(self) -> asyncio.Queue:
         await self._ensure_client()

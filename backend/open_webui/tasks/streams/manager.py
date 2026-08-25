@@ -71,6 +71,7 @@ class StreamManager:
         """Stop a stream. Handles both local and remote (cross-pod) tasks."""
         record = await self._registry.get(stream_id)
         if record is not None:
+            # Task is local: call the executor directly, no bus round-trip needed.
             terminal_state = await self._executor.stop(stream_id)
         else:
             # Not in local registry: publish to bus and wait for the owning pod to confirm.
