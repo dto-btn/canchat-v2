@@ -23,7 +23,7 @@ env:
 jobs:
   tests:
     name: 'Playwright E2E Tests'
-    runs-on: arc-ssc-dsai-tko
+    runs-on: tko-canchat
     permissions:
       contents: read
       packages: read
