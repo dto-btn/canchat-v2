@@ -495,4 +495,4 @@ Ce projet est sous licence [BSD-3-Clause License](LICENSE) - consultez le fichie
 ## Support
 
 Si vous avez des questions, des suggestions ou avez besoin d'assistance, veuillez consulter notre
-[documentation](https://gcxgce.sharepoint.com/teams/1000538/SitePages/CANchat_FR.aspx).
+[documentation](https://gcxgce.sharepoint.com/teams/1000538/SitePages/fr/CANChat.aspx).
