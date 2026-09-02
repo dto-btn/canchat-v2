@@ -31,7 +31,7 @@
 						</Tooltip>
 
 						<a
-							href="https://github.com/ssc-dsai/canchat-v2/releases/tag/v{version.current}"
+							href="https://github.com/dto-btn/canchat-v2/releases/tag/v{version.current}"
 							target="_blank"
 						>
 							{$i18n.t('(latest)')}
