@@ -43,8 +43,8 @@
 	let embeddingBatchSize = 1;
 	let rerankingModel = '';
 
-	let fileMaxSize = null;
-	let fileMaxCount = null;
+	let fileMaxSize: any = null;
+	let fileMaxCount: any = null;
 
 	let contentExtractionEngine = 'default';
 	let tikaServerUrl = '';

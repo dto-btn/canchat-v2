@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	import { toast } from 'svelte-sonner';
@@ -26,10 +26,10 @@
 
 	let loaded = false;
 
-	export let users = [];
+	export let users: any[] = [];
 
-	let groups = [];
-	let filteredGroups;
+	let groups: any[] = [];
+	let filteredGroups: any;
 
 	$: filteredGroups = groups.filter((user) => {
 		if (search === '') {
@@ -73,7 +73,7 @@
 		groups = await getGroups(getRequestToken());
 	};
 
-	const addGroupHandler = async (group) => {
+	const addGroupHandler = async (group: any) => {
 		const res = await createNewGroup(getRequestToken(), group).catch((error) => {
 			toast.error(`${error}`);
 			return null;
@@ -85,7 +85,7 @@
 		}
 	};
 
-	const updateDefaultPermissionsHandler = async (group) => {
+	const updateDefaultPermissionsHandler = async (group: any) => {
 		const res = await updateUserDefaultPermissions(getRequestToken(), group.permissions).catch(
 			(error) => {
 				toast.error(`${error}`);
@@ -115,7 +115,7 @@
 	});
 
 	// Handle real-time group membership updates
-	const handleGroupMembershipUpdate = async (data) => {
+	const handleGroupMembershipUpdate = async (data: any) => {
 		const { group_id, group_name, user_count, action, users_affected, users_count, timestamp } =
 			data;
 
@@ -126,7 +126,7 @@
 			// This ensures we have the correct user IDs and count
 			try {
 				groups = await getGroups(getRequestToken());
-			} catch (error) {
+			} catch (error: any) {
 				console.error('Failed to refresh groups after membership update:', error);
 				// Fallback: just update the count if we can't fetch fresh data
 				groups[groupIndex] = {

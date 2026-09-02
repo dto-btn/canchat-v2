@@ -70,6 +70,7 @@
 	let serverFormEnvText = '';
 
 	// Server connection status tracking for external servers
+	let statusTranslations: Record<string, string> = {};
 
 	// Status translation keys (for i18n parser)
 	// These ensure the status values are available in translation files
@@ -132,7 +133,7 @@
 					const updatedTools = await getTools(getRequestToken());
 					tools.set(updatedTools);
 					console.log('Tools refreshed after MCP setting change');
-				} catch (error) {
+				} catch (error: any) {
 					console.error('Failed to refresh tools after MCP setting change:', error);
 				}
 			}
@@ -278,11 +279,11 @@
 				: [];
 
 			// Parse env from JSON text
-			let env = {};
+			let env: Record<string, any> = {};
 			if (serverFormEnvText.trim()) {
 				try {
 					env = JSON.parse(serverFormEnvText);
-				} catch (e) {
+				} catch (e: any) {
 					toast.error($i18n.t('Invalid JSON in environment variables'));
 					return;
 				}
@@ -300,7 +301,7 @@
 				is_active: serverForm.is_active
 			};
 
-			let res;
+			let res: any;
 			if (editingServer) {
 				// Update existing server
 				res = await updateExternalServer(getRequestToken(), editingServer.id, serverData);
@@ -323,11 +324,11 @@
 				try {
 					const updatedTools = await getTools(getRequestToken());
 					tools.set(updatedTools);
-				} catch (error) {
+				} catch (error: any) {
 					console.error('Failed to refresh tools:', error);
 				}
 			}
-		} catch (error) {
+		} catch (error: any) {
 			toast.error($i18n.t('Failed to save server: {{error}}', { error: localizeApiError(error) }));
 		}
 	};
@@ -352,11 +353,11 @@
 				try {
 					const updatedTools = await getTools(getRequestToken());
 					tools.set(updatedTools);
-				} catch (error) {
+				} catch (error: any) {
 					console.error('Failed to refresh tools:', error);
 				}
 			}
-		} catch (error) {
+		} catch (error: any) {
 			toast.error(`Failed to delete server: ${localizeApiError(error)}`);
 		}
 	};
@@ -369,7 +370,7 @@
 				await getExternalServersHandler();
 				await getMCPToolsHandler();
 			}
-		} catch (error) {
+		} catch (error: any) {
 			toast.error(`Failed to start server: ${localizeApiError(error)}`);
 		}
 	};
@@ -382,7 +383,7 @@
 				await getExternalServersHandler();
 				await getMCPToolsHandler();
 			}
-		} catch (error) {
+		} catch (error: any) {
 			toast.error(`Failed to stop server: ${localizeApiError(error)}`);
 		}
 	};
@@ -395,7 +396,7 @@
 				await getExternalServersHandler();
 				await getMCPToolsHandler();
 			}
-		} catch (error) {
+		} catch (error: any) {
 			toast.error(`Failed to restart server: ${localizeApiError(error)}`);
 		}
 	};

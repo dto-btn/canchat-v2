@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	import { goto } from '$app/navigation';
@@ -14,7 +14,7 @@
 
 	let name = '';
 	let description = '';
-	let accessControl = null;
+	let accessControl: any = null;
 
 	const submitHandler = async () => {
 		loading = true;

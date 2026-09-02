@@ -14,8 +14,8 @@
 	import ArrowLeft from '../icons/ArrowLeft.svelte';
 
 	export let overlay = false;
-	export let history;
-	let messages = [];
+	export let history: any;
+	let messages: any[] = [];
 
 	let contents: Array<{ type: string; content: string }> = [];
 	let selectedContentIdx = 0;
@@ -36,10 +36,10 @@
 		messages.forEach((message) => {
 			if (message?.role !== 'user' && message?.content) {
 				const codeBlockContents = message.content.match(/```[\s\S]*?```/g);
-				let codeBlocks = [];
+				let codeBlocks: any[] = [];
 
 				if (codeBlockContents) {
-					codeBlockContents.forEach((block) => {
+					codeBlockContents.forEach((block: any) => {
 						const lang = block.split('\n')[0].replace('```', '').trim().toLowerCase();
 						const code = block.replace(/```[\s\S]*?\n/, '').replace(/```$/, '');
 						codeBlocks.push({ lang, code });
@@ -67,19 +67,19 @@
 				const inlineJs = message.content.match(/<script>[\s\S]*?<\/script>/gi);
 
 				if (inlineHtml) {
-					inlineHtml.forEach((block) => {
+					inlineHtml.forEach((block: any) => {
 						const content = block.replace(/<\/?html>/gi, ''); // Remove <html> tags
 						htmlContent += content + '\n';
 					});
 				}
 				if (inlineCss) {
-					inlineCss.forEach((block) => {
+					inlineCss.forEach((block: any) => {
 						const content = block.replace(/<\/?style>/gi, ''); // Remove <style> tags
 						cssContent += content + '\n';
 					});
 				}
 				if (inlineJs) {
-					inlineJs.forEach((block) => {
+					inlineJs.forEach((block: any) => {
 						const content = block.replace(/<\/?script>/gi, ''); // Remove <script> tags
 						jsContent += content + '\n';
 					});

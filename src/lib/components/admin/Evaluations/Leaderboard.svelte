@@ -14,18 +14,18 @@
 
 	const EMBEDDING_MODEL = 'TaylorAI/bge-micro-v2';
 
-	let tokenizer = null;
-	let model = null;
+	let tokenizer: any = null;
+	let model: any = null;
 
-	export let feedbacks = [];
+	export let feedbacks: any[] = [];
 
-	let rankedModels = [];
+	let rankedModels: any[] = [];
 
 	let query = '';
 
 	let tagEmbeddings = new Map();
 	let loadingLeaderboard = true;
-	let debounceTimer;
+	let debounceTimer: any;
 
 	type Feedback = {
 		id: string;
@@ -210,7 +210,7 @@
 	//
 	//////////////////////
 
-	const cosineSimilarity = (vecA, vecB) => {
+	const cosineSimilarity = (vecA: any, vecB: any) => {
 		// Ensure the lengths of the vectors are the same
 		if (vecA.length !== vecB.length) {
 			throw new Error('Vectors must be the same length');
@@ -240,7 +240,7 @@
 		return dotProduct / (normA * normB);
 	};
 
-	const calculateMaxSimilarity = (queryEmbedding, tagEmbeddings: Map<string, number[]>) => {
+	const calculateMaxSimilarity = (queryEmbedding: any, tagEmbeddings: Map<string, number[]>) => {
 		let maxSimilarity = 0;
 		for (const tagEmbedding of tagEmbeddings.values()) {
 			const similarity = cosineSimilarity(queryEmbedding, tagEmbedding);

@@ -33,14 +33,14 @@
 	const i18n = getI18n();
 
 	let shiftKey = false;
-	let importFiles;
+	let importFiles: any;
 	let modelsImportInputElement: HTMLInputElement;
 	let loaded = false;
-	let models = [];
-	let filteredModels = [];
-	let selectedModel = null;
+	let models: any[] = [];
+	let filteredModels: any[] = [];
+	let selectedModel: any = null;
 	let showModelDeleteConfirm = false;
-	let group_ids = [];
+	let group_ids: any[] = [];
 	let searchValue = '';
 
 	$: filteredModels = models
@@ -57,7 +57,7 @@
 			).trim()
 		}));
 
-	const deleteModelHandler = async (model) => {
+	const deleteModelHandler = async (model: any) => {
 		const res = await deleteModelById(getRequestToken(), model.id).catch((e) => {
 			toast.error(e);
 			return null;
@@ -71,7 +71,7 @@
 		models = await getWorkspaceModels(getRequestToken());
 	};
 
-	const cloneModelHandler = async (model) => {
+	const cloneModelHandler = async (model: any) => {
 		sessionStorage.model = JSON.stringify({
 			...model,
 			id: `${model.id}-clone`,
@@ -80,7 +80,7 @@
 		goto('/workspace/models/create');
 	};
 
-	const hideModelHandler = async (model) => {
+	const hideModelHandler = async (model: any) => {
 		let info = model.info;
 
 		if (!info) {
@@ -114,34 +114,42 @@
 		models = await getWorkspaceModels(getRequestToken());
 	};
 
-	const downloadModels = async (models) => {
+	const downloadModels = async (models: any) => {
 		let blob = new Blob([JSON.stringify(models)], {
 			type: 'application/json'
 		});
 		saveAs(blob, `models-export-${Date.now()}.json`);
 	};
 
-	const exportModelHandler = async (model) => {
+	const exportModelHandler = async (model: any) => {
 		let blob = new Blob([JSON.stringify([model])], {
 			type: 'application/json'
 		});
 		saveAs(blob, `${model.id}-${Date.now()}.json`);
 	};
 
+	const canEditModel = (model: any) => {
+		return (
+			$user?.role === 'admin' ||
+			model.user_id === $user?.id ||
+			model.access_control.write.group_ids.some((wg: any) => group_ids.includes(wg))
+		);
+	};
+
 	onMount(async () => {
 		models = await getWorkspaceModels(getRequestToken());
 		let groups = await getGroups(getRequestToken());
-		group_ids = groups.map((group) => group.id);
+		group_ids = groups.map((group: any) => group.id);
 
 		loaded = true;
 
-		const onKeyDown = (event) => {
+		const onKeyDown = (event: any) => {
 			if (event.key === 'Shift') {
 				shiftKey = true;
 			}
 		};
 
-		const onKeyUp = (event) => {
+		const onKeyUp = (event: any) => {
 			if (event.key === 'Shift') {
 				shiftKey = false;
 			}
@@ -286,7 +294,7 @@
 								</button>
 							</Tooltip>
 						{:else}
-							{#if $user?.role === 'admin' || model.user_id === $user?.id || model.access_control.write.group_ids.some( (wg) => group_ids.includes(wg) )}
+							{#if canEditModel(model)}
 								<a
 									class="self-center w-fit text-sm px-2 py-2 dark:text-gray-300 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded-xl"
 									type="button"

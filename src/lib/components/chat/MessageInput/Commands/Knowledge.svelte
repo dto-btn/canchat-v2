@@ -20,13 +20,13 @@
 	const dispatch = createEventDispatcher();
 	let selectedIdx = 0;
 
-	let items = [];
-	let fuse = null;
+	let items: any[] = [];
+	let fuse: any = null;
 
-	let filteredItems = [];
+	let filteredItems: any[] = [];
 	$: if (fuse) {
 		filteredItems = command.slice(1)
-			? fuse.search(command).map((e) => {
+			? fuse.search(command).map((e: any) => {
 					return e.item;
 				})
 			: items;
@@ -44,7 +44,7 @@
 		selectedIdx = Math.min(selectedIdx + 1, filteredItems.length - 1);
 	};
 
-	const confirmSelect = async (item) => {
+	const confirmSelect = async (item: any) => {
 		dispatch('select', item);
 
 		prompt = removeLastWordFromString(prompt, command);
@@ -55,7 +55,7 @@
 		await tick();
 	};
 
-	const confirmSelectWeb = async (url) => {
+	const confirmSelectWeb = async (url: any) => {
 		dispatch('url', url);
 
 		prompt = removeLastWordFromString(prompt, command);
@@ -66,7 +66,7 @@
 		await tick();
 	};
 
-	const confirmSelectYoutube = async (url) => {
+	const confirmSelectYoutube = async (url: any) => {
 		dispatch('youtube', url);
 
 		prompt = removeLastWordFromString(prompt, command);
@@ -99,15 +99,19 @@
 
 						...legacy_documents
 							.reduce((a, item) => {
-								return [...new Set([...a, ...(item?.meta?.tags ?? []).map((tag) => tag.name)])];
+								return [
+									...new Set([...a, ...(item?.meta?.tags ?? []).map((tag: any) => tag.name)])
+								];
 							}, [])
-							.map((tag) => ({
+							.map((tag: any) => ({
 								name: tag,
 								legacy: true,
 								type: 'collection',
 								description: 'Deprecated (legacy collection), please create a new knowledge base.',
 								collection_names: legacy_documents
-									.filter((item) => (item?.meta?.tags ?? []).map((tag) => tag.name).includes(tag))
+									.filter((item) =>
+										(item?.meta?.tags ?? []).map((tag: any) => tag.name).includes(tag)
+									)
 									.map((item) => item.id)
 							}))
 					]
@@ -127,14 +131,14 @@
 								return [
 									...new Set([
 										...a,
-										...(item?.files ?? []).map((file) => ({
+										...(item?.files ?? []).map((file: any) => ({
 											...file,
 											collection: { name: item.name, description: item.description } // DO NOT REMOVE, USED IN FILE DESCRIPTION/ATTACHMENT
 										}))
 									])
 								];
 							}, [])
-							.map((file) => ({
+							.map((file: any) => ({
 								...file,
 								name: file?.meta?.name,
 								description: `${file?.collection?.name} - ${file?.collection?.description}`,

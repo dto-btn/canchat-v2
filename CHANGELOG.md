@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.7-ccv2-1.16.0] - 2026-08-12
+
+### Added
+
+- **📄 Terms of Use**: Added a terms of use page with navigation back to the application.
+- **🌐 French Model Display**: Added French-language display names for models.
+- **🌐 French Model Tag Display**: Added French-language display names for model tags.
+
+### Changed
+
+- **📦 Dependencies**: Updated dependencies to fix vulnerabilities.
+
+### Fixed
+
+- **🔒 Token Refresh**: Added secure token refresh with silent recovery and cross-tab session restoration.
+- **🗃️ Redis Fail-Over**: Prevented Redis from failing over to in-memory state.
+- **🐳 Dockerfile**: Updated the container to run without root privileges.
+
+### Removed
+
+- **🗑️ ElectronAPI**: Removed the Electron API.
+
 ## [0.5.7-ccv2-1.15.2] - 2026-06-19
 
 ### Changed

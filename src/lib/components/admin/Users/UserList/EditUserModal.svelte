@@ -15,8 +15,8 @@
 	const dispatch = createEventDispatcher();
 
 	export let show = false;
-	export let selectedUser;
-	export let sessionUser;
+	export let selectedUser: any;
+	export let sessionUser: any;
 
 	let _user = {
 		id: '',

@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	import { createEventDispatcher, onMount } from 'svelte';
@@ -16,7 +16,7 @@
 	export let show = false;
 	export let edit = false;
 
-	export let model = null;
+	export let model: any = null;
 
 	let name = '';
 	let id = '';
@@ -39,12 +39,12 @@
 	let description = '';
 
 	let selectedModelId = '';
-	let modelIds = [];
+	let modelIds: any[] = [];
 	let filterMode = 'include';
 
-	let accessControl = {};
+	let accessControl: Record<string, any> = {};
 
-	let imageInputElement;
+	let imageInputElement: any;
 	let loading = false;
 
 	const addModelHandler = () => {

@@ -11,12 +11,12 @@
 	dayjs.extend(duration);
 	dayjs.extend(relativeTime);
 
-	async function loadLocale(locales) {
+	async function loadLocale(locales: any) {
 		for (const locale of locales) {
 			try {
 				dayjs.locale(locale);
 				break; // Stop after successfully loading the first available locale
-			} catch (error) {
+			} catch (error: any) {
 				console.error(`Could not load locale '${locale}':`, error);
 			}
 		}
@@ -40,8 +40,8 @@
 	export let className = '';
 	export let buttonClassName =
 		'w-fit text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition';
-	export let title = null;
-	export let attributes = null;
+	export let title: any = null;
+	export let attributes: any = null;
 
 	export let grow = false;
 

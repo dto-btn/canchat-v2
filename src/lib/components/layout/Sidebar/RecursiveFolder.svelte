@@ -111,7 +111,7 @@
 										folderId: folderId,
 										items: fileContent
 									});
-								} catch (error) {
+								} catch (error: any) {
 									console.error('Error parsing JSON file:', error);
 								}
 							};

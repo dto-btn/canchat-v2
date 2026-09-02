@@ -58,10 +58,10 @@
 		pinned = await getChatPinnedStatusById(getRequestToken(), chatId);
 	};
 
-	const getChatAsText = async (chat) => {
+	const getChatAsText = async (chat: any) => {
 		const history = chat.chat.history;
 		const messages = createMessagesList(history, history.currentId);
-		const chatText = messages.reduce((a, message, i, arr) => {
+		const chatText = messages.reduce((a: any, message: any, i: any, arr: any) => {
 			return `${a}### ${message.role.toUpperCase()}\n${message.content}\n\n`;
 		}, '');
 

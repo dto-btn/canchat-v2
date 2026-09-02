@@ -280,7 +280,7 @@ export class BasePage {
 		const selectorIndex = modelNumber - 1;
 		const modelDropdown = this.page.locator(`#model-selector-${selectorIndex}-button`);
 
-		//If the user request to change a model at an index that does not exist, throw an error.
+		// If the user request to change a model at an index that does not exist, throw an error.
 		if (!(await modelDropdown.isVisible())) {
 			const actualCount = await this.page
 				.locator('button[id^="model-selector-"][id$="-button"]')
@@ -291,8 +291,43 @@ export class BasePage {
 			);
 		}
 
+		// Check if the model is already selected
+		const currentLabel = (
+			await this.page
+				.locator(`#model-selector-${selectorIndex}-button span`)
+				.first()
+				.innerText()
+				.catch(() => '')
+		).trim();
+		if (currentLabel === modelName) {
+			return;
+		}
+
 		await modelDropdown.click();
-		await this.page.getByRole('button', { name: `Model ${modelName}` }).click();
+
+		const searchInput = this.page.locator('#model-search-input');
+		if (await searchInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+			await searchInput.fill(modelName);
+			await this.page.waitForTimeout(200);
+
+			const modelItem = this.page
+				.locator('div.max-h-64 button')
+				.filter({ hasText: modelName })
+				.first();
+
+			if (await modelItem.isVisible({ timeout: 2000 }).catch(() => false)) {
+				await modelItem.click();
+			} else {
+				await this.page.keyboard.press('Enter');
+			}
+			await searchInput.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+		} else {
+			const modelItem = this.page
+				.locator('div.max-h-64 button')
+				.filter({ hasText: modelName })
+				.first();
+			await modelItem.click();
+		}
 	}
 
 	/**

@@ -1,11 +1,11 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	const i18n = getI18n();
 
 	import ManageOllama from './ManageOllama.svelte';
 
-	export let ollamaConfig = null;
+	export let ollamaConfig: any = null;
 
 	let selectedUrlIdx = 0;
 </script>

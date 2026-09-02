@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	import { createEventDispatcher } from 'svelte';
@@ -7,8 +7,8 @@
 
 	import Switch from './Switch.svelte';
 
-	export let valvesSpec = null;
-	export let valves = {};
+	export let valvesSpec: any = null;
+	export let valves: Record<string, any> = {};
 </script>
 
 {#if valvesSpec && Object.keys(valvesSpec?.properties ?? {}).length}

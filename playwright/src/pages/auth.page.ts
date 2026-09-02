@@ -11,6 +11,7 @@ export class AuthPage extends BasePage {
 	onboardingButton!: Locator;
 	signOutButtonPendingUser!: Locator;
 	changeLanguageButtonPendingUser!: Locator;
+	acceptTermsButton!: Locator;
 	readonly isFirstRunButton: Locator;
 
 	constructor(page: Page, lang: Language = 'en-GB') {
@@ -27,6 +28,9 @@ export class AuthPage extends BasePage {
 	override updateLanguage(lang: Language) {
 		super.updateLanguage(lang);
 
+		this.acceptTermsButton = this.page.getByRole('button', {
+			name: this.t['I Accept Terms'] || 'I Accept Terms'
+		});
 		this.emailInput = this.page.getByRole('textbox', {
 			name: this.t['Email'] || 'Email'
 		});
@@ -60,7 +64,7 @@ export class AuthPage extends BasePage {
 	 * @param pass The password for the account.
 	 */
 	async login(email: string, pass: string) {
-		await this.goto('/auth');
+		await this.goto(`/auth?lang=${this.lang}`);
 		await this.emailInput.fill(email);
 		await this.passwordInput.fill(pass);
 		await this.signInButton.click();
@@ -139,12 +143,11 @@ export class AuthPage extends BasePage {
 	 * Clears auth state and confirms redirection to the login page.
 	 */
 	async clearAuthAndReturnToLogin() {
-		await this.page.evaluate(() => localStorage.clear()).catch(() => {});
 		await this.page
 			.context()
 			.clearCookies()
 			.catch(() => {});
-		await this.page.reload();
+		await this.goto(`/auth?lang=${this.lang}`);
 		await expect(this.page).toHaveURL(/\/auth/);
 	}
 
@@ -159,6 +162,9 @@ export class AuthPage extends BasePage {
 		await this.emailInput.fill(email);
 		await this.passwordInput.fill(pass);
 		await this.createAccountButton.click();
+
+		//Accept CANChat Terms of use
+		await this.acceptTermsButton.click();
 
 		// Handle "Ok, Let's Go!" onboarding popup
 		await this.onboardingButton.waitFor({ state: 'visible', timeout: 5000 });

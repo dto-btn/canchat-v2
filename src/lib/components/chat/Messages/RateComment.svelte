@@ -11,7 +11,7 @@
 
 	const dispatch = createEventDispatcher();
 
-	export let message;
+	export let message: any;
 	export let show = false;
 	export let disabled = false;
 
@@ -35,14 +35,14 @@
 		'other'
 	];
 
-	let tags = [];
+	let tags: any[] = [];
 
-	let reasons = [];
-	let selectedReason = null;
+	let reasons: any[] = [];
+	let selectedReason: any = null;
 	let comment = '';
 
-	let detailedRating = null;
-	let selectedModel = null;
+	let detailedRating: any = null;
+	let selectedModel: any = null;
 
 	$: if (message?.annotation?.rating === 1) {
 		reasons = LIKE_REASONS;
@@ -63,7 +63,7 @@
 			comment = message?.annotation?.comment ?? '';
 		}
 
-		tags = (message?.annotation?.tags ?? []).map((tag) => ({
+		tags = (message?.annotation?.tags ?? []).map((tag: any) => ({
 			name: tag
 		}));
 
@@ -92,15 +92,15 @@
 		comment !== null &&
 		comment.trim() !== '';
 
-	function handleDetailedRatingClick(rating) {
+	function handleDetailedRatingClick(rating: any) {
 		detailedRating = rating;
 	}
 
-	function handleReasonSelect(reason) {
+	function handleReasonSelect(reason: any) {
 		selectedReason = reason;
 	}
 
-	function handleCommentInput(event) {
+	function handleCommentInput(event: any) {
 		comment = event.target.value;
 	}
 

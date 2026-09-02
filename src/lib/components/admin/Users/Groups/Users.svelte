@@ -8,10 +8,10 @@
 	import Checkbox from '$lib/components/common/Checkbox.svelte';
 	import Badge from '$lib/components/common/Badge.svelte';
 
-	export let users = [];
-	export let userIds = [];
+	export let users: any[] = [];
+	export let userIds: any[] = [];
 
-	let filteredUsers = [];
+	let filteredUsers: any[] = [];
 
 	$: filteredUsers = users
 		.filter((user) => {

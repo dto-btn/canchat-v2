@@ -1,15 +1,7 @@
 <script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
-	import {
-		WEBUI_NAME,
-		showControls,
-		showSidebar,
-		user,
-		config,
-		suggestionCycle,
-		ariaMessage
-	} from '$lib/stores';
+	import { WEBUI_NAME, showControls, showSidebar, user, config, ariaMessage } from '$lib/stores';
 
 	import ModelSelector from '$lib/components/chat/ModelSelector.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
@@ -24,11 +16,11 @@
 	export let initNewChat: Function;
 	export let title: string = $WEBUI_NAME;
 	export let shareEnabled: boolean = false;
-	export let chat;
-	export let selectedModels;
+	export let chat: any;
+	export let selectedModels: any;
 	export let showModelSelector = true;
 
-	const changeFocus = async (elementId) => {
+	const changeFocus = async (elementId: any) => {
 		setTimeout(() => {
 			document.getElementById(elementId)?.focus();
 		}, 110);
