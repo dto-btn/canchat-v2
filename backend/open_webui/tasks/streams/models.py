@@ -36,4 +36,4 @@ class StreamRecord(BaseModel):
     updated_at: int = Field(default_factory=lambda: int(time.time()))
 
     def public(self) -> dict[str, Any]:
-        return self.model_dump(exclude={"task"})
+        return self.model_dump(exclude={"task", "coroutine"})
