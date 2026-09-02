@@ -34,9 +34,9 @@ class StreamRegistry:
             rec = self._items.get(stream_id)
             return None if rec is None else rec.model_copy(deep=False)
 
-    async def list(self) -> list[dict[str, Any]]:
+    async def list(self) -> list[StreamRecord]:
         async with self._lock:
-            return [rec.public() for rec in self._items.values()]
+            return [rec.model_copy(deep=False) for rec in self._items.values()]
 
     async def update(
         self,
@@ -69,5 +69,6 @@ class StreamRegistry:
 
     async def remove(self, stream_id: str) -> None:
         async with self._lock:
+            # stop() and the task's done callback may both remove the record.
             if stream_id in self._items:
                 del self._items[stream_id]

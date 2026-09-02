@@ -14,7 +14,11 @@ from open_webui.tasks.streams.manager import StreamManager
 
 
 def create_stream_manager() -> StreamManager:
-    if TASK_COORDINATION_BACKEND == "redis" and TASK_COORDINATION_URL:
+    if TASK_COORDINATION_BACKEND == "redis":
+        if not TASK_COORDINATION_URL:
+            raise ValueError(
+                "TASK_COORDINATION_URL is required when TASK_COORDINATION_BACKEND=redis."
+            )
         bus = RedisCommandBus(
             redis_url=TASK_COORDINATION_URL,
             socket_connect_timeout=TASK_COORDINATION_REDIS_CONNECT_TIMEOUT,

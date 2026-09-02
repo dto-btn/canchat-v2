@@ -1315,15 +1315,26 @@ async def stop_task_endpoint(
     user=Depends(get_verified_user),
 ):
     try:
-        result = await request.app.state.stream_task_manager.stop(task_id)
+        result = await request.app.state.stream_task_manager.stop(
+            task_id,
+            requester_user_id=user.id,
+            requester_is_admin=user.role == "admin",
+        )
         return result
+    except PermissionError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
 @app.get("/api/tasks")
 async def list_tasks_endpoint(request: Request, user=Depends(get_verified_user)):
-    return {"tasks": await request.app.state.stream_task_manager.list()}
+    return {
+        "tasks": await request.app.state.stream_task_manager.list(
+            requester_user_id=user.id,
+            requester_is_admin=user.role == "admin",
+        )
+    }
 
 
 ##################################

@@ -1,7 +1,11 @@
 import asyncio
 import json
 import logging
+from urllib.parse import urlparse
 
+from pydantic import ValidationError
+
+from open_webui.tasks.streams.command_bus.base import StreamBusMessage
 from open_webui.tasks.streams.models import StopCompletedEvent, StopStreamCommand
 
 log = logging.getLogger(__name__)
@@ -22,6 +26,7 @@ class RedisCommandBus:
         retry_on_timeout: bool = True,
         health_check_interval: int = 30,
     ) -> None:
+        self._validate_redis_url(redis_url)
         self.redis_url = redis_url
         self.channel = channel
         self._socket_connect_timeout = socket_connect_timeout
@@ -33,6 +38,34 @@ class RedisCommandBus:
         self._pubsub = None
         self._reader_task: asyncio.Task | None = None
         self._queue: asyncio.Queue | None = None
+
+    @staticmethod
+    def _validate_redis_url(redis_url: str) -> None:
+        try:
+            parsed = urlparse(redis_url)
+            hostname = parsed.hostname
+            parsed.port
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "TASK_COORDINATION_URL must be a valid Redis URL."
+            ) from exc
+
+        if parsed.scheme not in {"redis", "rediss", "unix"}:
+            raise ValueError(
+                "TASK_COORDINATION_URL must use a redis://, rediss://, or unix:// URL."
+            )
+
+        if parsed.scheme == "unix":
+            if parsed.netloc or not parsed.path:
+                raise ValueError(
+                    "TASK_COORDINATION_URL must include a socket path for unix:// URLs."
+                )
+            return
+
+        if not hostname:
+            raise ValueError(
+                "TASK_COORDINATION_URL must include a Redis host when using redis:// or rediss://."
+            )
 
     async def _ensure_client(self) -> None:
         if self._redis is not None:
@@ -91,11 +124,15 @@ class RedisCommandBus:
 
         self._queue = None
 
-    async def publish(self, message) -> None:
+    async def publish(self, message: StreamBusMessage) -> None:
         await self._ensure_client()
         await self._redis.publish(self.channel, message.model_dump_json())
 
     async def _reader_loop(self) -> None:
+        if self._pubsub is None or self._queue is None:
+            log.warning("Redis command bus reader started without pubsub or queue")
+            return
+
         while True:
             try:
                 async for raw in self._pubsub.listen():
@@ -106,6 +143,8 @@ class RedisCommandBus:
                         continue
                     try:
                         payload = json.loads(data)
+                        if not isinstance(payload, dict):
+                            continue
                         msg_type = payload.get("type")
                         if msg_type == "stop_stream":
                             msg = StopStreamCommand.model_validate(payload)
@@ -114,8 +153,8 @@ class RedisCommandBus:
                         else:
                             continue
                         await self._queue.put(msg)
-                    except Exception:
-                        pass
+                    except (json.JSONDecodeError, ValidationError) as exc:
+                        log.debug("Ignoring invalid stream bus payload: %s", exc)
             except asyncio.CancelledError:
                 raise
             except Exception as exc:

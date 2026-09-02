@@ -12,16 +12,25 @@ class StreamStatus(str, Enum):
     CANCELLING = "cancelling"
 
 
+TerminalState = Literal["cancelled", "completed", "failed"]
+StopErrorCode = Literal["forbidden", "not_found"]
+
+
 class StopStreamCommand(BaseModel):
     type: Literal["stop_stream"] = "stop_stream"
     stream_id: str
+    request_id: str
     source_instance_id: str
+    requester_user_id: str
+    requester_is_admin: bool = False
 
 
 class StopCompletedEvent(BaseModel):
     type: Literal["stop_completed"] = "stop_completed"
     stream_id: str
-    terminal_state: str  # "cancelled" | "completed" | "failed"
+    request_id: str
+    terminal_state: Optional[TerminalState] = None
+    error_code: Optional[StopErrorCode] = None
 
 
 class StreamRecord(BaseModel):
@@ -37,3 +46,11 @@ class StreamRecord(BaseModel):
 
     def public(self) -> dict[str, Any]:
         return self.model_dump(exclude={"task"})
+
+    def summary(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "status": self.status,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+        }
