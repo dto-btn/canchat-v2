@@ -311,7 +311,7 @@
 	const stopResponseTask = async (responseTaskId: string) => {
 		try {
 			await stopTask(localStorage.token, responseTaskId);
-		} catch (error) {
+		} catch (error: any) {
 			const errorDetail =
 				typeof error === 'string' ? error : (error?.detail ?? error?.message ?? '');
 			const errorMessage = String(errorDetail).toLowerCase();
