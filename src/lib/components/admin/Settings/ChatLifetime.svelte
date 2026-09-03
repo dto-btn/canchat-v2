@@ -236,6 +236,7 @@
 								max="365"
 								step="1"
 								style="--value: {(config.days / 365) * 100}%;"
+								aria-label={$i18n.t('Chat retention period in days')}
 							/>
 						</div>
 					</div>

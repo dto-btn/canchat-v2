@@ -146,7 +146,8 @@
 						<select
 							class="dark:bg-gray-900 w-fit pr-8 rounded px-2 text-xs bg-transparent outline-none text-right"
 							bind:value={adminConfig.DEFAULT_USER_ROLE}
-							placeholder="Select a role"
+							placeholder={$i18n.t('Select a role')}
+							aria-label={$i18n.t('Default User Role')}
 						>
 							<option value="pending">{$i18n.t('pending')}</option>
 							<option value="user">{$i18n.t('user')}</option>
@@ -181,6 +182,7 @@
 								class="w-full mt-1 rounded-lg text-sm dark:text-gray-300 bg-transparent outline-none"
 								type="text"
 								placeholder={`e.g.) /api/v1/messages, /api/v1/channels`}
+								aria-label={$i18n.t('Allowed Endpoints')}
 								bind:value={adminConfig.API_KEY_ALLOWED_ENDPOINTS}
 							/>
 
@@ -232,6 +234,7 @@
 							class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 							type="text"
 							placeholder={`e.g.) "http://localhost:3000"`}
+							aria-label={$i18n.t('WebUI URL')}
 							bind:value={adminConfig.WEBUI_URL}
 						/>
 					</div>
@@ -257,6 +260,7 @@
 							class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 							type="text"
 							placeholder={`e.g.) "30m","1h", "10d". `}
+							aria-label={$i18n.t('Access Token Expiration')}
 							bind:value={adminConfig.ACCESS_TOKEN_EXPIRES_IN}
 						/>
 					</div>
@@ -307,6 +311,7 @@
 							class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 							type="text"
 							placeholder={`https://example.com/webhook`}
+							aria-label={$i18n.t('Webhook URL')}
 							bind:value={webhookUrl}
 						/>
 					</div>
@@ -351,7 +356,9 @@
 								<input
 									class="w-full bg-transparent outline-none py-0.5"
 									required
+									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 									placeholder={$i18n.t('Enter server label')}
+									aria-label={$i18n.t('Label')}
 									bind:value={LDAP_SERVER.label}
 								/>
 							</div>
@@ -365,7 +372,9 @@
 								<input
 									class="w-full bg-transparent outline-none py-0.5"
 									required
+									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 									placeholder={$i18n.t('Enter server host')}
+									aria-label={$i18n.t('Host')}
 									bind:value={LDAP_SERVER.host}
 								/>
 							</div>
@@ -382,6 +391,7 @@
 										class="w-full bg-transparent outline-none py-0.5"
 										type="number"
 										placeholder={$i18n.t('Enter server port')}
+										aria-label={$i18n.t('Port')}
 										bind:value={LDAP_SERVER.port}
 									/>
 								</Tooltip>
@@ -399,7 +409,10 @@
 									<input
 										class="w-full bg-transparent outline-none py-0.5"
 										required
+										on:invalid={(e) =>
+											e.target.setCustomValidity($i18n.t('This field is required'))}
 										placeholder={$i18n.t('Enter Application DN')}
+										aria-label={$i18n.t('Application DN')}
 										bind:value={LDAP_SERVER.app_dn}
 									/>
 								</Tooltip>
@@ -428,7 +441,10 @@
 									<input
 										class="w-full bg-transparent outline-none py-0.5"
 										required
+										on:invalid={(e) =>
+											e.target.setCustomValidity($i18n.t('This field is required'))}
 										placeholder={$i18n.t('Example: mail')}
+										aria-label={$i18n.t('Attribute for Mail')}
 										bind:value={LDAP_SERVER.attribute_for_mail}
 									/>
 								</Tooltip>
@@ -448,7 +464,10 @@
 									<input
 										class="w-full bg-transparent outline-none py-0.5"
 										required
+										on:invalid={(e) =>
+											e.target.setCustomValidity($i18n.t('This field is required'))}
 										placeholder={$i18n.t('Example: sAMAccountName or uid or userPrincipalName')}
+										aria-label={$i18n.t('Attribute for Username')}
 										bind:value={LDAP_SERVER.attribute_for_username}
 									/>
 								</Tooltip>
@@ -463,7 +482,10 @@
 									<input
 										class="w-full bg-transparent outline-none py-0.5"
 										required
+										on:invalid={(e) =>
+											e.target.setCustomValidity($i18n.t('This field is required'))}
 										placeholder={$i18n.t('Example: ou=users,dc=foo,dc=example')}
+										aria-label={$i18n.t('Search Base')}
 										bind:value={LDAP_SERVER.search_base}
 									/>
 								</Tooltip>
@@ -477,6 +499,7 @@
 								<input
 									class="w-full bg-transparent outline-none py-0.5"
 									placeholder={$i18n.t('Example: (&(objectClass=inetOrgPerson)(uid=%s))')}
+									aria-label={$i18n.t('Search Filters')}
 									bind:value={LDAP_SERVER.search_filters}
 								/>
 							</div>
@@ -507,7 +530,10 @@
 										<input
 											class="w-full bg-transparent outline-none py-0.5"
 											required
+											on:invalid={(e) =>
+												e.target.setCustomValidity($i18n.t('This field is required'))}
 											placeholder={$i18n.t('Enter certificate path')}
+											aria-label={$i18n.t('Certificate Path')}
 											bind:value={LDAP_SERVER.certificate_path}
 										/>
 									</div>
@@ -521,6 +547,7 @@
 											<input
 												class="w-full bg-transparent outline-none py-0.5"
 												placeholder={$i18n.t('Example: ALL')}
+												aria-label={$i18n.t('Ciphers')}
 												bind:value={LDAP_SERVER.ciphers}
 											/>
 										</Tooltip>

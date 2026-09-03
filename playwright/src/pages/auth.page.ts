@@ -32,10 +32,10 @@ export class AuthPage extends BasePage {
 			name: this.t['I Accept Terms'] || 'I Accept Terms'
 		});
 		this.emailInput = this.page.getByRole('textbox', {
-			name: this.t['Enter Your Email'] || 'Enter Your Email'
+			name: this.t['Email'] || 'Email'
 		});
 		this.passwordInput = this.page.getByRole('textbox', {
-			name: this.t['Enter Your Password'] || 'Enter Your Password'
+			name: this.t['Password'] || 'Password'
 		});
 		this.signInButton = this.page.getByRole('button', {
 			name: this.t['Sign in'] || 'Sign in'
@@ -44,7 +44,7 @@ export class AuthPage extends BasePage {
 			name: this.t['Create Admin Account'] || 'Create Admin Account'
 		});
 		this.nameInput = this.page.getByRole('textbox', {
-			name: this.t['Enter Your Full Name'] || 'Enter Your Full Name'
+			name: this.t['Name'] || 'Name'
 		});
 		this.onboardingButton = this.page.getByRole('button', {
 			name: this.t["Okay, Let's Go!"] || "Okay, Let's Go!"
