@@ -101,9 +101,10 @@
 	let selectedModelIds: any[] = [];
 	$: selectedModelIds = atSelectedModel !== undefined ? [atSelectedModel.id] : selectedModels;
 
-	let chat: any = null;
-	let tags: any[] = [];
-	let taskId: any = null;
+	let chat = null;
+	let tags = [];
+	let taskIdsByMessageId: Record<string, string> = {};
+	let stoppedResponseIds: Record<string, boolean> = {};
 
 	// Default transient state values
 	const TRANSIENT_DEFAULTS: any = {
@@ -153,6 +154,8 @@
 		history = structuredClone(TRANSIENT_DEFAULTS.history);
 		chatFiles = [];
 		params = {};
+		taskIdsByMessageId = {};
+		stoppedResponseIds = {};
 	};
 
 	$: if (chatIdProp) {
@@ -257,7 +260,69 @@
 		saveChatHandler(_chatId);
 	};
 
-	const chatEventHandler = async (event: any, cb: any) => {
+	const clearResponseTracking = (responseMessageId: string) => {
+		if (responseMessageId in taskIdsByMessageId) {
+			const { [responseMessageId]: _taskId, ...remainingTaskIds } = taskIdsByMessageId;
+			taskIdsByMessageId = remainingTaskIds;
+		}
+	};
+
+	const markResponseStopped = (responseMessageId: string) => {
+		stoppedResponseIds = {
+			...stoppedResponseIds,
+			[responseMessageId]: true
+		};
+	};
+
+	const isResponseStopped = (responseMessageId: string) =>
+		stoppedResponseIds[responseMessageId] === true;
+
+	const emitChatFinish = (message: { id: string; content: string }) => {
+		eventTarget.dispatchEvent(
+			new CustomEvent('chat:finish', {
+				detail: {
+					id: message.id,
+					content: message.content
+				}
+			})
+		);
+	};
+
+	const finalizeStoppedResponse = async (responseMessageId: string) => {
+		const responseMessage = history.messages[responseMessageId];
+		clearResponseTracking(responseMessageId);
+
+		if (!responseMessage || responseMessage.done === true) {
+			return;
+		}
+
+		responseMessage.done = true;
+		history.messages[responseMessageId] = responseMessage;
+		emitChatFinish(responseMessage);
+
+		if (autoScroll) {
+			scrollToBottom();
+		}
+
+		await tick();
+		await saveChatHandler($chatId);
+	};
+
+	const stopResponseTask = async (responseTaskId: string) => {
+		try {
+			await stopTask(localStorage.token, responseTaskId);
+		} catch (error: any) {
+			const errorDetail =
+				typeof error === 'string' ? error : (error?.detail ?? error?.message ?? '');
+			const errorMessage = String(errorDetail).toLowerCase();
+
+			if (!errorMessage.includes('not found')) {
+				console.error('Failed to stop chat response task', error);
+			}
+		}
+	};
+
+	const chatEventHandler = async (event, cb) => {
 		if (event.chat_id === $chatId) {
 			await tick();
 			let message = history.messages[event.message_id];
@@ -265,6 +330,11 @@
 			if (message) {
 				const type = event?.data?.type ?? null;
 				const data = event?.data?.data ?? null;
+
+				if (type === 'task-cancelled') {
+					await finalizeStoppedResponse(message.id);
+					return;
+				}
 
 				if (type === 'status') {
 					if (message?.statusHistory) {
@@ -1184,6 +1254,7 @@
 		history.messages[message.id] = message;
 
 		if (done) {
+			clearResponseTracking(message.id);
 			message.done = true;
 
 			if ($settings.responseAutoCopy) {
@@ -1207,14 +1278,7 @@
 					})
 				);
 			}
-			eventTarget.dispatchEvent(
-				new CustomEvent('chat:finish', {
-					detail: {
-						id: message.id,
-						content: message.content
-					}
-				})
-			);
+			emitChatFinish(message);
 
 			history.messages[message.id] = message;
 			await chatCompletedHandler(chatId, message.model, message.id, createMessagesList(message.id));
@@ -1446,12 +1510,21 @@
 								selectedToolIds,
 								$chatId,
 								(statusMessage: string) => {
+									if (isResponseStopped(responseMessageId)) {
+										return;
+									}
+
 									// Update UI with status from CrewAI
 									responseMessage.content = statusMessage;
 									history.messages[responseMessageId] = responseMessage;
 									tick();
 								}
 							);
+
+							if (isResponseStopped(responseMessageId)) {
+								clearResponseTracking(responseMessageId);
+								return;
+							}
 
 							if (crewResponse && crewResponse.result) {
 								// Check if the result is a SharePoint error message and translate it
@@ -1475,6 +1548,7 @@
 
 								// Update message content with CrewAI response (translated if needed)
 								responseMessage.content = displayResult;
+								clearResponseTracking(responseMessageId);
 								responseMessage.done = true;
 								responseMessage.crewAI = true; // Mark as CrewAI response
 
@@ -1486,14 +1560,7 @@
 								history.messages[responseMessageId] = responseMessage;
 
 								// Emit completion events
-								eventTarget.dispatchEvent(
-									new CustomEvent('chat:finish', {
-										detail: {
-											id: responseMessage.id,
-											content: responseMessage.content
-										}
-									})
-								);
+								emitChatFinish(responseMessage);
 
 								// Save the chat with CrewAI response
 								await tick();
@@ -1527,6 +1594,7 @@
 
 							// Display error message in chat instead of falling back
 							responseMessage.content = `⚠️ **${$i18n.t('CrewAI MCP Error')}**\n\n${localizedErrorMessage}\n\n*${$i18n.t('The selected tool(s) could not complete this request. This may be due to:')}*\n- ${$i18n.t('Request timeout (processing took too long)')}\n- ${$i18n.t('Network connectivity issues')}\n- ${$i18n.t('SharePoint permissions or authentication problems')}\n\n${$i18n.t('Please try again, or contact support if the issue persists.')}`;
+							clearResponseTracking(responseMessageId);
 							responseMessage.done = true;
 							responseMessage.error = true;
 							history.messages[responseMessageId] = responseMessage;
@@ -1719,6 +1787,12 @@
 			},
 			`${WEBUI_BASE_URL}/api`
 		).catch((error) => {
+			clearResponseTracking(responseMessageId);
+
+			if (isResponseStopped(responseMessageId)) {
+				return null;
+			}
+
 			console.log(error);
 			responseMessage.error = {
 				content: error
@@ -1728,8 +1802,15 @@
 			return null;
 		});
 
-		if (res) {
-			taskId = res.task_id;
+		if (res?.task_id) {
+			taskIdsByMessageId = {
+				...taskIdsByMessageId,
+				[responseMessageId]: res.task_id
+			};
+
+			if (isResponseStopped(responseMessageId)) {
+				await stopResponseTask(res.task_id);
+			}
 		}
 
 		await tick();
@@ -1764,6 +1845,7 @@
 		responseMessage.error = {
 			content: $i18n.t(`Uh-oh! There was an issue with the response.`) + '\n' + errorMessage
 		};
+		clearResponseTracking(responseMessage.id);
 		responseMessage.done = true;
 
 		if (responseMessage.statusHistory) {
@@ -1775,25 +1857,34 @@
 		history.messages[responseMessage.id] = responseMessage;
 	};
 
-	const stopResponse = () => {
-		if (taskId) {
-			const res = stopTask(getRequestToken(), taskId).catch((error) => {
-				return null;
-			});
-
-			if (res) {
-				taskId = null;
-
-				const responseMessage = history.messages[history.currentId];
-				responseMessage.done = true;
-
-				history.messages[history.currentId] = responseMessage;
-
-				if (autoScroll) {
-					scrollToBottom();
-				}
-			}
+	const getResponseIdToStop = () => {
+		if (!history.currentId) {
+			return null;
 		}
+
+		const currentResponse = history.messages[history.currentId];
+		return currentResponse?.role === 'assistant' && currentResponse?.done !== true
+			? history.currentId
+			: null;
+	};
+
+	const stopResponse = async () => {
+		const responseIdToStop = getResponseIdToStop();
+
+		if (!responseIdToStop) {
+			return;
+		}
+
+		const responseTaskId = taskIdsByMessageId[responseIdToStop];
+
+		markResponseStopped(responseIdToStop);
+
+		if (responseTaskId) {
+			await stopResponseTask(responseTaskId);
+			return;
+		}
+
+		await finalizeStoppedResponse(responseIdToStop);
 	};
 
 	const submitMessage = async (parentId: any, prompt: any) => {

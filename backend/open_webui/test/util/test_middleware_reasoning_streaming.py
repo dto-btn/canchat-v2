@@ -38,6 +38,11 @@ sys.modules.setdefault("open_webui.retrieval.utils", retrieval_utils)
 from open_webui.utils import middleware
 
 
+@pytest.fixture
+def anyio_backend():
+    return "asyncio"
+
+
 async def _run_streaming_response(monkeypatch, chunks):
     saved_contents = []
     emitted_events = []
@@ -59,10 +64,12 @@ async def _run_streaming_response(monkeypatch, chunks):
     def fake_get_message(_chat_id, _message_id):
         return dict(message_state)
 
-    def fake_create_task(coroutine):
+    async def fake_create_task(coroutine, metadata=None):
         nonlocal created_task
         created_task = asyncio.create_task(coroutine)
         return ("task-id", created_task)
+
+    stream_task_manager = SimpleNamespace(create=fake_create_task)
 
     async def fake_stream():
         for chunk in chunks:
@@ -71,7 +78,6 @@ async def _run_streaming_response(monkeypatch, chunks):
         yield b"data: [DONE]\n\n"
 
     monkeypatch.setattr(middleware, "get_event_emitter", fake_get_event_emitter)
-    monkeypatch.setattr(middleware, "create_task", fake_create_task)
     monkeypatch.setattr(middleware, "ENABLE_REALTIME_CHAT_SAVE", True)
     monkeypatch.setattr(
         middleware, "get_active_status_by_user_id", lambda _user_id: True
@@ -101,7 +107,8 @@ async def _run_streaming_response(monkeypatch, chunks):
     request = SimpleNamespace(
         app=SimpleNamespace(
             state=SimpleNamespace(
-                config=SimpleNamespace(WEBUI_URL="http://localhost:3000")
+                config=SimpleNamespace(WEBUI_URL="http://localhost:3000"),
+                stream_task_manager=stream_task_manager,
             )
         )
     )
