@@ -1534,7 +1534,7 @@ QUERY_GENERATION_PROMPT_TEMPLATE = PersistentConfig(
 )
 
 DEFAULT_QUERY_GENERATION_PROMPT_TEMPLATE = """### Task:
-Analyze the chat history to determine the necessity of generating search queries, in the given language. By default, **prioritize generating 1-3 broad and relevant search queries** unless it is absolutely certain that no additional information is required. The aim is to retrieve comprehensive, updated, and valuable information even with minimal uncertainty. If no search is unequivocally needed, return an empty list.
+Analyze the chat history to determine the necessity of generating search queries, in the given language. By default, **prioritize generating 1-3 broad and relevant search queries in the user's language** unless it is absolutely certain that no additional information is required. The aim is to retrieve comprehensive, updated, and valuable information even with minimal uncertainty. If no search is unequivocally needed, return an empty list.
 
 ### Guidelines:
 - Respond **EXCLUSIVELY** with a JSON object. Any form of extra commentary, explanation, or additional text is strictly prohibited.
@@ -2112,6 +2112,16 @@ BRAVE_SEARCH_API_KEY = PersistentConfig(
     "rag.web.search.brave_search_api_key",
     os.getenv("BRAVE_SEARCH_API_KEY", ""),
 )
+
+BRAVE_SEARCH_PARAMETERS = PersistentConfig(
+    "BRAVE_SEARCH_PARAMETERS",
+    "rag.web.search.brave_search_parameters",
+    os.getenv(
+        "BRAVE_SEARCH_PARAMETERS",
+        "country=ca;safesearch=strict;text_decorations=true;result_filter=web;extra_snippets=false",
+    ),
+)
+
 
 KAGI_SEARCH_API_KEY = PersistentConfig(
     "KAGI_SEARCH_API_KEY",

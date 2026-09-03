@@ -399,6 +399,7 @@ async def get_rag_config(request: Request, user=Depends(get_admin_user)):
                 "google_pse_api_key": request.app.state.config.GOOGLE_PSE_API_KEY,
                 "google_pse_engine_id": request.app.state.config.GOOGLE_PSE_ENGINE_ID,
                 "brave_search_api_key": request.app.state.config.BRAVE_SEARCH_API_KEY,
+                "brave_search_parameters": request.app.state.config.BRAVE_SEARCH_PARAMETERS,
                 "kagi_search_api_key": request.app.state.config.KAGI_SEARCH_API_KEY,
                 "mojeek_search_api_key": request.app.state.config.MOJEEK_SEARCH_API_KEY,
                 "serpstack_api_key": request.app.state.config.SERPSTACK_API_KEY,
@@ -452,6 +453,7 @@ class WebSearchConfig(BaseModel):
     google_pse_api_key: Optional[str] = None
     google_pse_engine_id: Optional[str] = None
     brave_search_api_key: Optional[str] = None
+    brave_search_parameters: Optional[str] = None
     kagi_search_api_key: Optional[str] = None
     mojeek_search_api_key: Optional[str] = None
     serpstack_api_key: Optional[str] = None
@@ -551,6 +553,9 @@ async def update_rag_config(
         request.app.state.config.BRAVE_SEARCH_API_KEY = (
             form_data.web.search.brave_search_api_key
         )
+        request.app.state.config.BRAVE_SEARCH_PARAMETERS = (
+            form_data.web.search.brave_search_parameters
+        )
         request.app.state.config.KAGI_SEARCH_API_KEY = (
             form_data.web.search.kagi_search_api_key
         )
@@ -628,6 +633,7 @@ async def update_rag_config(
                 "google_pse_api_key": request.app.state.config.GOOGLE_PSE_API_KEY,
                 "google_pse_engine_id": request.app.state.config.GOOGLE_PSE_ENGINE_ID,
                 "brave_search_api_key": request.app.state.config.BRAVE_SEARCH_API_KEY,
+                "brave_search_parameters": request.app.state.config.BRAVE_SEARCH_PARAMETERS,
                 "kagi_search_api_key": request.app.state.config.KAGI_SEARCH_API_KEY,
                 "mojeek_search_api_key": request.app.state.config.MOJEEK_SEARCH_API_KEY,
                 "serpstack_api_key": request.app.state.config.SERPSTACK_API_KEY,
@@ -1195,6 +1201,7 @@ def search_web(
     request_timeout: Optional[int] = None,
     user=None,
     audit_event_id: Optional[str] = None,
+    search_lang: Optional[str] = None,
 ) -> list[SearchResult]:
     """Search the web using a search engine and return the results as a list of SearchResult objects.
     Will look for a search engine API key in environment variables in the following order:
@@ -1229,13 +1236,20 @@ def search_web(
         user=user,
         event_id=audit_event_id,
     ) as dispatch_ctx:
-        results = _dispatch_search(request, engine, query, request_timeout)
+        results = _dispatch_search(
+            request, engine, query, request_timeout, user, search_lang=search_lang
+        )
         log_web_search_result(dispatch_ctx=dispatch_ctx, results=results)
         return results
 
 
 def _dispatch_search(
-    request: Request, engine: str, query: str, request_timeout: Optional[int] = None
+    request: Request,
+    engine: str,
+    query: str,
+    request_timeout: Optional[int] = None,
+    user=None,
+    search_lang: Optional[str] = None,
 ) -> list[SearchResult]:
     """Internal dispatcher — routes to the correct search provider."""
 
@@ -1273,8 +1287,11 @@ def _dispatch_search(
                 request.app.state.config.BRAVE_SEARCH_API_KEY,
                 query,
                 request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+                request.app.state.config.BRAVE_SEARCH_PARAMETERS,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
                 request_timeout=request_timeout,
+                user=user,
+                search_lang=search_lang,
             )
         else:
             raise Exception("No BRAVE_SEARCH_API_KEY found in environment variables")
@@ -1376,6 +1393,7 @@ def _dispatch_search(
 
 class SearchForm(BaseModel):
     query: str
+    search_lang: Optional[str] = None
 
 
 @router.post("/process/web/search")
@@ -1414,6 +1432,7 @@ async def process_web_search(
                     request_timeout,
                     user,
                     audit_event_id,
+                    search_lang=form_data.search_lang,
                 )
             except TimeoutError:
                 raise
