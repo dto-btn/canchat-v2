@@ -14,7 +14,8 @@ env:
 
 jobs:
   build-main-image:
-    runs-on: tko-canchat
+    runs-on:
+      group: tko-canchat
 
     # Set a timeout for the job
     timeout-minutes: 30

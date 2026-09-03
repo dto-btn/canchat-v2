@@ -23,7 +23,8 @@ env:
 jobs:
   tests:
     name: 'Playwright E2E Tests'
-    runs-on: tko-canchat
+    runs-on:
+      group: tko-canchat
     permissions:
       contents: read
       packages: read
