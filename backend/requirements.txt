@@ -14,7 +14,7 @@ tiktoken==0.12.0
 torch==2.13.0
 torchaudio==2.11.0
 torchvision==0.28.0
-transformers==5.5.0
+transformers==5.10.0
 # tokenizers version controlled by crewai dependency (0.20.3) - don't override
 
 # ==========================================
@@ -85,7 +85,7 @@ extract_msg==0.55.0
 faster-whisper==1.0.3
 fpdf2==2.8.2
 Markdown==3.8.1
-nltk==3.10.0
+nltk==3.10.3
 opencv-python-headless==4.10.0.84
 openpyxl==3.1.5
 pandas==2.2.3
