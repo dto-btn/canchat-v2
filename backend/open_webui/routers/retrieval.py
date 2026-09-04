@@ -88,6 +88,7 @@ from open_webui.config import (
     ENABLE_WIKIPEDIA_GROUNDING_RERANKER,
     RAG_WEB_SEARCH_REQUEST_TIMEOUT,
     RAG_WEB_SEARCH_TOTAL_TIMEOUT,
+    RAG_WEB_SEARCH_TARGET_PAGE_RETRIEVAL,
 )
 from open_webui.env import (
     SRC_LOG_LEVELS,
@@ -98,6 +99,13 @@ from open_webui.constants import ERROR_MESSAGES
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["RAG"])
+
+
+SEARCH_ENGINE_RESULT_COUNT_CAPS = {
+    "google_pse": 10,
+    "brave": 10,
+}
+
 
 ##########################################
 #
@@ -413,6 +421,7 @@ async def get_rag_config(request: Request, user=Depends(get_admin_user)):
                 "bing_search_v7_subscription_key": request.app.state.config.BING_SEARCH_V7_SUBSCRIPTION_KEY,
                 "result_count": request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
                 "concurrent_requests": request.app.state.config.RAG_WEB_SEARCH_CONCURRENT_REQUESTS,
+                "target_page_retrieval": request.app.state.config.RAG_WEB_SEARCH_TARGET_PAGE_RETRIEVAL,
             },
             "wikipedia_grounding": {
                 "enabled": request.app.state.config.ENABLE_WIKIPEDIA_GROUNDING,
@@ -466,6 +475,7 @@ class WebSearchConfig(BaseModel):
     bing_search_v7_subscription_key: Optional[str] = None
     result_count: Optional[int] = None
     concurrent_requests: Optional[int] = None
+    target_page_retrieval: Optional[int] = None
 
 
 class WebConfig(BaseModel):
@@ -585,6 +595,9 @@ async def update_rag_config(
         request.app.state.config.RAG_WEB_SEARCH_CONCURRENT_REQUESTS = (
             form_data.web.search.concurrent_requests
         )
+        request.app.state.config.RAG_WEB_SEARCH_TARGET_PAGE_RETRIEVAL = (
+            form_data.web.search.target_page_retrieval
+        )
 
     # Wikipedia grounding configuration (simple boolean like MCP)
     if form_data.enable_wikipedia_grounding is not None:
@@ -642,6 +655,7 @@ async def update_rag_config(
                 "bing_search_v7_subscription_key": request.app.state.config.BING_SEARCH_V7_SUBSCRIPTION_KEY,
                 "result_count": request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
                 "concurrent_requests": request.app.state.config.RAG_WEB_SEARCH_CONCURRENT_REQUESTS,
+                "target_page_retrieval": request.app.state.config.RAG_WEB_SEARCH_TARGET_PAGE_RETRIEVAL,
             },
             "wikipedia_grounding": {
                 "enabled": request.app.state.config.ENABLE_WIKIPEDIA_GROUNDING,
@@ -1195,6 +1209,7 @@ def search_web(
     request_timeout: Optional[int] = None,
     user=None,
     audit_event_id: Optional[str] = None,
+    result_count: Optional[int] = None,
 ) -> list[SearchResult]:
     """Search the web using a search engine and return the results as a list of SearchResult objects.
     Will look for a search engine API key in environment variables in the following order:
@@ -1216,28 +1231,38 @@ def search_web(
         request_timeout (Optional[int]): Optional per-request timeout override in seconds.
             If not provided, providers use the configured default request timeout.
         user: The authenticated user who triggered the search (for audit logging).
+        audit_event_id: audit event ID
+        result_count (Optional[int]): Optional override for result count.
+            If not provided, falls back to RAG_WEB_SEARCH_RESULT_COUNT config.
     """
-
-    result_count = request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT
-    domain_filter = request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST
+    if result_count is None:
+        result_count = request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT
 
     with web_search_audit_scope(
         engine=engine,
         query=query,
         result_count_requested=result_count,
-        domain_filter_list=domain_filter,
+        domain_filter_list=request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
         user=user,
         event_id=audit_event_id,
     ) as dispatch_ctx:
-        results = _dispatch_search(request, engine, query, request_timeout)
+        results = _dispatch_search(
+            request, engine, query, request_timeout, result_count
+        )
         log_web_search_result(dispatch_ctx=dispatch_ctx, results=results)
         return results
 
 
 def _dispatch_search(
-    request: Request, engine: str, query: str, request_timeout: Optional[int] = None
+    request: Request,
+    engine: str,
+    query: str,
+    request_timeout: Optional[int] = None,
+    result_count: Optional[int] = None,
 ) -> list[SearchResult]:
     """Internal dispatcher — routes to the correct search provider."""
+    if result_count is None:
+        result_count = request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT
 
     # TODO: add playwright to search the web
     if engine == "searxng":
@@ -1245,7 +1270,7 @@ def _dispatch_search(
             return search_searxng(
                 request.app.state.config.SEARXNG_QUERY_URL,
                 query,
-                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+                result_count,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
             )
         else:
@@ -1259,7 +1284,7 @@ def _dispatch_search(
                 request.app.state.config.GOOGLE_PSE_API_KEY,
                 request.app.state.config.GOOGLE_PSE_ENGINE_ID,
                 query,
-                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+                result_count,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
                 request_timeout=request_timeout,
             )
@@ -1272,7 +1297,7 @@ def _dispatch_search(
             return search_brave(
                 request.app.state.config.BRAVE_SEARCH_API_KEY,
                 query,
-                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+                result_count,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
                 request_timeout=request_timeout,
             )
@@ -1283,7 +1308,7 @@ def _dispatch_search(
             return search_kagi(
                 request.app.state.config.KAGI_SEARCH_API_KEY,
                 query,
-                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+                result_count,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
             )
         else:
@@ -1293,7 +1318,7 @@ def _dispatch_search(
             return search_mojeek(
                 request.app.state.config.MOJEEK_SEARCH_API_KEY,
                 query,
-                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+                result_count,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
             )
         else:
@@ -1303,7 +1328,7 @@ def _dispatch_search(
             return search_serpstack(
                 request.app.state.config.SERPSTACK_API_KEY,
                 query,
-                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+                result_count,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
                 https_enabled=request.app.state.config.SERPSTACK_HTTPS,
             )
@@ -1314,7 +1339,7 @@ def _dispatch_search(
             return search_serper(
                 request.app.state.config.SERPER_API_KEY,
                 query,
-                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+                result_count,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
             )
         else:
@@ -1324,7 +1349,7 @@ def _dispatch_search(
             return search_serply(
                 request.app.state.config.SERPLY_API_KEY,
                 query,
-                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+                result_count,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
             )
         else:
@@ -1332,7 +1357,7 @@ def _dispatch_search(
     elif engine == "duckduckgo":
         return search_duckduckgo(
             query,
-            request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+            result_count,
             request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
         )
     elif engine == "tavily":
@@ -1340,7 +1365,7 @@ def _dispatch_search(
             return search_tavily(
                 request.app.state.config.TAVILY_API_KEY,
                 query,
-                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+                result_count,
             )
         else:
             raise Exception("No TAVILY_API_KEY found in environment variables")
@@ -1350,7 +1375,7 @@ def _dispatch_search(
                 request.app.state.config.SEARCHAPI_API_KEY,
                 request.app.state.config.SEARCHAPI_ENGINE,
                 query,
-                request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+                result_count,
                 request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
             )
         else:
@@ -1359,7 +1384,7 @@ def _dispatch_search(
         return search_jina(
             request.app.state.config.JINA_API_KEY,
             query,
-            request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+            result_count,
         )
     elif engine == "bing":
         return search_bing(
@@ -1367,11 +1392,137 @@ def _dispatch_search(
             request.app.state.config.BING_SEARCH_V7_ENDPOINT,
             str(DEFAULT_LOCALE),
             query,
-            request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+            result_count,
             request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
         )
     else:
         raise Exception("No search engine API key found in environment variables")
+
+
+async def _load_single_url(
+    semaphore: asyncio.Semaphore,
+    index: int,
+    url: str,
+    get_capped_request_timeout,
+    verify_ssl: bool,
+) -> tuple[int, str, list]:
+    """Load a single URL via the web loader, respecting the semaphore for concurrency control.
+
+    Returns (index, url, loaded_documents) on success, or (index, url, []) on non-timeout failure.
+    Timeout errors are re-raised to be handled by the caller.
+    """
+    async with semaphore:
+        request_timeout = get_capped_request_timeout()
+        try:
+            loader = get_web_loader(
+                [url],
+                verify_ssl=verify_ssl,
+                requests_per_second=1,
+                request_timeout=request_timeout,
+            )
+            docs = await asyncio.to_thread(loader.load)
+            return index, url, docs
+        except (TimeoutError, asyncio.TimeoutError):
+            raise
+        except Exception as e:
+            log.debug(
+                "[process_web_search] failed loading url='%s': %s",
+                url,
+                e,
+            )
+            return index, url, []
+
+
+async def _load_urls_concurrently(
+    ranked_urls: list[str],
+    search_result_count: int,
+    max_workers: int,
+    get_capped_request_timeout,
+    verify_ssl: bool,
+) -> tuple[list[tuple[int, str, list]], int]:
+    """Load URLs in parallel using a task queue with a semaphore-limited worker pool.
+
+    Schedules up to "max_workers" url retrievals at once, adds new retrieval tasks
+    as each task completes until the number of documents in "search_result_count" are
+    loaded or all URLs have been tried.
+
+    Returns (ranked_loaded_docs, attempted_url_count).
+    """
+    semaphore = asyncio.Semaphore(max_workers)
+    ranked_loaded_docs: list[tuple[int, str, list]] = []
+    pending_tasks: set[asyncio.Task] = set()
+    attempted_url_count = 0
+    next_index_to_schedule = 0
+
+    def schedule_next_url(index: int) -> bool:
+        nonlocal attempted_url_count
+        if index >= len(ranked_urls):
+            return False
+        task = asyncio.create_task(
+            _load_single_url(
+                semaphore,
+                index,
+                ranked_urls[index],
+                get_capped_request_timeout,
+                verify_ssl,
+            )
+        )
+        pending_tasks.add(task)
+        attempted_url_count += 1
+        return True
+
+    try:
+        # Get initial batch of urls to load
+        initial_parallelism = min(max_workers, search_result_count, len(ranked_urls))
+        for index in range(initial_parallelism):
+            schedule_next_url(index)
+            next_index_to_schedule = index + 1
+
+        # Wait for pending threads to complete, schedule new ones as required
+        while pending_tasks and len(ranked_loaded_docs) < search_result_count:
+            done_tasks, _ = await asyncio.wait(
+                pending_tasks,
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+
+            # Check finished threads for completion reason
+            for task in done_tasks:
+                pending_tasks.discard(task)
+                try:
+                    index, url, url_docs = task.result()
+                except (TimeoutError, asyncio.TimeoutError):
+                    continue
+                except Exception as e:
+                    log.debug(
+                        "[process_web_search] url load task failed with error: %s",
+                        e,
+                    )
+                    continue
+
+                if url_docs:
+                    ranked_loaded_docs.append((index, url, url_docs))
+
+            slots_available = (
+                search_result_count - len(ranked_loaded_docs) - len(pending_tasks)
+            )
+            while (
+                slots_available > 0
+                and next_index_to_schedule < len(ranked_urls)
+                and len(pending_tasks) < max_workers
+            ):
+                if not schedule_next_url(next_index_to_schedule):
+                    break
+                next_index_to_schedule += 1
+                slots_available -= 1
+    except asyncio.CancelledError:
+        pass
+    finally:
+        if pending_tasks:
+            for task in list(pending_tasks):
+                task.cancel()
+            await asyncio.gather(*pending_tasks, return_exceptions=True)
+
+    return ranked_loaded_docs, attempted_url_count
 
 
 class SearchForm(BaseModel):
@@ -1382,12 +1533,24 @@ class SearchForm(BaseModel):
 async def process_web_search(
     request: Request, form_data: SearchForm, user=Depends(get_verified_user)
 ):
+
     total_timeout = RAG_WEB_SEARCH_TOTAL_TIMEOUT.value
     request_timeout_cap = RAG_WEB_SEARCH_REQUEST_TIMEOUT.value
+    search_engine = request.app.state.config.RAG_WEB_SEARCH_ENGINE
+    provider_cap = SEARCH_ENGINE_RESULT_COUNT_CAPS.get(search_engine)
+    result_count = request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT
+    effective_search_count = (
+        min(result_count, provider_cap) if provider_cap is not None else result_count
+    )
+
+    search_result_count = request.app.state.config.RAG_WEB_SEARCH_TARGET_PAGE_RETRIEVAL
+    max_workers = request.app.state.config.RAG_WEB_SEARCH_CONCURRENT_REQUESTS
     start_time = time.monotonic()
     audit_event_id = new_web_search_event_id()
     loaded_docs: list[Document] = []
     loaded_urls: list[str] = []
+    ranked_loaded_docs: list[tuple[int, str, list[Document]]] = []
+    attempted_url_count = 0
 
     def get_remaining_timeout() -> int:
         elapsed = time.monotonic() - start_time
@@ -1399,21 +1562,113 @@ async def process_web_search(
     def get_capped_request_timeout() -> int:
         return min(get_remaining_timeout(), request_timeout_cap)
 
+    def build_ranked_output(
+        ranked_docs: list[tuple[int, str, list[Document]]],
+    ) -> tuple[list[Document], list[str]]:
+        docs = []
+        loaded_urls = []
+        loaded_url_set = set()
+
+        for _, url, url_docs in sorted(ranked_docs, key=lambda x: x[0]):
+            if len(docs) >= search_result_count:
+                break
+            for doc in url_docs:
+                if len(docs) >= search_result_count:
+                    break
+                if not hasattr(doc, "metadata") or doc.metadata is None:
+                    doc.metadata = {}
+                source_url = doc.metadata.get("source") or url
+                doc.metadata["source"] = source_url
+                docs.append(doc)
+                if source_url not in loaded_url_set:
+                    loaded_url_set.add(source_url)
+                    loaded_urls.append(source_url)
+
+        return docs, loaded_urls
+
+    async def finalize_search_result(docs: list[Document], urls: list[str]):
+        # Add metadata for tracking
+        for doc in docs:
+            if not hasattr(doc, "metadata"):
+                doc.metadata = {}
+            doc.metadata.update(
+                {
+                    "created_at": int(time.time()),
+                    "search_query": form_data.query,
+                    "search_engine": request.app.state.config.RAG_WEB_SEARCH_ENGINE,
+                    "type": "web_search",
+                }
+            )
+
+        if request.app.state.config.BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL:
+            # Return raw results without embedding
+            return {
+                "status": True,
+                "collection_name": None,
+                "docs": [
+                    {
+                        "content": doc.page_content,
+                        "metadata": doc.metadata,
+                    }
+                    for doc in docs
+                ],
+                "filenames": urls,
+                "loaded_count": len(docs),
+            }
+
+        # Use timestamp + random UUID to ensure uniqueness without hash-based caching
+        timestamp = int(time.time())
+        unique_id = str(uuid.uuid4())[:8]
+        collection_name = (
+            f"{VECTOR_COLLECTION_PREFIXES.WEB_SEARCH}{timestamp}-{unique_id}"
+        )
+
+        await save_docs_to_vector_db(
+            request,
+            docs,
+            collection_name,
+            overwrite=True,
+            user=user,
+        )
+
+        return {
+            "status": True,
+            "collection_name": collection_name,
+            "filenames": urls,
+            "loaded_count": len(docs),
+        }
+
+    docs = []
+    urls = []
+
     try:
         async with asyncio.timeout(total_timeout):
             try:
                 request_timeout = get_capped_request_timeout()
                 log.debug(
-                    f"[process_web_search] query: '{form_data.query}', engine: '{request.app.state.config.RAG_WEB_SEARCH_ENGINE}'"
+                    "[process_web_search] query='%s', engine='%s', "
+                    "search_result_count=%s, effective_search_count=%s, max_workers=%s",
+                    form_data.query,
+                    search_engine,
+                    search_result_count,
+                    effective_search_count,
+                    max_workers,
                 )
+                if provider_cap is not None and effective_search_count < result_count:
+                    log.debug(
+                        "[process_web_search] applied provider result cap for engine='%s': %s",
+                        search_engine,
+                        provider_cap,
+                    )
                 web_results = await asyncio.to_thread(
                     search_web,
                     request,
-                    request.app.state.config.RAG_WEB_SEARCH_ENGINE,
+                    search_engine,
                     form_data.query,
                     request_timeout,
                     user,
                     audit_event_id,
+                    effective_search_count,
                 )
             except TimeoutError:
                 raise
@@ -1427,81 +1682,38 @@ async def process_web_search(
 
             log.debug(f"[process_web_search] web_results: {web_results}")
 
-            urls = []
             content_load_start = time.monotonic()
+
             try:
-                urls = [result.link for result in web_results]
-                loaded_urls = urls
-                content_load_start = time.monotonic()
-                request_timeout = get_capped_request_timeout()
-                loader = get_web_loader(
-                    urls,
+                ranked_urls = []
+                seen_urls = set()
+                for result in web_results:
+                    if result.link not in seen_urls:
+                        seen_urls.add(result.link)
+                        ranked_urls.append(result.link)
+
+                log.debug(
+                    "[process_web_search] candidate_urls=%s, deduplicated_urls=%s",
+                    len(web_results),
+                    len(ranked_urls),
+                )
+
+                ranked_loaded_docs, attempted_url_count = await _load_urls_concurrently(
+                    ranked_urls=ranked_urls,
+                    search_result_count=search_result_count,
+                    max_workers=max_workers,
+                    get_capped_request_timeout=get_capped_request_timeout,
                     verify_ssl=request.app.state.config.ENABLE_RAG_WEB_LOADER_SSL_VERIFICATION,
-                    requests_per_second=request.app.state.config.RAG_WEB_SEARCH_CONCURRENT_REQUESTS,
-                    request_timeout=request_timeout,
                 )
 
-                def enrich_doc_metadata(doc: Document) -> None:
-                    if not hasattr(doc, "metadata"):
-                        doc.metadata = {}
-                    doc.metadata.update(
-                        {
-                            "created_at": int(time.time()),
-                            "search_query": form_data.query,
-                            "search_engine": request.app.state.config.RAG_WEB_SEARCH_ENGINE,
-                            "type": "web_search",
-                        }
-                    )
+                docs, urls = build_ranked_output(ranked_loaded_docs)
 
-                def load_docs_incremental() -> list[Document]:
-                    for doc in loader.lazy_load():
-                        enrich_doc_metadata(doc)
-                        loaded_docs.append(doc)
-                    return loaded_docs
-
-                docs = await asyncio.to_thread(load_docs_incremental)
-                loaded_docs = docs
-
-                if request.app.state.config.BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL:
-                    content_load_ms = round(
-                        (time.monotonic() - content_load_start) * 1000
-                    )
-                    log_web_search_content_load(
-                        event_id=audit_event_id,
-                        urls=urls,
-                        docs_loaded=len(docs),
-                        latency_ms=content_load_ms,
-                        bypass_embedding=True,
-                        engine=request.app.state.config.RAG_WEB_SEARCH_ENGINE,
-                    )
-                    # Return raw results without embedding
-                    return {
-                        "status": True,
-                        "collection_name": None,
-                        "docs": [
-                            {
-                                "content": doc.page_content,
-                                "metadata": doc.metadata,
-                            }
-                            for doc in docs
-                        ],
-                        "filenames": urls,
-                        "loaded_count": len(docs),
-                    }
-
-                # Use timestamp + random UUID to ensure uniqueness without hash-based caching
-                timestamp = int(time.time())
-                unique_id = str(uuid.uuid4())[:8]
-                collection_name = (
-                    f"{VECTOR_COLLECTION_PREFIXES.WEB_SEARCH}{timestamp}-{unique_id}"
-                )
-
-                await save_docs_to_vector_db(
-                    request,
-                    docs,
-                    collection_name,
-                    overwrite=True,
-                    user=user,
+                log.debug(
+                    "[process_web_search] attempted_urls=%s, loaded_docs=%s, returned_urls=%s, search_result_count=%s",
+                    attempted_url_count,
+                    len(docs),
+                    len(urls),
+                    search_result_count,
                 )
 
                 content_load_ms = round((time.monotonic() - content_load_start) * 1000)
@@ -1510,17 +1722,12 @@ async def process_web_search(
                     urls=urls,
                     docs_loaded=len(docs),
                     latency_ms=content_load_ms,
-                    bypass_embedding=False,
-                    collection_name=collection_name,
+                    bypass_embedding=request.app.state.config.BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL,
+                    collection_name=None,
                     engine=request.app.state.config.RAG_WEB_SEARCH_ENGINE,
                 )
 
-                return {
-                    "status": True,
-                    "collection_name": collection_name,
-                    "filenames": urls,
-                    "loaded_count": len(docs),
-                }
+                return await finalize_search_result(docs, urls)
             except (TimeoutError, asyncio.TimeoutError):
                 raise
             except Exception as e:
@@ -1530,6 +1737,8 @@ async def process_web_search(
                     urls=urls,
                     docs_loaded=0,
                     latency_ms=content_load_ms,
+                    bypass_embedding=request.app.state.config.BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL,
+                    collection_name=None,
                     engine=request.app.state.config.RAG_WEB_SEARCH_ENGINE,
                     error=e,
                 )
@@ -1539,30 +1748,48 @@ async def process_web_search(
                     detail=ERROR_MESSAGES.DEFAULT(e),
                 )
     except (TimeoutError, asyncio.TimeoutError):
-        if loaded_docs:
+        docs, urls = build_ranked_output(ranked_loaded_docs)
+        if len(docs) > 0:
+            content_load_ms = round((time.monotonic() - content_load_start) * 1000)
             log.warning(
-                f"[process_web_search] total timeout reached after loading {len(loaded_docs)} docs; returning partial results"
+                "[process_web_search] timed out after %ss for query='%s'; returning partial results (loaded_docs=%s, attempted_urls=%s)",
+                total_timeout,
+                form_data.query,
+                len(docs),
+                attempted_url_count,
             )
-            if request.app.state.config.BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL:
+            log_web_search_content_load(
+                event_id=audit_event_id,
+                urls=urls,
+                docs_loaded=len(docs),
+                latency_ms=content_load_ms,
+                bypass_embedding=request.app.state.config.BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL,
+                collection_name=None,
+                engine=request.app.state.config.RAG_WEB_SEARCH_ENGINE,
+            )
+            try:
+                async with asyncio.timeout(request_timeout_cap):
+                    return await finalize_search_result(docs, urls)
+            except (TimeoutError, asyncio.TimeoutError):
+                log.warning(
+                    "[process_web_search] timed out finalizing search result after timeout for query='%s'",
+                    form_data.query,
+                )
+                docs_with_meta = [
+                    {
+                        "content": doc.page_content,
+                        "metadata": doc.metadata,
+                    }
+                    for doc in docs
+                ]
                 return {
                     "status": True,
                     "collection_name": None,
-                    "docs": [
-                        {
-                            "content": doc.page_content,
-                            "metadata": doc.metadata,
-                        }
-                        for doc in loaded_docs
-                    ],
-                    "filenames": loaded_urls,
-                    "loaded_count": len(loaded_docs),
+                    "docs": docs_with_meta,
+                    "filenames": urls,
+                    "loaded_count": len(docs),
                 }
-            return {
-                "status": True,
-                "collection_name": None,
-                "filenames": loaded_urls,
-                "loaded_count": len(loaded_docs),
-            }
+
         log.error(
             f"[process_web_search] exceeded total timeout of {total_timeout}s for query: '{form_data.query}'"
         )

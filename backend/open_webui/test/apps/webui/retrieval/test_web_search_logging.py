@@ -357,7 +357,9 @@ class TestSearchWebLogging:
     def test_successful_search_logs_dispatch_and_result(
         self, audit_caplog, fake_user, monkeypatch
     ):
-        def mock_dispatch(request, engine, query, request_timeout=None):
+        def mock_dispatch(
+            request, engine, query, request_timeout=None, user=None, **kwargs
+        ):
             return [SimpleNamespace(link="https://example.com", title="T", snippet="S")]
 
         monkeypatch.setattr(retrieval, "_dispatch_search", mock_dispatch)
@@ -382,7 +384,9 @@ class TestSearchWebLogging:
     def test_failed_search_logs_dispatch_and_error(
         self, audit_caplog, fake_user, monkeypatch
     ):
-        def mock_dispatch(request, engine, query, request_timeout=None):
+        def mock_dispatch(
+            request, engine, query, request_timeout=None, user=None, **kwargs
+        ):
             raise ConnectionError("API unreachable")
 
         monkeypatch.setattr(retrieval, "_dispatch_search", mock_dispatch)
@@ -407,7 +411,9 @@ class TestProcessWebSearchLogging:
     def test_content_load_logged_in_pipeline(
         self, audit_caplog, fake_user, monkeypatch
     ):
-        def fake_dispatch(request, engine, query, request_timeout=None):
+        def fake_dispatch(
+            request, engine, query, request_timeout=None, user=None, **kwargs
+        ):
             return [
                 SimpleNamespace(
                     link="https://example.com/page1", title="T", snippet="S"
@@ -440,6 +446,7 @@ class TestProcessWebSearchLogging:
                         ENABLE_RAG_WEB_LOADER_SSL_VERIFICATION=True,
                         RAG_WEB_SEARCH_CONCURRENT_REQUESTS=2,
                         BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL=True,
+                        RAG_WEB_SEARCH_TARGET_PAGE_RETRIEVAL=3,
                     )
                 )
             )

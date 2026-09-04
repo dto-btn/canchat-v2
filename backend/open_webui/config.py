@@ -1871,6 +1871,37 @@ RAG_TEMPLATE = PersistentConfig(
     os.environ.get("RAG_TEMPLATE", DEFAULT_RAG_TEMPLATE),
 )
 
+DEFAULT_WEB_SEARCH_RAG_TEMPLATE = """### Task:
+Analyze the provided web search results with respect to the user's query. Provide a detailed, well-structured written analysis of the link contents.
+
+### Critical Guidelines:
+- Write at least two full paragraphs of analysis that directly address the user's question using the retrieved content.
+- Address EVERY unique source present in the context; do not silently skip or ignore any of them. For each source, briefly note what it says and how it does or does not answer the query.
+- Use bullet points where possible (for example a "Key points" list) to make the analysis scannable, IN ADDITION to the at-least-two-paragraph prose analysis.
+- DO NOT add inline citation labels such as [source_x], [1], or any other bracket references. The interface automatically displays every source as a clickable citation, so your answer must be clean prose and bullet points only.
+- DO NOT append a "Sources:" heading, a link list, or any URLs at the bottom. Sources are rendered separately by the interface.
+- NEVER include XML tags, angle brackets, or any raw markup in your response text.
+- If you don't know the answer, clearly state that. If uncertain, ask the user for clarification.
+- Respond in the same language as the user's query.
+
+### Output:
+A clean, well-structured analysis (at least 2 paragraphs, with a bullet-point summary where helpful) that evaluates each source's content in relation to the prompt.
+
+<context>
+{{CONTEXT}}
+</context>
+
+<user_query>
+{{QUERY}}
+</user_query>
+"""
+
+WEB_SEARCH_RAG_TEMPLATE = PersistentConfig(
+    "WEB_SEARCH_RAG_TEMPLATE",
+    "rag.web_search_template",
+    os.environ.get("WEB_SEARCH_RAG_TEMPLATE", DEFAULT_WEB_SEARCH_RAG_TEMPLATE),
+)
+
 RAG_OPENAI_API_BASE_URL = PersistentConfig(
     "RAG_OPENAI_API_BASE_URL",
     "rag.openai_api_base_url",
@@ -2077,7 +2108,7 @@ MODEL_CONTEXT_LENGTHS = PersistentConfig(
 )
 
 # You can provide a list of your own websites to filter after performing a web search.
-# This ensures the highest level of safety and reliability of the information sources.
+# This ensures the highest level of safety and reliability of the information sources
 RAG_WEB_SEARCH_DOMAIN_FILTER_LIST = PersistentConfig(
     "RAG_WEB_SEARCH_DOMAIN_FILTER_LIST",
     "rag.rag.web.search.domain.filter_list",
@@ -2191,13 +2222,19 @@ BING_SEARCH_V7_SUBSCRIPTION_KEY = PersistentConfig(
 RAG_WEB_SEARCH_RESULT_COUNT = PersistentConfig(
     "RAG_WEB_SEARCH_RESULT_COUNT",
     "rag.web.search.result_count",
-    int(os.getenv("RAG_WEB_SEARCH_RESULT_COUNT", "3")),
+    int(os.getenv("RAG_WEB_SEARCH_RESULT_COUNT", "10")),
 )
 
 RAG_WEB_SEARCH_CONCURRENT_REQUESTS = PersistentConfig(
     "RAG_WEB_SEARCH_CONCURRENT_REQUESTS",
     "rag.web.search.concurrent_requests",
     int(os.getenv("RAG_WEB_SEARCH_CONCURRENT_REQUESTS", "10")),
+)
+
+RAG_WEB_SEARCH_TARGET_PAGE_RETRIEVAL = PersistentConfig(
+    "RAG_WEB_SEARCH_TARGET_PAGE_RETRIEVAL",
+    "rag.web.search.target_page_retrieval",
+    int(os.getenv("RAG_WEB_SEARCH_TARGET_PAGE_RETRIEVAL", "10")),
 )
 
 
@@ -2218,13 +2255,13 @@ def _get_positive_int_env(name: str, default: int) -> int:
 RAG_WEB_SEARCH_REQUEST_TIMEOUT = PersistentConfig(
     "RAG_WEB_SEARCH_REQUEST_TIMEOUT",
     "rag.web.search.request_timeout",
-    _get_positive_int_env("RAG_WEB_SEARCH_REQUEST_TIMEOUT", 15),
+    _get_positive_int_env("RAG_WEB_SEARCH_REQUEST_TIMEOUT", 2),
 )
 
 RAG_WEB_SEARCH_TOTAL_TIMEOUT = PersistentConfig(
     "RAG_WEB_SEARCH_TOTAL_TIMEOUT",
     "rag.web.search.total_timeout",
-    _get_positive_int_env("RAG_WEB_SEARCH_TOTAL_TIMEOUT", 120),
+    _get_positive_int_env("RAG_WEB_SEARCH_TOTAL_TIMEOUT", 4),
 )
 
 RAG_WEB_LOADER_ENGINE = PersistentConfig(

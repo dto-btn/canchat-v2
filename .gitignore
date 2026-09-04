@@ -318,3 +318,6 @@ dist
 # Qdrant
 /qdrant_storage
 test/e2e/playwright.config.ts.bak
+
+# Test results
+pytest.results
