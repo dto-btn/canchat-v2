@@ -178,6 +178,17 @@
 									placeholder={$i18n.t('Enter Brave Search API Key')}
 									bind:value={webConfig.search.brave_search_api_key}
 								/>
+								<div class=" self-center text-xs font-medium mb-1">
+									{$i18n.t('Brave Search Parameters')}
+								</div>
+
+								<input
+									class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
+									type="text"
+									placeholder={$i18n.t('Enter Brave Search Parameters')}
+									bind:value={webConfig.search.brave_search_parameters}
+									autocomplete="off"
+								/>
 							</div>
 						{:else if webConfig.search.engine === 'kagi'}
 							<div>

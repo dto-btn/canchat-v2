@@ -637,6 +637,7 @@ async def chat_web_search_handler(
 
     messages = form_data["messages"]
     user_message = get_last_user_message(messages)
+    detected_lang = detect_query_language(user_message)
 
     queries = []
     try:
@@ -707,6 +708,7 @@ async def chat_web_search_handler(
             SearchForm(
                 **{
                     "query": searchQuery,
+                    "search_lang": detected_lang,
                 }
             ),
             user=user,

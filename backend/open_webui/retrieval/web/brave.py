@@ -27,8 +27,11 @@ def search_brave(
     api_key: str,
     query: str,
     count: int,
+    additional_params: Optional[str] = None,
     filter_list: Optional[list[str]] = None,
     request_timeout: Optional[int] = None,
+    user=None,
+    search_lang: Optional[str] = None,
 ) -> list[SearchResult]:
     """Search using Brave's Search API and return the results as a list of SearchResult objects.
 
@@ -36,8 +39,10 @@ def search_brave(
         api_key (str): A Brave Search API key
         query (str): The query to search for
         count (int): Number of results to return
+        additional_params (Optional[str]): Optional semicolon-separated key=value string of additional parameters (e.g. 'country=ca;safesearch=strict')
         filter_list (Optional[list[str]]): Optional list of domains to filter
         request_timeout (Optional[int]): Optional timeout override in seconds for this request
+        search_lang (Optional[str]): Language code detected from the original user message
     """
     url = "https://api.search.brave.com/res/v1/web/search"
     headers = {
@@ -46,6 +51,11 @@ def search_brave(
         "X-Subscription-Token": api_key,
     }
     params = {"q": query, "count": count}
+
+    params["search_lang"] = search_lang if search_lang else "en"
+
+    if additional_params:
+        params.update(parse_params(additional_params))
 
     json_response = get_json_with_timeout(
         url,
@@ -67,3 +77,29 @@ def search_brave(
         # Remove any that are incorrect.
         if validate_url(result["url"])
     ]
+
+
+def parse_params(param_string):
+    """Parse BRAVE_SEARCH_PARAMETERS string into a dict.
+
+    Args:
+        param_string: String in format "key1=value1;key2=value2;..."
+
+    Returns:
+        dict of parameters or empty dict if parsing fails
+    """
+    try:
+        params = {}
+        if not param_string:
+            return params
+
+        for item in param_string.split(";"):
+            if "=" in item:
+                key, value = item.split("=", 1)
+                key = key.strip()
+                value = value.strip()
+                params[key] = value
+
+        return params
+    except Exception:
+        return {}
