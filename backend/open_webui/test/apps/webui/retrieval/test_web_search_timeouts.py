@@ -114,7 +114,14 @@ def test_total_timeout_enforcement(monkeypatch):
 
     # Simulate search work that outlives the limit
     def slow_search_web(
-        request, engine, query, request_timeout=None, user=None, audit_event_id=None
+        request,
+        engine,
+        query,
+        request_timeout=None,
+        user=None,
+        audit_event_id=None,
+        result_count=None,
+        **kwargs,
     ):
         time.sleep(2)
         return []
@@ -124,7 +131,15 @@ def test_total_timeout_enforcement(monkeypatch):
 
     request = SimpleNamespace(
         app=SimpleNamespace(
-            state=SimpleNamespace(config=SimpleNamespace(RAG_WEB_SEARCH_ENGINE="brave"))
+            state=SimpleNamespace(
+                config=SimpleNamespace(
+                    RAG_WEB_SEARCH_ENGINE="brave",
+                    RAG_WEB_SEARCH_RESULT_COUNT=5,
+                    RAG_WEB_SEARCH_CONCURRENT_REQUESTS=2,
+                    BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL=True,
+                    RAG_WEB_SEARCH_TARGET_PAGE_RETRIEVAL=3,
+                )
+            )
         )
     )
     form_data = retrieval.SearchForm(query="slow query")
@@ -171,7 +186,14 @@ def test_remaining_timeout_propagates_to_search_and_loader(monkeypatch):
 
     # Capture timeout passed to provider search function
     def fake_search_web(
-        request, engine, query, request_timeout=None, user=None, audit_event_id=None
+        request,
+        engine,
+        query,
+        request_timeout=None,
+        user=None,
+        audit_event_id=None,
+        result_count=None,
+        **kwargs,
     ):
         captured["search_timeout"] = request_timeout
         return [SimpleNamespace(link="https://ok.example")]
@@ -203,6 +225,8 @@ def test_remaining_timeout_propagates_to_search_and_loader(monkeypatch):
                     ENABLE_RAG_WEB_LOADER_SSL_VERIFICATION=True,
                     RAG_WEB_SEARCH_CONCURRENT_REQUESTS=2,
                     BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL=True,
+                    RAG_WEB_SEARCH_RESULT_COUNT=5,
+                    RAG_WEB_SEARCH_TARGET_PAGE_RETRIEVAL=3,
                 )
             )
         )

@@ -1570,9 +1570,18 @@ async def process_chat_payload(request, form_data, metadata, user, model):
 
         # Workaround for Ollama 2.0+ system prompt issue
         # TODO: replace with add_or_update_system_message
-        rag_content = rag_template(
-            request.app.state.config.RAG_TEMPLATE, context_string, prompt
+        # Use the web-search-specific template only when the context is
+        # composed entirely of web search results; otherwise fall back to the
+        # general RAG template (mixed knowledge + web, or knowledge only).
+        web_search_context = bool(sources) and all(
+            source.get("source", {}).get("type") == "web_search" for source in sources
         )
+        template = (
+            request.app.state.config.WEB_SEARCH_RAG_TEMPLATE
+            if web_search_context
+            else request.app.state.config.RAG_TEMPLATE
+        )
+        rag_content = rag_template(template, context_string, prompt)
         log.debug(f"RAG template content length: {len(rag_content)}")
         log.debug(f"RAG template preview: {rag_content[:500]}...")
 
