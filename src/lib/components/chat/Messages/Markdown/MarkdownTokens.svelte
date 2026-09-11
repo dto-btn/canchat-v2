@@ -152,7 +152,7 @@
 				<Tooltip content={$i18n.t('Export to CSV')}>
 					<button
 						class="p-1 rounded-lg bg-transparent transition"
-						on:click={(e) => {
+						onclick={(e) => {
 							e.stopPropagation();
 							exportTableToCSVHandler(token, tokenIdx);
 						}}
@@ -213,7 +213,11 @@
 			title={token.fileId}
 			width="100%"
 			frameborder="0"
-			onload="this.style.height=(this.contentWindow.document.body.scrollHeight+20)+'px';"
+			onload={(event) => {
+				const iframe = event.currentTarget as HTMLIFrameElement;
+				const contentHeight = (iframe.contentWindow?.document.body.scrollHeight ?? 0) + 20;
+				iframe.style.height = `${contentHeight}px`;
+			}}
 		></iframe>
 	{:else if token.type === 'paragraph'}
 		<p>

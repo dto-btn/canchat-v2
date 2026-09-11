@@ -35,7 +35,7 @@
 	let promptsV1ImportInputElement: HTMLInputElement;
 	let loaded = false;
 
-	let importFiles = '';
+	let importFiles: FileList | null = null;
 	let importV1Files = '';
 	let query = '';
 
@@ -368,9 +368,20 @@
 					accept=".json"
 					hidden
 					on:change={() => {
+						const selectedFile = importFiles?.[0];
+						if (!selectedFile) {
+							return;
+						}
+
 						const reader = new FileReader();
 						reader.onload = async (event) => {
-							const savedPrompts = JSON.parse(event.target.result);
+							const fileContent = event.target?.result;
+							if (typeof fileContent !== 'string') {
+								toast.error('Failed to read prompt import file');
+								return;
+							}
+
+							const savedPrompts = JSON.parse(fileContent);
 							for (const prompt of savedPrompts) {
 								// Check if the prompt should be private (has access_control)
 								const isPrivate = prompt.access_control !== null;
@@ -407,11 +418,11 @@
 							prompts = await getPromptList(getRequestToken());
 							await _prompts.set(await getPromptsLegacy(getRequestToken()));
 
-							importFiles = [];
+							importFiles = null;
 							promptsImportInputElement.value = '';
 						};
 
-						reader.readAsText(importFiles[0]);
+						reader.readAsText(selectedFile);
 					}}
 				/>
 
