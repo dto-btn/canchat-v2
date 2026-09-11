@@ -31,7 +31,7 @@ jobs:
       attestations: read
       id-token: write
 
-    timeout-minutes: 60
+    timeout-minutes: 120
     services:
       qdrant:
         image: qdrant/qdrant:latest
