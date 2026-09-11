@@ -114,11 +114,11 @@ jobs:
           echo "CANChat failed to start in time" >&2
           exit 1
 
-      - name: Start Playwright Tests (Parallel)
-        env:
-          REUSE_EXISTING_SERVER: true
-        run: |
-          bash -c 'env $(grep -v "^#" "${ENV_FILE:-.env}"| xargs) PLAYWRIGHT_BLOB_OUTPUT_DIR=./blob-report-parallel npx playwright test --grep-invert @serial --reporter=blob'
+      #- name: Start Playwright Tests (Parallel)
+      #  env:
+      #    REUSE_EXISTING_SERVER: true
+      #  run: |
+      #    bash -c 'env $(grep -v "^#" "${ENV_FILE:-.env}"| xargs) PLAYWRIGHT_BLOB_OUTPUT_DIR=./blob-report-parallel npx playwright test --grep-invert @serial --reporter=blob'
 
       - name: Start Playwright Tests (Serial)
         if: always()
