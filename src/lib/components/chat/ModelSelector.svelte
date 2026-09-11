@@ -70,7 +70,7 @@
 							on:click={() => {
 								selectedModels = [...selectedModels, ''];
 							}}
-							aria-label="Add Model"
+							aria-label={$i18n.t('Add Model')}
 						>
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
@@ -96,7 +96,7 @@
 								selectedModels.splice(selectedModelIdx, 1);
 								selectedModels = selectedModels;
 							}}
-							aria-label="Remove Model"
+							aria-label={$i18n.t('Remove Model')}
 						>
 							<svg
 								xmlns="http://www.w3.org/2000/svg"

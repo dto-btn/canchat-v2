@@ -17,9 +17,11 @@
 		{placeholder}
 		bind:value
 		required={required && !readOnly}
+		on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 		disabled={readOnly}
 		autocomplete="off"
 		type="text"
+		aria-label={placeholder || $i18n.t('Sensitive input')}
 	/>
 	<button
 		class={showButtonClassName}

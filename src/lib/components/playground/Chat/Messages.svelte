@@ -37,6 +37,9 @@
 						role: message.role === 'user' ? $i18n.t('a user') : $i18n.t('an assistant')
 					})}
 					rows="1"
+					aria-label={$i18n.t(`Enter {{role}} message here`, {
+						role: message.role === 'user' ? $i18n.t('a user') : $i18n.t('an assistant')
+					})}
 					on:input={(e) => {
 						textAreaElement.style.height = '';
 						textAreaElement.style.height = textAreaElement.scrollHeight + 'px';

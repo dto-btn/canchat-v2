@@ -138,6 +138,7 @@
 							class="w-full rounded-lg py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-850 outline-none"
 							type="number"
 							placeholder={$i18n.t('Enter Seed')}
+							aria-label={$i18n.t('Enter Seed')}
 							bind:value={params.seed}
 							autocomplete="off"
 							min="0"
@@ -188,6 +189,7 @@
 							class="w-full rounded-lg py-2 px-1 text-sm dark:text-gray-300 dark:bg-gray-850 outline-none"
 							type="text"
 							placeholder={$i18n.t('Enter stop sequence')}
+							aria-label={$i18n.t('Enter stop sequence')}
 							bind:value={params.stop}
 							autocomplete="off"
 						/>
@@ -237,6 +239,7 @@
 						min="0"
 						max="1"
 						step="0.05"
+						aria-label={$i18n.t('Temperature')}
 						bind:value={params.temperature}
 						class="w-full h-2 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
 					/>
@@ -246,6 +249,7 @@
 						bind:value={params.temperature}
 						type="number"
 						class=" bg-transparent text-center w-14"
+						aria-label={$i18n.t('Temperature')}
 						min="0"
 						max="1"
 						step="any"
@@ -294,6 +298,7 @@
 							class="w-full rounded-lg py-2 px-1 text-sm dark:text-gray-300 dark:bg-gray-850 outline-none"
 							type="text"
 							placeholder={$i18n.t('Enter reasoning effort')}
+							aria-label={$i18n.t('Enter reasoning effort')}
 							bind:value={params.reasoning_effort}
 							autocomplete="off"
 						/>
@@ -342,6 +347,7 @@
 						min="0"
 						max="2"
 						step="1"
+						aria-label={$i18n.t('Mirostat')}
 						bind:value={params.mirostat}
 						class="w-full h-2 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
 					/>
@@ -351,6 +357,7 @@
 						bind:value={params.mirostat}
 						type="number"
 						class=" bg-transparent text-center w-14"
+						aria-label={$i18n.t('Mirostat')}
 						min="0"
 						max="2"
 						step="1"
@@ -400,6 +407,7 @@
 						min="0"
 						max="1"
 						step="0.05"
+						aria-label={$i18n.t('Mirostat Eta')}
 						bind:value={params.mirostat_eta}
 						class="w-full h-2 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
 					/>
@@ -409,6 +417,7 @@
 						bind:value={params.mirostat_eta}
 						type="number"
 						class=" bg-transparent text-center w-14"
+						aria-label={$i18n.t('Mirostat Eta')}
 						min="0"
 						max="1"
 						step="any"
@@ -459,6 +468,7 @@
 						min="0"
 						max="10"
 						step="0.5"
+						aria-label={$i18n.t('Mirostat Tau')}
 						bind:value={params.mirostat_tau}
 						class="w-full h-2 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
 					/>
@@ -468,6 +478,7 @@
 						bind:value={params.mirostat_tau}
 						type="number"
 						class=" bg-transparent text-center w-14"
+						aria-label={$i18n.t('Mirostat Tau')}
 						min="0"
 						max="10"
 						step="any"
@@ -517,6 +528,7 @@
 						min="0"
 						max="100"
 						step="0.5"
+						aria-label={$i18n.t('Top K')}
 						bind:value={params.top_k}
 						class="w-full h-2 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
 					/>
@@ -526,6 +538,7 @@
 						bind:value={params.top_k}
 						type="number"
 						class=" bg-transparent text-center w-14"
+						aria-label={$i18n.t('Top K')}
 						min="0"
 						max="100"
 						step="any"
@@ -576,6 +589,7 @@
 						min="0"
 						max="1"
 						step="0.05"
+						aria-label={$i18n.t('Top P')}
 						bind:value={params.top_p}
 						class="w-full h-2 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
 					/>
@@ -585,6 +599,7 @@
 						bind:value={params.top_p}
 						type="number"
 						class=" bg-transparent text-center w-14"
+						aria-label={$i18n.t('Top P')}
 						min="0"
 						max="1"
 						step="any"
@@ -634,6 +649,7 @@
 						min="0"
 						max="1"
 						step="0.05"
+						aria-label={$i18n.t('Min P')}
 						bind:value={params.min_p}
 						class="w-full h-2 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
 					/>
@@ -643,6 +659,7 @@
 						bind:value={params.min_p}
 						type="number"
 						class=" bg-transparent text-center w-14"
+						aria-label={$i18n.t('Min P')}
 						min="0"
 						max="1"
 						step="any"
@@ -693,6 +710,7 @@
 						min="0"
 						max="2"
 						step="0.05"
+						aria-label={$i18n.t('Frequency Penalty')}
 						bind:value={params.frequency_penalty}
 						class="w-full h-2 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
 					/>
@@ -702,6 +720,7 @@
 						bind:value={params.frequency_penalty}
 						type="number"
 						class=" bg-transparent text-center w-14"
+						aria-label={$i18n.t('Frequency Penalty')}
 						min="0"
 						max="2"
 						step="any"
@@ -752,6 +771,7 @@
 						min="-1"
 						max="128"
 						step="1"
+						aria-label={$i18n.t('Repeat Last N')}
 						bind:value={params.repeat_last_n}
 						class="w-full h-2 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
 					/>
@@ -761,6 +781,7 @@
 						bind:value={params.repeat_last_n}
 						type="number"
 						class=" bg-transparent text-center w-14"
+						aria-label={$i18n.t('Repeat Last N')}
 						min="-1"
 						max="128"
 						step="1"
@@ -811,6 +832,7 @@
 						min="0"
 						max="2"
 						step="0.05"
+						aria-label={$i18n.t('Tfs Z')}
 						bind:value={params.tfs_z}
 						class="w-full h-2 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
 					/>
@@ -820,6 +842,7 @@
 						bind:value={params.tfs_z}
 						type="number"
 						class=" bg-transparent text-center w-14"
+						aria-label={$i18n.t('Tfs Z')}
 						min="0"
 						max="2"
 						step="any"
@@ -870,6 +893,7 @@
 						min="256"
 						max="8192"
 						step="256"
+						aria-label={$i18n.t('Batch Size (num_batch)')}
 						bind:value={params.num_batch}
 						class="w-full h-2 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
 					/>
@@ -879,6 +903,7 @@
 						bind:value={params.num_batch}
 						type="number"
 						class=" bg-transparent text-center w-14"
+						aria-label={$i18n.t('Batch Size (num_batch)')}
 						min="256"
 						step="256"
 					/>
@@ -925,6 +950,7 @@
 						min="-1"
 						max="10240000"
 						step="1"
+						aria-label={$i18n.t('Tokens To Keep On Context Refresh (num_keep)')}
 						bind:value={params.num_keep}
 						class="w-full h-2 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
 					/>
@@ -934,6 +960,7 @@
 						bind:value={params.num_keep}
 						type="number"
 						class=" bg-transparent text-center w-14"
+						aria-label={$i18n.t('Tokens To Keep On Context Refresh (num_keep)')}
 						min="-1"
 						step="1"
 					/>
@@ -983,6 +1010,7 @@
 						min="-2"
 						max="131072"
 						step="1"
+						aria-label={$i18n.t('Max Tokens (num_predict)')}
 						bind:value={params.max_tokens}
 						class="w-full h-2 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
 					/>
@@ -992,6 +1020,7 @@
 						bind:value={params.max_tokens}
 						type="number"
 						class=" bg-transparent text-center w-14"
+						aria-label={$i18n.t('Max Tokens (num_predict)')}
 						min="-2"
 						step="1"
 					/>
@@ -1121,6 +1150,7 @@
 							min="1"
 							max="256"
 							step="1"
+							aria-label={$i18n.t('num_thread (Ollama)')}
 							bind:value={params.num_thread}
 							class="w-full h-2 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
 						/>
@@ -1130,6 +1160,7 @@
 							bind:value={params.num_thread}
 							type="number"
 							class=" bg-transparent text-center w-14"
+							aria-label={$i18n.t('num_thread (Ollama)')}
 							min="1"
 							max="256"
 							step="1"
@@ -1177,6 +1208,7 @@
 							min="0"
 							max="256"
 							step="1"
+							aria-label={$i18n.t('num_gpu (Ollama)')}
 							bind:value={params.num_gpu}
 							class="w-full h-2 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
 						/>
@@ -1186,6 +1218,7 @@
 							bind:value={params.num_gpu}
 							type="number"
 							class=" bg-transparent text-center w-14"
+							aria-label={$i18n.t('num_gpu (Ollama)')}
 							min="0"
 							max="256"
 							step="1"
@@ -1220,6 +1253,7 @@
 						<textarea
 							class="px-3 py-1.5 text-sm w-full bg-transparent border dark:border-gray-600 outline-none rounded-lg -mb-1"
 							placeholder={$i18n.t('Write your model template content here')}
+							aria-label={$i18n.t('Model Template')}
 							rows="4"
 							bind:value={params.template}
 						/>

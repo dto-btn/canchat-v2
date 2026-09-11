@@ -60,6 +60,7 @@
 								class="w-full mt-1 px-4 py-2 rounded-lg bg-gray-50 dark:bg-gray-850 dark:text-gray-300"
 								type="text"
 								value={title}
+								aria-label={$i18n.t('Title')}
 								readonly
 							/>
 						</div>
@@ -70,6 +71,7 @@
 								class="w-full mt-1 px-4 py-2 rounded-lg bg-gray-50 dark:bg-gray-850 dark:text-gray-300"
 								type="text"
 								value={`/${command}`}
+								aria-label={$i18n.t('Command')}
 								readonly
 							/>
 						</div>
@@ -81,6 +83,7 @@
 								rows="4"
 								readonly
 								value={content}
+								aria-label={$i18n.t('Prompt Content')}
 							></textarea>
 						</div>
 					</div>

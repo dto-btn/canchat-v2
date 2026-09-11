@@ -55,7 +55,7 @@
 					on:click={() => {
 						showSidebar.set(!$showSidebar);
 					}}
-					aria-label="Toggle Sidebar"
+					aria-label={$i18n.t('Toggle Sidebar')}
 				>
 					<div class=" m-auto self-center">
 						<MenuLines />
@@ -115,7 +115,7 @@
 							on:click={async () => {
 								await showControls.set(!$showControls);
 							}}
-							aria-label="Controls"
+							aria-label={$i18n.t('Controls')}
 						>
 							<div class=" m-auto self-center">
 								<AdjustmentsHorizontal className=" size-5" strokeWidth="0.5" />
@@ -131,7 +131,7 @@
 							on:click={async () => {
 								await showControls.set(!$showControls);
 							}}
-							aria-label="Controls"
+							aria-label={$i18n.t('Controls')}
 						>
 							<div class=" m-auto self-center">
 								<AdjustmentsHorizontal className=" size-5" strokeWidth="0.5" />

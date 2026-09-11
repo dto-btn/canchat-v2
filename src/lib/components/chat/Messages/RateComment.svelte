@@ -258,6 +258,7 @@
 			class="w-full text-sm px-1 py-2 bg-transparent outline-none resize-none rounded-xl border border-gray-100 dark:border-gray-800"
 			placeholder={$i18n.t('Feel free to add specific details')}
 			rows="3"
+			aria-label={$i18n.t('Comment')}
 		/>
 	</div>
 
