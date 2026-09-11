@@ -26,6 +26,14 @@
 		role: 'user'
 	};
 
+	const decodeCsv = (buffer: ArrayBuffer) => {
+		try {
+			return new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+		} catch {
+			return new TextDecoder('windows-1252').decode(buffer);
+		}
+	};
+
 	$: if (show) {
 		_user = {
 			name: '',
@@ -63,56 +71,50 @@
 				loading = true;
 
 				const file = inputFiles[0];
-				const reader = new FileReader();
+				const csv = decodeCsv(await file.arrayBuffer());
+				const rows = csv.split('\n');
 
-				reader.onload = async (e) => {
-					const csv = e.target.result;
-					const rows = csv.split('\n');
+				let userCount = 0;
 
-					let userCount = 0;
+				for (const [idx, row] of rows.entries()) {
+					const columns = row.split(',').map((col) => col.trim());
+					if (idx > 0) {
+						if (
+							columns.length === 4 &&
+							['admin', 'user', 'pending', 'analyst', 'global_analyst'].includes(
+								columns[3].toLowerCase()
+							)
+						) {
+							const res = await addUser(
+								getRequestToken(),
+								columns[0],
+								columns[1],
+								columns[2],
+								columns[3].toLowerCase()
+							).catch((error) => {
+								toast.error(`Row ${idx + 1}: ${error}`);
+								return null;
+							});
 
-					for (const [idx, row] of rows.entries()) {
-						const columns = row.split(',').map((col) => col.trim());
-						if (idx > 0) {
-							if (
-								columns.length === 4 &&
-								['admin', 'user', 'pending', 'analyst', 'global_analyst'].includes(
-									columns[3].toLowerCase()
-								)
-							) {
-								const res = await addUser(
-									getRequestToken(),
-									columns[0],
-									columns[1],
-									columns[2],
-									columns[3].toLowerCase()
-								).catch((error) => {
-									toast.error(`Row ${idx + 1}: ${error}`);
-									return null;
-								});
-
-								if (res) {
-									userCount = userCount + 1;
-								}
-							} else {
-								toast.error(`Row ${idx + 1}: invalid format.`);
+							if (res) {
+								userCount = userCount + 1;
 							}
+						} else {
+							toast.error(`Row ${idx + 1}: invalid format.`);
 						}
 					}
+				}
 
-					toast.success(`Successfully imported ${userCount} users.`);
-					inputFiles = null;
-					const uploadInputElement = document.getElementById('upload-user-csv-input');
+				toast.success(`Successfully imported ${userCount} users.`);
+				inputFiles = null;
+				const uploadInputElement = document.getElementById('upload-user-csv-input');
 
-					if (uploadInputElement) {
-						uploadInputElement.value = null;
-					}
+				if (uploadInputElement) {
+					uploadInputElement.value = null;
+				}
 
-					stopLoading();
-					show = false;
-				};
-
-				reader.readAsText(file);
+				stopLoading();
+				show = false;
 			} else {
 				toast.error($i18n.t('File not found.'));
 			}
