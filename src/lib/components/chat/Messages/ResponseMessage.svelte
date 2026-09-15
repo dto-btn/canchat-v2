@@ -100,7 +100,7 @@
 		id: string;
 		model: string;
 		content: string;
-		files?: { type: string; url: string }[];
+		files?: { type: string; url: string; name?: string; size?: number }[];
 		timestamp: number;
 		role: string;
 		statusHistory?: StatusEntry[];
@@ -108,6 +108,11 @@
 		done: boolean;
 		error?: boolean | { content: string };
 		sources?: string[];
+		childrenIds?: string[];
+		user?: string;
+		originalContent?: string;
+		models?: string[];
+		merged?: Record<string, unknown>;
 		code_executions?: {
 			uuid: string;
 			name: string;
@@ -147,10 +152,18 @@
 	export let messageId: any;
 	export let selectedToolIds: string[] = [];
 
-	let message: MessageType = JSON.parse(JSON.stringify(history.messages[messageId]));
-	$: if (history.messages) {
-		if (JSON.stringify(message) !== JSON.stringify(history.messages[messageId])) {
-			message = JSON.parse(JSON.stringify(history.messages[messageId]));
+	let message: MessageType = {
+		id: messageId,
+		model: '',
+		content: '',
+		timestamp: Date.now() / 1000,
+		role: 'assistant',
+		done: false
+	};
+	$: if (history.messages && history.messages[messageId]) {
+		const nextMessage = JSON.parse(JSON.stringify(history.messages[messageId])) as MessageType;
+		if (JSON.stringify(message) !== JSON.stringify(nextMessage)) {
+			message = nextMessage;
 		}
 	}
 
