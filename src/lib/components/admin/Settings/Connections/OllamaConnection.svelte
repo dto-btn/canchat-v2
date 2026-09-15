@@ -10,15 +10,21 @@
 	import ManageOllamaModal from './ManageOllamaModal.svelte';
 	import ArrowDownTray from '$lib/components/icons/ArrowDownTray.svelte';
 
-	export let onDelete = () => {};
-	export let onSubmit = () => {};
+	export let onDelete: () => void = () => {};
+	export let onSubmit: (connection: unknown) => void = () => {};
 
 	export let url = '';
 	export let idx = 0;
-	export let config = {};
+	export let config: Record<string, any> = {};
 
 	let showManageModal = false;
 	let showConfigModal = false;
+
+	const handleConnectionSubmit = (connection: any) => {
+		url = connection.url;
+		config = { ...connection.config, key: connection.key };
+		onSubmit(connection);
+	};
 </script>
 
 <AddConnectionModal
@@ -31,11 +37,7 @@
 		config: config
 	}}
 	{onDelete}
-	onSubmit={(connection) => {
-		url = connection.url;
-		config = { ...connection.config, key: connection.key };
-		onSubmit(connection);
-	}}
+	onSubmit={handleConnectionSubmit}
 />
 
 <ManageOllamaModal bind:show={showManageModal} urlIdx={idx} />

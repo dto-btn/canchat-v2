@@ -34,7 +34,7 @@
 	import { getRequestToken } from '$lib/services/auth';
 
 	// Replace date-fns with native date formatting
-	function formatDate(date) {
+	function formatDate(date: any) {
 		return date.toISOString().split('T')[0]; // Returns YYYY-MM-DD format
 	}
 
@@ -43,7 +43,7 @@
 	}
 
 	// Helper function to get minimum end date (at least one day after start date)
-	function getMinEndDate(startDateStr) {
+	function getMinEndDate(startDateStr: any) {
 		if (!startDateStr) return '';
 		const startDate = new Date(startDateStr);
 		const minEndDate = new Date(startDate.getTime() + 24 * 60 * 60 * 1000); // Add one day
@@ -51,7 +51,7 @@
 	}
 
 	// Handler for start date changes - ensures end date is always after start date
-	function handleStartDateChange(event) {
+	function handleStartDateChange(event: any) {
 		const newStartDate = event.target.value;
 		startDate = newStartDate;
 
@@ -228,7 +228,7 @@
 				labels: {
 					color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#1f2937',
 					font: { size: 14 },
-					generateLabels: (c) => {
+					generateLabels: (c: any) => {
 						const items = Chart.defaults.plugins.legend.labels.generateLabels(c);
 						return items.map((i) => {
 							i.text = `${i.text} ${i.text === $i18n.t('Last Active Users') ? $i18n.t('(Users whose last recorded activity was during the selected period)') : i.text === $i18n.t('Active Users') ? $i18n.t('(Users who prompted during selected period)') : $i18n.t('(All enrolled users to date)')}`;
@@ -250,7 +250,7 @@
 				anchor: 'end' as const,
 				align: 'right' as const,
 				offset: 6,
-				formatter: (value) => (value === 0 ? null : value),
+				formatter: (value: any) => (value === 0 ? null : value),
 				font: {
 					weight: 'bold' as const,
 					size: 14
@@ -279,7 +279,7 @@
 				position: 'top' as const,
 				offset: false,
 				beginAtZero: true,
-				afterBuildTicks: (axis) => {
+				afterBuildTicks: (axis: any) => {
 					const bottomAxis = axis.chart?.scales?.x;
 					if (!bottomAxis) return;
 					axis.min = bottomAxis.min;
@@ -299,7 +299,7 @@
 			},
 			y: {
 				beginAtZero: true,
-				afterFit: (scale) => {
+				afterFit: (scale: any) => {
 					scale.width = 330;
 				},
 				ticks: {
@@ -448,13 +448,13 @@
 	let showCustomDateRange = false;
 
 	// Advanced metrics
-	let rangeMetrics = null;
+	let rangeMetrics: any = null;
 
 	// Change default tab name from 'cost' to 'business' for clarity
 	let activeTab = 'users'; // Changed from 'business' to 'users'
 
 	// Helper function to calculate days between dates
-	function calculateDaysFromDateRange(start, end) {
+	function calculateDaysFromDateRange(start: any, end: any) {
 		if (start && end) {
 			const startDate = new Date(start);
 			const endDate = new Date(end);
@@ -510,7 +510,7 @@
 					updatedDomain,
 					selectedMcpProcess ?? undefined
 				);
-			} catch (err) {
+			} catch (err: any) {
 				console.error('Error fetching summary metrics:', err);
 			} finally {
 				isLoadingTokensData = false;
@@ -526,7 +526,7 @@
 						selectedModel,
 						updatedDomain
 					);
-				} catch (err) {
+				} catch (err: any) {
 					console.error('Error fetching model metrics:', err);
 				}
 			}
@@ -576,7 +576,7 @@
 					updatedDomain,
 					null // Don't filter by model for inter-prompt latency
 				);
-			} catch (err) {
+			} catch (err: any) {
 				console.error('Error fetching historical data:', err);
 			} finally {
 				isLoadingTokensChart = false;
@@ -587,7 +587,7 @@
 			setTimeout(() => {
 				initializeCharts();
 			}, 50);
-		} catch (error) {
+		} catch (error: any) {
 			console.error('Error updating charts:', error);
 			isLoadingTokensData = false;
 			isLoadingTokensChart = false;
@@ -912,7 +912,7 @@
 		}
 	}
 
-	function handleDateRangeChange(event) {
+	function handleDateRangeChange(event: any) {
 		const range = event.target.value;
 		selectedDateRange = range;
 
@@ -963,7 +963,7 @@
 
 			// Also update the chart data based on the selected date range
 			await updateCharts(selectedDomain, selectedModel);
-		} catch (error) {
+		} catch (error: any) {
 			console.error('Error fetching range metrics:', error);
 		}
 	}
@@ -1002,7 +1002,7 @@
 			(async () => {
 				try {
 					mcpProcesses = await getMcpProcesses(getRequestToken());
-				} catch (mcpErr) {
+				} catch (mcpErr: any) {
 					console.warn('Could not load MCP processes:', mcpErr);
 					mcpProcesses = [];
 				}
@@ -1023,14 +1023,14 @@
 					await updateCharts(selectedDomain, selectedModel);
 					updateRangeMetrics(); // Load initial range metrics
 					componentLoaded = true;
-				} catch (error) {
+				} catch (error: any) {
 					console.error('Error initializing charts:', error);
 					componentLoaded = true;
 				}
 			})();
 			// Store the observer in a variable for cleanup
 			return () => observer.disconnect();
-		} catch (error) {
+		} catch (error: any) {
 			console.error('Error initializing charts:', error);
 			// Even if there's an error, mark as loaded to show the UI
 			componentLoaded = true;
@@ -1054,14 +1054,14 @@
 	});
 
 	// Update domain change handler to simplify
-	function handleDomainChange(event) {
+	function handleDomainChange(event: any) {
 		const newDomain = event.target.value || null;
 		selectedDomain = newDomain;
 		updateCharts(selectedDomain, selectedModel);
 	}
 
 	// Handler for model selection changes
-	function handleModelChange(event) {
+	function handleModelChange(event: any) {
 		const newModel = event.target.value || null;
 		selectedModel = newModel;
 		updateCharts(selectedDomain, selectedModel);
@@ -1128,7 +1128,7 @@
 			) {
 				await loadExportLogs();
 			}
-		} catch (error) {
+		} catch (error: any) {
 			console.error('Export failed:', error);
 			alert($i18n.t('Export failed. Please try again.'));
 		} finally {
@@ -1139,7 +1139,7 @@
 	async function loadExportLogs() {
 		try {
 			exportLogs = await getExportLogs(getRequestToken());
-		} catch (error) {
+		} catch (error: any) {
 			console.error('Failed to load export logs:', error);
 		}
 	}

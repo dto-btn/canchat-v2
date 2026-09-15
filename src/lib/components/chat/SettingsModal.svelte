@@ -15,7 +15,6 @@
 	import Interface from './Settings/Interface.svelte';
 	import Audio from './Settings/Audio.svelte';
 	import Chats from './Settings/Chats.svelte';
-	import User from '../icons/User.svelte';
 	import Search from '../icons/Search.svelte';
 	import { getRequestToken } from '$lib/services/auth';
 
@@ -263,7 +262,7 @@
 
 	let search = '';
 	let visibleTabs = searchData.map((tab) => tab.id);
-	let searchDebounceTimeout;
+	let searchDebounceTimeout: any;
 
 	const searchSettings = (query: string): string[] => {
 		const lowerCaseQuery = query.toLowerCase().trim();
@@ -287,7 +286,7 @@
 		}, 100);
 	};
 
-	const saveSettings = async (updated) => {
+	const saveSettings = async (updated: any) => {
 		await settings.set({ ...$settings, ...updated });
 		await models.set(await getModels());
 		await updateUserSettings(getRequestToken(), { ui: $settings });
@@ -300,7 +299,7 @@
 	let selectedTab = 'general';
 
 	// Function to handle sideways scrolling
-	const scrollHandler = (event) => {
+	const scrollHandler = (event: any) => {
 		const settingsTabsContainer = document.getElementById('settings-tabs-container');
 		if (settingsTabsContainer) {
 			event.preventDefault(); // Prevent default vertical scrolling

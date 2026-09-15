@@ -34,7 +34,7 @@
 		}
 	};
 
-	export let permissions = {};
+	export let permissions: Record<string, any> = {};
 
 	// State for MCP configuration
 	let mcpEnabled = false;
@@ -61,7 +61,7 @@
 					};
 				}
 			}
-		} catch (error) {
+		} catch (error: any) {
 			console.error('Failed to fetch MCP config:', error);
 			mcpEnabled = false;
 		} finally {

@@ -13,9 +13,9 @@
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 
 	import { user } from '$lib/stores';
-	export let models = [];
-	export let chatFiles = [];
-	export let params = {};
+	export let models: any[] = [];
+	export let chatFiles: any[] = [];
+	export let params: Record<string, any> = {};
 
 	let showValves = false;
 </script>

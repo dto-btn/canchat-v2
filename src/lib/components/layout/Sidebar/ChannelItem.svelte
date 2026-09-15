@@ -15,19 +15,14 @@
 	export let onUpdate: Function = () => {};
 
 	export let className = '';
-	export let channel;
+	export let channel: any;
 
 	let showEditChannelModal = false;
 
-	let itemElement;
-</script>
+	let itemElement: any;
 
-<ChannelModal
-	bind:show={showEditChannelModal}
-	{channel}
-	edit={true}
-	{onUpdate}
-	onSubmit={async ({ name, access_control }) => {
+	const handleChannelSubmit = async (payload: any) => {
+		const { name, access_control } = payload;
 		const res = await updateChannelById(getRequestToken(), channel.id, {
 			name,
 			access_control
@@ -40,7 +35,15 @@
 		}
 
 		onUpdate();
-	}}
+	};
+</script>
+
+<ChannelModal
+	bind:show={showEditChannelModal}
+	{channel}
+	edit={true}
+	{onUpdate}
+	onSubmit={handleChannelSubmit}
 />
 
 <div

@@ -12,18 +12,18 @@
 	import { toast } from 'svelte-sonner';
 	import { getRequestToken } from '$lib/services/auth';
 
-	export let threadId = null;
-	export let channel = null;
+	export let threadId: any = null;
+	export let channel: any = null;
 
-	export let onClose = () => {};
+	export let onClose: () => void = () => {};
 
-	let messages = null;
+	let messages: any = null;
 	let top = false;
 
-	let typingUsers = [];
-	let typingUsersTimeout = {};
+	let typingUsers: any[] = [];
+	let typingUsersTimeout: Record<string, any> = {};
 
-	let messagesContainerElement = null;
+	let messagesContainerElement: any = null;
 
 	$: if (threadId) {
 		initHandler();
@@ -54,7 +54,7 @@
 		}
 	};
 
-	const channelEventHandler = async (event) => {
+	const channelEventHandler = async (event: any) => {
 		if (event.channel_id === channel.id) {
 			const type = event?.data?.type ?? null;
 			const data = event?.data?.data ?? null;
@@ -71,7 +71,7 @@
 				}
 			} else if (type === 'message:update') {
 				if (messages) {
-					const idx = messages.findIndex((message) => message.id === data.id);
+					const idx = messages.findIndex((message: any) => message.id === data.id);
 
 					if (idx !== -1) {
 						messages[idx] = data;
@@ -79,11 +79,11 @@
 				}
 			} else if (type === 'message:delete') {
 				if (messages) {
-					messages = messages.filter((message) => message.id !== data.id);
+					messages = messages.filter((message: any) => message.id !== data.id);
 				}
 			} else if (type.includes('message:reaction')) {
 				if (messages) {
-					const idx = messages.findIndex((message) => message.id === data.id);
+					const idx = messages.findIndex((message: any) => message.id === data.id);
 					if (idx !== -1) {
 						messages[idx] = data;
 					}
@@ -118,7 +118,7 @@
 		}
 	};
 
-	const submitHandler = async ({ content, data }) => {
+	const submitHandler = async ({ content, data }: any) => {
 		if (!content) {
 			return;
 		}

@@ -27,8 +27,8 @@
 	export let title: string = $WEBUI_NAME;
 	export let shareEnabled: boolean = false;
 
-	export let chat;
-	export let selectedModels;
+	export let chat: any;
+	export let selectedModels: any;
 	export let showModelSelector = true;
 
 	let showShareChatModal = false;

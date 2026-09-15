@@ -8,7 +8,7 @@
 
 	export let onKeydown: Function = () => {};
 
-	let textareaElement;
+	let textareaElement: any;
 
 	$: if (textareaElement) {
 		if (textareaElement.innerText !== value && value !== '') {

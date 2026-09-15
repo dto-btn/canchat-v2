@@ -34,10 +34,10 @@
 
 	let loading = false;
 
-	let valvesSpec = null;
-	let valves = {};
+	let valvesSpec: any = null;
+	let valves: Record<string, any> = {};
 
-	let debounceTimer;
+	let debounceTimer: any;
 
 	const debounceSubmitHandler = async () => {
 		if (debounceTimer) {
@@ -77,7 +77,7 @@
 			// Convert string to array
 			for (const property in valvesSpec.properties) {
 				if (valvesSpec.properties[property]?.type === 'array') {
-					valves[property] = (valves[property] ?? '').split(',').map((v) => v.trim());
+					valves[property] = (valves[property] ?? '').split(',').map((v: any) => v.trim());
 				}
 			}
 

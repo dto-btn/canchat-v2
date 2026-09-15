@@ -9,7 +9,7 @@
 	const dispatch = createEventDispatcher();
 
 	export let show = false;
-	export let manifest = {};
+	export let manifest: Record<string, any> = {};
 </script>
 
 <Modal size="sm" bind:show>

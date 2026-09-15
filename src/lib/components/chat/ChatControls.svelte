@@ -13,29 +13,29 @@
 	import Artifacts from './Artifacts.svelte';
 	import * as focusTrap from 'focus-trap';
 
-	export let history;
-	export let models = [];
+	export let history: any;
+	export let models: any[] = [];
 
-	export let chatId = null;
+	export let chatId: any = null;
 
-	export let chatFiles = [];
-	export let params = {};
+	export let chatFiles: any[] = [];
+	export let params: Record<string, any> = {};
 
 	export let eventTarget: EventTarget;
 	export let submitPrompt: Function;
 	export let stopResponse: Function;
 	export let showMessage: Function;
-	export let files;
-	export let modelId;
+	export let files: any;
+	export let modelId: any;
 
-	export let pane;
+	export let pane: any;
 
-	let mediaQuery;
+	let mediaQuery: any;
 	let largeScreen = false;
 	let dragged = false;
 
 	let minSize = 0;
-	let trap = null;
+	let trap: any = null;
 
 	export const openPane = () => {
 		if (parseInt(localStorage?.chatControlsSize)) {
@@ -45,7 +45,7 @@
 		}
 	};
 
-	const handleMediaQuery = async (e) => {
+	const handleMediaQuery = async (e: any) => {
 		if (e.matches) {
 			largeScreen = true;
 
@@ -66,11 +66,11 @@
 		}
 	};
 
-	const onMouseDown = (event) => {
+	const onMouseDown = (event: any) => {
 		dragged = true;
 	};
 
-	const onMouseUp = (event) => {
+	const onMouseUp = (event: any) => {
 		dragged = false;
 	};
 
@@ -93,13 +93,16 @@
 
 		// Select the container element you want to observe
 		const container = document.getElementById('chat-container');
+		if (!container) {
+			return;
+		}
 
 		// initialize the minSize based on the container width
 		minSize = Math.floor((350 / container.clientWidth) * 100);
 
 		// Create a new ResizeObserver instance
 		const resizeObserver = new ResizeObserver((entries) => {
-			for (let entry of entries) {
+			for (const entry of entries) {
 				const width = entry.contentRect.width;
 				// calculate the percentage of 200px
 				const percentage = (350 / width) * 100;

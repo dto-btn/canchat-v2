@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	import { toast } from 'svelte-sonner';
@@ -17,9 +17,9 @@
 
 	let mounted = false;
 	let clone = false;
-	let func = null;
+	let func: any = null;
 
-	const saveHandler = async (data) => {
+	const saveHandler = async (data: any) => {
 		const manifest = extractFrontmatter(data.content);
 		if (compareVersion(manifest?.required_open_webui_version ?? '0.0.0', WEBUI_VERSION)) {
 			toast.error(

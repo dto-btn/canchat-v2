@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	import { WEBUI_BASE_URL } from '$lib/constants';
@@ -29,10 +29,10 @@
 
 	const i18n = getI18n();
 
-	export let users = [];
+	export let users: any[] = [];
 
 	let search = '';
-	let selectedUser = null;
+	let selectedUser: any = null;
 
 	let page = 1;
 
@@ -42,7 +42,7 @@
 	let showUserChatsModal = false;
 	let showEditUserModal = false;
 
-	$: badgeType = (role) => {
+	$: badgeType = (role: any) => {
 		switch (role) {
 			case 'admin':
 				return 'info';
@@ -59,7 +59,7 @@
 		}
 	};
 
-	const updateRoleHandler = async (id, role) => {
+	const updateRoleHandler = async (id: any, role: any) => {
 		const res = await updateUserRole(getRequestToken(), id, role).catch((error) => {
 			toast.error(`${error}`);
 			return null;
@@ -70,7 +70,7 @@
 		}
 	};
 
-	const deleteUserHandler = async (id) => {
+	const deleteUserHandler = async (id: any) => {
 		const res = await deleteUserById(getRequestToken(), id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
@@ -83,7 +83,7 @@
 	let sortKey = 'created_at'; // default sort key
 	let sortOrder = 'asc'; // default sort order
 
-	function setSortKey(key) {
+	function setSortKey(key: any) {
 		if (sortKey === key) {
 			sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
 		} else {
@@ -92,8 +92,8 @@
 		}
 	}
 
-	let filteredUsers;
-	let paginatedUsers;
+	let filteredUsers: any;
+	let paginatedUsers: any;
 
 	// First filter and sort users
 	$: filteredUsers = users

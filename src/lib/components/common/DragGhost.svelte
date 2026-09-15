@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 
-	export let x;
-	export let y;
+	export let x: any;
+	export let y: any;
 
-	let popupElement = null;
+	let popupElement: any = null;
 
 	onMount(() => {
 		document.body.appendChild(popupElement);

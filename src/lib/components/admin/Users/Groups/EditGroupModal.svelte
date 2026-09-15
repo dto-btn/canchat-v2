@@ -13,14 +13,14 @@
 	import WrenchSolid from '$lib/components/icons/WrenchSolid.svelte';
 	import DeleteConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 
-	export let onSubmit: Function = () => {};
-	export let onDelete: Function = () => {};
+	export let onSubmit: (value: unknown) => void = () => {};
+	export let onDelete: () => void = () => {};
 
 	export let show = false;
 	export let edit = false;
 
-	export let users = [];
-	export let group = null;
+	export let users: any[] = [];
+	export let group: any = null;
 
 	export let custom = true;
 
@@ -56,8 +56,8 @@
 			news_server: false
 		}
 	};
-	export let userIds = [];
-	export let allowedDomains = [];
+	export let userIds: any[] = [];
+	export let allowedDomains: any[] = [];
 
 	const submitHandler = async () => {
 		loading = true;

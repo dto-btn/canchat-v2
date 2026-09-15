@@ -422,7 +422,8 @@
 									<select
 										class="px-3 py-1.5 text-xs w-full bg-transparent outline-none border-r border-gray-100 dark:border-gray-800"
 										bind:value={prompt.lang}
-										placeholder={$i18n.languages[prompt.lang] || 'Unknown Language'}
+										placeholder={languages.find((language) => language.code === prompt.lang)
+											?.title ?? 'Unknown Language'}
 									>
 										{#each languages as language}
 											<option value={language.code}>{language.title}</option>

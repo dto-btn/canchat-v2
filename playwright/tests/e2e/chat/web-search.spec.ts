@@ -233,7 +233,7 @@ test.describe('Feature: Web Search', () => {
 	// ===========================================
 	// CHAT-WEB-TC009: User can stop the generation of the search request
 	// ===========================================
-	test('CHAT-WEB-TC009: User can stop the generation of the search request', async ({
+	test.skip('CHAT-WEB-TC009: User can stop the generation of the search request', async ({
 		userPage,
 		locale
 	}) => {

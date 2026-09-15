@@ -112,17 +112,26 @@ export class AdminPage extends BasePage {
 
 	/**
 	 * Navigates to the model settings and selects a specific model
-	 * @param modelName The name of the model
+	 * @param modelName The name or ID of the model
 	 */
 	async openModelSettings(modelName: string) {
 		await this.navigateToAdminSettings(
 			this.getTranslation('Settings'),
 			this.getTranslation('Models')
 		);
-		await this.page
-			.getByRole('textbox', { name: 'Search Models' })
-			.waitFor({ state: 'visible', timeout: 5000 });
-		await this.page.getByRole('button', { name: `modelfile profile ${modelName}` }).click();
+		const searchInput = this.page.getByRole('textbox', {
+			name: this.getTranslation('Search Models')
+		});
+		await searchInput.waitFor({ state: 'visible', timeout: 5000 });
+		await searchInput.fill(modelName);
+		await this.waitToSettle(300);
+
+		const modelItem = this.page
+			.locator('#model-list button')
+			.filter({ hasText: modelName })
+			.first();
+		await modelItem.waitFor({ state: 'visible', timeout: 5000 });
+		await modelItem.click();
 		await expect(this.page.locator('#models')).toBeVisible();
 	}
 
@@ -132,15 +141,13 @@ export class AdminPage extends BasePage {
 	 */
 	async updateModelDescription(descriptions: { en?: string; fr?: string }) {
 		if (descriptions.en !== undefined) {
-			await this.page
-				.locator('div[data-placeholder="Enter English description"]')
-				.fill(descriptions.en);
+			const enPlaceholder = this.getTranslation('Enter English description');
+			await this.page.locator(`div[data-placeholder="${enPlaceholder}"]`).fill(descriptions.en);
 		}
 
 		if (descriptions.fr !== undefined) {
-			await this.page
-				.locator('div[data-placeholder="Enter French description"]')
-				.fill(descriptions.fr);
+			const frPlaceholder = this.getTranslation('Enter French description');
+			await this.page.locator(`div[data-placeholder="${frPlaceholder}"]`).fill(descriptions.fr);
 		}
 	}
 
@@ -150,6 +157,72 @@ export class AdminPage extends BasePage {
 	 */
 	async updateModelVisibility(visibility: string) {
 		await this.page.locator('#models').selectOption(visibility);
+	}
+
+	/**
+	 * Extracts the model JSON metadata from the JSON Preview section in ModelEditor
+	 */
+	async getModelMetadata(): Promise<any> {
+		const jsonPreviewHeader = this.page.getByText(this.getTranslation('JSON Preview'));
+		if (await jsonPreviewHeader.isVisible({ timeout: 2000 }).catch(() => false)) {
+			const toggleButton = jsonPreviewHeader.locator('..').getByRole('button');
+
+			const textarea = this.page.locator('textarea[readonly]');
+			if (!(await textarea.isVisible().catch(() => false))) {
+				await toggleButton.click();
+				await textarea.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
+			}
+
+			if (await textarea.isVisible().catch(() => false)) {
+				const jsonText = await textarea.inputValue();
+				try {
+					return JSON.parse(jsonText);
+				} catch (e) {
+					return null;
+				}
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Retrieves the deprecation/shutdown date of the open model from its parameters/metadata
+	 */
+	async getModelShutdownDate(): Promise<string | null> {
+		const metadata = await this.getModelMetadata();
+		if (!metadata) return null;
+
+		return (
+			metadata.shutdown_date ||
+			metadata.openai?.shutdown_date ||
+			metadata.deprecation_date ||
+			metadata.params?.shutdown_date ||
+			metadata.params?.deprecation_date ||
+			null
+		);
+	}
+
+	/**
+	 * Checks if the open model is deprecated (shutdown date has passed)
+	 */
+	async isModelDeprecated(): Promise<{ isDeprecated: boolean; shutdownDate: string | null }> {
+		const shutdownDate = await this.getModelShutdownDate();
+		if (!shutdownDate) {
+			return { isDeprecated: false, shutdownDate: null };
+		}
+
+		const parsed =
+			typeof shutdownDate === 'number'
+				? new Date(shutdownDate > 1e11 ? shutdownDate : shutdownDate * 1000)
+				: new Date(shutdownDate);
+
+		if (isNaN(parsed.getTime())) {
+			return { isDeprecated: false, shutdownDate: String(shutdownDate) };
+		}
+
+		// Consider deprecated if date has already passed
+		const isDeprecated = parsed.getTime() <= Date.now();
+		return { isDeprecated, shutdownDate: String(shutdownDate) };
 	}
 
 	/**

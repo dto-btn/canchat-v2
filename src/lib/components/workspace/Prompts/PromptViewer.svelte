@@ -7,10 +7,10 @@
 
 	const i18n = getI18n();
 
-	export let prompt = null;
+	export let prompt: any = null;
 
 	let loading = true;
-	let error = null;
+	let error: any = null;
 
 	let title = '';
 	let command = '';

@@ -26,18 +26,18 @@
 	export let placeholder = $i18n.t('Send a Message');
 	export let transparentBackground = false;
 
-	export let id = null;
+	export let id: any = null;
 
 	let draggedOver = false;
 
 	let recording = false;
 	let content = '';
-	let files = [];
+	let files: any[] = [];
 
-	let filesInputElement;
-	let inputFiles;
+	let filesInputElement: any;
+	let inputFiles: any;
 
-	export let typingUsers = [];
+	export let typingUsers: any[] = [];
 
 	export let onSubmit: Function;
 	export let onChange: Function;
@@ -78,14 +78,14 @@
 			files = [...files, { type: 'image', url: imageUrl }];
 			// Clean memory: Clear video srcObject
 			video.srcObject = null;
-		} catch (error) {
+		} catch (error: any) {
 			// Handle any errors (e.g., user cancels screen sharing)
 			console.error('Error capturing screen:', error);
 		}
 	};
 
-	const inputFilesHandler = async (inputFiles) => {
-		inputFiles.forEach((file) => {
+	const inputFilesHandler = async (inputFiles: any) => {
+		inputFiles.forEach((file: any) => {
 			if (
 				($config?.file?.max_size ?? null) !== null &&
 				file.size > ($config?.file?.max_size ?? 0) * 1024 * 1024
@@ -133,7 +133,7 @@
 		});
 	};
 
-	const uploadFileHandler = async (file) => {
+	const uploadFileHandler = async (file: any) => {
 		const tempItemId = uuidv4();
 		const fileItem = {
 			type: 'file',
@@ -191,7 +191,7 @@
 			} else {
 				files = files.filter((item) => item?.itemId !== tempItemId);
 			}
-		} catch (e) {
+		} catch (e: any) {
 			toast.error(e);
 			files = files.filter((item) => item?.itemId !== tempItemId);
 		}
@@ -203,7 +203,7 @@
 		}
 	};
 
-	const onDragOver = (e) => {
+	const onDragOver = (e: any) => {
 		e.preventDefault();
 
 		// Check if a file is being draggedOver.
@@ -218,7 +218,7 @@
 		draggedOver = false;
 	};
 
-	const onDrop = async (e) => {
+	const onDrop = async (e: any) => {
 		e.preventDefault();
 		if (e.dataTransfer?.files) {
 			const inputFiles = Array.from(e.dataTransfer?.files);

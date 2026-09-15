@@ -8,7 +8,7 @@
 	export let show = false;
 	export let className = '';
 
-	let modalElement = null;
+	let modalElement: any = null;
 	let mounted = false;
 
 	const handleKeyDown = (event: KeyboardEvent) => {

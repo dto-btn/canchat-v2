@@ -38,7 +38,7 @@
 	let role = 'user';
 	let message = '';
 
-	let messages = [];
+	let messages: any[] = [];
 
 	const scrollToBottom = () => {
 		const element = messagesContainerElement;
@@ -73,7 +73,7 @@
 			`${WEBUI_BASE_URL}/api`
 		);
 
-		let responseMessage;
+		let responseMessage: any;
 		if (messages.at(-1)?.role === 'assistant') {
 			responseMessage = messages.at(-1);
 		} else {
@@ -129,7 +129,7 @@
 							}
 						}
 					}
-				} catch (error) {
+				} catch (error: any) {
 					console.log(error);
 				}
 

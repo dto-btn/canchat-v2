@@ -20,6 +20,27 @@ services:
     volumes:
       - ./qdrant_storage:/qdrant/storage
 
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    ports:
+      - 6379:6379
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: redisinsight
+    restart: unless-stopped
+    depends_on:
+      - redis
+    ports:
+      - 5540:5540
+    volumes:
+      - redisinsight_data:/data
+
   postgres:
     image: postgres:16
     container_name: postgres
@@ -58,3 +79,5 @@ volumes:
   otel_collector_config: {}
   prometheus_data: {}
   prometheus_config: {}
+  redis_data: {}
+  redisinsight_data: {}

@@ -23,7 +23,8 @@ env:
 jobs:
   tests:
     name: 'Playwright E2E Tests'
-    runs-on: arc-ssc-dsai-tko
+    runs-on:
+      group: tko-canchat
     permissions:
       contents: read
       packages: read
@@ -70,7 +71,7 @@ jobs:
       - name: Force local Docker image update
         run: |
           docker images --format '{{.Repository}}:{{.Tag}}' | xargs -I {} bash -c 'docker inspect --format="{{index .RepoDigests 0}}" {} && docker pull {};';
-          docker rmi $(docker images -f "dangling=true" -q)
+          docker image prune -f
         continue-on-error: true
 
       - name:  Start CANChat Environment
@@ -151,3 +152,21 @@ jobs:
           name: playwright-report-${{ steps.timestamps.outputs.timestamp }}
           path: ./playwright-report/
           retention-days: 30
+      
+      - name: Create results summary
+        uses: daun/playwright-report-summary@v4
+        if: ${{ !cancelled() }}
+        id: playwright_summary
+        with:
+          report-file: ./playwright-report/results.json
+          create-comment: false
+ 
+      - name: Output test summary to action
+        if: ${{ !cancelled() }}
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# Playwright Report" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.playwright_summary.outputs.summary }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "[Download Playwright Report](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/${{ steps.upload_report.outputs.artifact-id }})"  >> $GITHUB_STEP_SUMMARY

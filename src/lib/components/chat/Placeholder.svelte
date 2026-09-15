@@ -14,7 +14,8 @@
 		user,
 		models as _models,
 		temporaryChatEnabled,
-		suggestionCycle
+		suggestionCycle,
+		type Model
 	} from '$lib/stores';
 	import { sanitizeResponseContent } from '$lib/utils';
 	import { WEBUI_BASE_URL } from '$lib/constants';
@@ -37,22 +38,22 @@
 	export let atSelectedModel: Model | undefined;
 	export let selectedModels: [''];
 
-	export let history;
+	export let history: any;
 
 	export let prompt = '';
-	export let files = [];
+	export let files: any[] = [];
 
-	export let selectedToolIds = [];
+	export let selectedToolIds: any[] = [];
 	export let imageGenerationEnabled = false;
 	export let webSearchEnabled = false;
 	export let wikiGroundingEnabled = false;
 	export let wikiGroundingMode = 'off'; // 'off', 'on'
 
-	let models = [];
+	let models: any[] = [];
 	let modelDescription = '';
 	let modelName = '';
 
-	const selectSuggestionPrompt = async (p) => {
+	const selectSuggestionPrompt = async (p: any) => {
 		let text = p;
 
 		if (p.includes('{{CLIPBOARD}}')) {
@@ -88,18 +89,27 @@
 
 	let selectedModelIdx = 0;
 
+	const getModelTagTooltip = (modelIdx: number) => {
+		const tags =
+			$i18n.language === 'fr-CA' && (models[modelIdx]?.info?.meta?.tags_fr ?? []).length > 0
+				? models[modelIdx]?.info?.meta?.tags_fr
+				: (models[modelIdx]?.info?.meta?.tags ?? []);
+
+		return tags.map((tag: any) => tag.name.toUpperCase()).join(', ');
+	};
+
 	$: if (selectedModels.length > 0) {
 		selectedModelIdx = models.length - 1;
 	}
 
 	$: models = selectedModels.map((id) => $_models.find((m) => m.id === id));
 
-	const getModelDesc = (model) =>
+	const getModelDesc = (model: any) =>
 		$i18n.language === 'fr-CA'
 			? sanitizeResponseContent(model?.info?.meta?.description_fr ?? '')
 			: sanitizeResponseContent(model?.info?.meta?.description ?? '');
 
-	const getModelName = (model) =>
+	const getModelName = (model: any) =>
 		$i18n.language === 'fr-CA'
 			? model?.info?.name_fr && model?.info?.name_fr !== ''
 				? model?.info?.name_fr
@@ -142,16 +152,7 @@
 				<div class="flex flex-shrink-0 justify-center">
 					<div class="flex -space-x-4 mb-0.5" in:fade={{ duration: 100 }}>
 						{#each models as model, modelIdx}
-							<Tooltip
-								content={($i18n.language === 'fr-CA' &&
-								(models[modelIdx]?.info?.meta?.tags_fr ?? []).length > 0
-									? models[modelIdx]?.info?.meta?.tags_fr
-									: (models[modelIdx]?.info?.meta?.tags ?? [])
-								)
-									.map((tag) => tag.name.toUpperCase())
-									.join(', ')}
-								placement="top"
-							>
+							<Tooltip content={getModelTagTooltip(modelIdx)} placement="top">
 								<button
 									on:click={() => {
 										selectedModelIdx = modelIdx;
@@ -177,7 +178,7 @@
 					{#if modelName}
 						{modelName}
 					{:else}
-						{$i18n.t('Hello, {{name}}', { name: $user.name })}
+						{$i18n.t('Hello, {{name}}', { name: $user?.name })}
 					{/if}
 				</h2>
 			</div>

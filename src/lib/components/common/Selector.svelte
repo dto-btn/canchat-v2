@@ -28,6 +28,10 @@
 	$: filteredItems = searchValue
 		? items.filter((item) => item.value.toLowerCase().includes(searchValue.toLowerCase()))
 		: items;
+
+	function handleSelectedChange(selectedItem: (typeof items)[number]) {
+		value = selectedItem.value;
+	}
 </script>
 
 <Select.Root
@@ -36,9 +40,7 @@
 		searchValue = '';
 	}}
 	selected={items.find((item) => item.value === value)}
-	onSelectedChange={(selectedItem) => {
-		value = selectedItem.value;
-	}}
+	onSelectedChange={handleSelectedChange}
 >
 	<Select.Trigger class="relative w-full" aria-label={placeholder}>
 		<Select.Value

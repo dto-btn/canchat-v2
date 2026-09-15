@@ -21,32 +21,32 @@
 	export let eventTarget: EventTarget;
 	export let submitPrompt: Function;
 	export let stopResponse: Function;
-	export let files;
-	export let chatId;
-	export let modelId;
+	export let files: any;
+	export let chatId: any;
+	export let modelId: any;
 
-	let wakeLock = null;
+	let wakeLock: any = null;
 
-	let model = null;
+	let model: any = null;
 
 	let loading = false;
 	let confirmed = false;
 	let interrupted = false;
 	let assistantSpeaking = false;
 
-	let emoji = null;
+	let emoji: any = null;
 	let camera = false;
-	let cameraStream = null;
+	let cameraStream: any = null;
 
 	let chatStreaming = false;
 	let rmsLevel = 0;
 	let hasStartedSpeaking = false;
-	let mediaRecorder;
-	let audioStream = null;
-	let audioChunks = [];
+	let mediaRecorder: any;
+	let audioStream: any = null;
+	let audioChunks: any[] = [];
 
-	let videoInputDevices = [];
-	let selectedVideoInputDeviceId = null;
+	let videoInputDevices: any[] = [];
+	let selectedVideoInputDeviceId: any = null;
 
 	const getVideoInputDevices = async () => {
 		const devices = await navigator.mediaDevices.enumerateDevices();
@@ -75,7 +75,7 @@
 			await tick();
 			try {
 				await startVideoStream();
-			} catch (err) {
+			} catch (err: any) {
 				console.error('Error accessing webcam: ', err);
 			}
 		}
@@ -110,7 +110,7 @@
 	const stopVideoStream = async () => {
 		if (cameraStream) {
 			const tracks = cameraStream.getTracks();
-			tracks.forEach((track) => track.stop());
+			tracks.forEach((track: any) => track.stop());
 		}
 
 		cameraStream = null;
@@ -146,7 +146,7 @@
 	const MIN_DECIBELS = -55;
 	const VISUALIZER_BUFFER_LENGTH = 300;
 
-	const transcribeHandler = async (audioBlob) => {
+	const transcribeHandler = async (audioBlob: any) => {
 		// Create a blob from the audio chunks
 
 		await tick();
@@ -203,7 +203,7 @@
 
 			if (audioStream) {
 				const tracks = audioStream.getTracks();
-				tracks.forEach((track) => track.stop());
+				tracks.forEach((track: any) => track.stop());
 			}
 			audioStream = null;
 		}
@@ -227,13 +227,13 @@
 				analyseAudio(audioStream);
 			};
 
-			mediaRecorder.ondataavailable = (event) => {
+			mediaRecorder.ondataavailable = (event: any) => {
 				if (hasStartedSpeaking) {
 					audioChunks.push(event.data);
 				}
 			};
 
-			mediaRecorder.onstop = (e) => {
+			mediaRecorder.onstop = (e: any) => {
 				stopRecordingCallback();
 			};
 
@@ -246,13 +246,13 @@
 			if (mediaRecorder) {
 				mediaRecorder.stop();
 			}
-		} catch (error) {
+		} catch (error: any) {
 			console.log('Error stopping audio stream:', error);
 		}
 
 		if (!audioStream) return;
 
-		audioStream.getAudioTracks().forEach(function (track) {
+		audioStream.getAudioTracks().forEach(function (track: any) {
 			track.stop();
 		});
 
@@ -269,7 +269,7 @@
 		return Math.sqrt(sumSquares / data.length);
 	};
 
-	const analyseAudio = (stream) => {
+	const analyseAudio = (stream: any) => {
 		const audioContext = new AudioContext();
 		const audioStreamSource = audioContext.createMediaStreamSource(stream);
 
@@ -338,14 +338,14 @@
 		detectSound();
 	};
 
-	let finishedMessages = {};
-	let currentMessageId = null;
-	let currentUtterance = null;
+	let finishedMessages: Record<string, any> = {};
+	let currentMessageId: any = null;
+	let currentUtterance: any = null;
 
-	const speakSpeechSynthesisHandler = (content) => {
+	const speakSpeechSynthesisHandler = (content: any) => {
 		if ($showCallOverlay) {
 			return new Promise((resolve) => {
-				let voices = [];
+				let voices: any[] = [];
 				const getVoicesLoop = setInterval(async () => {
 					voices = await speechSynthesis.getVoices();
 					if (voices.length > 0) {
@@ -366,7 +366,7 @@
 						}
 
 						speechSynthesis.speak(currentUtterance);
-						currentUtterance.onend = async (e) => {
+						currentUtterance.onend = async (e: any) => {
 							await new Promise((r) => setTimeout(r, 200));
 							resolve(e);
 						};
@@ -378,7 +378,7 @@
 		}
 	};
 
-	const playAudio = (audio) => {
+	const playAudio = (audio: any) => {
 		if ($showCallOverlay) {
 			return new Promise((resolve) => {
 				const audioElement = document.getElementById('audioElement') as HTMLAudioElement;
@@ -435,7 +435,7 @@
 	const audioCache = new Map();
 	const emojiCache = new Map();
 
-	const fetchAudio = async (content) => {
+	const fetchAudio = async (content: any) => {
 		if (!audioCache.has(content)) {
 			try {
 				// Set the emoji for the content if needed
@@ -466,7 +466,7 @@
 				} else {
 					audioCache.set(content, true);
 				}
-			} catch (error) {
+			} catch (error: any) {
 				console.error('Error synthesizing speech:', error);
 			}
 		}
@@ -474,9 +474,9 @@
 		return audioCache.get(content);
 	};
 
-	let messages = {};
+	let messages: Record<string, any> = {};
 
-	const monitorAndPlayAudio = async (id, signal) => {
+	const monitorAndPlayAudio = async (id: any, signal: any) => {
 		while (!signal.aborted) {
 			if (messages[id] && messages[id].length > 0) {
 				// Retrieve the next content string from the queue
@@ -497,7 +497,7 @@
 							const audio = audioCache.get(content);
 							await playAudio(audio); // Here ensure that playAudio is indeed correct method to execute
 							await new Promise((resolve) => setTimeout(resolve, 200)); // Wait before retrying to reduce tight loop
-						} catch (error) {
+						} catch (error: any) {
 							console.error('Error playing audio:', error);
 						}
 					} else {
@@ -519,7 +519,7 @@
 		}
 	};
 
-	const chatStartHandler = async (e) => {
+	const chatStartHandler = async (e: any) => {
 		const { id } = e.detail;
 
 		chatStreaming = true;
@@ -537,7 +537,7 @@
 		}
 	};
 
-	const chatEventHandler = async (e) => {
+	const chatEventHandler = async (e: any) => {
 		const { id, content } = e.detail;
 		// "id" here is message id
 		// if "id" is not the same as "currentMessageId" then do not process
@@ -553,13 +553,13 @@
 				}
 
 				fetchAudio(content);
-			} catch (error) {
+			} catch (error: any) {
 				console.error('Failed to fetch or play audio:', error);
 			}
 		}
 	};
 
-	const chatFinishHandler = async (e) => {
+	const chatFinishHandler = async (e: any) => {
 		const { id, content } = e.detail;
 		// "content" here is the entire message from the assistant
 		finishedMessages[id] = true;
@@ -571,7 +571,7 @@
 		const setWakeLock = async () => {
 			try {
 				wakeLock = await navigator.wakeLock.request('screen');
-			} catch (err) {
+			} catch (err: any) {
 				// The Wake Lock request has failed - usually system related, such as battery.
 				console.log(err);
 			}

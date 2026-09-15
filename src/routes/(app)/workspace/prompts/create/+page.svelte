@@ -12,8 +12,8 @@
 	import PromptEditor from '$lib/components/workspace/Prompts/PromptEditor.svelte';
 	import { getRequestToken } from '$lib/services/auth';
 
-	let prompt = null;
-	const onSubmit = async (_prompt) => {
+	let prompt: any = null;
+	const onSubmit = async (_prompt: any) => {
 		const prompt = await createNewPrompt(getRequestToken(), _prompt).catch((error) => {
 			toast.error(`${error}`);
 			return null;

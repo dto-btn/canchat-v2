@@ -24,9 +24,9 @@
 	const { fitView, getViewport } = useSvelteFlow();
 	const nodesInitialized = useNodesInitialized();
 
-	export let history;
+	export let history: any;
 
-	let selectedMessageId = null;
+	let selectedMessageId: any = null;
 
 	const nodes = writable([]);
 	const edges = writable([]);
@@ -54,8 +54,8 @@
 	};
 
 	const drawFlow = async () => {
-		const nodeList = [];
-		const edgeList = [];
+		const nodeList: any[] = [];
+		const edgeList: any[] = [];
 		const levelOffset = 150; // Vertical spacing between layers
 		const siblingOffset = 250; // Horizontal spacing between nodes at the same layer
 
@@ -63,13 +63,13 @@
 		let positionMap = new Map();
 
 		// Helper function to truncate labels
-		function createLabel(content) {
+		function createLabel(content: any) {
 			const maxLength = 100;
 			return content.length > maxLength ? content.substr(0, maxLength) + '...' : content;
 		}
 
 		// Create nodes and map children to ensure alignment in width
-		let layerWidths = {}; // Track widths of each layer
+		let layerWidths: Record<string, any> = {}; // Track widths of each layer
 
 		Object.keys(history.messages).forEach((id) => {
 			const message = history.messages[id];
@@ -120,11 +120,11 @@
 		await nodes.set([...nodeList]);
 	};
 
-	const recurseCheckChild = (nodeId, currentId) => {
+	const recurseCheckChild = (nodeId: any, currentId: any) => {
 		const node = history.messages[nodeId];
 		return (
 			node.childrenIds &&
-			node.childrenIds.some((id) => id === currentId || recurseCheckChild(id, currentId))
+			node.childrenIds.some((id: any) => id === currentId || recurseCheckChild(id, currentId))
 		);
 	};
 

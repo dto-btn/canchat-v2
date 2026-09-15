@@ -152,7 +152,7 @@
 			}
 
 			// Fallback to using available feedback data
-			const messages = [];
+			const messages: any[] = [];
 
 			if (feedback.data) {
 				// Create placeholder messages from feedback data
@@ -181,7 +181,7 @@
 			}
 
 			return messages;
-		} catch (error) {
+		} catch (error: any) {
 			// Return empty array on error
 			return [];
 		}
