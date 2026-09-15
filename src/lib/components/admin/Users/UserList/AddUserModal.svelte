@@ -4,6 +4,7 @@
 	import { toast } from 'svelte-sonner';
 	import { createEventDispatcher } from 'svelte';
 	import { addUser } from '$lib/apis/auths';
+	import { parseCsvUserRows } from './user-import';
 
 	import { WEBUI_BASE_URL } from '$lib/constants';
 
@@ -72,36 +73,24 @@
 
 				const file = inputFiles[0];
 				const csv = decodeCsv(await file.arrayBuffer());
-				const rows = csv.split('\n');
+				const rows = parseCsvUserRows(csv);
 
 				let userCount = 0;
 
 				for (const [idx, row] of rows.entries()) {
-					const columns = row.split(',').map((col) => col.trim());
-					if (idx > 0) {
-						if (
-							columns.length === 4 &&
-							['admin', 'user', 'pending', 'analyst', 'global_analyst'].includes(
-								columns[3].toLowerCase()
-							)
-						) {
-							const res = await addUser(
-								getRequestToken(),
-								columns[0],
-								columns[1],
-								columns[2],
-								columns[3].toLowerCase()
-							).catch((error) => {
-								toast.error(`Row ${idx + 1}: ${error}`);
-								return null;
-							});
+					const res = await addUser(
+						getRequestToken(),
+						row.name,
+						row.email,
+						row.password,
+						row.role
+					).catch((error) => {
+						toast.error(`Row ${idx + 2}: ${error}`);
+						return null;
+					});
 
-							if (res) {
-								userCount = userCount + 1;
-							}
-						} else {
-							toast.error(`Row ${idx + 1}: invalid format.`);
-						}
+					if (res) {
+						userCount = userCount + 1;
 					}
 				}
 
