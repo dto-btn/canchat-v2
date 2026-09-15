@@ -68,18 +68,6 @@ jobs:
             echo "ref_name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Restore Hugging Face model cache
-        id: hf-cache
-        uses: actions/cache/restore@v5
-        with:
-          path: |
-            .cache/huggingface
-            .cache/torch
-          key: canchat-hf-model-cache-${{ steps.ref_name.outputs.ref_name }}-v1
-          restore-keys: |
-            canchat-hf-model-cache-${{ steps.ref_name.outputs.ref_name }}-
-            canchat-hf-model-cache-
-
       - name: Force local Docker image update
         run: |
           docker images --format '{{.Repository}}:{{.Tag}}' | xargs -I {} bash -c 'docker inspect --format="{{index .RepoDigests 0}}" {} && docker pull {};';
@@ -97,9 +85,6 @@ jobs:
             -v "$GITHUB_WORKSPACE/.cache/huggingface:/cache/huggingface" \
             -v "$GITHUB_WORKSPACE/.cache/torch:/cache/torch" \
             -e HF_HOME=/cache/huggingface \
-            -e HF_HUB_CACHE=/cache/huggingface/hub \
-            -e TRANSFORMERS_CACHE=/cache/huggingface/transformers \
-            -e SENTENCE_TRANSFORMERS_HOME=/cache/huggingface/sentence-transformers \
             -e TORCH_HOME=/cache/torch \
             ${{ env.REGISTRY }}/${{ github.repository_owner }}/canchat-v2:${{ steps.ref_name.outputs.ref_name }} \
             /bin/bash -c 'echo "${{ secrets.E2E_ENV_FILE }}" | base64 --decode > ../.env && \
@@ -134,15 +119,6 @@ jobs:
           done
           echo "CANChat failed to start in time" >&2
           exit 1
-
-      - name: Save Hugging Face model cache
-        if: steps.hf-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v5
-        with:
-          path: |
-            .cache/huggingface
-            .cache/torch
-          key: ${{ steps.hf-cache.outputs.cache-primary-key }}
 
       - name: Start Playwright Tests (Parallel)
         env:
