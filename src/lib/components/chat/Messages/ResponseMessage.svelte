@@ -202,7 +202,7 @@
 	$: featureConfig = $config?.features as NonNullable<typeof $config>['features'] & {
 		enable_message_rating?: boolean;
 	};
-	$: modelActions = (model as typeof model & { actions?: ModelAction[] })?.actions ?? [];
+	$: modelActions = ((model as { actions?: ModelAction[] } | null)?.actions ?? []) as ModelAction[];
 
 	const getWebSearchStatus = (status?: StatusEntry) => ({
 		urls: status?.urls ?? [],
@@ -231,18 +231,6 @@
 		if (res) {
 			toast.success($i18n.t('Copying to clipboard was successful!'));
 		}
-	};
-
-	const handleSourceClick = (sourceId: any) => {
-		const sourceButton = document.getElementById(`source-${sourceId}`);
-
-		if (sourceButton) {
-			sourceButton.click();
-		}
-	};
-
-	const handleAddMessages = ({ modelId, parentId, messages }: any) => {
-		addMessages({ modelId, parentId, messages });
 	};
 
 	const handleContentUpdate = (detail: any) => {
@@ -580,12 +568,15 @@
 			if (!updatedMessage.annotation?.tags) {
 				tagGenerationInProgress = true;
 				// attempt to generate tags
-				const tags = await generateTags(getRequestToken(), message.model, messages, chatId).catch(
-					(error) => {
-						console.error(error);
-						return [];
-					}
-				);
+				const tags = await generateTags(
+					getRequestToken(),
+					message.model,
+					JSON.stringify(messages),
+					chatId
+				).catch((error) => {
+					console.error(error);
+					return [];
+				});
 
 				if (tags) {
 					updatedMessage.annotation.tags = tags;
