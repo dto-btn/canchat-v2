@@ -47,6 +47,16 @@
 	import SuggestionModal from '$lib/components/common/SuggestionModal.svelte';
 	import { getRequestToken } from '$lib/services/auth';
 
+	type MessageAnnotation = {
+		type?: string;
+		rating?: number;
+		tags?: string[];
+		reason?: string;
+		comment?: string;
+		details?: Record<string, unknown>;
+		[key: string]: unknown;
+	};
+
 	interface MessageType {
 		id: string;
 		model: string;
@@ -133,7 +143,14 @@
 			load_duration?: number;
 			usage?: unknown;
 		};
-		annotation?: { type: string; rating: number };
+		feedbackId?: string;
+		crewAI?: boolean;
+		arena?: boolean;
+		selectedModelId?: string;
+		parentId?: string;
+		citations?: string[];
+		usage?: unknown;
+		annotation?: MessageAnnotation;
 	}
 
 	export let chatId = '';
