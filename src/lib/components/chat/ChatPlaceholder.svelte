@@ -16,10 +16,10 @@
 
 	const i18n = getI18n();
 
-	export let modelIds = [];
-	export let models = [];
+	export let modelIds: any[] = [];
+	export let models: any[] = [];
 
-	export let submitPrompt;
+	export let submitPrompt: any;
 
 	let mounted = false;
 	let selectedModelIdx = 0;

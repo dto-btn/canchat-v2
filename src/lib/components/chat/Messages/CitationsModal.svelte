@@ -8,11 +8,11 @@
 	const i18n = getI18n();
 
 	export let show = false;
-	export let citation;
+	export let citation: any;
 	export let showPercentage = false;
 	export let showRelevance = true;
 
-	let mergedDocuments = [];
+	let mergedDocuments: any[] = [];
 
 	function calculatePercentage(distance: number) {
 		if (distance < 0) return 0;
@@ -31,7 +31,7 @@
 	}
 
 	$: if (citation) {
-		mergedDocuments = citation.document?.map((c, i) => {
+		mergedDocuments = citation.document?.map((c: any, i: any) => {
 			return {
 				source: citation.source,
 				document: c,
@@ -39,9 +39,9 @@
 				distance: citation.distances?.[i]
 			};
 		});
-		if (mergedDocuments.every((doc) => doc.distance !== undefined)) {
+		if (mergedDocuments.every((doc: any) => doc.distance !== undefined)) {
 			mergedDocuments = mergedDocuments.sort(
-				(a, b) => (b.distance ?? Infinity) - (a.distance ?? Infinity)
+				(a: any, b: any) => (b.distance ?? Infinity) - (a.distance ?? Infinity)
 			);
 		}
 	}

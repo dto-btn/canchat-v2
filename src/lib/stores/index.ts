@@ -18,7 +18,7 @@ export const appInfo = writable(null);
 export const appData = writable(null);
 
 // Frontend
-export const MODEL_DOWNLOAD_POOL = writable({});
+export const MODEL_DOWNLOAD_POOL = writable<Record<string, any>>({});
 
 export const mobile = writable(false);
 
@@ -144,8 +144,15 @@ type Settings = {
 	conversationMode?: boolean;
 	speechAutoSend?: boolean;
 	responseAutoPlayback?: boolean;
+	autoTags?: boolean;
 	audio?: AudioSettings;
 	showUsername?: boolean;
+	showChangelog?: boolean;
+	showEmojiInCall?: boolean;
+	voiceInterruption?: boolean;
+	richTextInput?: boolean;
+	largeTextAsFile?: boolean;
+	responseAutoCopy?: boolean;
 	notificationEnabled?: boolean;
 	wikipediaGrounding?: boolean;
 	title?: TitleSettings;

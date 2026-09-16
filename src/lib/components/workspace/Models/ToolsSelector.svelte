@@ -4,11 +4,11 @@
 	import Checkbox from '$lib/components/common/Checkbox.svelte';
 	import { onMount } from 'svelte';
 
-	export let tools = [];
+	export let tools: any[] = [];
 
-	let _tools = {};
+	let _tools: Record<string, any> = {};
 
-	export let selectedToolIds = [];
+	export let selectedToolIds: any[] = [];
 
 	const i18n = getI18n();
 

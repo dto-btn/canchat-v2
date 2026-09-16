@@ -12,18 +12,18 @@
 	export let theme = '';
 	export let offset = [0, 4];
 	export let allowHTML = true;
-	export let popperOptions = {};
-	export let tippyOptions = {};
+	export let popperOptions: Record<string, any> = {};
+	export let tippyOptions: Record<string, any> = {};
 	export let tooltipID = '';
 
-	let tooltipElement;
-	let tooltipInstance;
+	let tooltipElement: any;
+	let tooltipInstance: any;
 
 	const hideOnEsc = {
 		name: 'hideOnEsc',
 		defaultValue: true,
-		fn({ hide }) {
-			function onKeyDown(event) {
+		fn({ hide }: any) {
+			function onKeyDown(event: any) {
 				if (event.keyCode === 27) {
 					hide();
 				}

@@ -137,8 +137,8 @@
 	}
 
 	export let chatId = '';
-	export let history;
-	export let messageId;
+	export let history: any;
+	export let messageId: any;
 	export let selectedToolIds: string[] = [];
 
 	let message: MessageType = JSON.parse(JSON.stringify(history.messages[messageId]));
@@ -148,7 +148,7 @@
 		}
 	}
 
-	export let siblings;
+	export let siblings: any;
 
 	export let showPreviousMessage: Function;
 	export let showNextMessage: Function;
@@ -168,7 +168,7 @@
 	export let isLastMessage = true;
 	export let readOnly = false;
 
-	let model = null;
+	let model: any = null;
 	$: model = $models.find((m) => m.id === message.model);
 
 	// Capture Wikipedia sources from status events
@@ -188,11 +188,51 @@
 	let showIssueModal = false;
 	let showSuggestionModal = false;
 
-	const copyToClipboard = async (text) => {
+	const copyToClipboard = async (text: any) => {
 		const res = await _copyToClipboard(text);
 		if (res) {
 			toast.success($i18n.t('Copying to clipboard was successful!'));
 		}
+	};
+
+	const handleSourceClick = (sourceId: any) => {
+		const sourceButton = document.getElementById(`source-${sourceId}`);
+
+		if (sourceButton) {
+			sourceButton.click();
+		}
+	};
+
+	const handleAddMessages = ({ modelId, parentId, messages }: any) => {
+		addMessages({ modelId, parentId, messages });
+	};
+
+	const handleContentUpdate = (detail: any) => {
+		const { raw, oldContent, newContent } = detail;
+
+		history.messages[message.id].content = history.messages[message.id].content.replace(
+			raw,
+			raw.replace(oldContent, newContent)
+		);
+
+		updateChat();
+	};
+
+	const regenerateMessage = () => {
+		showRateComment = false;
+		regenerateResponse(message);
+
+		(model?.actions ?? []).forEach((action: any) => {
+			dispatch('action', {
+				id: action.id,
+				event: {
+					id: 'regenerate-response',
+					data: {
+						messageId: message.id
+					}
+				}
+			});
+		});
 	};
 
 	const playAudio = (idx: number) => {
@@ -295,7 +335,7 @@
 				}
 			}
 		} else {
-			let voices = [];
+			let voices: any[] = [];
 			const getVoicesLoop = setInterval(() => {
 				voices = speechSynthesis.getVoices();
 				if (voices.length > 0) {
@@ -372,7 +412,7 @@
 		});
 
 		if (res) {
-			const files = res.map((image) => ({
+			const files = res.map((image: any) => ({
 				type: 'image',
 				url: `${image.url}`
 			}));
@@ -418,8 +458,8 @@
 				...(history.messages[message.parentId].childrenIds.length > 1
 					? {
 							sibling_model_ids: history.messages[message.parentId].childrenIds
-								.filter((id) => id !== message.id)
-								.map((id) =>
+								.filter((id: any) => id !== message.id)
+								.map((id: any) =>
 									history.messages[id]?.crewAI
 										? 'azure/o3-mini'
 										: (history.messages[id]?.selectedModelId ?? history.messages[id].model)
@@ -467,7 +507,7 @@
 			}
 		}
 
-		let feedback = null;
+		let feedback: any = null;
 		if (message?.feedbackId) {
 			feedback = await updateFeedbackById(
 				getRequestToken(),
@@ -541,7 +581,7 @@
 					};
 					saveMessage(message.id, updatedMessage);
 				}
-			} catch (error) {
+			} catch (error: any) {
 				console.warn('Failed to fetch feedback data:', error);
 			}
 		}
@@ -831,24 +871,10 @@
 										floatingButtons={message?.done}
 										save={!readOnly}
 										{model}
-										onSourceClick={(e) => {
-											const sourceButton = document.getElementById(`source-${e}`);
-
-											if (sourceButton) {
-												sourceButton.click();
-											}
-										}}
-										onAddMessages={({ modelId, parentId, messages }) => {
-											addMessages({ modelId, parentId, messages });
-										}}
+										onSourceClick={handleSourceClick}
+										onAddMessages={handleAddMessages}
 										on:update={(e) => {
-											const { raw, oldContent, newContent } = e.detail;
-
-											history.messages[message.id].content = history.messages[
-												message.id
-											].content.replace(raw, raw.replace(oldContent, newContent));
-
-											updateChat();
+											handleContentUpdate(e.detail);
 										}}
 										on:select={(e) => {
 											const { type, content } = e.detail;
@@ -1308,22 +1334,7 @@
 											class="{isLastMessage
 												? 'visible'
 												: 'invisible group-hover:visible'} p-1.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg dark:hover:text-white hover:text-black transition regenerate-response-button"
-											on:click={() => {
-												showRateComment = false;
-												regenerateResponse(message);
-
-												(model?.actions ?? []).forEach((action) => {
-													dispatch('action', {
-														id: action.id,
-														event: {
-															id: 'regenerate-response',
-															data: {
-																messageId: message.id
-															}
-														}
-													});
-												});
-											}}
+											on:click={regenerateMessage}
 										>
 											<svg
 												xmlns="http://www.w3.org/2000/svg"

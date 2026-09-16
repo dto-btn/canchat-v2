@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	import { toast } from 'svelte-sonner';
@@ -20,13 +20,13 @@
 	import { getRequestToken } from '$lib/services/auth';
 
 	export let show = false;
-	export let initHandler = () => {};
+	export let initHandler: () => void = () => {};
 
-	let config = null;
+	let config: any = null;
 
 	let selectedModelId = '';
-	let defaultModelIds = [];
-	let modelIds = [];
+	let defaultModelIds: any[] = [];
+	let modelIds: any[] = [];
 
 	let loading = false;
 	let showResetModal = false;
@@ -57,7 +57,7 @@
 		config = await getModelsConfig(getRequestToken());
 
 		if (config?.DEFAULT_MODELS) {
-			defaultModelIds = (config?.DEFAULT_MODELS).split(',').filter((id) => id);
+			defaultModelIds = (config?.DEFAULT_MODELS).split(',').filter((id: any) => id);
 		} else {
 			defaultModelIds = [];
 		}
@@ -69,7 +69,7 @@
 
 		modelIds = [
 			// Add all IDs from MODEL_ORDER_LIST that exist in allModelIds
-			...modelOrderList.filter((id) => orderedSet.has(id) && allModelIds.includes(id)),
+			...modelOrderList.filter((id: any) => orderedSet.has(id) && allModelIds.includes(id)),
 			// Add remaining IDs not in MODEL_ORDER_LIST, sorted alphabetically
 			...allModelIds.filter((id) => !orderedSet.has(id)).sort((a, b) => a.localeCompare(b))
 		];

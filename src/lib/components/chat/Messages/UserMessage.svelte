@@ -19,12 +19,12 @@
 
 	const i18n = getI18n();
 
-	export let user;
+	export let user: any;
 
-	export let history;
-	export let messageId;
+	export let history: any;
+	export let messageId: any;
 
-	export let siblings;
+	export let siblings: any;
 
 	export let showPreviousMessage: Function;
 	export let showNextMessage: Function;
@@ -47,7 +47,7 @@
 		}
 	}
 
-	const copyToClipboard = async (text) => {
+	const copyToClipboard = async (text: any) => {
 		const res = await _copyToClipboard(text);
 		if (res) {
 			toast.success($i18n.t('Copying to clipboard was successful!'));

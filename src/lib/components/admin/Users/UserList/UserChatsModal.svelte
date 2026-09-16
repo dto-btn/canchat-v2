@@ -18,20 +18,20 @@
 	const i18n = getI18n();
 
 	export let show = false;
-	export let user;
+	export let user: any;
 
-	let chats = null;
+	let chats: any = null;
 	let showDeleteConfirm = false;
-	let deleteChatId = null;
+	let deleteChatId: any = null;
 	let deleteChatTitle = '';
 
-	const confirmDeleteChat = (chat) => {
+	const confirmDeleteChat = (chat: any) => {
 		deleteChatId = chat.id;
 		deleteChatTitle = chat.title;
 		showDeleteConfirm = true;
 	};
 
-	const deleteChatHandler = async (chatId) => {
+	const deleteChatHandler = async (chatId: any) => {
 		const res = await deleteChatById(getRequestToken(), chatId).catch((error) => {
 			toast.error(`${error}`);
 		});
@@ -51,7 +51,7 @@
 
 	let sortKey = 'updated_at'; // default sort key
 	let sortOrder = 'desc'; // default sort order
-	function setSortKey(key) {
+	function setSortKey(key: any) {
 		if (sortKey === key) {
 			sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
 		} else {
@@ -59,6 +59,14 @@
 			sortOrder = 'asc';
 		}
 	}
+
+	$: sortedChats = chats
+		? chats.slice().sort((a: any, b: any) => {
+				if (a[sortKey] < b[sortKey]) return sortOrder === 'asc' ? -1 : 1;
+				if (a[sortKey] > b[sortKey]) return sortOrder === 'asc' ? 1 : -1;
+				return 0;
+			})
+		: [];
 </script>
 
 <Modal size="lg" bind:show>
@@ -124,11 +132,7 @@
 									</tr>
 								</thead>
 								<tbody>
-									{#each chats.sort((a, b) => {
-										if (a[sortKey] < b[sortKey]) return sortOrder === 'asc' ? -1 : 1;
-										if (a[sortKey] > b[sortKey]) return sortOrder === 'asc' ? 1 : -1;
-										return 0;
-									}) as chat, idx}
+									{#each sortedChats as chat, idx}
 										<tr
 											class="bg-transparent {idx !== chats.length - 1 &&
 												'border-b'} dark:bg-gray-900 dark:border-gray-850 text-xs"

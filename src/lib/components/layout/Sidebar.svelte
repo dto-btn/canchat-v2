@@ -62,7 +62,7 @@
 
 	const BREAKPOINT = 768;
 
-	let navElement;
+	let navElement: any;
 	let search = '';
 
 	let shiftKey = false;
@@ -86,7 +86,7 @@
 	let chatListLoading = false;
 	let allChatsLoaded = false;
 
-	let folders = {};
+	let folders: Record<string, any> = {};
 
 	const initFolders = async () => {
 		const folderList = await getFolders(getRequestToken()).catch((error) => {
@@ -116,7 +116,7 @@
 					: [folder.id];
 
 				// Sort the children by updated_at field
-				folders[folder.parent_id].childrenIds.sort((a, b) => {
+				folders[folder.parent_id].childrenIds.sort((a: any, b: any) => {
 					return folders[b].updated_at - folders[a].updated_at;
 				});
 			}
@@ -192,7 +192,7 @@
 
 		currentChatPage.set($currentChatPage + 1);
 
-		let newChatList = [];
+		let newChatList: any[] = [];
 
 		if (search) {
 			newChatList = await getChatListBySearchText(getRequestToken(), search, $currentChatPage);
@@ -207,7 +207,7 @@
 		chatListLoading = false;
 	};
 
-	let searchDebounceTimeout;
+	let searchDebounceTimeout: any;
 
 	const searchDebounceHandler = async () => {
 		chats.set(null);
@@ -247,7 +247,7 @@
 		}
 	};
 
-	const importChatHandler = async (items, pinned = false, folderId = null) => {
+	const importChatHandler = async (items: any, pinned = false, folderId = null) => {
 		for (const item of items) {
 			if (item.chat) {
 				await importChat(getRequestToken(), item.chat, item?.meta ?? {}, pinned, folderId);
@@ -257,7 +257,7 @@
 		initChatList();
 	};
 
-	const inputFilesHandler = async (files) => {
+	const inputFilesHandler = async (files: any) => {
 		for (const file of files) {
 			const reader = new FileReader();
 			reader.onload = async (e) => {
@@ -275,7 +275,7 @@
 		}
 	};
 
-	const tagEventHandler = async (type, tagName, chatId) => {
+	const tagEventHandler = async (type: any, tagName: any, chatId: any) => {
 		if (type === 'delete') {
 			initChatList();
 		} else if (type === 'add') {
@@ -283,7 +283,7 @@
 		}
 	};
 
-	const toggleChatSelection = (chatId) => {
+	const toggleChatSelection = (chatId: any) => {
 		const index = selectedChatIds.indexOf(chatId);
 		if (index >= 0) {
 			// Remove from selection
@@ -300,7 +300,7 @@
 
 	const selectAllChats = () => {
 		const folderChatIds = Object.values(folders).flatMap((folder) =>
-			(folder.items?.chats ?? []).map((chat) => chat.id)
+			(folder.items?.chats ?? []).map((chat: any) => chat.id)
 		);
 		const allChatIds = [
 			...new Set([
@@ -377,14 +377,14 @@
 			if (result.deleted_count > 0) {
 				clearSelection();
 			}
-		} catch (error) {
+		} catch (error: any) {
 			toast.error($i18n.t('Error deleting chats: {{error}}', { error: error }));
 		}
 	};
 
 	let draggedOver = false;
 
-	const onDragOver = (e) => {
+	const onDragOver = (e: any) => {
 		e.preventDefault();
 
 		// Check if a file is being draggedOver.
@@ -399,7 +399,7 @@
 		draggedOver = false;
 	};
 
-	const onDrop = async (e) => {
+	const onDrop = async (e: any) => {
 		e.preventDefault();
 		// Perform file drop check and handle it accordingly
 		if (e.dataTransfer?.files) {
@@ -413,8 +413,8 @@
 		draggedOver = false; // Reset draggedOver status after drop
 	};
 
-	let touchstart;
-	let touchend;
+	let touchstart: any;
+	let touchend: any;
 
 	function checkDirection() {
 		const screenWidth = window.innerWidth;
@@ -429,22 +429,22 @@
 		}
 	}
 
-	const onTouchStart = (e) => {
+	const onTouchStart = (e: any) => {
 		touchstart = e.changedTouches[0];
 	};
 
-	const onTouchEnd = (e) => {
+	const onTouchEnd = (e: any) => {
 		touchend = e.changedTouches[0];
 		checkDirection();
 	};
 
-	const onKeyDown = (e) => {
+	const onKeyDown = (e: any) => {
 		if (e.key === 'Shift') {
 			shiftKey = true;
 		}
 	};
 
-	const onKeyUp = (e) => {
+	const onKeyUp = (e: any) => {
 		if (e.key === 'Shift') {
 			shiftKey = false;
 		}
@@ -457,7 +457,7 @@
 		clearSelection();
 	};
 
-	const changeFocus = async (elementId) => {
+	const changeFocus = async (elementId: any) => {
 		requestAnimationFrame(() => {
 			const element = document.getElementById(elementId);
 			if (element) {
@@ -477,7 +477,7 @@
 			if ($showSidebar && !value) {
 				const navElement = document.getElementsByTagName('nav')[0];
 				if (navElement) {
-					navElement.style['-webkit-app-region'] = 'drag';
+					navElement.style.setProperty('-webkit-app-region', 'drag');
 				}
 			}
 
@@ -496,12 +496,12 @@
 			if (navElement) {
 				if ($mobile) {
 					if (!value) {
-						navElement.style['-webkit-app-region'] = 'drag';
+						navElement.style.setProperty('-webkit-app-region', 'drag');
 					} else {
-						navElement.style['-webkit-app-region'] = 'no-drag';
+						navElement.style.setProperty('-webkit-app-region', 'no-drag');
 					}
 				} else {
-					navElement.style['-webkit-app-region'] = 'drag';
+					navElement.style.setProperty('-webkit-app-region', 'drag');
 				}
 			}
 		});

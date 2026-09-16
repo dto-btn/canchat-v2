@@ -8,7 +8,7 @@
 
 	export let onSubmit: Function;
 	export let edit = false;
-	export let prompt = null;
+	export let prompt: any = null;
 
 	const i18n = getI18n();
 
@@ -19,7 +19,7 @@
 	let command = '';
 	let content = '';
 
-	let accessControl = null;
+	let accessControl: any = null;
 
 	const generateRandomSuffix = () => {
 		const characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -68,7 +68,7 @@
 		loading = false;
 	};
 
-	const validateCommandString = (inputString) => {
+	const validateCommandString = (inputString: any) => {
 		// Regular expression to match only alphanumeric characters and hyphen
 		const regex = /^[a-zA-Z0-9-]+$/;
 

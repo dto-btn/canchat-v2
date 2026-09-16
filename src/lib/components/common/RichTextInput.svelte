@@ -59,15 +59,15 @@
 	};
 
 	// Function to find the next template in the document
-	function findNextTemplate(doc, from = 0) {
+	function findNextTemplate(doc: any, from = 0) {
 		const patterns = [
 			{ start: '[', end: ']' },
 			{ start: '{{', end: '}}' }
 		];
 
-		let result = null;
+		let result: any = null;
 
-		doc.nodesBetween(from, doc.content.size, (node, pos) => {
+		doc.nodesBetween(from, doc.content.size, (node: any, pos: any) => {
 			if (result) return false; // Stop if we've found a match
 			if (node.isText) {
 				const text = node.text;
@@ -94,7 +94,7 @@
 	}
 
 	// Function to select the next template in the document
-	function selectNextTemplate(state, dispatch) {
+	function selectNextTemplate(state: any, dispatch: any) {
 		const { doc, selection } = state;
 		const from = selection.to;
 		let template = findNextTemplate(doc, from);
@@ -114,7 +114,7 @@
 		return false;
 	}
 
-	export const setContent = (content) => {
+	export const setContent = (content: any) => {
 		editor.commands.setContent(content);
 	};
 
@@ -144,13 +144,13 @@
 			});
 		}
 
-		async function tryParse(value, attempts = 3, interval = 100) {
+		async function tryParse(value: any, attempts = 3, interval = 100) {
 			try {
 				// Try parsing the value
 				return marked.parse(value.replaceAll(`\n<br/>`, `<br/>`), {
 					breaks: false
 				});
-			} catch (error) {
+			} catch (error: any) {
 				// If no attempts remain, fallback to plain text
 				if (attempts <= 1) {
 					return value;
@@ -179,7 +179,7 @@
 				...(autocomplete
 					? [
 							AIAutocompletion.configure({
-								generateCompletion: async (text) => {
+								generateCompletion: async (text: any) => {
 									if (text.trim().length === 0) {
 										return null;
 									}

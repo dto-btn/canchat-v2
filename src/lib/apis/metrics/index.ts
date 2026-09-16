@@ -40,7 +40,7 @@ export const getDomains = async (token: string): Promise<string[]> => {
 
 		// Return unique domains
 		return Array.from(new Set(allDomains));
-	} catch (err) {
+	} catch (err: any) {
 		throw new Error(err.message || 'An unexpected error occurred');
 	}
 };
@@ -68,7 +68,7 @@ export const getTotalUsers = async (token: string, domain?: string): Promise<num
 		}
 		const data = await res.json();
 		return data || 0;
-	} catch (err) {
+	} catch (err: any) {
 		throw new Error(err.message || 'An unexpected error occurred');
 	}
 };
@@ -95,7 +95,7 @@ export const getDailyUsers = async (token: string, domain?: string): Promise<num
 		}
 		const data = await res.json();
 		return data || 0;
-	} catch (err) {
+	} catch (err: any) {
 		throw new Error(err.message || 'An unexpected error occurred');
 	}
 };
@@ -129,7 +129,7 @@ export const getHistoricalUsers = async (
 		}
 		const data = await res.json();
 		return data.historical_users || [];
-	} catch (err) {
+	} catch (err: any) {
 		console.error('Error fetching historical users:', err);
 		return generateFallbackDates(days);
 	}
@@ -166,7 +166,7 @@ export const getHistoricalDailyUsers = async (
 		}
 		const data = await res.json();
 		return data.historical_daily_users || [];
-	} catch (err) {
+	} catch (err: any) {
 		console.error('Error fetching historical users:', err);
 		return generateFallbackDates(days);
 	}
@@ -195,7 +195,7 @@ export const getTotalPrompts = async (token: string, domain?: string): Promise<n
 		}
 		const data = await res.json();
 		return data.total_prompts || 0; // Ensure we return 0 if null/undefined
-	} catch (err) {
+	} catch (err: any) {
 		throw new Error(err.message || 'An unexpected error occurred');
 	}
 };
@@ -222,7 +222,7 @@ export const getDailyPrompts = async (token: string, domain?: string): Promise<n
 		}
 		const data = await res.json();
 		return data.total_daily_prompts || 0;
-	} catch (err) {
+	} catch (err: any) {
 		throw new Error(err.message || 'An unexpected error occurred');
 	}
 };
@@ -260,7 +260,7 @@ export const getTotalTokens = async (
 		}
 		const data = await res.json();
 		return data.total_tokens || 0;
-	} catch (err) {
+	} catch (err: any) {
 		throw new Error(err.message || 'An unexpected error occurred');
 	}
 };
@@ -294,7 +294,7 @@ export const getDailyTokens = async (
 		}
 		const data = await res.json();
 		return data.total_daily_tokens || 0;
-	} catch (err) {
+	} catch (err: any) {
 		throw new Error(err.message || 'An unexpected error occurred');
 	}
 };
@@ -328,7 +328,7 @@ export const getHistoricalPrompts = async (
 		}
 		const data = await res.json();
 		return data.historical_prompts || [];
-	} catch (err) {
+	} catch (err: any) {
 		console.error('Error fetching historical prompts:', err);
 		return generateFallbackDates(days);
 	}
@@ -364,7 +364,7 @@ export const getHistoricalTokens = async (
 		}
 		const data = await res.json();
 		return data.historical_tokens || [];
-	} catch (err) {
+	} catch (err: any) {
 		console.error('Error fetching historical tokens:', err);
 		return generateFallbackDates(days);
 	}
@@ -398,7 +398,7 @@ export const getModels = async (token: string): Promise<string[]> => {
 		}
 		const data = await res.json();
 		return data.models;
-	} catch (err) {
+	} catch (err: any) {
 		throw new Error(err.message || 'An unexpected error occurred');
 	}
 };
@@ -419,7 +419,7 @@ export const getMcpProcesses = async (token: string): Promise<string[]> => {
 		}
 		const data = await res.json();
 		return data.mcp_processes || [];
-	} catch (err) {
+	} catch (err: any) {
 		console.error('Error fetching MCP processes:', err);
 		return [];
 	}
@@ -463,7 +463,7 @@ export const getModelPrompts = async (
 		}
 		const data = await res.json();
 		return data.total_prompts || 0;
-	} catch (err) {
+	} catch (err: any) {
 		throw new Error(err.message || 'An unexpected error occurred');
 	}
 };
@@ -508,7 +508,7 @@ export const getModelDailyPrompts = async (
 		}
 		const data = await res.json();
 		return data.total_daily_prompts || 0;
-	} catch (err) {
+	} catch (err: any) {
 		throw new Error(err.message || 'An unexpected error occurred');
 	}
 };
@@ -549,7 +549,7 @@ export const getModelHistoricalPrompts = async (
 		}
 		const data = await res.json();
 		return data.historical_prompts || [];
-	} catch (err) {
+	} catch (err: any) {
 		console.error('Error fetching model historical prompts:', err);
 		return generateFallbackDates(days);
 	}
@@ -588,7 +588,7 @@ export const getRangeMetrics = async (
 		}
 
 		return await res.json();
-	} catch (err) {
+	} catch (err: any) {
 		console.error('Error fetching range metrics:', err);
 		throw new Error(err.message || 'An unexpected error occurred');
 	}
@@ -639,7 +639,7 @@ export const getInterPromptLatencyHistogram = async (
 
 		const data = await res.json();
 		return data;
-	} catch (err) {
+	} catch (err: any) {
 		console.error('Error fetching inter-prompt latency histogram:', err);
 		throw new Error(err.message || 'An unexpected error occurred');
 	}
@@ -670,7 +670,7 @@ export const exportMetricsData = async (
 		}
 
 		return await res.blob();
-	} catch (err) {
+	} catch (err: any) {
 		console.error('Error exporting metrics data:', err);
 		throw new Error(err.message || 'An unexpected error occurred');
 	}
@@ -693,7 +693,7 @@ export const getExportLogs = async (token: string): Promise<any[]> => {
 
 		const data = await res.json();
 		return data.export_logs || [];
-	} catch (err) {
+	} catch (err: any) {
 		console.error('Error fetching export logs:', err);
 		throw new Error(err.message || 'An unexpected error occurred');
 	}

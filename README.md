@@ -1,10 +1,10 @@
 # Welcome to CANChat 👋
 
-![GitHub stars](https://img.shields.io/github/stars/ssc-dsai/canchat-v2?style=social)
-![GitHub forks](https://img.shields.io/github/forks/ssc-dsai/canchat-v2?style=social)
-![GitHub watchers](https://img.shields.io/github/watchers/ssc-dsai/canchat-v2?style=social)
-![GitHub repo size](https://img.shields.io/github/repo-size/ssc-dsai/canchat-v2)
-![GitHub last commit](https://img.shields.io/github/last-commit/ssc-dsai/canchat-v2?color=red)
+![GitHub stars](https://img.shields.io/github/stars/dto-btn/canchat-v2?style=social)
+![GitHub forks](https://img.shields.io/github/forks/dto-btn/canchat-v2?style=social)
+![GitHub watchers](https://img.shields.io/github/watchers/dto-btn/canchat-v2?style=social)
+![GitHub repo size](https://img.shields.io/github/repo-size/dto-btn/canchat-v2)
+![GitHub last commit](https://img.shields.io/github/last-commit/dto-btn/canchat-v2?color=red)
 
 ([Français](#bienvenue-à-canchat))
 
@@ -80,7 +80,7 @@ First, use `git clone` to download the CANChat V2 repository to your local machi
 3. Run the following commands:
 
    ```bash
-   git clone https://github.com/ssc-dsai/canchat-v2.git
+   git clone https://github.com/dto-btn/canchat-v2.git
    cd canchat-v2
    ```
 
@@ -229,15 +229,15 @@ That's it—you're all set up!
 
 ### Code of Conduct
 
-This project and everyone participating in it is governed by our [Code of Conduct](CODE_OF_CONDUCT). By participating, you are expected to uphold this code. Please report unacceptable behavior to the [maintainers](mailto:dsaiclientengagement.sdiaclientmobilisation@ssc-spc.gc.ca).
+This project and everyone participating in it is governed by our [Code of Conduct](CODE_OF_CONDUCT). By participating, you are expected to uphold this code. Please report unacceptable behavior to the [maintainers](mailto:ssc.canchat-support-assistance-canchat.spc@ssc-spc.gc.ca).
 
 ### Reporting Bugs
 
-If you find a bug, please open an issue on our [issue tracker](https://github.com/ssc-dsai/canchat-v2/issues) and provide as much detail as possible, including your operating system, browser, and steps to reproduce the bug.
+If you find a bug, please open an issue on our [issue tracker](https://github.com/dto-btn/canchat-v2/issues) and provide as much detail as possible, including your operating system, browser, and steps to reproduce the bug.
 
 ### Suggesting Enhancements
 
-We welcome suggestions for enhancements. Open an issue on the [issue tracker](https://github.com/ssc-dsai/canchat-v2/issues) and include a detailed description of your proposed enhancement.
+We welcome suggestions for enhancements. Open an issue on the [issue tracker](https://github.com/dto-btn/canchat-v2/issues) and include a detailed description of your proposed enhancement.
 
 ### Code Contribution
 
@@ -321,7 +321,7 @@ Pour commencer, utilisez `git clone` afin de télécharger le dépôt de CANChat
 3. Exécutez les commandes suivantes :
 
    ```bash
-   git clone https://github.com/ssc-dsai/canchat-v2.git
+   git clone https://github.com/dto-btn/canchat-v2.git
    cd canchat-v2
    ```
 
@@ -468,15 +468,15 @@ C'est tout—vous êtes prêt à utiliser CANChat !
 
 ### Code de conduite
 
-Ce projet, ainsi que tous les participants, est régi par notre [Code de conduite](CODE_OF_CONDUCT). En participant, vous acceptez de respecter ce code. Veuillez signaler tout comportement inacceptable aux [mainteneurs](mailto:dsaiclientengagement.sdiaclientmobilisation@ssc-spc.gc.ca).
+Ce projet, ainsi que tous les participants, est régi par notre [Code de conduite](CODE_OF_CONDUCT). En participant, vous acceptez de respecter ce code. Veuillez signaler tout comportement inacceptable aux [mainteneurs](mailto:ssc.canchat-support-assistance-canchat.spc@ssc-spc.gc.ca).
 
 ### Signaler des bogues
 
-Si vous trouvez un bogue, ouvrez une issue sur notre [traqueur d’issues](https://github.com/ssc-dsai/canchat-v2/issues) et fournissez autant de détails que possible, notamment votre système d'exploitation, navigateur et les étapes pour reproduire le bogue.
+Si vous trouvez un bogue, ouvrez une issue sur notre [traqueur d’issues](https://github.com/dto-btn/canchat-v2/issues) et fournissez autant de détails que possible, notamment votre système d'exploitation, navigateur et les étapes pour reproduire le bogue.
 
 ### Suggérer des améliorations
 
-Nous accueillons avec plaisir vos suggestions d'améliorations. Ouvrez une issue sur le [traqueur d’issues](https://github.com/ssc-dsai/canchat-v2/issues) et décrivez votre proposition en détail.
+Nous accueillons avec plaisir vos suggestions d'améliorations. Ouvrez une issue sur le [traqueur d’issues](https://github.com/dto-btn/canchat-v2/issues) et décrivez votre proposition en détail.
 
 ### Contribuer au code
 
@@ -495,4 +495,4 @@ Ce projet est sous licence [BSD-3-Clause License](LICENSE) - consultez le fichie
 ## Support
 
 Si vous avez des questions, des suggestions ou avez besoin d'assistance, veuillez consulter notre
-[documentation](https://gcxgce.sharepoint.com/teams/1000538/SitePages/CANchat_FR.aspx).
+[documentation](https://gcxgce.sharepoint.com/teams/1000538/SitePages/fr/CANChat.aspx).

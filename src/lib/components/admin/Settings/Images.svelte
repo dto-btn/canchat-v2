@@ -25,10 +25,10 @@
 
 	let loading = false;
 
-	let config = null;
-	let imageGenerationConfig = null;
+	let config: any = null;
+	let imageGenerationConfig: any = null;
 
-	let models = null;
+	let models: any = null;
 
 	let samplers = [
 		'DPM++ 2M',
@@ -128,14 +128,14 @@
 		}
 	};
 
-	const validateJSON = (json) => {
+	const validateJSON = (json: any) => {
 		try {
 			const obj = JSON.parse(json);
 
 			if (obj && typeof obj === 'object') {
 				return true;
 			}
-		} catch (e) {}
+		} catch (e: any) {}
 		return false;
 	};
 
@@ -202,7 +202,8 @@
 			}
 
 			requiredWorkflowNodes = requiredWorkflowNodes.map((node) => {
-				const n = config.comfyui.COMFYUI_WORKFLOW_NODES.find((n) => n.type === node.type) ?? node;
+				const n =
+					config.comfyui.COMFYUI_WORKFLOW_NODES.find((n: any) => n.type === node.type) ?? node;
 
 				return {
 					type: n.type,

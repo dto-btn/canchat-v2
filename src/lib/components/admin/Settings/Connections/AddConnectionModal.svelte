@@ -25,7 +25,7 @@
 	export let ollama = false;
 	export let mcp = false;
 
-	export let connection = null;
+	export let connection: any = null;
 
 	let url = '';
 	let key = '';
@@ -34,7 +34,7 @@
 	let enable = true;
 
 	let modelId = '';
-	let modelIds = [];
+	let modelIds: any[] = [];
 
 	let loading = false;
 

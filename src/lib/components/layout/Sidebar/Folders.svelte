@@ -3,11 +3,11 @@
 
 	const dispatch = createEventDispatcher();
 	import RecursiveFolder from './RecursiveFolder.svelte';
-	export let folders = {};
+	export let folders: Record<string, any> = {};
 	export let selectedChatIds: string[] = [];
 	export let showBulkActions = false;
 
-	let folderList = [];
+	let folderList: any[] = [];
 	// Get the list of folders that have no parent, sorted by name alphabetically
 	$: folderList = Object.keys(folders)
 		.filter((key) => folders[key].parent_id === null)

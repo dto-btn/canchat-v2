@@ -16,12 +16,12 @@
 	import Skeleton from './Skeleton.svelte';
 	const i18n = getI18n();
 
-	export let chatId;
-	export let history;
-	export let messageId;
+	export let chatId: any;
+	export let history: any;
+	export let messageId: any;
 	export let selectedToolIds: string[] = [];
 
-	export let isLastMessage;
+	export let isLastMessage: any;
 	export let readOnly = false;
 
 	export let updateChat: Function;
@@ -41,10 +41,10 @@
 
 	const dispatch = createEventDispatcher();
 
-	let currentMessageId;
-	let parentMessage;
-	let groupedMessageIds = {};
-	let groupedMessageIdsIdx = {};
+	let currentMessageId: any;
+	let parentMessage: any;
+	let groupedMessageIds: Record<string, any> = {};
+	let groupedMessageIdsIdx: Record<string, any> = {};
 
 	let message = JSON.parse(JSON.stringify(history.messages[messageId]));
 	$: if (history.messages) {
@@ -53,7 +53,7 @@
 		}
 	}
 
-	const showPreviousMessage = async (modelIdx) => {
+	const showPreviousMessage = async (modelIdx: any) => {
 		groupedMessageIdsIdx[modelIdx] = Math.max(0, groupedMessageIdsIdx[modelIdx] - 1);
 
 		let messageId = groupedMessageIds[modelIdx].messageIds[groupedMessageIdsIdx[modelIdx]];
@@ -72,7 +72,7 @@
 		triggerScroll();
 	};
 
-	const showNextMessage = async (modelIdx) => {
+	const showNextMessage = async (modelIdx: any) => {
 		groupedMessageIdsIdx[modelIdx] = Math.min(
 			groupedMessageIds[modelIdx].messageIds.length - 1,
 			groupedMessageIdsIdx[modelIdx] + 1
@@ -102,25 +102,25 @@
 			? history.messages[history.messages[messageId].parentId]
 			: null;
 
-		groupedMessageIds = parentMessage?.models.reduce((a, model, modelIdx) => {
+		groupedMessageIds = parentMessage?.models.reduce((a: any, model: any, modelIdx: any) => {
 			// Find all messages that are children of the parent message and have the same model
 			let modelMessageIds = parentMessage?.childrenIds
-				.map((id) => history.messages[id])
-				.filter((m) => m?.modelIdx === modelIdx)
-				.map((m) => m.id);
+				.map((id: any) => history.messages[id])
+				.filter((m: any) => m?.modelIdx === modelIdx)
+				.map((m: any) => m.id);
 
 			// Legacy support for messages that don't have a modelIdx
 			// Find all messages that are children of the parent message and have the same model
 			if (modelMessageIds.length === 0) {
 				let modelMessages = parentMessage?.childrenIds
-					.map((id) => history.messages[id])
-					.filter((m) => m?.model === model);
+					.map((id: any) => history.messages[id])
+					.filter((m: any) => m?.model === model);
 
-				modelMessages.forEach((m) => {
+				modelMessages.forEach((m: any) => {
 					m.modelIdx = modelIdx;
 				});
 
-				modelMessageIds = modelMessages.map((m) => m.id);
+				modelMessageIds = modelMessages.map((m: any) => m.id);
 			}
 
 			return {
@@ -129,8 +129,8 @@
 			};
 		}, {});
 
-		groupedMessageIdsIdx = parentMessage?.models.reduce((a, model, modelIdx) => {
-			const idx = groupedMessageIds[modelIdx].messageIds.findIndex((id) => id === messageId);
+		groupedMessageIdsIdx = parentMessage?.models.reduce((a: any, model: any, modelIdx: any) => {
+			const idx = groupedMessageIds[modelIdx].messageIds.findIndex((id: any) => id === messageId);
 			if (idx !== -1) {
 				return {
 					...a,
@@ -155,6 +155,14 @@
 			return history.messages[messageId].content;
 		});
 		mergeResponses(messageId, responses, chatId);
+	};
+
+	const getGroupedRegenerateHandler = (modelIdx: any) => {
+		return async (message: any) => {
+			regenerateResponse(message);
+			await tick();
+			groupedMessageIdsIdx[modelIdx] = groupedMessageIds[modelIdx].messageIds.length - 1;
+		};
 	};
 
 	onMount(async () => {
@@ -224,12 +232,7 @@
 									{actionMessage}
 									{submitMessage}
 									{continueResponse}
-									regenerateResponse={async (message) => {
-										regenerateResponse(message);
-										await tick();
-										groupedMessageIdsIdx[modelIdx] =
-											groupedMessageIds[modelIdx].messageIds.length - 1;
-									}}
+									regenerateResponse={getGroupedRegenerateHandler(modelIdx)}
 									{addMessages}
 									{readOnly}
 								/>

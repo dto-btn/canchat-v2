@@ -59,6 +59,7 @@ export const AIAutocompletion = Extension.create({
 	},
 
 	addProseMirrorPlugins() {
+		/** @type {any} */
 		let debounceTimer = null;
 		let loading = false;
 
@@ -67,6 +68,7 @@ export const AIAutocompletion = Extension.create({
 
 		let isComposing = false;
 
+		/** @type {(view: any) => void} */
 		const handleAICompletion = (view) => {
 			const { state, dispatch } = view;
 			const { selection } = state;
@@ -100,30 +102,32 @@ export const AIAutocompletion = Extension.create({
 							if (prompt.trim() !== '') {
 								if (loading) return true;
 								loading = true;
-								this.options
-									.generateCompletion(prompt)
-									.then((suggestion) => {
-										if (suggestion && suggestion.trim() !== '') {
-											if (view.state.selection.$head.pos === view.state.selection.$head.end()) {
-												if (view.state === newState) {
-													// Ensure suggestion starts with a space if it doesn't already
-													// and the prompt doesn't end with a space
-													if (!suggestion.startsWith(' ') && !prompt.endsWith(' ')) {
-														suggestion = ' ' + suggestion;
-													}
-
-													view.dispatch(
-														newState.tr.setNodeMarkup(currentPos, null, {
-															...newNode.attrs,
-															class: 'ai-autocompletion',
-															'data-prompt': prompt,
-															'data-suggestion': suggestion
-														})
-													);
+								/** @type {(suggestion: any) => void} */
+								const handleSuggestion = (suggestion) => {
+									if (suggestion && suggestion.trim() !== '') {
+										if (view.state.selection.$head.pos === view.state.selection.$head.end()) {
+											if (view.state === newState) {
+												// Ensure suggestion starts with a space if it doesn't already
+												// and the prompt doesn't end with a space
+												if (!suggestion.startsWith(' ') && !prompt.endsWith(' ')) {
+													suggestion = ' ' + suggestion;
 												}
+
+												view.dispatch(
+													newState.tr.setNodeMarkup(currentPos, null, {
+														...newNode.attrs,
+														class: 'ai-autocompletion',
+														'data-prompt': prompt,
+														'data-suggestion': suggestion
+													})
+												);
 											}
 										}
-									})
+									}
+								};
+								this.options
+									.generateCompletion(prompt)
+									.then(handleSuggestion)
 									.finally(() => {
 										loading = false;
 									});
@@ -138,6 +142,7 @@ export const AIAutocompletion = Extension.create({
 			new Plugin({
 				key: new PluginKey('aiAutocompletion'),
 				props: {
+					/** @type {(view: any, event: any) => boolean} */
 					handleKeyDown: (view, event) => {
 						const { state, dispatch } = view;
 						const { selection } = state;

@@ -82,8 +82,8 @@
 		}
 	})();
 
-	let tools = {};
-	let wikiGroundingTooltip;
+	let tools: Record<string, any> = {};
+	let wikiGroundingTooltip: any;
 	let show = false;
 
 	let showImageGeneration = false;
@@ -118,7 +118,7 @@
 			await _tools.set(await getTools(getRequestToken()));
 		}
 
-		tools = $_tools.reduce((a, tool, i, arr) => {
+		tools = $_tools.reduce((a: any, tool: any, i: any, arr: any) => {
 			a[tool.id] = {
 				name: tool.name,
 				originalDescription: tool.meta.description, // Keep original

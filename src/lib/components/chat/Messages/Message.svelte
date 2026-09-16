@@ -11,32 +11,32 @@
 	import ResponseMessage from './ResponseMessage.svelte';
 	import UserMessage from './UserMessage.svelte';
 
-	export let chatId;
+	export let chatId: any;
 	export let idx = 0;
 
-	export let history;
-	export let messageId;
+	export let history: any;
+	export let messageId: any;
 
-	export let user;
+	export let user: any;
 	export let selectedToolIds: string[] = [];
 
-	export let showPreviousMessage;
-	export let showNextMessage;
-	export let updateChat;
+	export let showPreviousMessage: any;
+	export let showNextMessage: any;
+	export let updateChat: any;
 
-	export let editMessage;
-	export let saveMessage;
-	export let deleteMessage;
-	export let rateMessage;
-	export let actionMessage;
-	export let submitMessage;
+	export let editMessage: any;
+	export let saveMessage: any;
+	export let deleteMessage: any;
+	export let rateMessage: any;
+	export let actionMessage: any;
+	export let submitMessage: any;
 
-	export let regenerateResponse;
-	export let continueResponse;
-	export let mergeResponses;
+	export let regenerateResponse: any;
+	export let continueResponse: any;
+	export let mergeResponses: any;
 
-	export let addMessages;
-	export let triggerScroll;
+	export let addMessages: any;
+	export let triggerScroll: any;
 	export let readOnly = false;
 </script>
 

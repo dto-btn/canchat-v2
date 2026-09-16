@@ -14,7 +14,14 @@
 
 	import { deleteModel, getOllamaVersion, pullModel } from '$lib/apis/ollama';
 
-	import { user, MODEL_DOWNLOAD_POOL, models, mobile, temporaryChatEnabled } from '$lib/stores';
+	import {
+		user,
+		MODEL_DOWNLOAD_POOL,
+		models,
+		mobile,
+		temporaryChatEnabled,
+		type Model
+	} from '$lib/stores';
 	import { toast } from 'svelte-sonner';
 	import { sanitizeResponseContent, splitStream } from '$lib/utils';
 	import { getModels } from '$lib/apis';
@@ -47,11 +54,11 @@
 
 	let show = false;
 
-	let selectedModel = '';
-	$: selectedModel = items.find((item) => item.value === value) ?? '';
+	let selectedModel: (typeof items)[number] | null = null;
+	$: selectedModel = items.find((item) => item.value === value) ?? null;
 
 	let searchValue = '';
-	let ollamaVersion = null;
+	let ollamaVersion: any = null;
 
 	let selectedModelIdx = 0;
 
@@ -60,8 +67,8 @@
 			const _item = {
 				...item,
 				modelName: item.model?.name,
-				tags: item.model?.info?.meta?.tags?.map((tag) => tag.name).join(' '),
-				tags_fr: item.model?.info?.meta?.tags_fr?.map((tag) => tag.name).join(' '),
+				tags: item.model?.info?.meta?.tags?.map((tag: any) => tag.name).join(' '),
+				tags_fr: item.model?.info?.meta?.tags_fr?.map((tag: any) => tag.name).join(' '),
 				desc: item.model?.info?.meta?.description
 			};
 			return _item;
@@ -167,7 +174,7 @@
 							}
 						}
 					}
-				} catch (error) {
+				} catch (error: any) {
 					if (typeof error !== 'string') {
 						error = error.message;
 					}
@@ -228,11 +235,11 @@
 		};
 	});
 
-	function getModelDesc(itemId) {
+	function getModelDesc(itemId: any) {
 		return descriptions.find((d) => d.id === itemId)?.desc || '';
 	}
 
-	function getModelTags(item) {
+	function getModelTags(item: any) {
 		const frTags = item.model?.info?.meta?.tags_fr ?? [];
 		const enTags = item.model?.info?.meta?.tags ?? [];
 		return $i18n.language === 'fr-CA' && frTags.length > 0 ? frTags : enTags;

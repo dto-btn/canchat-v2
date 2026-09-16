@@ -8,7 +8,7 @@
 
 	const i18n = getI18n();
 
-	export let tags = [];
+	export let tags: any[] = [];
 </script>
 
 <div class="flex flex-row flex-wrap gap-1 line-clamp-1">

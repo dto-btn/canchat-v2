@@ -67,15 +67,15 @@
 	export let atSelectedModel: Model | undefined = undefined;
 	export let selectedModels: [''];
 
-	let selectedModelIds = [];
+	let selectedModelIds: any[] = [];
 	$: selectedModelIds = atSelectedModel !== undefined ? [atSelectedModel.id] : selectedModels;
 
-	export let history;
+	export let history: any;
 
 	export let prompt = '';
-	export let files = [];
+	export let files: any[] = [];
 
-	export let selectedToolIds = [];
+	export let selectedToolIds: any[] = [];
 
 	export let imageGenerationEnabled = false;
 	export let webSearchEnabled = false;
@@ -95,22 +95,52 @@
 	let loaded = false;
 	let recording = false;
 
-	let chatInputElement;
+	let chatInputElement: any;
 
-	let filesInputElement;
-	let commandsElement;
+	let filesInputElement: any;
+	let commandsElement: any;
 
-	let inputFiles;
+	let inputFiles: any;
 	let dragged = false;
 
 	export let placeholder = '';
 	let placeholderText = placeholder ? placeholder : $i18n.t('Send a Message');
 	$: placeholderText = placeholder ? placeholder : $i18n.t('Send a Message');
 
-	let visionCapableModels = [];
+	let visionCapableModels: any[] = [];
 	$: visionCapableModels = [...(atSelectedModel ? [atSelectedModel] : selectedModels)].filter(
 		(model) => $models.find((m) => m.id === model)?.info?.meta?.capabilities?.vision ?? true
 	);
+
+	const getSelectedTools = () => {
+		return selectedToolIds.map((id: any) =>
+			$tools ? $tools.find((t: any) => t.id === id) : { id, name: id }
+		);
+	};
+
+	const handleWikiGroundingTooltipCreate = (instance: any) => {
+		if (instance.popper) {
+			instance.popper.style.fontSize = '12px';
+			instance.popper.style.padding = '4px 8px';
+			instance.popper.style.borderRadius = '4px';
+			instance.popper.style.whiteSpace = 'nowrap';
+		}
+	};
+
+	const generateMessageAutoCompletion = async (text: any) => {
+		if (selectedModelIds.length === 0 || !selectedModelIds.at(0)) {
+			toast.error($i18n.t('Please select a model first.'));
+		}
+
+		return await generateAutoCompletion(
+			getRequestToken(),
+			selectedModelIds.at(0),
+			text,
+			history?.currentId ? createMessagesList(history, history.currentId) : null
+		).catch((error) => {
+			return null;
+		});
+	};
 
 	// Check if any files are currently uploading
 	$: hasUploadingFiles = files.some((file) => file.status === 'uploading');
@@ -155,13 +185,13 @@
 			// Clean memory: Clear video srcObject
 			video.srcObject = null;
 			toast.success('Screen capture completed');
-		} catch (error) {
+		} catch (error: any) {
 			// Handle any errors (e.g., user cancels screen sharing)
 			console.error('Error capturing screen:', error);
 		}
 	};
 
-	const uploadFileHandler = async (file, fullContext: boolean = false) => {
+	const uploadFileHandler = async (file: any, fullContext: boolean = false) => {
 		if ($_user?.role !== 'admin' && !($_user?.permissions?.chat?.file_upload ?? true)) {
 			toast.error($i18n.t('You do not have permission to upload files.'));
 			return null;
@@ -227,14 +257,14 @@
 			} else {
 				files = files.filter((item) => item?.itemId !== tempItemId);
 			}
-		} catch (e) {
+		} catch (e: any) {
 			toast.error(e);
 			files = files.filter((item) => item?.itemId !== tempItemId);
 		}
 	};
 
-	const inputFilesHandler = async (inputFiles) => {
-		inputFiles.forEach((file) => {
+	const inputFilesHandler = async (inputFiles: any) => {
+		inputFiles.forEach((file: any) => {
 			if (
 				($config?.file?.max_size ?? null) !== null &&
 				file.size > ($config?.file?.max_size ?? 0) * 1024 * 1024
@@ -290,7 +320,7 @@
 		}
 	};
 
-	const onDragOver = (e) => {
+	const onDragOver = (e: any) => {
 		e.preventDefault();
 
 		// Check if a file is being dragged.
@@ -305,7 +335,7 @@
 		dragged = false;
 	};
 
-	const onDrop = async (e) => {
+	const onDrop = async (e: any) => {
 		e.preventDefault();
 		if (e.dataTransfer?.files) {
 			const inputFiles = Array.from(e.dataTransfer?.files);
@@ -405,9 +435,7 @@
 											</span>
 										</div>
 										<div class="  text-ellipsis line-clamp-1 flex">
-											{#each selectedToolIds.map((id) => {
-												return $tools ? $tools.find((t) => t.id === id) : { id: id, name: id };
-											}) as tool, toolIdx (toolIdx)}
+											{#each getSelectedTools() as tool, toolIdx (toolIdx)}
 												<Tooltip
 													content={getToolTooltipContent(tool, $i18n)}
 													className=" {toolIdx !== 0 ? 'pl-0.5' : ''} flex-shrink-0"
@@ -482,14 +510,7 @@
 												interactive: false,
 												animation: 'fade',
 												duration: [200, 150],
-												onCreate: (instance) => {
-													if (instance.popper) {
-														instance.popper.style.fontSize = '12px';
-														instance.popper.style.padding = '4px 8px';
-														instance.popper.style.borderRadius = '4px';
-														instance.popper.style.whiteSpace = 'nowrap';
-													}
-												}
+												onCreate: handleWikiGroundingTooltipCreate
 											}}
 										>
 											<div class=" ">
@@ -775,23 +796,7 @@
 												placeholder={placeholderText}
 												largeTextAsFile={$settings?.largeTextAsFile ?? false}
 												autocomplete={true}
-												generateAutoCompletion={async (text) => {
-													if (selectedModelIds.length === 0 || !selectedModelIds.at(0)) {
-														toast.error($i18n.t('Please select a model first.'));
-													}
-
-													const res = await generateAutoCompletion(
-														getRequestToken(),
-														selectedModelIds.at(0),
-														text,
-														history?.currentId
-															? createMessagesList(history, history.currentId)
-															: null
-													).catch((error) => {
-														return null;
-													});
-													return res;
-												}}
+												generateAutoCompletion={generateMessageAutoCompletion}
 												on:keydown={async (e) => {
 													e = e.detail.event;
 

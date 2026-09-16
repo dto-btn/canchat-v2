@@ -23,7 +23,7 @@
 
 	let loading = false;
 	let tab = '';
-	let inputFiles;
+	let inputFiles: any;
 	let importErrors: CsvUserImportError[] = [];
 
 	let _user = {

@@ -35,7 +35,7 @@
 
 	// export let tagHandler: Function;
 
-	export let chat;
+	export let chat: any;
 	export let onClose: Function = () => {};
 
 	export let buttonClass = '';
@@ -45,7 +45,7 @@
 	const getChatAsText = async () => {
 		const history = chat.chat.history;
 		const messages = createMessagesList(history, history.currentId);
-		const chatText = messages.reduce((a, message, i, arr) => {
+		const chatText = messages.reduce((a: any, message: any, i: any, arr: any) => {
 			return `${a}### ${message.role.toUpperCase()}\n${message.content}\n\n`;
 		}, '');
 
