@@ -4,7 +4,7 @@
 	import { toast } from 'svelte-sonner';
 	import { createEventDispatcher } from 'svelte';
 	import { addUser } from '$lib/apis/auths';
-	import { parseCsvUserRows } from './user-import';
+	import { decodeCsvText, parseCsvUserRows, type CsvUserImportError } from './user-import';
 
 	import { WEBUI_BASE_URL } from '$lib/constants';
 
@@ -19,20 +19,13 @@
 	let loading = false;
 	let tab = '';
 	let inputFiles;
+	let importErrors: CsvUserImportError[] = [];
 
 	let _user = {
 		name: '',
 		email: '',
 		password: '',
 		role: 'user'
-	};
-
-	const decodeCsv = (buffer: ArrayBuffer) => {
-		try {
-			return new TextDecoder('utf-8', { fatal: true }).decode(buffer);
-		} catch {
-			return new TextDecoder('windows-1252').decode(buffer);
-		}
 	};
 
 	$: if (show) {
@@ -43,6 +36,23 @@
 			role: 'user'
 		};
 	}
+
+	const resetUpload = () => {
+		inputFiles = null;
+		const uploadInputElement = document.getElementById('upload-user-csv-input') as HTMLInputElement;
+		if (uploadInputElement) uploadInputElement.value = '';
+	};
+
+	const downloadErrorReport = () => {
+		const report = importErrors
+			.map((error) => `Row ${error.rowNumber}: ${error.message}`)
+			.join('\n');
+		const link = document.createElement('a');
+		link.href = URL.createObjectURL(new Blob([report], { type: 'text/plain' }));
+		link.download = 'user-import-errors.txt';
+		link.click();
+		URL.revokeObjectURL(link.href);
+	};
 
 	const submitHandler = async () => {
 		const stopLoading = () => {
@@ -70,40 +80,43 @@
 		} else {
 			if (inputFiles) {
 				loading = true;
+				importErrors = [];
+				try {
+					const file = inputFiles[0];
+					const csv = decodeCsvText(await file.arrayBuffer());
+					const result = parseCsvUserRows(csv);
+					importErrors = [...result.errors];
+					let userCount = 0;
 
-				const file = inputFiles[0];
-				const csv = decodeCsv(await file.arrayBuffer());
-				const rows = parseCsvUserRows(csv);
-
-				let userCount = 0;
-
-				for (const [idx, row] of rows.entries()) {
-					const res = await addUser(
-						getRequestToken(),
-						row.name,
-						row.email,
-						row.password,
-						row.role
-					).catch((error) => {
-						toast.error(`Row ${idx + 2}: ${error}`);
-						return null;
-					});
-
-					if (res) {
-						userCount = userCount + 1;
+					for (const row of result.rows) {
+						try {
+							const res = await addUser(
+								getRequestToken(),
+								row.name,
+								row.email,
+								row.password,
+								row.role
+							);
+							if (res) userCount += 1;
+						} catch (error) {
+							importErrors = [...importErrors, { rowNumber: row.rowNumber, message: `${error}` }];
+						}
 					}
+
+					if (importErrors.length === 0) {
+						toast.success(`Successfully imported ${userCount} users.`);
+						show = false;
+					} else {
+						toast.success(
+							`Imported ${userCount} users. Skipped ${importErrors.length} invalid rows.`
+						);
+					}
+				} catch (error) {
+					toast.error(`Unable to read or import the CSV file: ${error}`);
+				} finally {
+					resetUpload();
+					stopLoading();
 				}
-
-				toast.success(`Successfully imported ${userCount} users.`);
-				inputFiles = null;
-				const uploadInputElement = document.getElementById('upload-user-csv-input');
-
-				if (uploadInputElement) {
-					uploadInputElement.value = null;
-				}
-
-				stopLoading();
-				show = false;
 			} else {
 				toast.error($i18n.t('File not found.'));
 			}
@@ -268,6 +281,22 @@
 										{$i18n.t('Click here to download user import template file.')}
 									</a>
 								</div>
+
+								{#if importErrors.length > 0}
+									<details class="mt-3 text-xs text-red-600 dark:text-red-400">
+										<summary>{importErrors.length} import error(s)</summary>
+										<ul class="mt-2 max-h-36 overflow-y-auto list-disc pl-4">
+											{#each importErrors as error}
+												<li>Row {error.rowNumber}: {error.message}</li>
+											{/each}
+										</ul>
+										{#if importErrors.length > 20}
+											<button class="mt-2 underline" type="button" on:click={downloadErrorReport}
+												>Download error report</button
+											>
+										{/if}
+									</details>
+								{/if}
 							</div>
 						{/if}
 					</div>
