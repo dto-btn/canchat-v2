@@ -16,6 +16,10 @@ export type CsvUserImportResult = {
 	errors: CsvUserImportError[];
 };
 
+export const countInvalidCsvRows = (errors: CsvUserImportError[]): number => {
+	return new Set(errors.map((error) => error.rowNumber)).size;
+};
+
 const VALID_ROLES = new Set(['admin', 'user', 'pending', 'analyst', 'global_analyst']);
 
 export const decodeCsvText = (buffer: ArrayBuffer): string => {

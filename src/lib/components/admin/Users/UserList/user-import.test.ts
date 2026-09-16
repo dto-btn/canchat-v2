@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decodeCsvText, parseCsvUserRows } from './user-import';
+import { countInvalidCsvRows, decodeCsvText, parseCsvUserRows } from './user-import';
 
 describe('CSV user import', () => {
 	it('preserves accented and special characters in imported names', () => {
@@ -77,6 +77,17 @@ describe('CSV user import', () => {
 			{ rowNumber: 7, message: 'missing role.' },
 			{ rowNumber: 8, message: 'expected 4 columns but found 5.' }
 		]);
+		expect(countInvalidCsvRows(result.errors)).toBe(6);
+	});
+
+	it('counts each invalid CSV row once when it has multiple errors', () => {
+		expect(
+			countInvalidCsvRows([
+				{ rowNumber: 4, message: 'missing name.' },
+				{ rowNumber: 4, message: 'missing email.' },
+				{ rowNumber: 5, message: 'invalid role "manager".' }
+			])
+		).toBe(2);
 	});
 
 	it('rejects invalid headers and malformed rows', () => {

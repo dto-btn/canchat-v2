@@ -4,7 +4,12 @@
 	import { toast } from 'svelte-sonner';
 	import { createEventDispatcher } from 'svelte';
 	import { addUser } from '$lib/apis/auths';
-	import { decodeCsvText, parseCsvUserRows, type CsvUserImportError } from './user-import';
+	import {
+		countInvalidCsvRows,
+		decodeCsvText,
+		parseCsvUserRows,
+		type CsvUserImportError
+	} from './user-import';
 
 	import { WEBUI_BASE_URL } from '$lib/constants';
 
@@ -108,7 +113,7 @@
 						show = false;
 					} else {
 						toast.success(
-							`Imported ${userCount} users. Skipped ${importErrors.length} invalid rows.`
+							`Imported ${userCount} users. Skipped ${countInvalidCsvRows(importErrors)} invalid rows.`
 						);
 					}
 				} catch (error) {
