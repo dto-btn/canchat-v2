@@ -4,6 +4,12 @@
 	import { toast } from 'svelte-sonner';
 	import { createEventDispatcher } from 'svelte';
 	import { addUser } from '$lib/apis/auths';
+	import {
+		countInvalidCsvRows,
+		decodeCsvText,
+		parseCsvUserRows,
+		type CsvUserImportError
+	} from './user-import';
 
 	import { WEBUI_BASE_URL } from '$lib/constants';
 
@@ -18,6 +24,7 @@
 	let loading = false;
 	let tab = '';
 	let inputFiles: any;
+	let importErrors: CsvUserImportError[] = [];
 
 	let _user = {
 		name: '',
@@ -34,6 +41,23 @@
 			role: 'user'
 		};
 	}
+
+	const resetUpload = () => {
+		inputFiles = null;
+		const uploadInputElement = document.getElementById('upload-user-csv-input') as HTMLInputElement;
+		if (uploadInputElement) uploadInputElement.value = '';
+	};
+
+	const downloadErrorReport = () => {
+		const report = importErrors
+			.map((error) => `Row ${error.rowNumber}: ${error.message}`)
+			.join('\n');
+		const link = document.createElement('a');
+		link.href = URL.createObjectURL(new Blob([report], { type: 'text/plain' }));
+		link.download = 'user-import-errors.txt';
+		link.click();
+		URL.revokeObjectURL(link.href);
+	};
 
 	const submitHandler = async () => {
 		const stopLoading = () => {
@@ -61,58 +85,43 @@
 		} else {
 			if (inputFiles) {
 				loading = true;
-
-				const file = inputFiles[0];
-				const reader = new FileReader();
-
-				reader.onload = async (e) => {
-					const csv = e.target.result;
-					const rows = csv.split('\n');
-
+				importErrors = [];
+				try {
+					const file = inputFiles[0];
+					const csv = decodeCsvText(await file.arrayBuffer());
+					const result = parseCsvUserRows(csv);
+					importErrors = [...result.errors];
 					let userCount = 0;
 
-					for (const [idx, row] of rows.entries()) {
-						const columns = row.split(',').map((col: any) => col.trim());
-						if (idx > 0) {
-							if (
-								columns.length === 4 &&
-								['admin', 'user', 'pending', 'analyst', 'global_analyst'].includes(
-									columns[3].toLowerCase()
-								)
-							) {
-								const res = await addUser(
-									getRequestToken(),
-									columns[0],
-									columns[1],
-									columns[2],
-									columns[3].toLowerCase()
-								).catch((error) => {
-									toast.error(`Row ${idx + 1}: ${error}`);
-									return null;
-								});
-
-								if (res) {
-									userCount = userCount + 1;
-								}
-							} else {
-								toast.error(`Row ${idx + 1}: invalid format.`);
-							}
+					for (const row of result.rows) {
+						try {
+							const res = await addUser(
+								getRequestToken(),
+								row.name,
+								row.email,
+								row.password,
+								row.role
+							);
+							if (res) userCount += 1;
+						} catch (error) {
+							importErrors = [...importErrors, { rowNumber: row.rowNumber, message: `${error}` }];
 						}
 					}
 
-					toast.success(`Successfully imported ${userCount} users.`);
-					inputFiles = null;
-					const uploadInputElement = document.getElementById('upload-user-csv-input');
-
-					if (uploadInputElement) {
-						uploadInputElement.value = null;
+					if (importErrors.length === 0) {
+						toast.success(`Successfully imported ${userCount} users.`);
+						show = false;
+					} else {
+						toast.success(
+							`Imported ${userCount} users. Skipped ${countInvalidCsvRows(importErrors)} invalid rows.`
+						);
 					}
-
+				} catch (error) {
+					toast.error(`Unable to read or import the CSV file: ${error}`);
+				} finally {
+					resetUpload();
 					stopLoading();
-					show = false;
-				};
-
-				reader.readAsText(file);
+				}
 			} else {
 				toast.error($i18n.t('File not found.'));
 			}
@@ -277,6 +286,22 @@
 										{$i18n.t('Click here to download user import template file.')}
 									</a>
 								</div>
+
+								{#if importErrors.length > 0}
+									<details class="mt-3 text-xs text-red-600 dark:text-red-400">
+										<summary>{importErrors.length} import error(s)</summary>
+										<ul class="mt-2 max-h-36 overflow-y-auto list-disc pl-4">
+											{#each importErrors as error}
+												<li>Row {error.rowNumber}: {error.message}</li>
+											{/each}
+										</ul>
+										{#if importErrors.length > 20}
+											<button class="mt-2 underline" type="button" on:click={downloadErrorReport}
+												>Download error report</button
+											>
+										{/if}
+									</details>
+								{/if}
 							</div>
 						{/if}
 					</div>
