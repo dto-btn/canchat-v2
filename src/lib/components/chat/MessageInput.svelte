@@ -208,7 +208,12 @@
 			canvas.height = video.videoHeight;
 			// Grab a single frame from the video stream using the canvas
 			const context = canvas.getContext('2d');
-			if (!context) return;
+			if (!context) {
+				// avoid leaking the capture stream/indicator if canvas context is unavailable
+				mediaStream.getTracks().forEach((track) => track.stop());
+				video.srcObject = null;
+				return;
+			}
 			context.drawImage(video, 0, 0, canvas.width, canvas.height);
 			// Stop all video tracks (stop screen sharing) after capturing the image
 			mediaStream.getTracks().forEach((track) => track.stop());

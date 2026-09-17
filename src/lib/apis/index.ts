@@ -26,6 +26,12 @@ const getChoiceContent = (response: CompletionResponse | null | undefined) => {
 	return response?.choices?.[0]?.message?.content ?? '';
 };
 
+type TaskMessage = {
+	role: string;
+	content: string;
+	[key: string]: unknown;
+};
+
 export const getModels = async (token: string = '', base: boolean = false): Promise<Model[]> => {
 	const res = (await webUiApi<{ data?: unknown[] }>(`/api/models${base ? '/base' : ''}`, {
 		method: 'GET',
@@ -108,7 +114,7 @@ export const generateTitle = async (
 export const generateTags = async (
 	token: string = '',
 	model: string,
-	messages: Array<Record<string, unknown>>,
+	messages: TaskMessage[],
 	chat_id?: string
 ) => {
 	const res = await webUiApi<CompletionResponse>('/api/v1/tasks/tags/completions', {

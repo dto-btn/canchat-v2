@@ -175,6 +175,7 @@
 	export let updateChat: Function;
 	export let editMessage: Function;
 	export let saveMessage: Function;
+	export let rateMessage: Function;
 	export let actionMessage: Function;
 
 	export let submitMessage: Function;
@@ -231,7 +232,7 @@
 		addMessages(payload);
 
 	const getErrorContent = (error: MessageType['error'], fallback: string) =>
-		typeof error === 'object' ? error.content : fallback;
+		error && typeof error === 'object' ? error.content : fallback;
 	const hasCitations = (modelValue: typeof model) =>
 		(modelValue?.info?.meta?.capabilities as { citations?: boolean } | undefined)?.citations ??
 		true;
@@ -317,7 +318,7 @@
 		speaking = true;
 
 		const audioConfig = ($config as typeof $config & { audio?: AudioConfig }).audio;
-		const audioSettings = $settings.audio as typeof $settings.audio & {
+		const audioSettings = $settings?.audio as typeof $settings.audio & {
 			tts?: AudioTTSSettings;
 		};
 
