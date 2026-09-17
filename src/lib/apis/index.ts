@@ -108,7 +108,7 @@ export const generateTitle = async (
 export const generateTags = async (
 	token: string = '',
 	model: string,
-	messages: string,
+	messages: Array<Record<string, unknown>>,
 	chat_id?: string
 ) => {
 	const res = await webUiApi<CompletionResponse>('/api/v1/tasks/tags/completions', {

@@ -229,10 +229,7 @@
 	};
 	const handleAddMessages = (payload: { modelId: string; parentId: string; messages: unknown[] }) =>
 		addMessages(payload);
-	const contentRendererSources = (sources?: string[]) => sources as any;
-	const contentRendererModel = (modelValue: typeof model) => modelValue as any;
-	const contentRendererOnSourceClick = handleSourceClick as any;
-	const contentRendererOnAddMessages = handleAddMessages as any;
+
 	const getErrorContent = (error: MessageType['error'], fallback: string) =>
 		typeof error === 'object' ? error.content : fallback;
 	const hasCitations = (modelValue: typeof model) =>
@@ -502,11 +499,11 @@
 				...(siblingIds.length > 1
 					? {
 							sibling_model_ids: siblingIds
-								.filter((id) => id !== message.id)
+								.filter((id) => id !== message.id && history.messages[id])
 								.map((id: string) =>
 									history.messages[id]?.crewAI
 										? 'azure/o3-mini'
-										: (history.messages[id]?.selectedModelId ?? history.messages[id].model)
+										: (history.messages[id]?.selectedModelId ?? history.messages[id]?.model)
 								)
 						}
 					: {})
@@ -581,15 +578,12 @@
 			if (!updatedMessage.annotation?.tags) {
 				tagGenerationInProgress = true;
 				// attempt to generate tags
-				const tags = await generateTags(
-					getRequestToken(),
-					message.model,
-					JSON.stringify(messages),
-					chatId
-				).catch((error) => {
-					console.error(error);
-					return [];
-				});
+				const tags = await generateTags(getRequestToken(), message.model, messages, chatId).catch(
+					(error) => {
+						console.error(error);
+						return [];
+					}
+				);
 
 				if (tags) {
 					updatedMessage.annotation.tags = tags;
@@ -915,12 +909,12 @@
 										id={message.id}
 										{history}
 										content={message.content}
-										sources={contentRendererSources(message.sources)}
+										sources={message.sources}
 										floatingButtons={message?.done}
 										save={!readOnly}
-										model={contentRendererModel(model)}
-										onSourceClick={contentRendererOnSourceClick}
-										onAddMessages={contentRendererOnAddMessages}
+										{model}
+										onSourceClick={handleSourceClick}
+										onAddMessages={handleAddMessages}
 										on:update={(e) => {
 											handleContentUpdate(e.detail);
 										}}

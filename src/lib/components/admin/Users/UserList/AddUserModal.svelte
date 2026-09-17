@@ -66,7 +66,11 @@
 				const reader = new FileReader();
 
 				reader.onload = async (e) => {
-					const csv = e.target.result;
+					const csv = e.target?.result;
+					if (typeof csv !== 'string') {
+						toast.error($i18n.t('File not found.'));
+						return;
+					}
 					const rows = csv.split('\n');
 
 					let userCount = 0;
@@ -102,10 +106,12 @@
 
 					toast.success(`Successfully imported ${userCount} users.`);
 					inputFiles = null;
-					const uploadInputElement = document.getElementById('upload-user-csv-input');
+					const uploadInputElement = document.getElementById(
+						'upload-user-csv-input'
+					) as HTMLInputElement | null;
 
 					if (uploadInputElement) {
-						uploadInputElement.value = null;
+						uploadInputElement.value = '';
 					}
 
 					stopLoading();
@@ -120,7 +126,7 @@
 	};
 </script>
 
-<Modal size="sm" bind:show returnfocusSelector="#add-user">
+<Modal size="sm" bind:show returnFocusSelector="#add-user">
 	<div>
 		<div class=" flex justify-between dark:text-gray-300 px-5 pt-4 pb-2">
 			<div class=" text-lg font-medium self-center">{$i18n.t('Add User')}</div>

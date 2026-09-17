@@ -60,7 +60,20 @@
 	$: extendedConfig = $config as ExtendedConfig;
 	$: extendedSettings = $settings as ExtendedSettings;
 	$: uploadPermissions = $_user?.permissions as UploadPermissions | undefined;
-	const getGoogleDriveFile = (fileData: unknown) => fileData as GoogleDriveFile;
+	const getGoogleDriveFile = (fileData: unknown): GoogleDriveFile | null => {
+		if (
+			fileData &&
+			typeof fileData === 'object' &&
+			'blob' in fileData &&
+			(fileData as { blob: unknown }).blob instanceof Blob &&
+			'name' in fileData &&
+			typeof (fileData as { name: unknown }).name === 'string' &&
+			(fileData as { name: string }).name.length > 0
+		) {
+			return fileData as GoogleDriveFile;
+		}
+		return null;
+	};
 
 	// Static references for i18next-parser - DO NOT REMOVE
 	// These ensure the parser finds the dynamic translation keys
@@ -769,6 +782,10 @@
 													const fileData = await createPicker();
 													if (fileData) {
 														const driveFile = getGoogleDriveFile(fileData);
+														if (!driveFile) {
+															toast.error($i18n.t('Invalid file received from Google Drive'));
+															return;
+														}
 														const file = new File([driveFile.blob], driveFile.name, {
 															type: driveFile.blob.type
 														});
