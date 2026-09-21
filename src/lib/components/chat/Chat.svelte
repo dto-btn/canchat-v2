@@ -101,7 +101,7 @@
 	let selectedModelIds: any[] = [];
 	$: selectedModelIds = atSelectedModel !== undefined ? [atSelectedModel.id] : selectedModels;
 
-	let chat = null;
+	let chat: any = null;
 	let tags = [];
 	let taskIdsByMessageId: Record<string, string> = {};
 	let stoppedResponseIds: Record<string, boolean> = {};
@@ -639,7 +639,7 @@
 	};
 
 	const uploadWeb = async (url: any) => {
-		const fileItem = {
+		const fileItem: any = {
 			type: 'doc',
 			name: url,
 			collection_name: '',
@@ -670,7 +670,7 @@
 	};
 
 	const uploadYoutubeTranscription = async (url: any) => {
-		const fileItem = {
+		const fileItem: any = {
 			type: 'doc',
 			name: url,
 			collection_name: '',
@@ -730,7 +730,9 @@
 						modelSelectorButton.click();
 						await tick();
 
-						const modelSelectorInput = document.getElementById('model-search-input');
+						const modelSelectorInput = document.getElementById(
+							'model-search-input'
+						) as HTMLInputElement | null;
 						if (modelSelectorInput) {
 							modelSelectorInput.focus();
 							modelSelectorInput.value = urlModels[0];
@@ -912,7 +914,7 @@
 		responseMessageId: any,
 		messages: any
 	) => {
-		const res = await chatCompleted(getRequestToken(), {
+		const res: any = await chatCompleted(getRequestToken(), {
 			model: modelId,
 			messages: messages.map((m: any) => ({
 				id: m.id,
@@ -975,7 +977,7 @@
 	) => {
 		const messages = createMessagesList(responseMessageId);
 
-		const res = await chatAction(getRequestToken(), actionId, {
+		const res: any = await chatAction(getRequestToken(), actionId, {
 			model: modelId,
 			messages: messages.map((m: any) => ({
 				id: m.id,

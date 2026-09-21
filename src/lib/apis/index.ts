@@ -264,7 +264,7 @@ export const generateMoACompletion = async (
 	model: string,
 	prompt: string,
 	responses: string[]
-) => {
+): Promise<[Response, AbortController]> => {
 	const controller = new AbortController();
 
 	const res = await apiRequest(`${WEBUI_BASE_URL}/api/v1/tasks/moa/completions`, {
@@ -282,7 +282,7 @@ export const generateMoACompletion = async (
 		})
 	});
 
-	return [res, controller];
+	return [res as Response, controller];
 };
 
 export const getPipelinesList = async (token: string = '') => {
@@ -492,11 +492,25 @@ export interface ModelConfig {
 
 export interface ModelMeta {
 	description?: string;
-	capabilities?: object;
+	description_fr?: string;
+	capabilities?: {
+		vision?: boolean;
+		usage?: boolean;
+		[key: string]: unknown;
+	};
 	profile_image_url?: string;
+	toolIds?: string[];
+	filterIds?: string[];
+	actionIds?: string[];
+	knowledge?: unknown[];
 }
 
-export interface ModelParams {}
+export interface ModelParams {
+	stream_response?: boolean;
+	stop?: string[];
+	system?: string;
+	[key: string]: unknown;
+}
 
 export type GlobalModelConfig = ModelConfig[];
 

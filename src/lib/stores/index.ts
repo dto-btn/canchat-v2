@@ -96,6 +96,10 @@ type BaseModel = {
 	name_fr?: string;
 	info?: ModelConfig;
 	owned_by: 'ollama' | 'openai' | 'arena';
+	preset?: boolean;
+	arena?: boolean;
+	meta?: ModelConfig['meta'];
+	params?: ModelConfig['params'];
 };
 
 export interface OpenAIModel extends BaseModel {
@@ -157,6 +161,12 @@ type Settings = {
 	wikipediaGrounding?: boolean;
 	title?: TitleSettings;
 	splitLargeDeltas?: boolean;
+	splitLargeChunks?: boolean;
+	scrollOnBranchChange?: boolean;
+	hapticFeedback?: boolean;
+	userLocation?: boolean;
+	landingPageMode?: string;
+	params?: ModelConfig['params'];
 
 	system?: string;
 	requestFormat?: string;
@@ -236,6 +246,20 @@ export type Config = {
 		providers: {
 			[key: string]: string;
 		};
+	};
+	audio?: {
+		tts?: {
+			split_on?: string;
+			[key: string]: unknown;
+		};
+		stt?: {
+			engine?: string;
+			[key: string]: unknown;
+		};
+	};
+	file?: {
+		max_count?: number;
+		max_size?: number;
 	};
 };
 
