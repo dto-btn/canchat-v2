@@ -154,6 +154,14 @@
 		);
 	};
 
+	const clickElement = (element: Element | undefined) => {
+		(element as HTMLElement | undefined)?.click();
+	};
+
+	const getKeyboardEvent = (event: CustomEvent<{ event: KeyboardEvent }>) => event.detail.event;
+	const getClipboardEvent = (event: CustomEvent<{ event: ClipboardEvent }>) => event.detail.event;
+	const getTextArea = (event: Event) => event.currentTarget as HTMLTextAreaElement;
+
 	const handleWikiGroundingTooltipCreate = (instance: any) => {
 		if (instance.popper) {
 			instance.popper.style.fontSize = '12px';
@@ -837,17 +845,13 @@
 												title={$i18n.t('Type your message here')}
 												messageInput={true}
 												shiftEnter={!$mobile ||
-													!(
-														'ontouchstart' in window ||
-														navigator.maxTouchPoints > 0 ||
-														navigator.msMaxTouchPoints > 0
-													)}
+													!('ontouchstart' in window || navigator.maxTouchPoints > 0)}
 												placeholder={placeholderText}
 												largeTextAsFile={$settings?.largeTextAsFile ?? false}
 												autocomplete={true}
 												generateAutoCompletion={generateMessageAutoCompletion}
-												on:keydown={async (e) => {
-													e = e.detail.event;
+												on:keydown={async (event) => {
+													const e = getKeyboardEvent(event);
 
 													const isCtrlPressed = e.ctrlKey || e.metaKey; // metaKey is for Cmd key on Mac
 													const commandsContainerElement =
@@ -870,7 +874,7 @@
 															...document.getElementsByClassName('regenerate-response-button')
 														]?.at(-1);
 
-														regenerateButton?.click();
+														clickElement(regenerateButton);
 													}
 
 													if (prompt === '' && e.key == 'ArrowUp') {
@@ -886,7 +890,7 @@
 																...document.getElementsByClassName('edit-user-message-button')
 															]?.at(-1);
 
-															editButton?.click();
+															clickElement(editButton);
 														}
 													}
 
@@ -898,7 +902,7 @@
 															const commandOptionButton = [
 																...document.getElementsByClassName('selected-command-option-button')
 															]?.at(-1);
-															commandOptionButton.scrollIntoView({ block: 'center' });
+															commandOptionButton?.scrollIntoView({ block: 'center' });
 														}
 
 														if (commandsContainerElement && e.key === 'ArrowDown') {
@@ -908,7 +912,7 @@
 															const commandOptionButton = [
 																...document.getElementsByClassName('selected-command-option-button')
 															]?.at(-1);
-															commandOptionButton.scrollIntoView({ block: 'center' });
+															commandOptionButton?.scrollIntoView({ block: 'center' });
 														}
 
 														if (commandsContainerElement && e.key === 'Tab') {
@@ -918,7 +922,7 @@
 																...document.getElementsByClassName('selected-command-option-button')
 															]?.at(-1);
 
-															commandOptionButton?.click();
+															clickElement(commandOptionButton);
 														}
 
 														if (commandsContainerElement && e.key === 'Enter') {
@@ -929,7 +933,7 @@
 															]?.at(-1);
 
 															if (commandOptionButton) {
-																commandOptionButton?.click();
+																clickElement(commandOptionButton);
 															} else {
 																document.getElementById('send-message-button')?.click();
 															}
@@ -940,7 +944,7 @@
 															!(
 																'ontouchstart' in window ||
 																navigator.maxTouchPoints > 0 ||
-																navigator.msMaxTouchPoints > 0
+																navigator.maxTouchPoints > 0
 															)
 														) {
 															// Prevent Enter key from creating a new line
@@ -964,8 +968,8 @@
 														imageGenerationEnabled = false;
 													}
 												}}
-												on:paste={async (e) => {
-													e = e.detail.event;
+												on:paste={async (event) => {
+													const e = getClipboardEvent(event);
 													const clipboardData = e.clipboardData || window.clipboardData;
 
 													if (clipboardData && clipboardData.items) {
@@ -1020,7 +1024,7 @@
 													!(
 														'ontouchstart' in window ||
 														navigator.maxTouchPoints > 0 ||
-														navigator.msMaxTouchPoints > 0
+														navigator.maxTouchPoints > 0
 													)
 												) {
 													// Prevent Enter key from creating a new line
@@ -1040,6 +1044,7 @@
 												}
 											}}
 											on:keydown={async (e) => {
+												const textarea = getTextArea(e);
 												const isCtrlPressed = e.ctrlKey || e.metaKey; // metaKey is for Cmd key on Mac
 												const commandsContainerElement =
 													document.getElementById('commands-container');
@@ -1060,7 +1065,7 @@
 														...document.getElementsByClassName('regenerate-response-button')
 													]?.at(-1);
 
-													regenerateButton?.click();
+													clickElement(regenerateButton);
 												}
 
 												if (prompt === '' && e.key == 'ArrowUp') {
@@ -1074,8 +1079,8 @@
 														...document.getElementsByClassName('edit-user-message-button')
 													]?.at(-1);
 
-													userMessageElement.scrollIntoView({ block: 'center' });
-													editButton?.click();
+													userMessageElement?.scrollIntoView({ block: 'center' });
+													clickElement(editButton);
 												}
 
 												if (commandsContainerElement && e.key === 'ArrowUp') {
@@ -1085,7 +1090,7 @@
 													const commandOptionButton = [
 														...document.getElementsByClassName('selected-command-option-button')
 													]?.at(-1);
-													commandOptionButton.scrollIntoView({ block: 'center' });
+													commandOptionButton?.scrollIntoView({ block: 'center' });
 												}
 
 												if (commandsContainerElement && e.key === 'ArrowDown') {
@@ -1095,7 +1100,7 @@
 													const commandOptionButton = [
 														...document.getElementsByClassName('selected-command-option-button')
 													]?.at(-1);
-													commandOptionButton.scrollIntoView({ block: 'center' });
+													commandOptionButton?.scrollIntoView({ block: 'center' });
 												}
 
 												if (commandsContainerElement && e.key === 'Enter') {
@@ -1108,7 +1113,7 @@
 													if (e.shiftKey) {
 														prompt = `${prompt}\n`;
 													} else if (commandOptionButton) {
-														commandOptionButton?.click();
+														clickElement(commandOptionButton);
 													} else {
 														document.getElementById('send-message-button')?.click();
 													}
@@ -1121,7 +1126,7 @@
 														...document.getElementsByClassName('selected-command-option-button')
 													]?.at(-1);
 
-													commandOptionButton?.click();
+													clickElement(commandOptionButton);
 												} else if (e.key === 'Tab') {
 													const words = findWordIndices(prompt);
 
@@ -1129,19 +1134,20 @@
 														const word = words.at(0);
 														const fullPrompt = prompt;
 
-														prompt = prompt.substring(0, word?.endIndex + 1);
+														if (!word) return;
+														prompt = prompt.substring(0, word.endIndex + 1);
 														await tick();
 
-														e.target.scrollTop = e.target.scrollHeight;
+														textarea.scrollTop = textarea.scrollHeight;
 														prompt = fullPrompt;
 														await tick();
 
 														e.preventDefault();
-														e.target.setSelectionRange(word?.startIndex, word.endIndex + 1);
+														textarea.setSelectionRange(word.startIndex, word.endIndex + 1);
 													}
 
-													e.target.style.height = '';
-													e.target.style.height = Math.min(e.target.scrollHeight, 320) + 'px';
+													textarea.style.height = '';
+													textarea.style.height = Math.min(textarea.scrollHeight, 320) + 'px';
 												}
 
 												if (e.key === 'Escape') {
@@ -1154,12 +1160,14 @@
 											}}
 											rows="1"
 											on:input={async (e) => {
-												e.target.style.height = '';
-												e.target.style.height = Math.min(e.target.scrollHeight, 320) + 'px';
+												const textarea = getTextArea(e);
+												textarea.style.height = '';
+												textarea.style.height = Math.min(textarea.scrollHeight, 320) + 'px';
 											}}
 											on:focus={async (e) => {
-												e.target.style.height = '';
-												e.target.style.height = Math.min(e.target.scrollHeight, 320) + 'px';
+												const textarea = getTextArea(e);
+												textarea.style.height = '';
+												textarea.style.height = Math.min(textarea.scrollHeight, 320) + 'px';
 											}}
 											on:paste={async (e) => {
 												const clipboardData = e.clipboardData || window.clipboardData;
@@ -1175,7 +1183,7 @@
 																	...files,
 																	{
 																		type: 'image',
-																		url: `${e.target.result}`
+																		url: `${e.target?.result ?? ''}`
 																	}
 																];
 															};

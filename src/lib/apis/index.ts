@@ -485,6 +485,7 @@ export const getModelConfig = async (token: string): Promise<GlobalModelConfig> 
 export interface ModelConfig {
 	id: string;
 	name: string;
+	name_fr?: string;
 	meta: ModelMeta;
 	base_model_id?: string;
 	params: ModelParams;
@@ -503,6 +504,9 @@ export interface ModelMeta {
 	filterIds?: string[];
 	actionIds?: string[];
 	knowledge?: unknown[];
+	hidden?: boolean;
+	tags?: string[];
+	tags_fr?: string[];
 }
 
 export interface ModelParams {

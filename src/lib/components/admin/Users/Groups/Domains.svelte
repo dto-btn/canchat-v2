@@ -7,6 +7,7 @@
 	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
+	const getChecked = (event: Event) => (event.currentTarget as HTMLInputElement).checked;
 
 	export let allowedDomains: any[] = [];
 
@@ -26,7 +27,7 @@
 			dbDomains = (await getDomains(getRequestToken())) || [];
 		} catch (error: any) {
 			console.error('Failed to load domains:', error);
-			toast.error(i18n.t('Failed to load available domains'));
+			toast.error($i18n.t('Failed to load available domains'));
 		}
 		loading = false;
 	};
@@ -172,7 +173,7 @@
 						type="checkbox"
 						class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
 						checked={isSelected}
-						on:change={(e) => handleDomainToggle(domainObj.domain, e.target.checked)}
+						on:change={(e) => handleDomainToggle(domainObj.domain, getChecked(e))}
 					/>
 					<div class="flex-1">
 						<div class="text-sm font-medium text-gray-900 dark:text-gray-100">

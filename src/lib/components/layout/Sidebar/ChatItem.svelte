@@ -95,7 +95,7 @@
 	};
 
 	const cloneChatHandler = async (id: any) => {
-		const res = await cloneChatById(
+		const res: any = await cloneChatById(
 			getRequestToken(),
 			id,
 			$i18n.t('Clone of {{TITLE}}', {
@@ -152,6 +152,7 @@
 	const focusEdit = async (node: HTMLInputElement) => {
 		node.focus();
 	};
+	const getElementTarget = (event: Event) => event.target as HTMLElement;
 
 	let itemElement: any;
 
@@ -299,10 +300,10 @@
 				on:click={(e) => {
 					// Check if the click was on the checkbox area, bulk actions, or chat menu
 					const target = e.target;
-					const clickedCheckbox = target && target.closest && target.closest('.checkbox-area');
-					const clickedBulkAction = target && target.closest && target.closest('button[title]');
-					const clickedDropdown =
-						target && target.closest && target.closest('[data-dropdown-trigger]');
+					const elementTarget = getElementTarget(e);
+					const clickedCheckbox = elementTarget.closest('.checkbox-area');
+					const clickedBulkAction = elementTarget.closest('button[title]');
+					const clickedDropdown = elementTarget.closest('[data-dropdown-trigger]');
 
 					if (clickedDropdown) {
 						// Dropdown/menu clicked - do nothing, let it handle its own logic

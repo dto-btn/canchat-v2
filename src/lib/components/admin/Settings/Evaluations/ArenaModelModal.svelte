@@ -3,6 +3,7 @@
 
 	import { createEventDispatcher, onMount } from 'svelte';
 	const i18n = getI18n();
+	const getFileInput = (event: Event) => event.currentTarget as HTMLInputElement;
 	const dispatch = createEventDispatcher();
 
 	import Modal from '$lib/components/common/Modal.svelte';
@@ -162,7 +163,8 @@
 								hidden
 								accept="image/*"
 								on:change={(e) => {
-									const files = e.target.files ?? [];
+									const input = getFileInput(e);
+									const files = input.files ?? [];
 									let reader = new FileReader();
 									reader.onload = (event) => {
 										let originalImageUrl = `${event.target.result}`;
@@ -204,7 +206,7 @@
 											// Display the compressed image
 											profileImageUrl = compressedSrc;
 
-											e.target.files = null;
+											input.value = '';
 										};
 									};
 

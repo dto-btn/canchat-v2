@@ -82,7 +82,7 @@
 	};
 
 	const startVideoStream = async () => {
-		const video = document.getElementById('camera-feed');
+		const video = document.getElementById('camera-feed') as HTMLVideoElement | null;
 		if (video) {
 			if (selectedVideoInputDeviceId === 'screen') {
 				cameraStream = await navigator.mediaDevices.getDisplayMedia({
@@ -117,14 +117,17 @@
 	};
 
 	const takeScreenshot = () => {
-		const video = document.getElementById('camera-feed');
-		const canvas = document.getElementById('camera-canvas');
+		const video = document.getElementById('camera-feed') as HTMLVideoElement | null;
+		const canvas = document.getElementById('camera-canvas') as HTMLCanvasElement | null;
 
-		if (!canvas) {
+		if (!video || !canvas) {
 			return;
 		}
 
 		const context = canvas.getContext('2d');
+		if (!context) {
+			return;
+		}
 
 		// Make the canvas match the video dimensions
 		canvas.width = video.videoWidth;
@@ -421,7 +424,7 @@
 			currentUtterance = null;
 		}
 
-		const audioElement = document.getElementById('audioElement');
+		const audioElement = document.getElementById('audioElement') as HTMLAudioElement | null;
 		if (audioElement) {
 			audioElement.muted = true;
 			audioElement.pause();
