@@ -4,6 +4,7 @@
 	import { onMount } from 'svelte';
 
 	const i18n = getI18n();
+	const getSelectValue = (event: Event) => (event.currentTarget as HTMLSelectElement).value;
 
 	import { getGroups } from '$lib/apis/groups';
 	import UserCircleSolid from '$lib/components/icons/UserCircleSolid.svelte';
@@ -105,7 +106,7 @@
 						value={accessControl !== null ? 'private' : 'public'}
 						on:change={(e) => {
 							accessControl =
-								e.target.value === 'public'
+								getSelectValue(e) === 'public'
 									? null
 									: { read: { group_ids: [] }, write: { group_ids: [] } };
 						}}

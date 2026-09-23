@@ -26,6 +26,12 @@ const getChoiceContent = (response: CompletionResponse | null | undefined) => {
 	return response?.choices?.[0]?.message?.content ?? '';
 };
 
+type TaskMessage = {
+	role: string;
+	content: string;
+	[key: string]: unknown;
+};
+
 export const getModels = async (token: string = '', base: boolean = false): Promise<Model[]> => {
 	const res = (await webUiApi<{ data?: unknown[] }>(`/api/models${base ? '/base' : ''}`, {
 		method: 'GET',
@@ -108,7 +114,7 @@ export const generateTitle = async (
 export const generateTags = async (
 	token: string = '',
 	model: string,
-	messages: string,
+	messages: TaskMessage[],
 	chat_id?: string
 ) => {
 	const res = await webUiApi<CompletionResponse>('/api/v1/tasks/tags/completions', {
@@ -258,7 +264,7 @@ export const generateMoACompletion = async (
 	model: string,
 	prompt: string,
 	responses: string[]
-) => {
+): Promise<[Response, AbortController]> => {
 	const controller = new AbortController();
 
 	const res = await apiRequest(`${WEBUI_BASE_URL}/api/v1/tasks/moa/completions`, {
@@ -276,7 +282,7 @@ export const generateMoACompletion = async (
 		})
 	});
 
-	return [res, controller];
+	return [res as Response, controller];
 };
 
 export const getPipelinesList = async (token: string = '') => {
@@ -479,6 +485,7 @@ export const getModelConfig = async (token: string): Promise<GlobalModelConfig> 
 export interface ModelConfig {
 	id: string;
 	name: string;
+	name_fr?: string;
 	meta: ModelMeta;
 	base_model_id?: string;
 	params: ModelParams;
@@ -486,11 +493,28 @@ export interface ModelConfig {
 
 export interface ModelMeta {
 	description?: string;
-	capabilities?: object;
+	description_fr?: string;
+	capabilities?: {
+		vision?: boolean;
+		usage?: boolean;
+		[key: string]: unknown;
+	};
 	profile_image_url?: string;
+	toolIds?: string[];
+	filterIds?: string[];
+	actionIds?: string[];
+	knowledge?: unknown[];
+	hidden?: boolean;
+	tags?: string[];
+	tags_fr?: string[];
 }
 
-export interface ModelParams {}
+export interface ModelParams {
+	stream_response?: boolean;
+	stop?: string[];
+	system?: string;
+	[key: string]: unknown;
+}
 
 export type GlobalModelConfig = ModelConfig[];
 

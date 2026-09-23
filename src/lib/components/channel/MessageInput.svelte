@@ -7,6 +7,8 @@
 	import { tick, onMount, onDestroy } from 'svelte';
 
 	const i18n = getI18n();
+	const getKeyboardEvent = (event: CustomEvent<{ event: KeyboardEvent }>) => event.detail.event;
+	const getClipboardEvent = (event: CustomEvent<{ event: ClipboardEvent }>) => event.detail.event;
 
 	import { config, mobile, settings } from '$lib/stores';
 	import { blobToFile, compressImage } from '$lib/utils';
@@ -477,24 +479,13 @@
 									id={`chat-input-${id}`}
 									messageInput={true}
 									shiftEnter={!$mobile ||
-										!(
-											'ontouchstart' in window ||
-											navigator.maxTouchPoints > 0 ||
-											navigator.msMaxTouchPoints > 0
-										)}
+										!('ontouchstart' in window || navigator.maxTouchPoints > 0)}
 									{placeholder}
 									largeTextAsFile={$settings?.largeTextAsFile ?? false}
-									on:keydown={async (e) => {
-										e = e.detail.event;
+									on:keydown={async (event) => {
+										const e = getKeyboardEvent(event);
 										const isCtrlPressed = e.ctrlKey || e.metaKey; // metaKey is for Cmd key on Mac
-										if (
-											!$mobile ||
-											!(
-												'ontouchstart' in window ||
-												navigator.maxTouchPoints > 0 ||
-												navigator.msMaxTouchPoints > 0
-											)
-										) {
+										if (!$mobile || !('ontouchstart' in window || navigator.maxTouchPoints > 0)) {
 											// Prevent Enter key from creating a new line
 											// Uses keyCode '13' for Enter key for chinese/japanese keyboards
 											if (e.keyCode === 13 && !e.shiftKey) {
@@ -507,8 +498,8 @@
 											}
 										}
 									}}
-									on:paste={async (e) => {
-										e = e.detail.event;
+									on:paste={async (event) => {
+										const e = getClipboardEvent(event);
 										console.log(e);
 									}}
 								/>

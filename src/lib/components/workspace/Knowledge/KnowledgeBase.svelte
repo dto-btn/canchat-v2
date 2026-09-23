@@ -51,6 +51,7 @@
 		id: string;
 		name: string;
 		description: string;
+		access_control?: Record<string, any>;
 		data: {
 			file_ids: string[];
 		};
@@ -66,6 +67,7 @@
 	let showAccessControlModal = false;
 
 	let inputFiles: any = null;
+	const getFileInput = (id: string) => document.getElementById(id) as HTMLInputElement | null;
 
 	let filteredItems: any[] = [];
 	$: if (knowledge && knowledge.files) {
@@ -262,7 +264,7 @@
 			const input = document.createElement('input');
 			input.type = 'file';
 			input.webkitdirectory = true;
-			input.directory = true;
+			(input as HTMLInputElement & { directory?: boolean }).directory = true;
 			input.multiple = true;
 			input.style.display = 'none';
 
@@ -590,7 +592,7 @@
 			}
 
 			inputFiles = null;
-			const fileInputElement = document.getElementById('files-input');
+			const fileInputElement = getFileInput('files-input');
 
 			if (fileInputElement) {
 				fileInputElement.value = '';

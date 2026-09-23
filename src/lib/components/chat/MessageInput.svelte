@@ -44,6 +44,37 @@
 
 	const i18n = getI18n();
 
+	type ExtendedConfig = typeof $config & {
+		file?: { max_size?: number };
+		audio?: { stt?: { engine?: string } };
+	};
+	type ExtendedSettings = typeof $settings & {
+		imageCompression?: boolean;
+		imageCompressionSize?: { width?: number; height?: number };
+		widescreenMode?: boolean;
+	};
+	type UploadPermissions = { chat?: { file_upload?: boolean } };
+	type Tool = { id: string; name?: string };
+	type GoogleDriveFile = { blob: Blob; name: string };
+
+	$: extendedConfig = $config as ExtendedConfig;
+	$: extendedSettings = $settings as ExtendedSettings;
+	$: uploadPermissions = $_user?.permissions as UploadPermissions | undefined;
+	const getGoogleDriveFile = (fileData: unknown): GoogleDriveFile | null => {
+		if (
+			fileData &&
+			typeof fileData === 'object' &&
+			'blob' in fileData &&
+			(fileData as { blob: unknown }).blob instanceof Blob &&
+			'name' in fileData &&
+			typeof (fileData as { name: unknown }).name === 'string' &&
+			(fileData as { name: string }).name.length > 0
+		) {
+			return fileData as GoogleDriveFile;
+		}
+		return null;
+	};
+
 	// Static references for i18next-parser - DO NOT REMOVE
 	// These ensure the parser finds the dynamic translation keys
 	const _ensureTranslationKeys = () => {
@@ -109,14 +140,27 @@
 
 	let visionCapableModels: any[] = [];
 	$: visionCapableModels = [...(atSelectedModel ? [atSelectedModel] : selectedModels)].filter(
-		(model) => $models.find((m) => m.id === model)?.info?.meta?.capabilities?.vision ?? true
+		(model) =>
+			(
+				$models.find((m) => m.id === model)?.info?.meta?.capabilities as
+					| { vision?: boolean }
+					| undefined
+			)?.vision ?? true
 	);
 
 	const getSelectedTools = () => {
-		return selectedToolIds.map((id: any) =>
-			$tools ? $tools.find((t: any) => t.id === id) : { id, name: id }
+		return selectedToolIds.map(
+			(id: any) => ($tools as Tool[] | null)?.find((t) => t.id === id) ?? { id, name: id }
 		);
 	};
+
+	const clickElement = (element: Element | undefined) => {
+		(element as HTMLElement | undefined)?.click();
+	};
+
+	const getKeyboardEvent = (event: CustomEvent<{ event: KeyboardEvent }>) => event.detail.event;
+	const getClipboardEvent = (event: CustomEvent<{ event: ClipboardEvent }>) => event.detail.event;
+	const getTextArea = (event: Event) => event.currentTarget as HTMLTextAreaElement;
 
 	const handleWikiGroundingTooltipCreate = (instance: any) => {
 		if (instance.popper) {
@@ -136,7 +180,7 @@
 			getRequestToken(),
 			selectedModelIds.at(0),
 			text,
-			history?.currentId ? createMessagesList(history, history.currentId) : null
+			history?.currentId ? createMessagesList(history, history.currentId) : undefined
 		).catch((error) => {
 			return null;
 		});
@@ -147,6 +191,7 @@
 
 	const scrollToBottom = () => {
 		const element = document.getElementById('messages-container');
+		if (!element) return;
 		element.scrollTo({
 			top: element.scrollHeight,
 			behavior: 'smooth'
@@ -157,7 +202,7 @@
 		try {
 			// Request screen media
 			const mediaStream = await navigator.mediaDevices.getDisplayMedia({
-				video: { cursor: 'never' },
+				video: true,
 				audio: false
 			});
 			// Once the user selects a screen, temporarily create a video element
@@ -171,6 +216,12 @@
 			canvas.height = video.videoHeight;
 			// Grab a single frame from the video stream using the canvas
 			const context = canvas.getContext('2d');
+			if (!context) {
+				// avoid leaking the capture stream/indicator if canvas context is unavailable
+				mediaStream.getTracks().forEach((track) => track.stop());
+				video.srcObject = null;
+				return;
+			}
 			context.drawImage(video, 0, 0, canvas.width, canvas.height);
 			// Stop all video tracks (stop screen sharing) after capturing the image
 			mediaStream.getTracks().forEach((track) => track.stop());
@@ -192,7 +243,7 @@
 	};
 
 	const uploadFileHandler = async (file: any, fullContext: boolean = false) => {
-		if ($_user?.role !== 'admin' && !($_user?.permissions?.chat?.file_upload ?? true)) {
+		if ($_user?.role !== 'admin' && !(uploadPermissions?.chat?.file_upload ?? true)) {
 			toast.error($i18n.t('You do not have permission to upload files.'));
 			return null;
 		}
@@ -266,16 +317,16 @@
 	const inputFilesHandler = async (inputFiles: any) => {
 		inputFiles.forEach((file: any) => {
 			if (
-				($config?.file?.max_size ?? null) !== null &&
-				file.size > ($config?.file?.max_size ?? 0) * 1024 * 1024
+				(extendedConfig?.file?.max_size ?? null) !== null &&
+				file.size > (extendedConfig?.file?.max_size ?? 0) * 1024 * 1024
 			) {
 				console.log('File exceeds max size limit:', {
 					fileSize: file.size,
-					maxSize: ($config?.file?.max_size ?? 0) * 1024 * 1024
+					maxSize: (extendedConfig?.file?.max_size ?? 0) * 1024 * 1024
 				});
 				toast.error(
 					$i18n.t(`File size should not exceed {{maxSize}} MB.`, {
-						maxSize: $config?.file?.max_size
+						maxSize: extendedConfig?.file?.max_size
 					})
 				);
 				return;
@@ -288,11 +339,12 @@
 				}
 				let reader = new FileReader();
 				reader.onload = async (event) => {
+					if (typeof event.target?.result !== 'string') return;
 					let imageUrl = event.target.result;
 
-					if ($settings?.imageCompression ?? false) {
-						const width = $settings?.imageCompressionSize?.width ?? null;
-						const height = $settings?.imageCompressionSize?.height ?? null;
+					if (extendedSettings?.imageCompression ?? false) {
+						const width = extendedSettings?.imageCompressionSize?.width ?? null;
+						const height = extendedSettings?.imageCompressionSize?.height ?? null;
 
 						if (width || height) {
 							imageUrl = await compressImage(imageUrl, width, height);
@@ -385,7 +437,7 @@
 	<div class="w-full font-primary">
 		<div class=" mx-auto inset-x-0 bg-transparent flex justify-center">
 			<div
-				class="flex flex-col px-3 {($settings?.widescreenMode ?? null)
+				class="flex flex-col px-3 {(extendedSettings?.widescreenMode ?? null)
 					? 'max-w-full'
 					: 'max-w-6xl'} w-full"
 			>
@@ -577,7 +629,7 @@
 
 		<div class="{transparentBackground ? 'bg-transparent' : 'bg-white dark:bg-gray-900'} ">
 			<div
-				class="{($settings?.widescreenMode ?? null)
+				class="{(extendedSettings?.widescreenMode ?? null)
 					? 'max-w-full'
 					: 'max-w-6xl'} px-2.5 mx-auto inset-x-0"
 			>
@@ -742,15 +794,20 @@
 												try {
 													const fileData = await createPicker();
 													if (fileData) {
-														const file = new File([fileData.blob], fileData.name, {
-															type: fileData.blob.type
+														const driveFile = getGoogleDriveFile(fileData);
+														if (!driveFile) {
+															toast.error($i18n.t('Invalid file received from Google Drive'));
+															return;
+														}
+														const file = new File([driveFile.blob], driveFile.name, {
+															type: driveFile.blob.type
 														});
 														await uploadFileHandler(file);
 													}
 												} catch (error) {
 													toast.error(
 														$i18n.t('Error accessing Google Drive: {{error}}', {
-															error: error.message
+															error: error instanceof Error ? error.message : String(error)
 														})
 													);
 												}
@@ -788,17 +845,13 @@
 												title={$i18n.t('Type your message here')}
 												messageInput={true}
 												shiftEnter={!$mobile ||
-													!(
-														'ontouchstart' in window ||
-														navigator.maxTouchPoints > 0 ||
-														navigator.msMaxTouchPoints > 0
-													)}
+													!('ontouchstart' in window || navigator.maxTouchPoints > 0)}
 												placeholder={placeholderText}
 												largeTextAsFile={$settings?.largeTextAsFile ?? false}
 												autocomplete={true}
 												generateAutoCompletion={generateMessageAutoCompletion}
-												on:keydown={async (e) => {
-													e = e.detail.event;
+												on:keydown={async (event) => {
+													const e = getKeyboardEvent(event);
 
 													const isCtrlPressed = e.ctrlKey || e.metaKey; // metaKey is for Cmd key on Mac
 													const commandsContainerElement =
@@ -821,7 +874,7 @@
 															...document.getElementsByClassName('regenerate-response-button')
 														]?.at(-1);
 
-														regenerateButton?.click();
+														clickElement(regenerateButton);
 													}
 
 													if (prompt === '' && e.key == 'ArrowUp') {
@@ -837,7 +890,7 @@
 																...document.getElementsByClassName('edit-user-message-button')
 															]?.at(-1);
 
-															editButton?.click();
+															clickElement(editButton);
 														}
 													}
 
@@ -849,7 +902,7 @@
 															const commandOptionButton = [
 																...document.getElementsByClassName('selected-command-option-button')
 															]?.at(-1);
-															commandOptionButton.scrollIntoView({ block: 'center' });
+															commandOptionButton?.scrollIntoView({ block: 'center' });
 														}
 
 														if (commandsContainerElement && e.key === 'ArrowDown') {
@@ -859,7 +912,7 @@
 															const commandOptionButton = [
 																...document.getElementsByClassName('selected-command-option-button')
 															]?.at(-1);
-															commandOptionButton.scrollIntoView({ block: 'center' });
+															commandOptionButton?.scrollIntoView({ block: 'center' });
 														}
 
 														if (commandsContainerElement && e.key === 'Tab') {
@@ -869,7 +922,7 @@
 																...document.getElementsByClassName('selected-command-option-button')
 															]?.at(-1);
 
-															commandOptionButton?.click();
+															clickElement(commandOptionButton);
 														}
 
 														if (commandsContainerElement && e.key === 'Enter') {
@@ -880,7 +933,7 @@
 															]?.at(-1);
 
 															if (commandOptionButton) {
-																commandOptionButton?.click();
+																clickElement(commandOptionButton);
 															} else {
 																document.getElementById('send-message-button')?.click();
 															}
@@ -891,7 +944,7 @@
 															!(
 																'ontouchstart' in window ||
 																navigator.maxTouchPoints > 0 ||
-																navigator.msMaxTouchPoints > 0
+																navigator.maxTouchPoints > 0
 															)
 														) {
 															// Prevent Enter key from creating a new line
@@ -915,8 +968,8 @@
 														imageGenerationEnabled = false;
 													}
 												}}
-												on:paste={async (e) => {
-													e = e.detail.event;
+												on:paste={async (event) => {
+													const e = getClipboardEvent(event);
 													const clipboardData = e.clipboardData || window.clipboardData;
 
 													if (clipboardData && clipboardData.items) {
@@ -971,7 +1024,7 @@
 													!(
 														'ontouchstart' in window ||
 														navigator.maxTouchPoints > 0 ||
-														navigator.msMaxTouchPoints > 0
+														navigator.maxTouchPoints > 0
 													)
 												) {
 													// Prevent Enter key from creating a new line
@@ -991,6 +1044,7 @@
 												}
 											}}
 											on:keydown={async (e) => {
+												const textarea = getTextArea(e);
 												const isCtrlPressed = e.ctrlKey || e.metaKey; // metaKey is for Cmd key on Mac
 												const commandsContainerElement =
 													document.getElementById('commands-container');
@@ -1011,7 +1065,7 @@
 														...document.getElementsByClassName('regenerate-response-button')
 													]?.at(-1);
 
-													regenerateButton?.click();
+													clickElement(regenerateButton);
 												}
 
 												if (prompt === '' && e.key == 'ArrowUp') {
@@ -1025,8 +1079,8 @@
 														...document.getElementsByClassName('edit-user-message-button')
 													]?.at(-1);
 
-													userMessageElement.scrollIntoView({ block: 'center' });
-													editButton?.click();
+													userMessageElement?.scrollIntoView({ block: 'center' });
+													clickElement(editButton);
 												}
 
 												if (commandsContainerElement && e.key === 'ArrowUp') {
@@ -1036,7 +1090,7 @@
 													const commandOptionButton = [
 														...document.getElementsByClassName('selected-command-option-button')
 													]?.at(-1);
-													commandOptionButton.scrollIntoView({ block: 'center' });
+													commandOptionButton?.scrollIntoView({ block: 'center' });
 												}
 
 												if (commandsContainerElement && e.key === 'ArrowDown') {
@@ -1046,7 +1100,7 @@
 													const commandOptionButton = [
 														...document.getElementsByClassName('selected-command-option-button')
 													]?.at(-1);
-													commandOptionButton.scrollIntoView({ block: 'center' });
+													commandOptionButton?.scrollIntoView({ block: 'center' });
 												}
 
 												if (commandsContainerElement && e.key === 'Enter') {
@@ -1059,7 +1113,7 @@
 													if (e.shiftKey) {
 														prompt = `${prompt}\n`;
 													} else if (commandOptionButton) {
-														commandOptionButton?.click();
+														clickElement(commandOptionButton);
 													} else {
 														document.getElementById('send-message-button')?.click();
 													}
@@ -1072,7 +1126,7 @@
 														...document.getElementsByClassName('selected-command-option-button')
 													]?.at(-1);
 
-													commandOptionButton?.click();
+													clickElement(commandOptionButton);
 												} else if (e.key === 'Tab') {
 													const words = findWordIndices(prompt);
 
@@ -1080,19 +1134,20 @@
 														const word = words.at(0);
 														const fullPrompt = prompt;
 
-														prompt = prompt.substring(0, word?.endIndex + 1);
+														if (!word) return;
+														prompt = prompt.substring(0, word.endIndex + 1);
 														await tick();
 
-														e.target.scrollTop = e.target.scrollHeight;
+														textarea.scrollTop = textarea.scrollHeight;
 														prompt = fullPrompt;
 														await tick();
 
 														e.preventDefault();
-														e.target.setSelectionRange(word?.startIndex, word.endIndex + 1);
+														textarea.setSelectionRange(word.startIndex, word.endIndex + 1);
 													}
 
-													e.target.style.height = '';
-													e.target.style.height = Math.min(e.target.scrollHeight, 320) + 'px';
+													textarea.style.height = '';
+													textarea.style.height = Math.min(textarea.scrollHeight, 320) + 'px';
 												}
 
 												if (e.key === 'Escape') {
@@ -1105,12 +1160,14 @@
 											}}
 											rows="1"
 											on:input={async (e) => {
-												e.target.style.height = '';
-												e.target.style.height = Math.min(e.target.scrollHeight, 320) + 'px';
+												const textarea = getTextArea(e);
+												textarea.style.height = '';
+												textarea.style.height = Math.min(textarea.scrollHeight, 320) + 'px';
 											}}
 											on:focus={async (e) => {
-												e.target.style.height = '';
-												e.target.style.height = Math.min(e.target.scrollHeight, 320) + 'px';
+												const textarea = getTextArea(e);
+												textarea.style.height = '';
+												textarea.style.height = Math.min(textarea.scrollHeight, 320) + 'px';
 											}}
 											on:paste={async (e) => {
 												const clipboardData = e.clipboardData || window.clipboardData;
@@ -1126,7 +1183,7 @@
 																	...files,
 																	{
 																		type: 'image',
-																		url: `${e.target.result}`
+																		url: `${e.target?.result ?? ''}`
 																	}
 																];
 															};

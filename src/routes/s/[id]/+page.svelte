@@ -105,7 +105,7 @@
 	const cloneSharedChat = async () => {
 		if (!chat) return;
 
-		const res = await cloneSharedChatById(getRequestToken(), chat.id).catch((error) => {
+		const res: any = await cloneSharedChatById(getRequestToken(), chat.id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});

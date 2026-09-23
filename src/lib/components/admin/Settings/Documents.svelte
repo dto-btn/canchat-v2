@@ -30,6 +30,7 @@
 	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
+	const getSelectValue = (event: Event) => (event.currentTarget as HTMLSelectElement).value;
 
 	let scanDirLoading = false;
 	let updateEmbeddingModelLoading = false;
@@ -298,11 +299,12 @@
 						bind:value={embeddingEngine}
 						placeholder="Select an embedding model engine"
 						on:change={(e) => {
-							if (e.target.value === 'ollama') {
+							const value = getSelectValue(e);
+							if (value === 'ollama') {
 								embeddingModel = '';
-							} else if (e.target.value === 'openai') {
+							} else if (value === 'openai') {
 								embeddingModel = 'text-embedding-3-small';
-							} else if (e.target.value === '') {
+							} else if (value === '') {
 								embeddingModel = 'sentence-transformers/all-MiniLM-L6-v2';
 							}
 						}}
@@ -578,7 +580,7 @@
 						class="dark:bg-gray-900 w-fit pr-8 rounded px-2 text-xs bg-transparent outline-none text-right"
 						bind:value={contentExtractionEngine}
 						on:change={(e) => {
-							showTikaServerUrl = e.target.value === 'tika';
+							showTikaServerUrl = getSelectValue(e) === 'tika';
 						}}
 					>
 						<option value="">{$i18n.t('Default')} </option>

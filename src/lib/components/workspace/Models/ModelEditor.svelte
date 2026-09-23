@@ -104,6 +104,11 @@
 		}
 	};
 
+	// TS casts aren't allowed inline in template expressions, so handle the event here
+	const onBaseModelChange = (e: Event) => {
+		addUsage((e.target as HTMLSelectElement).value);
+	};
+
 	// Add validation logic
 	function validateDescription() {
 		if (!info.meta.description?.trim() || !info.meta.description_fr?.trim()) {
@@ -487,9 +492,7 @@
 									class="text-sm w-full bg-transparent outline-none"
 									placeholder="Select a base model (e.g. llama3, gpt-4o)"
 									bind:value={info.base_model_id}
-									on:change={(e) => {
-										addUsage(e.target.value);
-									}}
+									on:change={onBaseModelChange}
 									required
 								>
 									<option value={null} class=" text-gray-900"

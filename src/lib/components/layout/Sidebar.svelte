@@ -207,6 +207,8 @@
 		chatListLoading = false;
 	};
 
+	const getSidebarChat = async (id: string) => getChatById(getRequestToken(), id) as Promise<any>;
+
 	let searchDebounceTimeout: any;
 
 	const searchDebounceHandler = async () => {
@@ -606,7 +608,7 @@
 					class=" cursor-pointer p-[7px] flex rounded-xl hover:bg-gray-100 dark:hover:bg-gray-900 transition"
 					on:click={async () => {
 						showSidebar.set(!$showSidebar);
-						toast.announce($i18n.t('Sidebar collapsed.'));
+						toast.info($i18n.t('Sidebar collapsed.'));
 						await changeFocus('sidebar-toggle-button');
 					}}
 					id="hide-sidebar-button"
@@ -812,7 +814,7 @@
 					const { type, id, item } = e.detail;
 
 					if (type === 'chat') {
-						let chat = await getChatById(getRequestToken(), id).catch((error) => {
+						let chat = await getSidebarChat(id).catch((error) => {
 							return null;
 						});
 						if (!chat && item) {
@@ -872,7 +874,7 @@
 								const { type, id, item } = e.detail;
 
 								if (type === 'chat') {
-									let chat = await getChatById(getRequestToken(), id).catch((error) => {
+									let chat = await getSidebarChat(id).catch((error) => {
 										return null;
 									});
 									if (!chat && item) {

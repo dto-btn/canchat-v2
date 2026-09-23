@@ -50,9 +50,9 @@ export const chatId = writable('');
 export const chatTitle = writable('');
 
 export const channels: Writable<Channel[]> = writable([]);
-export const chats = writable([]);
-export const pinnedChats = writable([]);
-export const tags = writable([]);
+export const chats: Writable<any[]> = writable([]);
+export const pinnedChats: Writable<any[]> = writable([]);
+export const tags: Writable<any[]> = writable([]);
 
 export const models: Writable<Model[]> = writable([]);
 
@@ -96,6 +96,10 @@ type BaseModel = {
 	name_fr?: string;
 	info?: ModelConfig;
 	owned_by: 'ollama' | 'openai' | 'arena';
+	preset?: boolean;
+	arena?: boolean;
+	meta?: ModelConfig['meta'];
+	params?: ModelConfig['params'];
 };
 
 export interface OpenAIModel extends BaseModel {
@@ -153,10 +157,21 @@ type Settings = {
 	richTextInput?: boolean;
 	largeTextAsFile?: boolean;
 	responseAutoCopy?: boolean;
+	notificationSound?: boolean;
+	chatBubble?: boolean;
+	widescreenMode?: boolean;
+	imageCompression?: boolean;
+	imageCompressionSize?: { width?: number | string; height?: number | string };
 	notificationEnabled?: boolean;
 	wikipediaGrounding?: boolean;
 	title?: TitleSettings;
 	splitLargeDeltas?: boolean;
+	splitLargeChunks?: boolean;
+	scrollOnBranchChange?: boolean;
+	hapticFeedback?: boolean;
+	userLocation?: boolean;
+	landingPageMode?: string;
+	params?: ModelConfig['params'];
 
 	system?: string;
 	requestFormat?: string;
@@ -181,6 +196,16 @@ type AudioSettings = {
 	speaker?: string;
 	model?: string;
 	nonLocalVoices?: boolean;
+	tts?: {
+		voice?: string;
+		playbackRate?: number;
+		defaultVoice?: string;
+		[key: string]: unknown;
+	};
+	stt?: {
+		engine?: string;
+		[key: string]: unknown;
+	};
 };
 
 type TitleSettings = {
@@ -199,10 +224,20 @@ type Prompt = {
 };
 
 type Document = {
+	id?: string;
 	collection_name: string;
 	filename: string;
 	name: string;
 	title: string;
+	description?: string;
+	files?: any[];
+	meta?: {
+		document?: boolean;
+		legacy?: boolean;
+		name?: string;
+		tags?: any[];
+		[key: string]: unknown;
+	};
 };
 
 export type Config = {
@@ -215,6 +250,8 @@ export type Config = {
 	default_prompt_suggestions: PromptSuggestion[];
 	docs_url: string;
 	docs_url_fr: string;
+	training_url?: string;
+	training_url_fr?: string;
 	survey_url: string;
 	survey_url_fr: string;
 	features: {
@@ -231,11 +268,28 @@ export type Config = {
 		enable_admin_export: boolean;
 		enable_admin_chat_access: boolean;
 		enable_community_sharing: boolean;
+		enable_channels?: boolean;
+		enable_wiki_grounding?: boolean;
+		pbmm_env?: boolean;
 	};
 	oauth: {
 		providers: {
 			[key: string]: string;
 		};
+	};
+	audio?: {
+		tts?: {
+			split_on?: string;
+			[key: string]: unknown;
+		};
+		stt?: {
+			engine?: string;
+			[key: string]: unknown;
+		};
+	};
+	file?: {
+		max_count?: number;
+		max_size?: number;
 	};
 };
 
@@ -254,6 +308,6 @@ export type SessionUser = {
 	token?: string;
 	token_type?: string;
 	expires_at?: number | null;
-	permissions?: Record<string, unknown>;
+	permissions?: Record<string, any>;
 	domain?: string;
 };

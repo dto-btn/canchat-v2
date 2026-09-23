@@ -5,59 +5,78 @@
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import Heart from '$lib/components/icons/Heart.svelte';
 
+	type NodeData = {
+		message: {
+			role: string;
+			content: string;
+			error?: { content?: string };
+			favorite?: boolean;
+			model?: string;
+		};
+		user?: { profile_image_url?: string; name?: string };
+		model?: { name?: string; info?: { meta?: { profile_image_url?: string } } };
+	};
+
 	type $$Props = NodeProps;
-	export let data: $$Props['data'];
+	export let data: NodeData | Record<string, unknown>;
+
+	$: nodeData = data as NodeData;
+	const toggleFavorite = () => {
+		nodeData.message.favorite = !nodeData.message.favorite;
+	};
 </script>
 
 <div
 	class="px-4 py-3 shadow-md rounded-xl dark:bg-black bg-white border dark:border-gray-900 w-60 h-20 group"
 >
 	<Tooltip
-		content={data?.message?.error ? data.message.error.content : data.message.content}
+		content={nodeData?.message?.error ? nodeData.message.error.content : nodeData.message.content}
 		class="w-full"
 		allowHTML={false}
 	>
-		{#if data.message.role === 'user'}
+		{#if nodeData.message.role === 'user'}
 			<div class="flex w-full">
 				<ProfileImage
-					src={data.user?.profile_image_url ?? '/user.png'}
+					src={nodeData.user?.profile_image_url ?? '/user.png'}
 					className={'size-5 -translate-y-[1px]'}
 				/>
 				<div class="ml-2">
 					<div class=" flex justify-between items-center">
 						<div class="text-xs text-black dark:text-white font-medium line-clamp-1">
-							{data?.user?.name ?? 'User'}
+							{nodeData?.user?.name ?? 'User'}
 						</div>
 					</div>
 
-					{#if data?.message?.error}
-						<div class="text-red-500 line-clamp-2 text-xs mt-0.5">{data.message.error.content}</div>
+					{#if nodeData?.message?.error}
+						<div class="text-red-500 line-clamp-2 text-xs mt-0.5">
+							{nodeData.message.error.content}
+						</div>
 					{:else}
-						<div class="text-gray-500 line-clamp-2 text-xs mt-0.5">{data.message.content}</div>
+						<div class="text-gray-500 line-clamp-2 text-xs mt-0.5">{nodeData.message.content}</div>
 					{/if}
 				</div>
 			</div>
 		{:else}
 			<div class="flex w-full">
 				<ProfileImage
-					src={data?.model?.info?.meta?.profile_image_url ?? ''}
+					src={nodeData?.model?.info?.meta?.profile_image_url ?? ''}
 					className={'size-5 -translate-y-[1px]'}
 				/>
 
 				<div class="ml-2">
 					<div class=" flex justify-between items-center">
 						<div class="text-xs text-black dark:text-white font-medium line-clamp-1">
-							{data?.model?.name ?? data?.message?.model ?? 'Assistant'}
+							{nodeData?.model?.name ?? nodeData?.message?.model ?? 'Assistant'}
 						</div>
 
 						<button
-							class={data?.message?.favorite ? '' : 'invisible group-hover:visible'}
+							class={nodeData?.message?.favorite ? '' : 'invisible group-hover:visible'}
 							on:click={() => {
-								data.message.favorite = !(data?.message?.favorite ?? false);
+								toggleFavorite();
 							}}
 						>
 							<Heart
-								className="size-3 {data?.message?.favorite
+								className="size-3 {nodeData?.message?.favorite
 									? 'fill-red-500 stroke-red-500'
 									: 'hover:fill-red-500 hover:stroke-red-500'} "
 								strokeWidth="2.5"
@@ -65,12 +84,12 @@
 						</button>
 					</div>
 
-					{#if data?.message?.error}
+					{#if nodeData?.message?.error}
 						<div class="text-red-500 line-clamp-2 text-xs mt-0.5">
-							{data.message.error.content}
+							{nodeData.message.error.content}
 						</div>
 					{:else}
-						<div class="text-gray-500 line-clamp-2 text-xs mt-0.5">{data.message.content}</div>
+						<div class="text-gray-500 line-clamp-2 text-xs mt-0.5">{nodeData.message.content}</div>
 					{/if}
 				</div>
 			</div>
