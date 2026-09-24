@@ -53,17 +53,19 @@ ENV USE_CUDA_DOCKER=${USE_CUDA} \
     USE_RERANKING_MODEL_DOCKER=${USE_RERANKING_MODEL}
 
 ## Model cache directories ##
+# /models mirrors the runtime layout under /app/backend/data/cache so paths line up after COPY.
+# TXTAI_CACHE_DIR must equal HF_HOME: the backend looks up txtai-wikipedia in $TXTAI_CACHE_DIR/hub,
+# which is the HF hub cache where its e5-base encoder and opus-mt also live.
 ENV RAG_EMBEDDING_MODEL="$USE_EMBEDDING_MODEL_DOCKER" \
     RAG_RERANKING_MODEL="$USE_RERANKING_MODEL_DOCKER" \
     SENTENCE_TRANSFORMERS_HOME="/models/embedding" \
     WHISPER_MODEL="base" \
     WHISPER_MODEL_DIR="/models/whisper" \
+    HF_HOME="/models/huggingface" \
     TXTAI_WIKIPEDIA_MODEL="neuml/txtai-wikipedia" \
-    TXTAI_CACHE_DIR="/models/txtai" \
-    TRANSFORMERS_CACHE="/models/transformers" \
+    TXTAI_CACHE_DIR="/models/huggingface" \
     TIKTOKEN_ENCODING_NAME="cl100k_base" \
-    TIKTOKEN_CACHE_DIR="/models/tiktoken" \
-    HF_HOME="/models/embedding"
+    TIKTOKEN_CACHE_DIR="/models/tiktoken"
 
 # Install system dependencies for model downloads
 RUN apt-get update && \
@@ -77,7 +79,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/*
 
 # Create model directories
-RUN mkdir -m=g+rwX -p /models/audio /models/embedding /models/whisper /models/txtai /models/transformers /models/tiktoken
+RUN mkdir -m=g+rwX -p /models/audio /models/embedding /models/whisper /models/huggingface /models/tiktoken
 
 # Copy only requirements for model downloads
 COPY ./backend/requirements.txt /tmp/requirements.txt
@@ -96,7 +98,7 @@ RUN pip3 install --no-cache-dir uv && \
 RUN python -c "import os; from sentence_transformers import SentenceTransformer; SentenceTransformer(os.environ['RAG_EMBEDDING_MODEL'], device='cpu')" && \
     python -c "import os; from faster_whisper import WhisperModel; WhisperModel(os.environ['WHISPER_MODEL'], device='cpu', compute_type='int8', download_root=os.environ['WHISPER_MODEL_DIR'])" && \
     python -c "import os; import tiktoken; tiktoken.get_encoding(os.environ['TIKTOKEN_ENCODING_NAME'])" && \
-    HF_HOME="/models/txtai" python -c "import os; from txtai.embeddings import Embeddings; e = Embeddings(); e.load(provider='huggingface-hub', container='neuml/txtai-wikipedia')" && \
+    python -c "import os; from txtai.embeddings import Embeddings; e = Embeddings(); e.load(provider='huggingface-hub', container=os.environ['TXTAI_WIKIPEDIA_MODEL'])" && \
     python -c "from transformers import AutoTokenizer, AutoModel; AutoTokenizer.from_pretrained('Helsinki-NLP/opus-mt-fr-en'); AutoModel.from_pretrained('Helsinki-NLP/opus-mt-fr-en')" && \
     # Cleanup after model downloads
     pip3 cache purge && \
@@ -143,27 +145,23 @@ ENV OPENAI_API_KEY="" \
 #### Other models #########################################################
 ## whisper TTS model settings ##
 ENV WHISPER_MODEL="base" \
-    WHISPER_MODEL_DIR="/app/backend/data/cache/whisper/models"
+    WHISPER_MODEL_DIR="/app/backend/data/cache/whisper"
 
 ## RAG Embedding model settings ##
 ENV RAG_EMBEDDING_MODEL="$USE_EMBEDDING_MODEL_DOCKER" \
     RAG_RERANKING_MODEL="$USE_RERANKING_MODEL_DOCKER" \
-    SENTENCE_TRANSFORMERS_HOME="/app/backend/data/cache/embedding/models"
+    SENTENCE_TRANSFORMERS_HOME="/app/backend/data/cache/embedding"
 
-## txtai-wikipedia Wiki Grounding settings ##
+## Hugging Face hub cache ($HF_HOME/hub): txtai-wikipedia, e5-base, opus-mt-fr-en ##
+ENV HF_HOME="/app/backend/data/cache/huggingface"
+
+## txtai-wikipedia Wiki Grounding settings; TXTAI_CACHE_DIR must equal HF_HOME ##
 ENV TXTAI_WIKIPEDIA_MODEL="neuml/txtai-wikipedia" \
-    TXTAI_CACHE_DIR="/app/backend/data/cache/txtai/models" \
-    TRANSFORMERS_CACHE="/app/backend/data/cache/transformers"
+    TXTAI_CACHE_DIR="/app/backend/data/cache/huggingface"
 
 ## Tiktoken model settings ##
 ENV TIKTOKEN_ENCODING_NAME="cl100k_base" \
     TIKTOKEN_CACHE_DIR="/app/backend/data/cache/tiktoken"
-
-## Hugging Face download cache - point to txtai cache for Wikipedia grounding ##
-## Note: Multiple variables set for compatibility across HF library versions
-ENV HF_HOME="/app/backend/data/cache/txtai" \
-    HF_HUB_CACHE="/app/backend/data/cache/txtai" \
-    HUGGINGFACE_HUB_CACHE="/app/backend/data/cache/txtai"
 
 ## Torch Extensions ##
 # ENV TORCH_EXTENSIONS_DIR="/.cache/torch_extensions"

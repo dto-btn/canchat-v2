@@ -76,18 +76,12 @@ jobs:
 
       - name:  Start CANChat Environment
         run: |
-            mkdir -p "$GITHUB_WORKSPACE/.cache/huggingface" "$GITHUB_WORKSPACE/.cache/torch"
-
             docker run -d -p 8080:8080 \
             --add-host=host.docker.internal:host-gateway \
             --shm-size=2g \
             --name canchat \
             --rm \
-            -v "$GITHUB_WORKSPACE/.cache/huggingface:/cache/huggingface" \
-            -v "$GITHUB_WORKSPACE/.cache/torch:/cache/torch" \
-            -e HF_HOME=/cache/huggingface \
-            -e TORCH_HOME=/cache/torch \
-            -e UVICORN_WORKERS=6 \
+            -e UVICORN_WORKERS=1 \
             ${{ env.REGISTRY }}/${{ github.repository_owner }}/canchat-v2:${{ steps.ref_name.outputs.ref_name }} \
             /bin/bash -c 'echo "${{ secrets.E2E_ENV_FILE }}" | base64 --decode > ../.env && \
               echo "0DK/YlAjXSrYKdoH" > ../.webui_secret_key && \
