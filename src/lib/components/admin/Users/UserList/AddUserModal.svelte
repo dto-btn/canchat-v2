@@ -60,8 +60,8 @@
 	};
 
 	const submitHandler = async () => {
-		const stopLoading = () => {
-			dispatch('save');
+		const stopLoading = (shouldDispatchSave = true) => {
+			if (shouldDispatchSave) dispatch('save');
 			loading = false;
 		};
 
@@ -108,7 +108,11 @@
 						}
 					}
 
-					if (importErrors.length === 0) {
+					if (userCount === 0) {
+						toast.error(
+							`No users were imported. Skipped ${countInvalidCsvRows(importErrors)} invalid rows.`
+						);
+					} else if (importErrors.length === 0) {
 						toast.success(`Successfully imported ${userCount} users.`);
 						show = false;
 					} else {
@@ -120,7 +124,7 @@
 					toast.error(`Unable to read or import the CSV file: ${error}`);
 				} finally {
 					resetUpload();
-					stopLoading();
+					stopLoading(userCount > 0);
 				}
 			} else {
 				toast.error($i18n.t('File not found.'));

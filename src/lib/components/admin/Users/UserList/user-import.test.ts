@@ -126,14 +126,41 @@ describe('CSV user import', () => {
 		});
 	});
 
-	it('reports unterminated and invalid quoted fields', () => {
+	it('reports unterminated quoted fields', () => {
 		expect(parseCsvUserRows('name,email,password,role\n"Ada,ada@example.com,secret,user')).toEqual({
 			rows: [],
 			errors: [{ rowNumber: 2, message: 'unterminated quoted field.' }]
 		});
-		expect(parseCsvUserRows('name,email,password,role\nAd"a,ada@example.com,secret,user')).toEqual({
-			rows: [],
-			errors: [{ rowNumber: 2, message: 'invalid quote usage.' }]
+	});
+
+	it('skips rows with invalid quote usage and continues parsing later rows', () => {
+		expect(
+			parseCsvUserRows(
+				[
+					'name,email,password,role',
+					'Ada,ada@example.com,secret,user',
+					'Ad"a,ada@example.com,secret,user',
+					'Grace,grace@example.com,secret,admin'
+				].join('\n')
+			)
+		).toEqual({
+			rows: [
+				{
+					rowNumber: 2,
+					name: 'Ada',
+					email: 'ada@example.com',
+					password: 'secret',
+					role: 'user'
+				},
+				{
+					rowNumber: 4,
+					name: 'Grace',
+					email: 'grace@example.com',
+					password: 'secret',
+					role: 'admin'
+				}
+			],
+			errors: [{ rowNumber: 3, message: 'invalid quote usage.' }]
 		});
 	});
 

@@ -33,6 +33,7 @@ export const decodeCsvText = (buffer: ArrayBuffer): string => {
 type ParsedCsvRow = {
 	fields: string[];
 	rowNumber: number;
+	parseErrors: string[];
 };
 
 export const parseCsvUserRows = (csv: string): CsvUserImportResult => {
@@ -44,6 +45,7 @@ export const parseCsvUserRows = (csv: string): CsvUserImportResult => {
 	let quotedFieldClosed = false;
 	let rowNumber = 1;
 	let rowStartNumber = 1;
+	let currentRowParseErrors: string[] = [];
 
 	const finalizeField = () => {
 		currentRow.push(currentField);
@@ -55,9 +57,20 @@ export const parseCsvUserRows = (csv: string): CsvUserImportResult => {
 		if (currentRow.length > 0 || currentField.length > 0) {
 			finalizeField();
 			if (currentRow.some((field) => field.trim() !== '')) {
-				parsedRows.push({ fields: currentRow, rowNumber: rowStartNumber });
+				parsedRows.push({
+					fields: currentRow,
+					rowNumber: rowStartNumber,
+					parseErrors: currentRowParseErrors
+				});
 			}
 			currentRow = [];
+			currentRowParseErrors = [];
+		}
+	};
+
+	const recordQuoteError = () => {
+		if (!currentRowParseErrors.includes('invalid quote usage.')) {
+			currentRowParseErrors.push('invalid quote usage.');
 		}
 	};
 
@@ -76,7 +89,9 @@ export const parseCsvUserRows = (csv: string): CsvUserImportResult => {
 			} else if (currentField.length === 0 && !quotedFieldClosed) {
 				inQuotes = true;
 			} else {
-				return { rows: [], errors: [{ rowNumber, message: 'invalid quote usage.' }] };
+				recordQuoteError();
+				currentField += char;
+				quotedFieldClosed = false;
 			}
 			continue;
 		}
@@ -103,7 +118,8 @@ export const parseCsvUserRows = (csv: string): CsvUserImportResult => {
 		}
 
 		if (quotedFieldClosed) {
-			return { rows: [], errors: [{ rowNumber, message: 'invalid quote usage.' }] };
+			recordQuoteError();
+			quotedFieldClosed = false;
 		}
 
 		currentField += char;
@@ -143,6 +159,13 @@ export const parseCsvUserRows = (csv: string): CsvUserImportResult => {
 	const errors: CsvUserImportError[] = [];
 
 	for (const row of dataRows) {
+		if (row.parseErrors.length > 0) {
+			for (const message of row.parseErrors) {
+				errors.push({ rowNumber: row.rowNumber, message });
+			}
+			continue;
+		}
+
 		if (row.fields.length !== header.fields.length) {
 			errors.push({
 				rowNumber: row.rowNumber,
