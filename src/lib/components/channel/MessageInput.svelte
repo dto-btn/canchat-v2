@@ -7,6 +7,19 @@
 	import { tick, onMount, onDestroy } from 'svelte';
 
 	const i18n = getI18n();
+	const getKeyboardEvent = (event: CustomEvent<{ event: KeyboardEvent }>) => event.detail.event;
+	const hasTouchInput = () => {
+		if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+			return false;
+		}
+
+		const legacyNavigator = navigator as Navigator & { msMaxTouchPoints?: number };
+		return (
+			'ontouchstart' in window ||
+			navigator.maxTouchPoints > 0 ||
+			(legacyNavigator.msMaxTouchPoints ?? 0) > 0
+		);
+	};
 
 	import { config, mobile, settings } from '$lib/stores';
 	import { blobToFile, compressImage } from '$lib/utils';
@@ -476,25 +489,13 @@
 									bind:value={content}
 									id={`chat-input-${id}`}
 									messageInput={true}
-									shiftEnter={!$mobile ||
-										!(
-											'ontouchstart' in window ||
-											navigator.maxTouchPoints > 0 ||
-											navigator.msMaxTouchPoints > 0
-										)}
+									shiftEnter={!$mobile || !hasTouchInput()}
 									{placeholder}
 									largeTextAsFile={$settings?.largeTextAsFile ?? false}
-									on:keydown={async (e) => {
-										e = e.detail.event;
+									on:keydown={async (event) => {
+										const e = getKeyboardEvent(event);
 										const isCtrlPressed = e.ctrlKey || e.metaKey; // metaKey is for Cmd key on Mac
-										if (
-											!$mobile ||
-											!(
-												'ontouchstart' in window ||
-												navigator.maxTouchPoints > 0 ||
-												navigator.msMaxTouchPoints > 0
-											)
-										) {
+										if (!$mobile || !hasTouchInput()) {
 											// Prevent Enter key from creating a new line
 											// Uses keyCode '13' for Enter key for chinese/japanese keyboards
 											if (e.keyCode === 13 && !e.shiftKey) {
@@ -506,10 +507,6 @@
 												submitHandler();
 											}
 										}
-									}}
-									on:paste={async (e) => {
-										e = e.detail.event;
-										console.log(e);
 									}}
 								/>
 							</div>

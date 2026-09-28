@@ -8,6 +8,7 @@ const __dirname = path.dirname(__filename);
 
 const usersFile = path.join(__dirname, '../test-data/users.json');
 export const usersData = JSON.parse(fs.readFileSync(usersFile, 'utf-8'));
+const apiBaseUrl = process.env.PLAYWRIGHT_API_BASE_URL || 'http://localhost:8080';
 
 export const testUsers = {
 	admin: usersData.users.find((u: any) => u.username === 'admin'),
@@ -29,7 +30,7 @@ export async function authenticateContext(
 	context: BrowserContext,
 	user: { email: string; password: string }
 ): Promise<void> {
-	const response = await context.request.post('/api/v1/auths/signin', {
+	const response = await context.request.post(`${apiBaseUrl}/api/v1/auths/signin`, {
 		data: {
 			email: user.email,
 			password: user.password

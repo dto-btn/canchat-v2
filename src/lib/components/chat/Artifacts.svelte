@@ -140,7 +140,7 @@
 		iframeElement.contentWindow.addEventListener(
 			'click',
 			function (e) {
-				const target = e.target.closest('a');
+				const target = (e.target as HTMLElement).closest('a');
 				if (target && target.href) {
 					e.preventDefault();
 					const url = new URL(target.href, iframeElement.baseURI);
@@ -170,10 +170,14 @@
 	const showFullScreen = () => {
 		if (iframeElement.requestFullscreen) {
 			iframeElement.requestFullscreen();
-		} else if (iframeElement.webkitRequestFullscreen) {
-			iframeElement.webkitRequestFullscreen();
-		} else if (iframeElement.msRequestFullscreen) {
-			iframeElement.msRequestFullscreen();
+		} else if ('webkitRequestFullscreen' in iframeElement) {
+			(
+				iframeElement as HTMLIFrameElement & { webkitRequestFullscreen: () => void }
+			).webkitRequestFullscreen();
+		} else if ('msRequestFullscreen' in iframeElement) {
+			(
+				iframeElement as HTMLIFrameElement & { msRequestFullscreen: () => void }
+			).msRequestFullscreen();
 		}
 	};
 

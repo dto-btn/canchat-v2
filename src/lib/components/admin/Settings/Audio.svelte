@@ -26,6 +26,7 @@
 	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getContext<Writable<i18nType>>('i18n');
+	const getSelectValue = (event: Event) => (event.currentTarget as HTMLSelectElement).value;
 
 	export let saveHandler: () => void;
 
@@ -398,7 +399,7 @@
 								await getVoices();
 								await getModels();
 
-								if (e.target?.value === 'openai') {
+								if (getSelectValue(e) === 'openai') {
 									TTS_VOICE = 'alloy';
 									TTS_MODEL = 'tts-1';
 								} else {

@@ -596,11 +596,12 @@
 
 	// Initialize charts function
 	function initializeCharts() {
+		const getCanvas = (id: string) => document.getElementById(id) as HTMLCanvasElement | null;
 		// Users chart - for both overview and users tabs
 		if (activeTab === 'users' && dailyActiveUsersData.length > 0 && enrolledUsersData.length > 0) {
 			// Enrolled Users Chart
 			const enrolledChartId = 'userEnrollmentsOverTimeChart';
-			const enrolledCanvas = document.getElementById(enrolledChartId);
+			const enrolledCanvas = getCanvas(enrolledChartId);
 			const enrolledCtx = enrolledCanvas?.getContext('2d');
 			if (enrolledCtx) {
 				if (enrolledUsersChart) {
@@ -631,7 +632,7 @@
 
 			// Daily Active Users Chart
 			const dailyChartId = 'usersOverTimeChart';
-			const dailyCanvas = document.getElementById(dailyChartId);
+			const dailyCanvas = getCanvas(dailyChartId);
 			const dailyCtx = dailyCanvas?.getContext('2d');
 			if (dailyCtx) {
 				if (dailyActiveUsersChart) {
@@ -663,7 +664,7 @@
 
 		// Department usage chart
 		const departmentChartId = 'departmentUsageChart';
-		const departmentCanvas = document.getElementById(departmentChartId);
+		const departmentCanvas = getCanvas(departmentChartId);
 		const departmentCtx = departmentCanvas?.getContext('2d');
 		if (departmentCtx) {
 			if (userByDepartmentChart) {
@@ -713,7 +714,7 @@
 		// Prompts chart - for both overview and prompts tabs
 		if ((activeTab === 'prompts' || activeTab === 'overview') && dailyPromptsData.length > 0) {
 			const chartId = activeTab === 'overview' ? 'dailyPromptsChart' : 'promptsOverTimeChart';
-			const canvas = document.getElementById(chartId);
+			const canvas = getCanvas(chartId);
 			const ctx = canvas?.getContext('2d');
 			if (ctx) {
 				if (dailyPromptsChart) {
@@ -745,7 +746,7 @@
 
 		// Tokens chart - for tokens tab
 		if (activeTab === 'tokens' && dailyTokensData.length > 0) {
-			const canvas = document.getElementById('tokensOverTimeChart');
+			const canvas = getCanvas('tokensOverTimeChart');
 			const ctx = canvas?.getContext('2d');
 			if (ctx) {
 				if (dailyTokensChart) {
@@ -777,7 +778,7 @@
 
 		// Model chart - for models tab
 		if (activeTab === 'models' && selectedModel && modelPromptsData.length > 0) {
-			const canvas = document.getElementById('modelOverTimeChart');
+			const canvas = getCanvas('modelOverTimeChart');
 			const ctx = canvas?.getContext('2d');
 			if (ctx) {
 				if (modelPromptsChart) {
@@ -809,7 +810,7 @@
 
 		// Inter-prompt latency histogram - for behavior tab
 		if (activeTab === 'behavior' && interPromptLatencyData.counts.length > 0) {
-			const canvas = document.getElementById('interPromptLatencyChart');
+			const canvas = getCanvas('interPromptLatencyChart');
 			const ctx = canvas?.getContext('2d');
 			if (ctx) {
 				if (interPromptLatencyChart) {

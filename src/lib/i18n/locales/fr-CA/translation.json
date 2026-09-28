@@ -701,6 +701,7 @@
 	"Inter-Prompt Latency Distribution": "Distribution de latence inter-invites",
 	"Interface": "Interface utilisateur",
 	"Invalid file format.": "Format de fichier invalide.",
+	"Invalid file received from Google Drive": "Fichier invalide reçu de Google Drive",
 	"Invalid JSON in environment variables": "JSON invalide dans les variables d'environnement",
 	"Invalid Tag": "Étiquette non valide",
 	"is typing...": "est en train d'écrire...",
