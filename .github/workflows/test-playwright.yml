@@ -31,7 +31,7 @@ jobs:
       attestations: read
       id-token: write
 
-    timeout-minutes: 60
+    timeout-minutes: 120
     services:
       qdrant:
         image: qdrant/qdrant:latest
@@ -75,12 +75,16 @@ jobs:
         continue-on-error: true
 
       - name:  Start CANChat Environment
+        # TODO: remove the TXTAI_CACHE_DIR override once the image is rebuilt with the new Dockerfile
         run: |
             docker run -d -p 8080:8080 \
             --add-host=host.docker.internal:host-gateway \
-            -d \
+            --shm-size=2g \
             --name canchat \
-            --rm ${{ env.REGISTRY }}/${{ github.repository_owner }}/canchat-v2:${{ steps.ref_name.outputs.ref_name }} \
+            --rm \
+            -e UVICORN_WORKERS=1 \
+            -e TXTAI_CACHE_DIR=/app/backend/data/cache/txtai \
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/canchat-v2:${{ steps.ref_name.outputs.ref_name }} \
             /bin/bash -c 'echo "${{ secrets.E2E_ENV_FILE }}" | base64 --decode > ../.env && \
               echo "0DK/YlAjXSrYKdoH" > ../.webui_secret_key && \
               unset OPENAI_API_KEY && \
@@ -118,7 +122,7 @@ jobs:
         env:
           REUSE_EXISTING_SERVER: true
         run: |
-          bash -c 'env $(grep -v "^#" "${ENV_FILE:-.env}"| xargs) PLAYWRIGHT_BLOB_OUTPUT_DIR=./blob-report-parallel npx playwright test --grep-invert @serial --reporter=blob'
+          bash -c 'env $(grep -v "^#" "${ENV_FILE:-.env}"| xargs) PLAYWRIGHT_BLOB_OUTPUT_DIR=./blob-report-parallel npx playwright test --grep-invert @serial --reporter=list,blob --workers=6 --trace=retain-on-failure'
 
       - name: Start Playwright Tests (Serial)
         if: always()
