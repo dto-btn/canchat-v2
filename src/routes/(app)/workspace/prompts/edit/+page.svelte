@@ -34,7 +34,7 @@
 			// Ensure proper command format before sending to the API
 			const sanitizedCommand = command.replace(/\//g, '');
 
-			const _prompt = await getPromptByCommand(getRequestToken(), sanitizedCommand).catch(
+			const _prompt: any = await getPromptByCommand(getRequestToken(), sanitizedCommand).catch(
 				(error) => {
 					toast.error(`${error}`);
 					return null;

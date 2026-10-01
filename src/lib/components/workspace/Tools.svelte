@@ -87,7 +87,7 @@
 	};
 
 	const cloneHandler = async (tool: any) => {
-		const _tool = await getToolById(getRequestToken(), tool.id).catch((error) => {
+		const _tool: any = await getToolById(getRequestToken(), tool.id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
@@ -103,7 +103,7 @@
 	};
 
 	const exportHandler = async (tool: any) => {
-		const _tool = await getToolById(getRequestToken(), tool.id).catch((error) => {
+		const _tool: any = await getToolById(getRequestToken(), tool.id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
@@ -481,8 +481,8 @@
 		on:confirm={() => {
 			const reader = new FileReader();
 			reader.onload = async (event) => {
-				const _tools = JSON.parse(event.target.result);
-				for (const tool of _tools) {
+				const importedTools = JSON.parse(event.target?.result ?? '[]');
+				for (const tool of importedTools) {
 					const res = await createNewTool(getRequestToken(), tool).catch((error) => {
 						toast.error(`${error}`);
 						return null;
@@ -490,7 +490,7 @@
 				}
 
 				toast.success($i18n.t('Tool imported successfully'));
-				tools.set(await getTools(getRequestToken()));
+				_tools.set(await getTools(getRequestToken()));
 			};
 
 			reader.readAsText(importFiles[0]);

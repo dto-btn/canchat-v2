@@ -33,6 +33,7 @@
 	let searchTimeout: any;
 	let lastCommand = '';
 	let currentSearch = '';
+	const getScrollContainer = (event: Event) => event.currentTarget as HTMLDivElement;
 	let isInitialized = false;
 
 	// Load prompts dynamically based on search
@@ -233,7 +234,7 @@
 				<div
 					class="m-1 overflow-y-auto p-1 space-y-0.5 scrollbar-hidden"
 					on:scroll={(e) => {
-						const target = e.target;
+						const target = getScrollContainer(e);
 						if (target) {
 							const scrollPercentage =
 								(target.scrollTop + target.clientHeight) / target.scrollHeight;

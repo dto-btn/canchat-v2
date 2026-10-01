@@ -396,7 +396,7 @@
 								if (promptSuggestions.length === 0 || promptSuggestions.at(-1).content !== '') {
 									promptSuggestions = [
 										...promptSuggestions,
-										{ content: '', title: ['', ''], lang: i18n.languages }
+										{ content: '', title: ['', ''], lang: $i18n.languages }
 									];
 								}
 							}}

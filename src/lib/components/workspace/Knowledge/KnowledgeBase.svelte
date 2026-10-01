@@ -51,6 +51,7 @@
 		id: string;
 		name: string;
 		description: string;
+		access_control?: Record<string, any>;
 		data: {
 			file_ids: string[];
 		};
@@ -66,6 +67,7 @@
 	let showAccessControlModal = false;
 
 	let inputFiles: any = null;
+	const getFileInput = (id: string) => document.getElementById(id) as HTMLInputElement | null;
 
 	let filteredItems: any[] = [];
 	$: if (knowledge && knowledge.files) {
@@ -126,6 +128,8 @@
 			toast.error($i18n.t('You cannot upload an empty file.'));
 			return null;
 		}
+
+		if (!knowledge) return null;
 
 		knowledge.files = [...(knowledge.files ?? []), fileItem];
 
@@ -262,7 +266,7 @@
 			const input = document.createElement('input');
 			input.type = 'file';
 			input.webkitdirectory = true;
-			input.directory = true;
+			(input as HTMLInputElement & { directory?: boolean }).directory = true;
 			input.multiple = true;
 			input.style.display = 'none';
 
@@ -386,8 +390,9 @@
 		const fileId = selectedFile.id;
 		const content = selectedFile.data.content;
 
-		const res = updateFileDataContentById(getRequestToken(), fileId, content).catch((e) => {
+		const res = await updateFileDataContentById(getRequestToken(), fileId, content).catch((e) => {
 			toast.error(e);
+			return null;
 		});
 
 		const updatedKnowledge = await updateFileFromKnowledgeById(getRequestToken(), id, fileId).catch(
@@ -408,7 +413,7 @@
 		}
 
 		debounceTimeout = setTimeout(async () => {
-			if (knowledge.name.trim() === '' || knowledge.description.trim() === '') {
+			if (!knowledge || knowledge.name.trim() === '' || knowledge.description.trim() === '') {
 				toast.error($i18n.t('Please fill in all fields.'));
 				return;
 			}
@@ -480,6 +485,7 @@
 
 		// Select the container element you want to observe
 		const container = document.getElementById('collection-container');
+		if (!container) return;
 
 		// initialize the minSize based on the container width
 		minSize = !largeScreen ? 100 : Math.floor((300 / container.clientWidth) * 100);
@@ -590,7 +596,7 @@
 			}
 
 			inputFiles = null;
-			const fileInputElement = document.getElementById('files-input');
+			const fileInputElement = getFileInput('files-input');
 
 			if (fileInputElement) {
 				fileInputElement.value = '';
@@ -820,7 +826,7 @@
 											} else if (e.detail.type === 'text') {
 												showAddTextContentModal = true;
 											} else {
-												document.getElementById('files-input').click();
+												document.getElementById('files-input')?.click();
 											}
 										}}
 										on:sync={(e) => {

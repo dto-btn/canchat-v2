@@ -9,7 +9,9 @@
 
 	const i18n = getI18n();
 
-	export let status = { urls: [], query: '' };
+	type WebSearchStatus = { urls: string[]; query: string };
+
+	export let status: WebSearchStatus = { urls: [], query: '' };
 	let state = false;
 	$: copyTooltipContent = $i18n.t('Copy to clipboard');
 
