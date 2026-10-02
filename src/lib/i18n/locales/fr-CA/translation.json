@@ -559,7 +559,7 @@
 	"Failed to delete chat": "Échec de la suppression du chat",
 	"Failed to delete domain": "Échec de la suppression du domaine",
 	"Failed to fetch": "Échec de la requête réseau",
-	"Failed to fetch chat": "",
+	"Failed to fetch chat": "Échec de la récupération du chat",
 	"Failed to fetch models": "Échec de la récupération des modèles",
 	"Failed to load available domains": "Échec du chargement des domaines disponibles",
 	"Failed to load chat lifetime settings": "Échec du chargement des paramètres de durée de vie des chats",
