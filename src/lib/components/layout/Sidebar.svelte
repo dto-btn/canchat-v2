@@ -354,7 +354,7 @@
 			for (const chat of selectedChats) {
 				const history = chat.chat.history;
 				const messages = createMessagesList(history, history.currentId);
-				const filename = `chat-${chat.chat.title}.${format}`;
+				const filename = `chat-${chat.chat.title}-${chat.id}.${format}`;
 
 				if (format === 'txt') {
 					const chatText = messages

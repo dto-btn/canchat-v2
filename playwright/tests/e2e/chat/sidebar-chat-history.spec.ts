@@ -798,6 +798,7 @@ test.describe('Sidebar and Chat History Features', () => {
 		await userPage.page.goto('/');
 		await userPage.sendMessage('Bulk download chat 2');
 		const secondChatUrl = new URL(userPage.page.url()).pathname;
+		const selectedChatIds = [firstChatUrl, secondChatUrl].map((url) => url.split('/').pop()!);
 
 		await userPage.toggleSidebar(true);
 		await userPage.selectChatByHref(firstChatUrl);
@@ -829,6 +830,13 @@ test.describe('Sidebar and Chat History Features', () => {
 						{ timeout: 30000 }
 					)
 					.toBe(2);
+
+				const formatDownloads = downloadNames.filter((filename) =>
+					filename.endsWith(format.extension)
+				);
+				for (const chatId of selectedChatIds) {
+					expect(formatDownloads.some((filename) => filename.includes(chatId))).toBe(true);
+				}
 			}
 		} finally {
 			userPage.page.off('download', recordDownload);
