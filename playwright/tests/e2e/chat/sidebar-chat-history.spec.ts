@@ -782,4 +782,56 @@ test.describe('Sidebar and Chat History Features', () => {
 		// 8. User observe that his default model is selected in the chat page.
 		await expect(userPage.page.locator('#model-selector-0-button')).toBeVisible();
 	});
+
+	// ===========================================
+	// CHAT-SIDEBAR-TC015: Bulk Download Chats
+	// ===========================================
+	test('CHAT-SIDEBAR-TC015: User can download selected chats separately as TXT or PDF', async ({
+		userPage
+	}) => {
+		test.setTimeout(120000);
+
+		await userPage.page.goto('/');
+		await userPage.sendMessage('Bulk download chat 1');
+		const firstChatUrl = new URL(userPage.page.url()).pathname;
+
+		await userPage.page.goto('/');
+		await userPage.sendMessage('Bulk download chat 2');
+		const secondChatUrl = new URL(userPage.page.url()).pathname;
+
+		await userPage.toggleSidebar(true);
+		await userPage.selectChatByHref(firstChatUrl);
+		await userPage.selectChatByHref(secondChatUrl);
+		await expect(userPage.selectedCountLabel).toContainText('2');
+
+		const downloadNames: string[] = [];
+		const recordDownload = (download: { suggestedFilename: () => string }) => {
+			downloadNames.push(download.suggestedFilename());
+		};
+		userPage.page.on('download', recordDownload);
+
+		try {
+			const downloadLabel = userPage.getTranslation('Download');
+			const formats = [
+				{ label: 'Plain text (.txt)', extension: '.txt' },
+				{ label: 'PDF document (.pdf)', extension: '.pdf' }
+			];
+
+			for (const format of formats) {
+				await userPage.page.getByRole('button', { name: downloadLabel }).click();
+				await userPage.page
+					.getByRole('menuitem', { name: userPage.getTranslation(format.label) })
+					.click();
+
+				await expect
+					.poll(
+						() => downloadNames.filter((filename) => filename.endsWith(format.extension)).length,
+						{ timeout: 30000 }
+					)
+					.toBe(2);
+			}
+		} finally {
+			userPage.page.off('download', recordDownload);
+		}
+	});
 });
