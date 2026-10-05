@@ -1,10 +1,13 @@
 <script lang="ts">
 	import { DropdownMenu } from 'bits-ui';
+	import { getI18n } from '$lib/utils/context';
 	import { flyAndScale } from '$lib/utils/transitions';
 	import emojiGroups from '$lib/emoji-groups.json';
 	import emojiShortCodes from '$lib/emoji-shortcodes.json';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import VirtualList from '@sveltejs/svelte-virtual-list';
+
+	const i18n = getI18n();
 
 	const emojiGroupsMap = emojiGroups as Record<string, string[]>;
 	const emojiShortCodesMap = emojiShortCodes as Record<string, string | string[]>;

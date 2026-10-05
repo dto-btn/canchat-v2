@@ -1,4 +1,8 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
+	const i18n = getI18n();
+
 	export let value: string = '';
 	export let placeholder = '';
 	export let required = true;
