@@ -16,6 +16,12 @@
 </script>
 
 <div class={outerClassName}>
+	<div class={outerClassName}>
+		<span title="Search"></span>
+		<span title="Name"></span>
+		<span title="Search"></span>
+		<span title="Can't Search"></span>
+	</div>
 	<input
 		class={`${inputClassName} ${show ? '' : 'password'}`}
 		{placeholder}

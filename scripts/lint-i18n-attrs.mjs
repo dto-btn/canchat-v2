@@ -15,7 +15,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const ROOT = process.argv[2] || '.';
+const ROOT = process.argv.slice(2).find(arg => arg !== '--fix') || '.';
 const SHOULD_FIX = process.argv.includes('--fix');
 let exitCode = 0;
 
@@ -49,10 +49,13 @@ function lintFile(filePath) {
   const content = fs.readFileSync(filePath, 'utf-8');
   const lines = content.split('\n');
   const issues = [];
+  let offset = 0;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const trimmed = line.trim();
+    const lineOffset = offset;
+    offset += line.length + 1;
 
     // Skip lines that already use $i18n.t()
     if (line.includes('$i18n.t(')) continue;
@@ -69,11 +72,14 @@ function lintFile(filePath) {
     while ((match = ATTR_PATTERN.exec(line)) !== null) {
       const [, attr, value] = match;
       if (value.trim().length >= 2) {
+        const literal = JSON.stringify(value);
         issues.push({
           line: i + 1,
-          column: line.indexOf(match[0]) + 1,
-          message: `${attr}="${value}" should use {$i18n.t('${value}')}`,
-          fix: () => content.replace(match[0], `${attr}={$i18n.t('${value}')}`)
+          column: match.index + 1,
+          message: `${attr}="${value}" should use {$i18n.t(${literal})}`,
+          start: lineOffset + match.index,
+          end: lineOffset + match.index + match[0].length,
+          replacement: `${attr}={$i18n.t(${literal})}`
         });
       }
     }
@@ -123,9 +129,11 @@ function lintFile(filePath) {
       const quote = match[0].includes('"') ? '"' : "'";
       issues.push({
         line: i + 1,
-        column: line.indexOf(match[0]) + 1,
+        column: match.index + 1,
         message: `Hardcoded text '${text}' should use {$i18n.t('${text}')}`,
-        fix: () => content.replace(match[0], `{$i18n.t(${quote}${text}${quote})}`)
+        start: lineOffset + match.index,
+        end: lineOffset + match.index + match[0].length,
+        replacement: `{$i18n.t(${quote}${text}${quote})}`
       });
     }
   }
@@ -154,12 +162,9 @@ async function main() {
 
     if (SHOULD_FIX) {
       let content = fs.readFileSync(filePath, 'utf-8');
-      for (const issue of issues) {
-        const newContent = issue.fix();
-        if (newContent !== content) {
-          content = newContent;
-          totalFixed++;
-        }
+      for (const issue of [...issues].sort((left, right) => right.start - left.start)) {
+        content = content.slice(0, issue.start) + issue.replacement + content.slice(issue.end);
+        totalFixed++;
       }
       fs.writeFileSync(filePath, content, 'utf-8');
     }
