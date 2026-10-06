@@ -782,4 +782,157 @@ test.describe('Sidebar and Chat History Features', () => {
 		// 8. User observe that his default model is selected in the chat page.
 		await expect(userPage.page.locator('#model-selector-0-button')).toBeVisible();
 	});
+
+	// ===========================================
+	// CHAT-SIDEBAR-TC015: Bulk Download Chats
+	// ===========================================
+	test('CHAT-SIDEBAR-TC015: User can download selected chats separately as TXT or PDF', async ({
+		userPage
+	}) => {
+		test.setTimeout(120000);
+
+		await userPage.page.goto('/');
+		await userPage.sendMessage('Bulk download chat 1');
+		const firstChatUrl = new URL(userPage.page.url()).pathname;
+
+		await userPage.page.goto('/');
+		await userPage.sendMessage('Bulk download chat 2');
+		const secondChatUrl = new URL(userPage.page.url()).pathname;
+		const selectedChatIds = [firstChatUrl, secondChatUrl].map((url) => url.split('/').pop()!);
+
+		await userPage.toggleSidebar(true);
+		await userPage.selectChatByHref(firstChatUrl);
+		await userPage.selectChatByHref(secondChatUrl);
+		await expect(userPage.selectedCountLabel).toContainText('2');
+
+		const downloadNames: string[] = [];
+		const recordDownload = (download: { suggestedFilename: () => string }) => {
+			downloadNames.push(download.suggestedFilename());
+		};
+		userPage.page.on('download', recordDownload);
+
+		try {
+			const downloadLabel = userPage.getTranslation('Download');
+			const formats = [
+				{ label: 'Plain text (.txt)', extension: '.txt' },
+				{ label: 'PDF document (.pdf)', extension: '.pdf' }
+			];
+
+			for (const format of formats) {
+				await userPage.page.getByRole('button', { name: downloadLabel }).click();
+				await userPage.page
+					.getByRole('menuitem', { name: userPage.getTranslation(format.label) })
+					.click();
+
+				await expect
+					.poll(
+						() => downloadNames.filter((filename) => filename.endsWith(format.extension)).length,
+						{ timeout: 30000 }
+					)
+					.toBe(2);
+
+				const formatDownloads = downloadNames.filter((filename) =>
+					filename.endsWith(format.extension)
+				);
+				for (const chatId of selectedChatIds) {
+					expect(formatDownloads.some((filename) => filename.includes(chatId))).toBe(true);
+				}
+			}
+		} finally {
+			userPage.page.off('download', recordDownload);
+		}
+	});
+
+	// ===========================================
+	// CHAT-SIDEBAR-TC016: Selected Chat Download Fetch Failure
+	// ===========================================
+	test('CHAT-SIDEBAR-TC016: User sees an error when a selected chat cannot be fetched for download', async ({
+		userPage
+	}) => {
+		test.setTimeout(120000);
+
+		await userPage.page.goto('/');
+		await userPage.sendMessage('Bulk download fetch failure');
+		const chatUrl = new URL(userPage.page.url()).pathname;
+		const chatId = chatUrl.split('/').pop()!;
+
+		await userPage.toggleSidebar(true);
+		await userPage.selectChatByHref(chatUrl);
+
+		const errorMessage = 'Chat unavailable';
+		let downloadCount = 0;
+		const recordDownload = () => {
+			downloadCount += 1;
+		};
+		userPage.page.on('download', recordDownload);
+		await userPage.page.route(`**/api/v1/chats/${chatId}`, async (route) => {
+			if (route.request().method() === 'GET') {
+				await route.fulfill({
+					status: 503,
+					contentType: 'application/json',
+					body: JSON.stringify({ detail: errorMessage })
+				});
+				return;
+			}
+			await route.continue();
+		});
+
+		try {
+			await userPage.page
+				.getByRole('button', { name: userPage.getTranslation('Download') })
+				.click();
+			await userPage.page
+				.getByRole('menuitem', { name: userPage.getTranslation('Plain text (.txt)') })
+				.click();
+
+			await expect(userPage.toast.filter({ hasText: errorMessage }).last()).toBeAttached();
+			expect(downloadCount).toBe(0);
+		} finally {
+			userPage.page.off('download', recordDownload);
+			await userPage.page.unroute(`**/api/v1/chats/${chatId}`);
+		}
+	});
+
+	// ===========================================
+	// CHAT-SIDEBAR-TC017: PDF Service Failure
+	// ===========================================
+	test('CHAT-SIDEBAR-TC017: User sees an error when PDF generation fails', async ({ userPage }) => {
+		test.setTimeout(120000);
+
+		await userPage.page.goto('/');
+		await userPage.sendMessage('Bulk PDF generation failure');
+		const chatUrl = new URL(userPage.page.url()).pathname;
+
+		await userPage.toggleSidebar(true);
+		await userPage.selectChatByHref(chatUrl);
+
+		const errorMessage = 'PDF service unavailable';
+		let downloadCount = 0;
+		const recordDownload = () => {
+			downloadCount += 1;
+		};
+		userPage.page.on('download', recordDownload);
+		await userPage.page.route('**/api/v1/utils/pdf', async (route) => {
+			await route.fulfill({
+				status: 503,
+				contentType: 'application/json',
+				body: JSON.stringify({ detail: errorMessage })
+			});
+		});
+
+		try {
+			await userPage.page
+				.getByRole('button', { name: userPage.getTranslation('Download') })
+				.click();
+			await userPage.page
+				.getByRole('menuitem', { name: userPage.getTranslation('PDF document (.pdf)') })
+				.click();
+
+			await expect(userPage.toast.filter({ hasText: errorMessage }).last()).toBeAttached();
+			expect(downloadCount).toBe(0);
+		} finally {
+			userPage.page.off('download', recordDownload);
+			await userPage.page.unroute('**/api/v1/utils/pdf');
+		}
+	});
 });
