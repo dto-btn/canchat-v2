@@ -57,6 +57,7 @@
 							<select
 								class="w-full rounded-lg py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-850 outline-none border border-gray-100 dark:border-gray-800"
 								bind:value={valves[property]}
+								aria-label={valvesSpec.properties[property].title}
 								on:change={() => {
 									dispatch('change');
 								}}
@@ -88,8 +89,10 @@
 								type="text"
 								placeholder={valvesSpec.properties[property].title}
 								bind:value={valves[property]}
+								aria-label={valvesSpec.properties[property].title}
 								autocomplete="off"
 								required
+								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 								on:change={() => {
 									dispatch('change');
 								}}

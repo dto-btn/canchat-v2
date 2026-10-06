@@ -113,11 +113,12 @@
 				<div class=" py-0.5 flex w-full justify-between">
 					<div class=" self-center text-xs font-medium">{$i18n.t('Speech-to-Text Engine')}</div>
 					<div class="flex items-center relative">
-						<select
-							class="dark:bg-gray-900 w-fit pr-8 rounded px-2 p-1 text-xs bg-transparent outline-none text-right"
-							bind:value={STTEngine}
-							placeholder="Select an engine"
-						>
+					<select
+						class="dark:bg-gray-900 w-fit pr-8 rounded px-2 p-1 text-xs bg-transparent outline-none text-right"
+						bind:value={STTEngine}
+						placeholder={$i18n.t('Select an engine')}
+						aria-label={$i18n.t('Speech-to-Text Engine')}
+					>
 							<option value="">{$i18n.t('Default')}</option>
 							<option value="web">{$i18n.t('Web API')}</option>
 						</select>
@@ -175,6 +176,7 @@
 				<div class="flex items-center relative">
 					<select
 						aria-labelledby="playback-speed-label"
+						aria-label={$i18n.t('Speech Playback Speed')}
 						class="dark:bg-gray-900 w-fit pr-8 rounded px-2 p-1 text-xs bg-transparent outline-none text-right"
 						bind:value={playbackRate}
 					>
@@ -200,6 +202,7 @@
 							id="voice-select"
 							class="w-full rounded-lg py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-850 outline-none"
 							bind:value={voice}
+							aria-label={$i18n.t('Set Voice')}
 						>
 							<option value="" selected={voice !== ''}>{$i18n.t('Default')}</option>
 							{#each voices.filter((v) => nonLocalVoices || v.localService === true) as _voice}
@@ -231,7 +234,8 @@
 							list="voice-list"
 							class="w-full rounded-lg py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-850 outline-none"
 							bind:value={voice}
-							placeholder="Select a voice"
+							placeholder={$i18n.t('Select a voice')}
+							aria-label={$i18n.t('Set Voice')}
 						/>
 
 						<datalist id="voice-list">

@@ -298,6 +298,7 @@
 	type="file"
 	hidden
 	multiple
+	aria-label={$i18n.t('File Upload')}
 	on:change={async () => {
 		if (inputFiles && inputFiles.length > 0) {
 			inputFilesHandler(Array.from(inputFiles));
@@ -453,7 +454,7 @@
 									<button
 										class="bg-transparent hover:bg-white/80 text-gray-800 dark:text-white dark:hover:bg-gray-800 transition rounded-full p-2 outline-none focus:outline-none"
 										type="button"
-										aria-label="More"
+										aria-label={$i18n.t('More')}
 									>
 										<svg
 											xmlns="http://www.w3.org/2000/svg"
@@ -544,7 +545,7 @@
 													toast.error($i18n.t('Permission denied when accessing microphone'));
 												}
 											}}
-											aria-label="Voice Input"
+											aria-label={$i18n.t('Voice Input')}
 										>
 											<svg
 												xmlns="http://www.w3.org/2000/svg"

@@ -43,6 +43,7 @@
 				hidden
 				type="file"
 				accept=".json"
+				aria-label={$i18n.t('Database Config Import')}
 				on:change={(e) => {
 					const file = e.target.files[0];
 					const reader = new FileReader();

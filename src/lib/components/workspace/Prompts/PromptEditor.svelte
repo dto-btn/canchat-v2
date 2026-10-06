@@ -121,7 +121,9 @@
 							type="text"
 							bind:value={title}
 							placeholder={$i18n.t('Name your prompt')}
+							aria-label={$i18n.t('Name your prompt')}
 							required
+							on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 						/>
 					</div>
 				</div>
@@ -136,7 +138,9 @@
 								type="text"
 								bind:value={command}
 								placeholder={$i18n.t('Command trigger')}
+								aria-label={$i18n.t('Command trigger')}
 								required
+								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 								disabled={edit}
 							/>
 						</div>
@@ -151,9 +155,11 @@
 							placeholder={$i18n.t(
 								'Write a summary in 50 words that summarizes [topic or keyword].'
 							)}
+							aria-label={$i18n.t('Prompt Content')}
 							bind:value={content}
 							rows={4}
 							required
+							on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 						/>
 						<div class="mt-2 text-xs text-gray-400 dark:text-gray-500">
 							ⓘ {$i18n.t('Format your variables using brackets like this:')}

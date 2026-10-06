@@ -13,6 +13,7 @@
 		"test:debug": "bash -c 'env $(grep -v '^#' '${ENV_FILE:-.env}'| xargs) npx playwright test --project=chromium-en'",
 		"test:headed": "bash -c 'env $(grep -v '^#' '${ENV_FILE:-.env}'| xargs) npx playwright test --headed'",
 		"test:report": "npx playwright show-report",
+		"test:a11y": "bash -c 'env $(grep -v \"^#\" \"${ENV_FILE:-.env}\"| xargs) npx playwright test --grep @a11y --project=chromium-en'",
 		"test:setup": "npx playwright install --with-deps --force",
 		"test:setup:headless": "npx playwright install --with-deps --only-shell --force",
 		"coverage:build": "export NODE_OPTIONS='--max-old-space-size=8192' && VITE_COVERAGE=true npm run build",
@@ -27,6 +28,8 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"lint": "npm run lint:frontend ; npm run lint:types ; npm run lint:backend",
 		"lint:frontend": "eslint . --fix",
+		"lint:i18n": "node scripts/lint-i18n-attrs.mjs",
+		"lint:i18n:fix": "node scripts/lint-i18n-attrs.mjs --fix",
 		"lint:types": "npm run check",
 		"lint:backend": "pylint backend/",
 		"format": "prettier --plugin-search-dir --write \"**/*.{js,ts,svelte,css,md,html,json}\"",
@@ -37,6 +40,7 @@
 		"prepare": "husky"
 	},
 	"devDependencies": {
+		"@axe-core/playwright": "^4.12.1",
 		"@istanbuljs/nyc-config-typescript": "^1.0.2",
 		"@playwright/test": "^1.56.1",
 		"@sveltejs/adapter-auto": "3.2.2",

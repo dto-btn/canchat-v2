@@ -201,8 +201,12 @@
 										type="text"
 										bind:value={url}
 										placeholder={$i18n.t('API Base URL')}
+										aria-label={$i18n.t('API Base URL')}
 										autocomplete="off"
 										required
+										on:invalid={(e) =>
+											e.target.setCustomValidity($i18n.t('This field is required'))}
+										on:input={(e) => e.target.setCustomValidity('')}
 									/>
 								</div>
 							</div>
@@ -265,6 +269,7 @@
 											type="text"
 											bind:value={prefixId}
 											placeholder={$i18n.t('Prefix ID')}
+											aria-label={$i18n.t('Prefix ID')}
 											autocomplete="off"
 										/>
 									</Tooltip>
@@ -323,6 +328,7 @@
 									: 'text-gray-500'} placeholder:text-gray-300 dark:placeholder:text-gray-700 outline-none"
 								bind:value={modelId}
 								placeholder={$i18n.t('Add a model ID')}
+								aria-label={$i18n.t('Add a model ID')}
 							/>
 
 							<div>
