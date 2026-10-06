@@ -1,4 +1,4 @@
-import { test as setup, type Page } from '@playwright/test';
+import { test as setup, expect, type Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -20,17 +20,8 @@ setup('global setup: seed data & initialize', async ({ page }) => {
 	const adminPage = new AdminPage(page);
 
 	await authPage.goto('/auth');
+	await expect(authPage.isFirstRunButton.or(authPage.signInButton).first()).toBeVisible();
 	const isFirstRun = await authPage.isFirstRunButton.isVisible();
-
-	if (!isFirstRun && authFilesMissing) {
-		console.log('CanChat already initialized. Missing auth files detected.');
-		await authPage.login(adminUser.email, adminUser.password);
-		await saveAuthState(page, 'admin.json');
-		await seedUserAccounts(page, adminPage);
-		await generateUserAuthFiles(page, authPage, adminPage);
-		console.log('Auth files regenerated.');
-		return;
-	}
 
 	if (!isFirstRun) {
 		console.log('CanChat already initialized. Skipping Global Setup');
