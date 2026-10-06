@@ -10,4 +10,3 @@ Pipfile
 /data/*
 /open_webui/data/*
 .webui_secret_key
-canchat.playwright.env
