@@ -23,7 +23,7 @@
 
 	let loading = false;
 	let tab = '';
-	let inputFiles: any;
+	let inputFiles: FileList | null = null;
 	let importErrors: CsvUserImportError[] = [];
 
 	let _user = {
@@ -83,15 +83,16 @@
 				show = false;
 			}
 		} else {
-			if (inputFiles) {
+			if (inputFiles?.length) {
 				loading = true;
 				importErrors = [];
+				let userCount = 0;
+
 				try {
 					const file = inputFiles[0];
 					const csv = decodeCsvText(await file.arrayBuffer());
 					const result = parseCsvUserRows(csv);
 					importErrors = [...result.errors];
-					let userCount = 0;
 
 					for (const row of result.rows) {
 						try {
@@ -133,7 +134,7 @@
 	};
 </script>
 
-<Modal size="sm" bind:show returnfocusSelector="#add-user">
+<Modal size="sm" bind:show returnFocusSelector="#add-user">
 	<div>
 		<div class=" flex justify-between dark:text-gray-300 px-5 pt-4 pb-2">
 			<div class=" text-lg font-medium self-center">{$i18n.t('Add User')}</div>

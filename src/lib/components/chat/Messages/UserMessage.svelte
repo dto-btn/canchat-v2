@@ -37,6 +37,7 @@
 
 	let edit = false;
 	let editedContent = '';
+	const getTextArea = (event: Event) => event.currentTarget as HTMLTextAreaElement;
 	let messageEditTextAreaElement: HTMLTextAreaElement;
 	let showDeleteConfirm = false;
 
@@ -159,8 +160,9 @@
 							class=" bg-transparent outline-none w-full resize-none"
 							bind:value={editedContent}
 							on:input={(e) => {
-								e.target.style.height = '';
-								e.target.style.height = `${e.target.scrollHeight}px`;
+								const textarea = getTextArea(e);
+								textarea.style.height = '';
+								textarea.style.height = `${textarea.scrollHeight}px`;
 							}}
 							on:keydown={(e) => {
 								if (e.key === 'Escape') {
