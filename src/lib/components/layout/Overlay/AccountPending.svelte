@@ -83,7 +83,7 @@
 					{currentTranslation.message3}
 					<br />
 					<a
-						href="mailto:dsaiclientengagement.sdiaclientmobilisation@ssc-spc.gc.ca"
+						href="mailto:ssc.canchat-support-assistance-canchat.spc@ssc-spc.gc.ca"
 						class="underline"
 					>
 						{currentTranslation.action}

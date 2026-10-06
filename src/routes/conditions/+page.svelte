@@ -899,7 +899,7 @@
 					<li class="mb-2">
 						<a
 							class="underline"
-							href="mailto:dsaiclientengagement.sdiaclientmobilisation@ssc-spc.gc.ca"
+							href="mailto:ssc.canchat-support-assistance-canchat.spc@ssc-spc.gc.ca"
 							>Intégration opérationnelle et mobilisation des clients</a
 						>
 					</li>

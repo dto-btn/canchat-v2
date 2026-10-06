@@ -23,7 +23,7 @@ env:
 jobs:
   tests:
     name: 'Playwright E2E Tests'
-    runs-on: 
+    runs-on:
       group: tko-canchat
     permissions:
       contents: read
@@ -71,7 +71,7 @@ jobs:
       - name: Force local Docker image update
         run: |
           docker images --format '{{.Repository}}:{{.Tag}}' | xargs -I {} bash -c 'docker inspect --format="{{index .RepoDigests 0}}" {} && docker pull {};';
-          docker rmi $(docker images -f "dangling=true" -q)
+          docker image prune -f
         continue-on-error: true
 
       - name:  Start CANChat Environment
