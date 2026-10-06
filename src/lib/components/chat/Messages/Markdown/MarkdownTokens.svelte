@@ -33,6 +33,9 @@
 		return 'h' + depth;
 	};
 
+	const getTokenChildren = (token: Token): Token[] =>
+		'tokens' in token && Array.isArray(token.tokens) ? token.tokens : [];
+
 	const exportTableToCSVHandler = (token: any, tokenIdx = 0) => {
 		// Extract header row text and escape for CSV.
 		const header = token.header.map(
@@ -72,7 +75,11 @@
 		<hr class=" border-gray-50 dark:border-gray-850" />
 	{:else if token.type === 'heading'}
 		<svelte:element this={headerComponent(token.depth)}>
-			<MarkdownInlineTokens id={`${id}-${tokenIdx}-h`} tokens={token.tokens} {onSourceClick} />
+			<MarkdownInlineTokens
+				id={`${id}-${tokenIdx}-h`}
+				tokens={getTokenChildren(token)}
+				{onSourceClick}
+			/>
 		</svelte:element>
 	{:else if token.type === 'code'}
 		{#if token.raw.includes('```')}
@@ -116,7 +123,7 @@
 										<div class="flex-shrink-0 break-normal">
 											<MarkdownInlineTokens
 												id={`${id}-${tokenIdx}-header-${headerIdx}`}
-												tokens={header.tokens}
+												tokens={getTokenChildren(header)}
 												{onSourceClick}
 											/>
 										</div>
@@ -136,7 +143,7 @@
 										<div class="flex flex-col break-normal">
 											<MarkdownInlineTokens
 												id={`${id}-${tokenIdx}-row-${rowIdx}-${cellIdx}`}
-												tokens={cell.tokens}
+												tokens={getTokenChildren(cell)}
 												{onSourceClick}
 											/>
 										</div>
@@ -164,7 +171,7 @@
 		</div>
 	{:else if token.type === 'blockquote'}
 		<blockquote>
-			<svelte:self id={`${id}-${tokenIdx}`} tokens={token.tokens} />
+			<svelte:self id={`${id}-${tokenIdx}`} tokens={getTokenChildren(token)} />
 		</blockquote>
 	{:else if token.type === 'list'}
 		{#if token.ordered}
@@ -173,7 +180,7 @@
 					<li>
 						<svelte:self
 							id={`${id}-${tokenIdx}-${itemIdx}`}
-							tokens={item.tokens}
+							tokens={getTokenChildren(item)}
 							top={token.loose}
 						/>
 					</li>
@@ -185,7 +192,7 @@
 					<li>
 						<svelte:self
 							id={`${id}-${tokenIdx}-${itemIdx}`}
-							tokens={item.tokens}
+							tokens={getTokenChildren(item)}
 							top={token.loose}
 						/>
 					</li>
@@ -219,23 +226,27 @@
 		<p>
 			<MarkdownInlineTokens
 				id={`${id}-${tokenIdx}-p`}
-				tokens={token.tokens ?? []}
+				tokens={getTokenChildren(token)}
 				{onSourceClick}
 			/>
 		</p>
 	{:else if token.type === 'text'}
 		{#if top}
 			<p>
-				{#if token.tokens}
-					<MarkdownInlineTokens id={`${id}-${tokenIdx}-t`} tokens={token.tokens} {onSourceClick} />
+				{#if getTokenChildren(token).length > 0}
+					<MarkdownInlineTokens
+						id={`${id}-${tokenIdx}-t`}
+						tokens={getTokenChildren(token)}
+						{onSourceClick}
+					/>
 				{:else}
 					{unescapeHtml(token.text)}
 				{/if}
 			</p>
-		{:else if token.tokens}
+		{:else if getTokenChildren(token).length > 0}
 			<MarkdownInlineTokens
 				id={`${id}-${tokenIdx}-p`}
-				tokens={token.tokens ?? []}
+				tokens={getTokenChildren(token)}
 				{onSourceClick}
 			/>
 		{:else}

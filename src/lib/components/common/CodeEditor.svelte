@@ -70,8 +70,9 @@
 				return null;
 			});
 
-			if (res && res.code) {
-				const formattedCode = res.code;
+			const formattedResponse = res as { code?: string } | null;
+			if (formattedResponse?.code) {
+				const formattedCode = formattedResponse.code;
 				codeEditor.dispatch({
 					changes: [{ from: 0, to: codeEditor.state.doc.length, insert: formattedCode }]
 				});

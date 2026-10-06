@@ -153,7 +153,7 @@
 		const pipelineUploadInputElement = document.getElementById('pipelines-upload-input');
 
 		if (pipelineUploadInputElement) {
-			pipelineUploadInputElement.value = null;
+			(pipelineUploadInputElement as HTMLInputElement).value = '';
 		}
 
 		uploading = false;
