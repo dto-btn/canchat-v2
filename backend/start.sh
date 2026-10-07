@@ -7,6 +7,13 @@ KEY_FILE=.webui_secret_key
 
 PORT="${PORT:-8080}"
 HOST="${HOST:-0.0.0.0}"
+UVICORN_WORKERS="${UVICORN_WORKERS:-1}"
+
+if ! [[ "$UVICORN_WORKERS" =~ ^[1-9][0-9]*$ ]]; then
+  echo "UVICORN_WORKERS must be a positive integer, got '$UVICORN_WORKERS'" >&2
+  exit 1
+fi
+
 if test "$WEBUI_SECRET_KEY $WEBUI_JWT_SECRET_KEY" = " "; then
   echo "Loading WEBUI_SECRET_KEY from file, not provided as an environment variable."
 
@@ -54,4 +61,4 @@ if [ -n "$SPACE_ID" ]; then
   export WEBUI_URL=${SPACE_HOST}
 fi
 
-WEBUI_SECRET_KEY="$WEBUI_SECRET_KEY" exec uvicorn open_webui.main:app --host "$HOST" --port "$PORT" --forwarded-allow-ips '*'
+WEBUI_SECRET_KEY="$WEBUI_SECRET_KEY" exec uvicorn open_webui.main:app --host "$HOST" --port "$PORT" --forwarded-allow-ips '*' --workers "$UVICORN_WORKERS"
