@@ -16,8 +16,6 @@ services:
     depends_on:
       - canchat-mock
       - ollama-stub
-    ports:
-      - "127.0.0.1:5173:5173"
 
   canchat-mock:
     image: python:3.11-slim-bookworm
