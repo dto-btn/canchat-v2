@@ -1,4 +1,4 @@
-"""HTTP client for Enterprise Knowledge Hub (EKH) Wikipedia search."""
+"""HTTP client for Enterprise Knowledge Hub (EKH) knowledge search."""
 
 import logging
 from typing import Dict, List, Optional
@@ -18,13 +18,14 @@ async def search_wikipedia(
     timeout_seconds: float = 5.0,
     api_key: Optional[str] = None,
     source: Optional[str] = None,
+    knowledge_source: str = "wikipedia",
 ) -> List[Dict]:
-    """Return EKH search result rows, or [] on any failure so chat is never blocked."""
+    """Search an EKH knowledge source, returning [] on failure."""
     if not base_url:
         log.warning("EKH_BASE_URL is not set; skipping EKH search")
         return []
 
-    url = f"{base_url.rstrip('/')}/database/wikipedia/search"
+    url = f"{base_url.rstrip('/')}/database/{knowledge_source}/search"
     params = {"query": query, "limit": str(limit)}
     if source:
         params["source"] = source

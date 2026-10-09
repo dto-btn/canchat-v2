@@ -1956,6 +1956,7 @@ WIKIPEDIA_GROUNDING_PROVIDER = (
     os.getenv("WIKIPEDIA_GROUNDING_PROVIDER", "txtai").strip().lower()
 )
 EKH_BASE_URL = os.getenv("EKH_BASE_URL", "")
+EKH_KNOWLEDGE_SOURCE = os.getenv("EKH_KNOWLEDGE_SOURCE", "wikipedia").strip().lower()
 EKH_API_KEY = os.getenv("EKH_API_KEY", "")
 EKH_TIMEOUT_SECONDS = float(os.getenv("EKH_TIMEOUT_SECONDS", "5"))
 

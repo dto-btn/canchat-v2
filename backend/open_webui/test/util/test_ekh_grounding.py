@@ -13,10 +13,11 @@ from open_webui.grounding import ekh_client
 from open_webui.grounding.wiki_search_utils import WikiSearchGrounder
 
 
-def _fake_config(provider="ekh"):
+def _fake_config(provider="ekh", knowledge_source="wikipedia"):
     return SimpleNamespace(
         WIKIPEDIA_GROUNDING_PROVIDER=provider,
         EKH_BASE_URL="http://ekh.test",
+        EKH_KNOWLEDGE_SOURCE=knowledge_source,
         EKH_API_KEY="",
         EKH_TIMEOUT_SECONDS=5.0,
     )
@@ -42,6 +43,7 @@ def _row(pid, source, name, similarity, chunk=0):
 async def _serve(handler):
     app = web.Application()
     app.router.add_get("/database/wikipedia/search", handler)
+    app.router.add_get("/database/tbs-policies/search", handler)
     server = TestServer(app)
     await server.start_server()
     return server
@@ -148,6 +150,27 @@ async def test_client_returns_empty_when_unreachable_or_unconfigured():
     )
 
 
+@pytest.mark.asyncio
+async def test_client_uses_configured_knowledge_source_route():
+    seen = {}
+
+    async def handler(request):
+        seen["path"] = request.path
+        return web.json_response({"results": []})
+
+    server = await _serve(handler)
+    try:
+        await ekh_client.search_wikipedia(
+            "leave policy",
+            base_url=str(server.make_url("/")),
+            knowledge_source="tbs-policies",
+        )
+    finally:
+        await server.close()
+
+    assert seen["path"] == "/database/tbs-policies/search"
+
+
 # ── WikiSearchGrounder with the EKH provider ─────────────────────────────────
 
 
@@ -212,6 +235,39 @@ async def test_ground_query_labels_ekh_source_in_context():
 
     assert data["source"] == "ekh-wikipedia"
     assert "Source: ekh-wikipedia" in grounder.format_grounding_context(data)
+
+
+@pytest.mark.asyncio
+async def test_tbs_policies_source_maps_policy_citation():
+    row = {
+        "id": 42,
+        "source": "tbs-policies",
+        "name": "Values and Ethics Code",
+        "content": "Policy text",
+        "chunk_index": 0,
+        "similarity": 0.9,
+    }
+    with (
+        patch.dict(
+            sys.modules,
+            {"open_webui.config": _fake_config(knowledge_source="tbs-policies")},
+        ),
+        patch.object(
+            ekh_client, "search_wikipedia", AsyncMock(return_value=[row])
+        ) as search,
+    ):
+        data = await WikiSearchGrounder().ground_query("values and ethics")
+
+    assert search.await_args.kwargs["knowledge_source"] == "tbs-policies"
+    assert data["grounding_data"][0]["url"] == (
+        "https://www.tbs-sct.canada.ca/pol/doc-eng.aspx?id=42"
+    )
+    assert data["grounding_data"][0]["source"] == "ekh-tbs-policies"
+    assert data["grounding_data"][0]["language"] is None
+    assert data["source"] == "ekh-tbs-policies"
+    assert "Source: ekh-tbs-policies" in WikiSearchGrounder().format_grounding_context(
+        data
+    )
 
 
 @pytest.mark.asyncio
