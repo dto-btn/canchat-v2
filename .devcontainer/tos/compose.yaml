@@ -1,0 +1,48 @@
+services:
+  workspace:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ../..:/workspaces/canchat-v2:cached
+      - node_modules:/workspaces/canchat-v2/node_modules
+      - python_venv:/workspaces/canchat-v2/.venv
+      - backend_data:/workspaces/canchat-v2/backend/data
+    working_dir: /workspaces/canchat-v2
+    command: sleep infinity
+    environment:
+      OLLAMA_BASE_URL: http://ollama-stub:11434
+      ENABLE_OPENAI_API: "false"
+    depends_on:
+      - canchat-mock
+      - ollama-stub
+    ports:
+      - "127.0.0.1:5173:5173"
+
+  canchat-mock:
+    image: python:3.11-slim-bookworm
+    working_dir: /app
+    environment:
+      CANCHAT_DEV_MOCK: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - ./mocks/canchat_backend.py:/app/canchat_backend.py:ro
+      - ./mocks/requirements.txt:/app/requirements.txt:ro
+    command: >
+      sh -c "pip install --disable-pip-version-check -r /app/requirements.txt
+      && uvicorn canchat_backend:app --host 0.0.0.0 --port 8080"
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  ollama-stub:
+    image: python:3.11-slim-bookworm
+    volumes:
+      - ./mocks/ollama_stub.py:/app/ollama_stub.py:ro
+    command: python /app/ollama_stub.py
+    expose:
+      - "11434"
+
+volumes:
+  node_modules:
+  python_venv:
+  backend_data:
