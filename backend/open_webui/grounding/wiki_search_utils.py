@@ -33,7 +33,7 @@ def _get_provider() -> str:
 def _get_ekh_knowledge_source() -> str:
     from open_webui.config import EKH_KNOWLEDGE_SOURCE
 
-    return EKH_KNOWLEDGE_SOURCE
+    return getattr(EKH_KNOWLEDGE_SOURCE, "value", EKH_KNOWLEDGE_SOURCE)
 
 
 def _get_txtai_embeddings():
@@ -717,11 +717,11 @@ class WikiSearchGrounder:
         from open_webui.config import (
             EKH_API_KEY,
             EKH_BASE_URL,
-            EKH_KNOWLEDGE_SOURCE,
             EKH_TIMEOUT_SECONDS,
         )
         from .context_analysis import ConversationContextAnalyzer
 
+        knowledge_source = _get_ekh_knowledge_source()
         # EKH uses the query instruction registered for the selected source.
         search_query = (
             ConversationContextAnalyzer()._enhance_query_with_temporal_context(query)
@@ -730,7 +730,7 @@ class WikiSearchGrounder:
         rows = await ekh_client.search_wikipedia(
             search_query,
             base_url=EKH_BASE_URL,
-            knowledge_source=EKH_KNOWLEDGE_SOURCE,
+            knowledge_source=knowledge_source,
             limit=self.max_search_results * 3,
             timeout_seconds=EKH_TIMEOUT_SECONDS,
             api_key=EKH_API_KEY or None,
@@ -753,13 +753,13 @@ class WikiSearchGrounder:
             if len(content) > self.max_content_length:
                 content = content[: self.max_content_length] + "..."
             title = row.get("name", "")
-            if EKH_KNOWLEDGE_SOURCE == "tbs-policies":
+            if knowledge_source == "tbs-policies":
                 url = row.get("url") or (
                     f"https://www.tbs-sct.canada.ca/pol/doc-eng.aspx?id={row['id']}"
                     if row.get("id") is not None
                     else None
                 )
-            elif EKH_KNOWLEDGE_SOURCE == "wikipedia":
+            elif knowledge_source == "wikipedia":
                 url = row.get("url") or (
                     f"https://en.wikipedia.org/wiki/{title.replace(' ', '_')}"
                 )
@@ -772,8 +772,8 @@ class WikiSearchGrounder:
                     "score": row.get("similarity", 0),
                     "url": url,
                     "language": row.get("language")
-                    or ("en" if EKH_KNOWLEDGE_SOURCE == "wikipedia" else None),
-                    "source": f"ekh-{EKH_KNOWLEDGE_SOURCE}",
+                    or ("en" if knowledge_source == "wikipedia" else None),
+                    "source": f"ekh-{knowledge_source}",
                     "original_query": query,
                     "search_query": search_query,
                 }

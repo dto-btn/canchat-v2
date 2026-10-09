@@ -10,7 +10,7 @@
 
 	export let saveHandler: Function;
 
-	let wikipediaConfig = { enabled: false };
+	let wikipediaConfig = { enabled: false, source: 'wikipedia' as 'wikipedia' | 'tbs-policies' };
 	let loading = false;
 
 	const handleSubmit = async () => {
@@ -18,7 +18,8 @@
 
 		try {
 			const res = await updateRAGConfig(getRequestToken(), {
-				enable_wikipedia_grounding: wikipediaConfig.enabled
+				enable_wikipedia_grounding: wikipediaConfig.enabled,
+				ekh_knowledge_source: wikipediaConfig.source
 			});
 
 			if (res) {
