@@ -1,0 +1,201 @@
+
+---
+name: Localization Spelling
+
+on:
+  pull_request:
+    paths:
+      - 'src/lib/i18n/locales/en-us/**'
+      - 'src/lib/i18n/locales/fr-ca/**'
+
+permissions: read-all
+
+jobs:
+  spelling:
+    name: Spelling
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+
+      - name: Install CSpell
+        run: |
+          npm install --no-audit --no-fund --no-save \
+            cspell \
+            @cspell/dict-fr-fr
+
+      - name: Find changed localization files
+        id: changed_locales
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+
+          git fetch --no-tags origin "${BASE_SHA}"
+
+          git diff \
+            --name-only \
+            --diff-filter=ACMR \
+            "${BASE_SHA}...HEAD" \
+            -- \
+            'src/lib/i18n/locales/en-GB/' \
+            'src/lib/i18n/locales/fr-CA/' \
+            > changed-locale-files.txt
+
+          echo "Changed localization files:"
+          cat changed-locale-files.txt
+
+          if [ -s changed-locale-files.txt ]; then
+            echo "has_changed_files=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changed_files=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run CSpell on changed localization files
+        id: cspell
+        if: steps.changed_locales.outputs.has_changed_files == 'true'
+        run: |
+          set +e
+
+          npx cspell \
+            --config cspell.json \
+            --no-progress \
+            --show-suggestions \
+            --file-list changed-locale-files.txt \
+            > cspell-output.txt 2>&1
+
+          cspell_exit_code="$?"
+          set -e
+
+          cat cspell-output.txt
+          echo "exit_code=${cspell_exit_code}" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update CSpell PR comment
+        if: always() && steps.changed_locales.outcome == 'success' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          HAS_CHANGED_FILES: ${{ steps.changed_locales.outputs.has_changed_files }}
+          CSPELL_EXIT_CODE: ${{ steps.cspell.outputs.exit_code }}
+        run: |
+          set -euo pipefail
+
+          comment_marker="<!-- cspell-localization-summary -->"
+
+          existing_comment_id="$(
+            gh api \
+              "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+              --paginate \
+              --jq '.[] | select(.user.type == "Bot") | select(.body | contains("<!-- cspell-localization-summary -->")) | .id' \
+              | head -n 1
+          )"
+
+          if [ "${HAS_CHANGED_FILES}" != "true" ]; then
+            echo "No localization files changed."
+
+            if [ -n "${existing_comment_id}" ]; then
+              gh api --method DELETE \
+                "repos/${REPO}/issues/comments/${existing_comment_id}"
+            fi
+
+            exit 0
+          fi
+
+          if [ "${CSPELL_EXIT_CODE}" = "0" ]; then
+            result="Pass"
+          else
+            result="Fail"
+          fi
+
+          files_checked="$(
+            wc -l < changed-locale-files.txt | tr -d ' '
+          )"
+
+          cspell_summary="$(
+            grep -E 'Files checked:|Issues found:' \
+              cspell-output.txt || true
+          )"
+
+          comment_body="$(mktemp)"
+
+          {
+            echo "${comment_marker}"
+            echo "## CSpell Localization Summary"
+            echo ""
+            echo "| Check | Validation result |"
+            echo "| --- | --- |"
+            echo "| LOCALIZATION_SPELLING | ${result} |"
+            echo ""
+            echo "Changed files: ${files_checked}"
+            echo ""
+
+            if [ -n "${cspell_summary}" ]; then
+              echo "${cspell_summary}"
+              echo ""
+            fi
+
+            echo "<details>"
+            echo "<summary>Changed localization files</summary>"
+            echo ""
+            echo '```text'
+            cat changed-locale-files.txt
+            echo '```'
+            echo ""
+            echo "</details>"
+            echo ""
+
+            echo "<details>"
+            echo "<summary>CSpell output</summary>"
+            echo ""
+            echo '```text'
+            if [ -f cspell-output.txt ]; then
+              sed -n '1,200p' cspell-output.txt
+            else
+              echo "CSpell did not produce output."
+            fi
+            echo '```'
+            echo ""
+            echo "</details>"
+            echo ""
+            echo "Powered by CSpell"
+          } > "${comment_body}"
+
+          if [ -n "${existing_comment_id}" ]; then
+            echo "Updating existing CSpell comment ${existing_comment_id}"
+
+            jq -n --rawfile body "${comment_body}" '{body: $body}' \
+              | gh api \
+                  --method PATCH \
+                  "repos/${REPO}/issues/comments/${existing_comment_id}" \
+                  --input -
+          else
+            echo "Creating new CSpell comment"
+
+            jq -n --rawfile body "${comment_body}" '{body: $body}' \
+              | gh api \
+                  --method POST \
+                  "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+                  --input -
+          fi
+
+      - name: Fail if CSpell found issues
+        if: steps.changed_locales.outputs.has_changed_files == 'true' && steps.cspell.outputs.exit_code != '0'
+        run: |
+          echo "CSpell found spelling issues or failed."
+          exit 1
