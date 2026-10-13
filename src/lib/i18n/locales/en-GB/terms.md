@@ -1,3 +1,4 @@
+<!-- cspell:ignore communiqués -->
 **Effective Date:** January 9, 2026
 
 **Version:** 3.0
