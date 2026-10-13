@@ -6,6 +6,7 @@ on:
     paths:
       - 'src/lib/i18n/locales/en-us/**'
       - 'src/lib/i18n/locales/fr-ca/**'
+      - '.github/workflows/localized-spelling.yaml'
 
 permissions: read-all
 
