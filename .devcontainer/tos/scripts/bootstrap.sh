@@ -16,6 +16,6 @@ if [ ! -f .venv/bin/activate ]; then
   python3 -m venv .venv
 fi
 
-echo "CANChat TOS development environment initialized."
+echo "CANChat  development environment initialized."
 echo "Start frontend: npm run dev -- --port 5173"
 echo "Start backend: bash .devcontainer/tos/scripts/start-backend.sh"
