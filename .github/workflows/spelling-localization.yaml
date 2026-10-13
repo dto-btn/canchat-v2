@@ -4,8 +4,8 @@ name: Localization Spelling
 on:
   pull_request:
     paths:
-      - 'src/lib/i18n/locales/en-us/**'
-      - 'src/lib/i18n/locales/fr-ca/**'
+      - 'src/lib/i18n/locales/en-GB/**'
+      - 'src/lib/i18n/locales/fr-CA/**'
       - '.github/workflows/spelling-localization.yaml'
 
 permissions: read-all
