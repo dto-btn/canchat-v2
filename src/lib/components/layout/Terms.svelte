@@ -1,4 +1,3 @@
-
 <script lang="ts">
 	import { marked } from 'marked';
 	import DOMPurify from 'dompurify';
