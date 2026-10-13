@@ -1,4 +1,3 @@
-
 <script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 	import { goto } from '$app/navigation';
@@ -25,8 +24,7 @@
 	let termsStatusUnavailable = false;
 	let acceptTermsFailureCount = 0;
 
-	const sleep = (ms: number) =>
-		new Promise<void>((resolve) => setTimeout(resolve, ms));
+	const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 	const runWithRetry = async <T,>(
 		operation: (attempt: number) => Promise<T>,
@@ -73,10 +71,7 @@
 		accepting = true;
 
 		try {
-			await runWithRetry(
-				() => acceptTerms(getRequestToken()),
-				TERMS_MAX_RETRY_ATTEMPTS
-			);
+			await runWithRetry(() => acceptTerms(getRequestToken()), TERMS_MAX_RETRY_ATTEMPTS);
 
 			acceptTermsFailureCount = 0;
 			toast.success('Conditions acceptées. Redirection vers CANChat.');
@@ -188,13 +183,14 @@
 						>
 							<span
 								class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-current text-xs font-bold"
-							>!</span>
+								>!</span
+							>
 							<p>
 								Impossible de vérifier l'état des conditions. Veuillez contacter
 								<a
 									class="font-semibold underline underline-offset-2"
-									href={`mailto:${TERMS_SUPPORT_EMAIL}`}
-								>l'assistance CANChat</a>.
+									href={`mailto:${TERMS_SUPPORT_EMAIL}`}>l'assistance CANChat</a
+								>.
 							</p>
 						</div>
 					{/if}
@@ -206,10 +202,11 @@
 						>
 							<span
 								class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-current text-xs font-bold"
-							>!</span>
+								>!</span
+							>
 							<p>
-								Les tentatives répétées d'enregistrement de l'acceptation ont échoué.
-								Veuillez patienter quelques minutes avant de réessayer.
+								Les tentatives répétées d'enregistrement de l'acceptation ont échoué. Veuillez
+								patienter quelques minutes avant de réessayer.
 							</p>
 						</div>
 					{/if}
