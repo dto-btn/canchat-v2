@@ -62,7 +62,7 @@ curl http://localhost:8080/health
 Expected response:
 
 ```json
-{"status":"ok","mode":"LOCAL MOCK ONLY"}
+{ "status": "ok", "mode": "LOCAL MOCK ONLY" }
 ```
 
 From **inside the Dev Container**, use the Docker Compose service name instead of `localhost`:
@@ -75,10 +75,10 @@ Inside the workspace container, `localhost:8080` refers to the workspace contain
 
 ## Ports
 
-| Port | Purpose |
-| --- | --- |
-| `5173` | Svelte/Vite frontend |
-| `8080` | Local FastAPI mock backend |
+| Port    | Purpose                                                |
+| ------- | ------------------------------------------------------ |
+| `5173`  | Svelte/Vite frontend                                   |
+| `8080`  | Local FastAPI mock backend                             |
 | `11434` | Ollama stub, available only inside the Compose network |
 
 Ports `5173` and `8080` are bound to `127.0.0.1` on the host.
