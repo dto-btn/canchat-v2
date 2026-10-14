@@ -115,7 +115,7 @@ Some controls outside the Terms pages may not respond because their API endpoint
 A helper script is included for running the real CANChat Python backend:
 
 ```bash
-bash .devcontainer/terms/start-backend.sh
+bash .devcontainer/tos/start-backend.sh
 ```
 
 This installs the full backend dependency set from:
