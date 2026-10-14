@@ -923,9 +923,13 @@ async def chat_wiki_grounding_handler(
             sources_summary = []
             for source in grounding_data["grounding_data"]:
                 original_url = source.get("url", "")
-                converted_url, source_language = convert_wikipedia_url_for_language(
-                    original_url, detected_language
-                )
+                # EKH results already carry their own language and URL.
+                if source.get("language"):
+                    converted_url, source_language = original_url, source["language"]
+                else:
+                    converted_url, source_language = convert_wikipedia_url_for_language(
+                        original_url, detected_language
+                    )
 
                 # If we converted to a French URL, try to fetch the French title and content
                 if source_language == "fr" and converted_url != original_url:

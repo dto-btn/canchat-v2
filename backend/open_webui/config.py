@@ -1951,6 +1951,19 @@ WIKIPEDIA_GROUNDING_MAX_CONCURRENT = PersistentConfig(
     int(os.getenv("WIKIPEDIA_GROUNDING_MAX_CONCURRENT", "5")),
 )
 
+# Wikipedia grounding backend: "txtai" (local model, default) or "ekh" (Enterprise Knowledge Hub)
+WIKIPEDIA_GROUNDING_PROVIDER = (
+    os.getenv("WIKIPEDIA_GROUNDING_PROVIDER", "txtai").strip().lower()
+)
+EKH_BASE_URL = os.getenv("EKH_BASE_URL", "")
+EKH_KNOWLEDGE_SOURCE = PersistentConfig(
+    "EKH_KNOWLEDGE_SOURCE",
+    "rag.ekh.knowledge_source",
+    os.getenv("EKH_KNOWLEDGE_SOURCE", "wikipedia").strip().lower(),
+)
+EKH_API_KEY = os.getenv("EKH_API_KEY", "")
+EKH_TIMEOUT_SECONDS = float(os.getenv("EKH_TIMEOUT_SECONDS", "5"))
+
 
 def _validate_fallback_max_tokens(value: int, default: int = 16000) -> int:
     """Validate RAG_CONTEXT_FALLBACK_MAX_TOKENS is a positive integer."""
