@@ -1,0 +1,13 @@
+{
+	"import": ["@cspell/dict-fr-fr/cspell-ext.json"],
+	"overrides": [
+		{
+			"filename": "src/lib/i18n/locales/en-GB/**",
+			"language": "en-US"
+		},
+		{
+			"filename": "src/lib/i18n/locales/fr-CA/**",
+			"language": "fr"
+		}
+	]
+}
