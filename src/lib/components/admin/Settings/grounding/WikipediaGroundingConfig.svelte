@@ -28,7 +28,6 @@
 
 <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
 	<div class="space-y-4">
-		<!-- Header -->
 		<div class="flex items-center justify-between">
 			<div>
 				<h3
@@ -62,7 +61,6 @@
 			</select>
 		</div>
 
-		<!-- Description when enabled -->
 		{#if config.enabled}
 			<div
 				class="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-md p-3"

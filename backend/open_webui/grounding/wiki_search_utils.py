@@ -722,7 +722,6 @@ class WikiSearchGrounder:
         from .context_analysis import ConversationContextAnalyzer
 
         knowledge_source = _get_ekh_knowledge_source()
-        # EKH uses the query instruction registered for the selected source.
         search_query = (
             ConversationContextAnalyzer()._enhance_query_with_temporal_context(query)
         )
@@ -736,7 +735,6 @@ class WikiSearchGrounder:
             api_key=EKH_API_KEY or None,
         )
 
-        # EKH returns chunks; keep the best-scoring chunk per article.
         best: Dict[tuple, Dict] = {}
         for row in rows:
             key = (row.get("source"), row.get("id"), row.get("name"))

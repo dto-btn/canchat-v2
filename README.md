@@ -109,6 +109,10 @@ cp -RPp .env.example .env
 **Customize `.env`:**  
 Open the `.env` file in your code editor (e.g., VS Code). For local development, the default settings in `.env.example` should suffice, but you can customize them if needed.
 
+#### EKH Grounding (Optional)
+
+To use the Enterprise Knowledge Hub (EKH) for Wikipedia grounding, set `WIKIPEDIA_GROUNDING_PROVIDER=ekh` and configure `EKH_BASE_URL` with the EKH service URL. `EKH_KNOWLEDGE_SOURCE` selects the initial source: `wikipedia` or `tbs-policies`. Administrators can switch between these sources in **Admin Panel > Settings > Grounding**. The selected source must be indexed in EKH.
+
 > **Important:** If you plan to contribute to the repository, **do not commit sensitive information to your `.env` file**. Always review your environment variables before pushing changes to ensure no secrets, credentials, or private data are exposed.
 
 ---
