@@ -1,9 +1,11 @@
 {
 	"import": ["@cspell/dict-fr-fr/cspell-ext.json"],
+	"words": ["canchat", "Cohere", "Excel", "extrants", "PSIA"],
+	"ignoreRegExpList": ["Email", "Urls", "/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}/g"],
 	"overrides": [
 		{
 			"filename": "src/lib/i18n/locales/en-GB/**",
-			"language": "en-US"
+			"language": "en-GB"
 		},
 		{
 			"filename": "src/lib/i18n/locales/fr-CA/**",
