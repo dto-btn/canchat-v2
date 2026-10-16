@@ -981,7 +981,7 @@
 			})),
 			...(event ? { event: event } : {}),
 			chat_id: chatId,
-			session_id: $socket?.id,
+			session_id: $socket?.id ?? '',
 			id: responseMessageId
 		}).catch((error) => {
 			toast.error(`${error}`);

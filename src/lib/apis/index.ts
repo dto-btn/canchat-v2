@@ -68,7 +68,7 @@ type ChatActionForm = {
 	}[];
 	chat_id: string;
 	id: string;
-	session_id?: string;
+	session_id: string;
 	event?: unknown;
 };
 
