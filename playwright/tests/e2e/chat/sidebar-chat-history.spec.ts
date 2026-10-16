@@ -813,16 +813,32 @@ test.describe('Sidebar and Chat History Features', () => {
 
 		try {
 			const downloadLabel = userPage.getTranslation('Download');
+			const downloadButton = userPage.page.getByRole('button', { name: downloadLabel });
+			await expect(downloadButton).toHaveCount(1);
 			const formats = [
 				{ label: 'Plain text (.txt)', extension: '.txt' },
 				{ label: 'PDF document (.pdf)', extension: '.pdf' }
 			];
 
-			for (const format of formats) {
-				await userPage.page.getByRole('button', { name: downloadLabel }).click();
-				await userPage.page
-					.getByRole('menuitem', { name: userPage.getTranslation(format.label) })
-					.click();
+			for (const [index, format] of formats.entries()) {
+				await downloadButton.focus();
+				await downloadButton.press('Enter');
+				const menuItem = userPage.page.getByRole('menuitem', {
+					name: userPage.getTranslation(format.label)
+				});
+				const firstMenuItem = userPage.page.getByRole('menuitem', {
+					name: userPage.getTranslation(formats[0].label)
+				});
+				await expect(firstMenuItem).toBeFocused();
+				if (index === 1) {
+					await userPage.page.keyboard.press('ArrowDown');
+				}
+				await expect(menuItem).toBeFocused();
+
+				const downloadPromise = userPage.page.waitForEvent('download');
+				await menuItem.press('Enter');
+				await expect(downloadButton).toBeFocused();
+				await downloadPromise;
 
 				await expect
 					.poll(
@@ -859,7 +875,9 @@ test.describe('Sidebar and Chat History Features', () => {
 		await userPage.toggleSidebar(true);
 		await userPage.selectChatByHref(chatUrl);
 
-		const errorMessage = 'Chat unavailable';
+		const failedChatTitle = await userPage.page
+			.locator(`#sidebar a[href="${chatUrl}"] span.truncate`)
+			.innerText();
 		let downloadCount = 0;
 		const recordDownload = () => {
 			downloadCount += 1;
@@ -870,7 +888,7 @@ test.describe('Sidebar and Chat History Features', () => {
 				await route.fulfill({
 					status: 503,
 					contentType: 'application/json',
-					body: JSON.stringify({ detail: errorMessage })
+					body: JSON.stringify({ detail: 'Chat unavailable' })
 				});
 				return;
 			}
@@ -885,7 +903,7 @@ test.describe('Sidebar and Chat History Features', () => {
 				.getByRole('menuitem', { name: userPage.getTranslation('Plain text (.txt)') })
 				.click();
 
-			await expect(userPage.toast.filter({ hasText: errorMessage }).last()).toBeAttached();
+			await expect(userPage.toast.filter({ hasText: failedChatTitle }).last()).toBeAttached();
 			expect(downloadCount).toBe(0);
 		} finally {
 			userPage.page.off('download', recordDownload);
@@ -906,7 +924,9 @@ test.describe('Sidebar and Chat History Features', () => {
 		await userPage.toggleSidebar(true);
 		await userPage.selectChatByHref(chatUrl);
 
-		const errorMessage = 'PDF service unavailable';
+		const failedChatTitle = await userPage.page
+			.locator(`#sidebar a[href="${chatUrl}"] span.truncate`)
+			.innerText();
 		let downloadCount = 0;
 		const recordDownload = () => {
 			downloadCount += 1;
@@ -916,7 +936,7 @@ test.describe('Sidebar and Chat History Features', () => {
 			await route.fulfill({
 				status: 503,
 				contentType: 'application/json',
-				body: JSON.stringify({ detail: errorMessage })
+				body: JSON.stringify({ detail: 'PDF service unavailable' })
 			});
 		});
 
@@ -928,11 +948,105 @@ test.describe('Sidebar and Chat History Features', () => {
 				.getByRole('menuitem', { name: userPage.getTranslation('PDF document (.pdf)') })
 				.click();
 
-			await expect(userPage.toast.filter({ hasText: errorMessage }).last()).toBeAttached();
+			await expect(userPage.toast.filter({ hasText: failedChatTitle }).last()).toBeAttached();
 			expect(downloadCount).toBe(0);
 		} finally {
 			userPage.page.off('download', recordDownload);
 			await userPage.page.unroute('**/api/v1/utils/pdf');
+		}
+	});
+
+	// ===========================================
+	// CHAT-SIDEBAR-TC018: Continue Bulk Download After One Chat Fails
+	// ===========================================
+	test('CHAT-SIDEBAR-TC018: User can download unaffected chats when one export fails @serial', async ({
+		userPage
+	}) => {
+		test.setTimeout(180000);
+
+		const chatUrls: string[] = [];
+		const chatIds: string[] = [];
+		for (const message of [
+			'Bulk partial download 1',
+			'Bulk partial download 2',
+			'Bulk partial download 3'
+		]) {
+			await userPage.page.goto('/');
+			await userPage.sendMessage(message);
+			const chatUrl = new URL(userPage.page.url()).pathname;
+			chatUrls.push(chatUrl);
+			chatIds.push(chatUrl.split('/').pop()!);
+		}
+
+		await userPage.toggleSidebar(true);
+		for (const chatUrl of chatUrls) {
+			await userPage.selectChatByHref(chatUrl);
+		}
+		await expect(userPage.selectedCountLabel).toContainText('3');
+
+		const failedChatTitle = await userPage.page
+			.locator(`#sidebar a[href="${chatUrls[1]}"] span.truncate`)
+			.innerText();
+		const downloadNames: string[] = [];
+		const recordDownload = (download: { suggestedFilename: () => string }) => {
+			downloadNames.push(download.suggestedFilename());
+		};
+		userPage.page.on('download', recordDownload);
+
+		try {
+			const downloadButton = userPage.page.getByRole('button', {
+				name: userPage.getTranslation('Download')
+			});
+			await expect(downloadButton).toHaveCount(1);
+
+			await userPage.page.route(`**/api/v1/chats/${chatIds[1]}`, async (route) => {
+				if (route.request().method() === 'GET') {
+					await route.fulfill({
+						status: 503,
+						body: JSON.stringify({ detail: 'Chat unavailable' })
+					});
+					return;
+				}
+				await route.continue();
+			});
+			await downloadButton.click();
+			await userPage.page
+				.getByRole('menuitem', { name: userPage.getTranslation('Plain text (.txt)') })
+				.click();
+			await expect
+				.poll(() => downloadNames.filter((filename) => filename.endsWith('.txt')).length)
+				.toBe(2);
+			await expect(userPage.toast.filter({ hasText: failedChatTitle }).last()).toBeAttached();
+			await userPage.page.unroute(`**/api/v1/chats/${chatIds[1]}`);
+
+			downloadNames.length = 0;
+			await userPage.page.route('**/api/v1/utils/pdf', async (route) => {
+				const { title } = route.request().postDataJSON();
+				if (title === failedChatTitle) {
+					await route.fulfill({
+						status: 503,
+						body: JSON.stringify({ detail: 'PDF unavailable' })
+					});
+					return;
+				}
+				await route.fulfill({
+					status: 200,
+					contentType: 'application/pdf',
+					body: '%PDF-1.4 mock'
+				});
+			});
+			await downloadButton.click();
+			await userPage.page
+				.getByRole('menuitem', { name: userPage.getTranslation('PDF document (.pdf)') })
+				.click();
+			await expect
+				.poll(() => downloadNames.filter((filename) => filename.endsWith('.pdf')).length)
+				.toBe(2);
+			await expect(userPage.toast.filter({ hasText: failedChatTitle }).last()).toBeAttached();
+		} finally {
+			userPage.page.off('download', recordDownload);
+			await userPage.page.unroute(`**/api/v1/chats/${chatIds[1]}`).catch(() => {});
+			await userPage.page.unroute('**/api/v1/utils/pdf').catch(() => {});
 		}
 	});
 });
