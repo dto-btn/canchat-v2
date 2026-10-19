@@ -4,6 +4,7 @@ name: Localization Spelling
 on:
   pull_request:
     paths:
+      - 'cspell.json'
       - 'src/lib/i18n/locales/en-GB/**'
       - 'src/lib/i18n/locales/fr-CA/**'
       - '.github/workflows/spelling-localization.yaml'
@@ -39,7 +40,7 @@ jobs:
             cspell \
             @cspell/dict-fr-fr
 
-      - name: Find changed localization files
+      - name: Find localization files to spell-check
         id: changed_locales
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -53,6 +54,8 @@ jobs:
             --diff-filter=ACMR \
             "${BASE_SHA}...HEAD" \
             -- \
+            'cspell.json' \
+            '.github/workflows/spelling-localization.yaml' \
             'src/lib/i18n/locales/en-GB/' \
             'src/lib/i18n/locales/fr-CA/' \
             > changed-locale-files.txt
@@ -60,13 +63,49 @@ jobs:
           echo "Changed localization files:"
           cat changed-locale-files.txt
 
-          if [ -s changed-locale-files.txt ]; then
+          if grep -Eq \
+            '(^cspell\.json$|/cspell\.(yaml|yml|json|jsonc)$|^\.github/workflows/spelling-localization\.yaml$)' \
+            changed-locale-files.txt; then
+
+            echo "Configuration changed. Full locale scan."
+
+            git ls-files -- \
+              'src/lib/i18n/locales/en-GB/' \
+              'src/lib/i18n/locales/fr-CA/' \
+              | grep -E '\.(json|md)$' \
+              > spellcheck-files.txt || true
+
+            echo "scan_mode=full" >> "$GITHUB_OUTPUT"
+
+          else
+            echo "Scanning changed locale files."
+
+            grep -E \
+              '^src/lib/i18n/locales/(en-GB|fr-CA)/.*\.(json|md)$' \
+              changed-locale-files.txt \
+              > spellcheck-files.txt || true
+
+            echo "scan_mode=changed" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Exclude CSpell configuration files from validation.
+          grep -Ev '(^|/)cspell\.(json|jsonc|yaml|yml)$' \
+            spellcheck-files.txt \
+            > spellcheck-filtered.txt || true
+
+          mv spellcheck-filtered.txt spellcheck-files.txt
+
+          echo "Files selected for CSpell:"
+          cat spellcheck-files.txt
+
+          if [ -s spellcheck-files.txt ]; then
             echo "has_changed_files=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_changed_files=false" >> "$GITHUB_OUTPUT"
+            echo "No spell-checkable files found."
           fi
 
-      - name: Run CSpell on changed localization files
+      - name: Run CSpell
         id: cspell
         if: steps.changed_locales.outputs.has_changed_files == 'true'
         run: |
@@ -76,7 +115,7 @@ jobs:
             --config cspell.json \
             --no-progress \
             --show-suggestions \
-            --file-list changed-locale-files.txt \
+            --file-list spellcheck-files.txt \
             > cspell-output.txt 2>&1
 
           cspell_exit_code="$?"
@@ -85,35 +124,38 @@ jobs:
           cat cspell-output.txt
           echo "exit_code=${cspell_exit_code}" >> "$GITHUB_OUTPUT"
 
-      - name: Create or update CSpell PR comment
+      - name: Post fresh CSpell PR comment
         if: always() && steps.changed_locales.outcome == 'success' && github.event.pull_request.head.repo.full_name == github.repository
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
           HAS_CHANGED_FILES: ${{ steps.changed_locales.outputs.has_changed_files }}
+          SCAN_MODE: ${{ steps.changed_locales.outputs.scan_mode }}
           CSPELL_EXIT_CODE: ${{ steps.cspell.outputs.exit_code }}
         run: |
           set -euo pipefail
 
           comment_marker="<!-- cspell-localization-summary -->"
 
-          existing_comment_id="$(
-            gh api \
-              "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-              --paginate \
-              --jq '.[] | select(.user.type == "Bot") | select(.body | contains("<!-- cspell-localization-summary -->")) | .id' \
-              | head -n 1
-          )"
+          echo "Removing previous CSpell comments..."
+
+          gh api \
+            "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+            --paginate \
+            --jq '.[] | select(.user.login == "github-actions[bot]") | select(.body | contains("<!-- cspell-localization-summary -->")) | .id' \
+            | while read -r comment_id; do
+                if [ -n "${comment_id}" ]; then
+                  echo "Deleting comment ${comment_id}"
+
+                  gh api \
+                    --method DELETE \
+                    "repos/${REPO}/issues/comments/${comment_id}"
+                fi
+              done
 
           if [ "${HAS_CHANGED_FILES}" != "true" ]; then
-            echo "No localization files changed."
-
-            if [ -n "${existing_comment_id}" ]; then
-              gh api --method DELETE \
-                "repos/${REPO}/issues/comments/${existing_comment_id}"
-            fi
-
+            echo "No spell-checkable files. No comment needed."
             exit 0
           fi
 
@@ -123,8 +165,8 @@ jobs:
             result="Fail"
           fi
 
-          files_checked="$(
-            wc -l < changed-locale-files.txt | tr -d ' '
+          files_selected="$(
+            wc -l < spellcheck-files.txt | tr -d ' '
           )"
 
           cspell_summary="$(
@@ -142,7 +184,9 @@ jobs:
             echo "| --- | --- |"
             echo "| LOCALIZATION_SPELLING | ${result} |"
             echo ""
-            echo "Changed files: ${files_checked}"
+            echo "Scan mode: ${SCAN_MODE}"
+            echo ""
+            echo "Files selected for validation: ${files_selected}"
             echo ""
 
             if [ -n "${cspell_summary}" ]; then
@@ -151,10 +195,10 @@ jobs:
             fi
 
             echo "<details>"
-            echo "<summary>Changed localization files</summary>"
+            echo "<summary>Files checked</summary>"
             echo ""
             echo '```text'
-            cat changed-locale-files.txt
+            cat spellcheck-files.txt
             echo '```'
             echo ""
             echo "</details>"
@@ -176,23 +220,13 @@ jobs:
             echo "Powered by CSpell"
           } > "${comment_body}"
 
-          if [ -n "${existing_comment_id}" ]; then
-            echo "Updating existing CSpell comment ${existing_comment_id}"
+          echo "Creating new CSpell review comment..."
 
-            jq -n --rawfile body "${comment_body}" '{body: $body}' \
-              | gh api \
-                  --method PATCH \
-                  "repos/${REPO}/issues/comments/${existing_comment_id}" \
-                  --input -
-          else
-            echo "Creating new CSpell comment"
-
-            jq -n --rawfile body "${comment_body}" '{body: $body}' \
-              | gh api \
-                  --method POST \
-                  "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-                  --input -
-          fi
+          jq -n --rawfile body "${comment_body}" '{body: $body}' \
+            | gh api \
+                --method POST \
+                "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+                --input -
 
       - name: Fail if CSpell found issues
         if: steps.changed_locales.outputs.has_changed_files == 'true' && steps.cspell.outputs.exit_code != '0'
