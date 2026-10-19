@@ -3,7 +3,8 @@
   "overrides": [
     {
       "filename": "src/lib/i18n/locales/en-GB/**",
-      "language": "en-GB"
+      "language": "en-GB",
+      "words": ["dialog"]
     },
     {
       "filename": "src/lib/i18n/locales/fr-CA/**",
