@@ -1,25 +1,8 @@
 {
-  "import": ["@cspell/dict-fr-fr/cspell-ext.json"],
-  "overrides": [
-    {
-      "filename": "src/lib/i18n/locales/en-GB/**",
-      "language": "en-GB",
-      "words": ["dialog"]
-    },
-    {
-      "filename": "src/lib/i18n/locales/fr-CA/**",
-      "language": "fr"
-    },
-    {
-      "filename": "src/lib/i18n/locales/**/**/*.json",
-      "ignoreRegExpList": [
-        "/\\x22(?:\\\\.|[^\\x22\\\\])*\\x22\\s*:/g",
-        "/<\\/?[A-Za-z][^>]*>/g"
-      ]
-    },
-    {
-      "filename": "src/lib/i18n/locales/languages.json",
-      "words": ["Français"]
-    }
-  ]
-}
+	"import": [
+		"@cspell/dict-fr-fr/cspell-ext.json",
+		"./src/lib/i18n/locales/en-GB/cspell.yaml",
+		"./src/lib/i18n/locales/fr-CA/cspell.yaml"
+	],
+	"ignorePaths": ["**/cspell.json", "**/cspell.yaml", "**/cspell.yml", "**/cspell.jsonc"]
+np
