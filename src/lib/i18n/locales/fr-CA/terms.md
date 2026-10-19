@@ -1,3 +1,7 @@
+<!-- cspell:words canchat -->
+<!-- cspell:words cohere -->
+<!-- cspell:words excel -->
+<!-- cspell:words extrants -->
 ## Bienvenue à CANChat
 
 CANChat est une solution d'intelligence artificielle générative avancée fournie par Services partagés Canada (SPC). Il est conçu pour aider le personnel du gouvernement du Canada (GC) à accroître la productivité, à rationaliser les tâches et à améliorer la communication.
