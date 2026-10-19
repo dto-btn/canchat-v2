@@ -141,8 +141,6 @@ By using CANChat, you explicitly agree and confirm that:
 
 - Under no circumstances will your Input Data be used for training or improving the underlying generative AI models, either by SSC or by Third-Party Providers.
 - You represent and warrant that you have all necessary rights and permissions to provide Input Data to CANChat and that your Input Data does not infringe upon the intellectual property rights, privacy rights, or other rights of any third party.
-- Under no circumstances will your Input Data be used for training or improving the underlying generative AI models, either by SSC or by Third-Party Providers.
-- You represent and warrant that you have all necessary rights and permissions to provide Input Data to CANChat and that your Input Data does not infringe upon the intellectual property rights, privacy rights, or other rights of any third party.
 
 ### 8.2 Output Content
 
