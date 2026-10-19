@@ -5,8 +5,6 @@
 	import {
 		TERMS_SUPPORT_EMAIL,
 		TERMS_MAX_RETRY_ATTEMPTS,
-		TERMS_RETRY_DELAY_MS,
-		TERMS_VERSION,
 		TERMS_RETRY_DELAY_MS
 	} from '$lib/constants';
 	import { toast } from 'svelte-sonner';
