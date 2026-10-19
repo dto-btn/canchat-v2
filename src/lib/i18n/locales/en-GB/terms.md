@@ -1,3 +1,5 @@
+<!-- cspell:words PSIA -->
+<!-- cspell:words CANCHAT -->
 ## Welcome to CANChat
 
 CANChat is an advanced generative artificial intelligence solution provided by Shared Services Canada (SSC). It is designed to assist Government of Canada (GC) personnel in enhancing productivity, streamlining tasks, and improving communication.
