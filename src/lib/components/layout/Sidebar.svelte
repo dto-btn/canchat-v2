@@ -1189,7 +1189,7 @@
 							<img
 								src={$user?.profile_image_url}
 								class=" max-w-[30px] object-cover rounded-full self-center mr-3"
-								alt="User profile"
+								alt=""
 							/>
 							{$user?.name}
 						</UserMenu>
