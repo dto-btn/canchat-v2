@@ -1,11 +1,10 @@
 """
-Web Search Audit Logger
+Web Search Operational Audit Logger
 
-Structured audit logging for every web search query dispatched to upstream providers.
-Designed for:
-  - Data leakage analysis (what queries are leaving the system)
-  - Performance monitoring (latency, result counts)
-  - Security auditing (who searched what, when)
+Structured metadata for web searches dispatched to upstream providers.
+Raw queries, user email/name, URL paths and exception details are excluded
+at every log level. Query hashes, provider domains, latency and result counts
+support operational correlation without emitting search content.
 
 Each log record is emitted as a single JSON payload in the application logger,
 so it is captured by the container runtime (stdout/stderr) without external
@@ -85,7 +84,7 @@ def _create_metrics_instruments() -> WebSearchMetricsInstruments:
             ),
         )
     except Exception:
-        log.exception("[web_search_audit] failed to initialize OTel metrics")
+        log.error("[web_search_audit] failed to initialize OTel metrics")
         return WebSearchMetricsInstruments()
 
 
@@ -99,7 +98,7 @@ _MAX_LOGGED_RESULT_URLS = 20
 
 
 def _hash_query(query: str) -> str:
-    """SHA-256 hash of the normalised query for correlation without storing PII at INFO level."""
+    """SHA-256 hash of the normalised query for correlation without raw content."""
     normalised = query.lower().strip()
     return hashlib.sha256(normalised.encode("utf-8")).hexdigest()[:16]
 
@@ -110,8 +109,6 @@ def _safe_user_attrs(user) -> dict:
         return {
             "user_id": None,
             "user_role": None,
-            "user_email": None,
-            "user_name": None,
         }
     return {
         "user_id": (
@@ -120,15 +117,19 @@ def _safe_user_attrs(user) -> dict:
             else None
         ),
         "user_role": getattr(user, "role", None),
-        "user_email": getattr(user, "email", None),
-        "user_name": getattr(user, "name", None),
     }
 
 
 def _sanitize_result_url(url: str) -> str:
-    """Remove query strings and fragments before logging result URLs."""
+    """Retain only HTTP(S) origins, excluding credentials and all URL content."""
     parsed = urlparse(url)
-    return urlunparse((parsed.scheme, parsed.netloc, parsed.path, "", "", ""))
+    hostname = parsed.hostname
+    if parsed.scheme not in {"http", "https"} or not hostname:
+        return ""
+    netloc = f"[{hostname}]" if ":" in hostname else hostname
+    if parsed.port is not None:
+        netloc = f"{netloc}:{parsed.port}"
+    return urlunparse((parsed.scheme, netloc, "", "", "", ""))
 
 
 def _sanitize_urls(urls: list[str], limit: int) -> list[str]:
@@ -137,21 +138,12 @@ def _sanitize_urls(urls: list[str], limit: int) -> list[str]:
         if len(sanitized_urls) >= limit:
             break
         try:
-            sanitized_urls.append(_sanitize_result_url(url))
+            sanitized = _sanitize_result_url(url)
+            if sanitized:
+                sanitized_urls.append(sanitized)
         except Exception:
-            sanitized_urls.append(url)
+            continue
     return sanitized_urls
-
-
-def _emit_sensitive_debug_record(record: dict) -> None:
-    """Emit sensitive dispatch details at DEBUG level only."""
-    try:
-        payload = json.dumps(
-            record, default=str, ensure_ascii=False, separators=(",", ":")
-        )
-        log.debug("[web_search_audit_sensitive] %s", payload)
-    except Exception:
-        log.exception("[web_search_audit_sensitive] failed to serialize audit record")
 
 
 def _emit_audit_record(record: dict) -> None:
@@ -162,13 +154,7 @@ def _emit_audit_record(record: dict) -> None:
         )
         log.info("[web_search_audit] %s", payload)
     except Exception:
-        log.exception("[web_search_audit] failed to serialize audit record")
-
-
-def _emit_audit_records(record: dict, sensitive_record: Optional[dict] = None) -> None:
-    _emit_audit_record(record)
-    if sensitive_record is not None:
-        _emit_sensitive_debug_record(sensitive_record)
+        log.error("[web_search_audit] failed to serialize audit record")
 
 
 def _record_counter(instrument, value: int, attributes: dict[str, Any]) -> None:
@@ -177,7 +163,7 @@ def _record_counter(instrument, value: int, attributes: dict[str, Any]) -> None:
     try:
         instrument.add(value, attributes=attributes)
     except Exception:
-        log.debug("[web_search_audit] failed to record counter metric", exc_info=True)
+        log.debug("[web_search_audit] failed to record counter metric")
 
 
 def _record_histogram(instrument, value: int, attributes: dict[str, Any]) -> None:
@@ -186,7 +172,7 @@ def _record_histogram(instrument, value: int, attributes: dict[str, Any]) -> Non
     try:
         instrument.record(value, attributes=attributes)
     except Exception:
-        log.debug("[web_search_audit] failed to record histogram metric", exc_info=True)
+        log.debug("[web_search_audit] failed to record histogram metric")
 
 
 @dataclass
@@ -259,15 +245,7 @@ def log_web_search_dispatch(
             "user_email": None,
             "user_name": None,
         }
-        _emit_audit_records(
-            record,
-            {
-                "event_type": "web_search_dispatch_sensitive",
-                "query": query,
-                "user_email": user_attrs["user_email"],
-                "user_name": user_attrs["user_name"],
-            },
-        )
+        _emit_audit_record(record)
         _record_counter(
             _METRICS_INSTRUMENTS.dispatch_counter,
             1,
@@ -277,7 +255,7 @@ def log_web_search_dispatch(
             },
         )
     except Exception:
-        log.exception("[web_search_dispatch] audit logging failure")
+        log.error("[web_search_dispatch] audit logging failure")
 
     return ctx
 
@@ -309,9 +287,12 @@ def log_web_search_result(
         for result in results or []:
             link = getattr(result, "link", None)
             if link:
-                result_links.append(link)
                 try:
-                    domain = urlparse(link).netloc
+                    sanitized_link = _sanitize_result_url(link)
+                    if not sanitized_link:
+                        continue
+                    result_links.append(sanitized_link)
+                    domain = urlparse(sanitized_link).hostname
                     if domain and domain not in _seen_domains:
                         result_domains.append(domain)
                         _seen_domains.add(domain)
@@ -335,7 +316,7 @@ def log_web_search_result(
             ),
             "success": error is None,
             "error_type": type(error).__name__ if error else None,
-            "error_message": str(error)[:500] if error else None,
+            "error_message": None,
         }
         _emit_audit_record(record)
 
@@ -356,7 +337,7 @@ def log_web_search_result(
             metric_attrs,
         )
     except Exception:
-        log.exception("[web_search_result] audit logging failure")
+        log.error("[web_search_result] audit logging failure")
     finally:
         ctx.result_logged = True
 
@@ -402,8 +383,7 @@ def log_web_search_content_load(
     """
     Log the URL content-loading phase that follows search result retrieval.
 
-    This captures what external URLs are actually being fetched/scraped,
-    which is critical for data-leakage analysis.
+    Only operational counts and timing are emitted, never fetched URL content.
     """
     try:
         record = {
@@ -418,15 +398,9 @@ def log_web_search_content_load(
             "collection_name": collection_name,
             "success": error is None,
             "error_type": type(error).__name__ if error else None,
-            "error_message": str(error)[:500] if error else None,
+            "error_message": None,
         }
-        _emit_audit_records(
-            record,
-            {
-                "event_type": "web_search_content_load_sensitive",
-                "urls_requested": urls,
-            },
-        )
+        _emit_audit_record(record)
 
         metric_attrs = {
             "engine": engine or "unknown",
@@ -441,4 +415,4 @@ def log_web_search_content_load(
             metric_attrs,
         )
     except Exception:
-        log.exception("[web_search_content_load] audit logging failure")
+        log.error("[web_search_content_load] audit logging failure")
