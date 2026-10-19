@@ -1,0 +1,8 @@
+{
+	"import": [
+		"@cspell/dict-fr-fr/cspell-ext.json",
+		"./src/lib/i18n/locales/en-GB/cspell.yaml",
+		"./src/lib/i18n/locales/fr-CA/cspell.yaml"
+	],
+	"ignorePaths": ["**/cspell.json", "**/cspell.yaml", "**/cspell.yml", "**/cspell.jsonc"]
+}
