@@ -36,13 +36,11 @@ class FakeCrewManager:
         self.tokens_seen = []
         self.azure_config = types.SimpleNamespace(deployment=None)
 
-    def set_user_token(self, token):
-        self.tokens_seen.append(token)
-
     def get_available_tools(self):
         return [{"name": "fake_tool"}]
 
-    def run_intelligent_crew(self, query, selected_tools):
+    def run_intelligent_crew(self, query, selected_tools, user_access_token):
+        self.tokens_seen.append(user_access_token)
         if self.raise_error:
             raise RuntimeError(f"provider rejected prompt: {query}")
         return (f"answer to {query}", {}, None)
@@ -114,8 +112,7 @@ def test_crew_mcp_query_does_not_log_prompt_or_token(monkeypatch, delegated):
     _assert_no_canary(records, output)
     assert "query_len=33" in output
     assert "graph_access_token present=True" in output
-    if delegated == "true":
-        assert manager.tokens_seen == [CANARY_TOKEN]
+    assert manager.tokens_seen == [CANARY_TOKEN]
 
 
 def test_crew_mcp_query_error_path_does_not_log_prompt(monkeypatch):

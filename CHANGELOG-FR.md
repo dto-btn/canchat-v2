@@ -9,6 +9,7 @@ et ce projet adhère au [Versionnage sémantique](https://semver.org/lang/fr/spe
 
 ### Corrigé
 
+- **Isolation des jetons CrewAI (OBS-11)** : Les jetons d'accès Graph sont transmis à chaque exécution plutôt que stockés globalement, ce qui empêche le partage d'identifiants entre utilisateurs simultanés. Les requêtes SharePoint en accès délégué sans jeton renvoient maintenant une erreur explicite.
 - **🔒 Données sensibles dans les journaux** : Les invites des utilisateurs, les réponses des modèles, les fragments de jetons d'accès Graph, les clés d'API, les jetons et revendications OAuth, les adresses courriel, les URL de webhooks et le texte des documents ne sont plus écrits dans les journaux du serveur. Des longueurs, des décomptes et des identifiants sont journalisés à la place.
 
 ## [0.5.7-ccv2-1.16.0] - 2026-08-12

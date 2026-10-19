@@ -72,6 +72,10 @@ class AzureConfig(BaseModel):
         return True
 
 
+class MissingGraphTokenError(ValueError):
+    """Delegated SharePoint access requires an invocation-scoped Graph token."""
+
+
 class CrewMCPManager:
     """Manager for CrewAI with MCP integration"""
 
@@ -89,9 +93,6 @@ class CrewMCPManager:
         # Discover SharePoint server scripts dynamically.
         # Any *_sharepoint_server.py in the servers directory is a department server.
         self._sharepoint_server_paths = self._discover_sharepoint_servers()
-
-        # User token for OBO flow (delegate access)
-        self.user_jwt_token = None
 
     def _discover_sharepoint_servers(self) -> dict:
         """Read SHAREPOINT_DEPARTMENTS env var to determine active departments.
@@ -123,19 +124,6 @@ class CrewMCPManager:
                 "Set SHAREPOINT_DEPARTMENTS=MPO,PMO (comma-separated) to enable SharePoint integration."
             )
         return result
-
-    def set_user_token(self, token: str):
-        """Set the user's JWT token for OBO authentication"""
-        self.user_jwt_token = token
-        logger.info(f"User JWT token set for OBO flow: {bool(token)}")
-
-        # Set as environment variable for SharePoint MCP servers to use
-        if token:
-            os.environ["USER_JWT_TOKEN"] = token
-            logger.info(f"✅ Set USER_JWT_TOKEN in environment (length: {len(token)})")
-        elif "USER_JWT_TOKEN" in os.environ:
-            del os.environ["USER_JWT_TOKEN"]
-            logger.info("🗑️ Cleared USER_JWT_TOKEN from environment")
 
     def initialize_mcp_adapters(self):
         """Initialize all MCP server adapters once at startup"""
@@ -406,7 +394,10 @@ class CrewMCPManager:
             raise
 
     def run_sharepoint_crew(
-        self, department: str, query: str = "Search SharePoint documents"
+        self,
+        department: str,
+        query: str = "Search SharePoint documents",
+        user_access_token: str | None = None,
     ) -> tuple[str, dict[str, int]]:
         """
         Run a CrewAI crew with MCP SharePoint server tools for a given department.
@@ -414,12 +405,27 @@ class CrewMCPManager:
         Args:
             department: Department key, e.g. "MPO" or "PMO".  Case-insensitive.
             query: The SharePoint-related query to process.
+            user_access_token: Authenticated caller's Graph token for this run only.
 
         Returns:
             (result_str, token_usage) tuple.
         """
         dept_key = department.upper()
         dept_lower = dept_key.lower()
+        use_delegated_access = os.getenv(
+            "SHP_USE_DELEGATED_ACCESS", "true"
+        ).lower() in ("true", "1", "yes")
+        if use_delegated_access and not user_access_token:
+            raise MissingGraphTokenError(
+                "Graph access token is required for delegated SharePoint access"
+            )
+        server_env = {
+            key: value
+            for key, value in os.environ.items()
+            if key.startswith("SHP_") or key.startswith(f"{dept_key}_SHP_")
+        }
+        if use_delegated_access:
+            server_env["USER_JWT_TOKEN"] = user_access_token
 
         server_path = self._sharepoint_server_paths.get(dept_key)
         if not server_path or not server_path.exists():
@@ -432,21 +438,14 @@ class CrewMCPManager:
         )
         logger.info(f"Using {dept_key} SharePoint server: {server_path}")
         logger.info(
-            "🔄 Initializing fresh SharePoint adapter with user token from environment"
+            "Initializing fresh SharePoint adapter with invocation-scoped credentials"
         )
 
         try:
-            # Create adapter with current environment (includes USER_JWT_TOKEN set by set_user_token())
             sharepoint_params = StdioServerParameters(
                 command=sys.executable,
                 args=[str(server_path), dept_key],
-                env={
-                    key: value
-                    for key, value in os.environ.items()
-                    if key.startswith("SHP_")
-                    or key.startswith(f"{dept_key}_SHP_")
-                    or key == "USER_JWT_TOKEN"
-                },  # Fresh environment snapshot with USER_JWT_TOKEN
+                env=server_env,
             )
 
             # Use context manager for automatic cleanup
@@ -610,13 +609,19 @@ class CrewMCPManager:
                     {},
                 )
 
-    def run_intelligent_crew(self, query: str, selected_tools: list = None) -> tuple:
+    def run_intelligent_crew(
+        self,
+        query: str,
+        selected_tools: list = None,
+        user_access_token: str | None = None,
+    ) -> tuple:
         """
         Route a query to the appropriate specialist crew based on selected_tools.
 
         Args:
             query: The query to process.
             selected_tools: List of tool IDs selected by the user (optional).
+            user_access_token: Authenticated caller's Graph token for this run only.
 
         Returns:
             A 3-tuple of (result_str, token_usage_dict, mcp_process_name).
@@ -666,7 +671,9 @@ class CrewMCPManager:
                     return result_str, token_usage, "news_server"
                 elif specialist.endswith("_SHAREPOINT"):
                     dept = specialist[: -len("_SHAREPOINT")]
-                    result_str, token_usage = self.run_sharepoint_crew(dept, query)
+                    result_str, token_usage = self.run_sharepoint_crew(
+                        dept, query, user_access_token
+                    )
                     return result_str, token_usage, f"{dept.lower()}_sharepoint_server"
 
             # Multiple specialists - simple priority routing
@@ -683,7 +690,9 @@ class CrewMCPManager:
                 for specialist in available_specialists:
                     if specialist.endswith("_SHAREPOINT"):
                         dept = specialist[: -len("_SHAREPOINT")]
-                        result_str, token_usage = self.run_sharepoint_crew(dept, query)
+                        result_str, token_usage = self.run_sharepoint_crew(
+                            dept, query, user_access_token
+                        )
                         return (
                             result_str,
                             token_usage,
@@ -696,6 +705,8 @@ class CrewMCPManager:
                 None,
             )
 
+        except MissingGraphTokenError:
+            raise
         except Exception as e:
             logger.error(f"Error in intelligent routing: {e}")
             # Emergency fallback - route based on selected tools only
@@ -724,7 +735,7 @@ class CrewMCPManager:
                             dept = m.group(1).upper()
                             logger.info(f"Emergency fallback: {dept} SHAREPOINT")
                             result_str, token_usage = self.run_sharepoint_crew(
-                                dept, query
+                                dept, query, user_access_token
                             )
                             return (
                                 result_str,

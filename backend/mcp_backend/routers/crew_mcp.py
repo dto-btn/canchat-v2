@@ -82,7 +82,7 @@ def extract_graph_access_token(request: Request) -> Optional[str]:
 async def get_graph_access_token_for_user(request: Request) -> Optional[str]:
     """
     Get the Graph API access token directly from OAuth2 proxy headers.
-    This token will be set globally for ALL MCP servers to use.
+    The token is passed explicitly to the caller's crew invocation.
     """
     return extract_graph_access_token(request)
 
@@ -356,30 +356,6 @@ async def run_crew_query(
         log.info(f"Selected tools: {request.selected_tools}")
         log.info(f"User access token available: {bool(user_access_token)}")
 
-        # Check SharePoint authentication mode
-        import os
-
-        use_delegated_access = os.getenv(
-            "SHP_USE_DELEGATED_ACCESS", "true"
-        ).lower() in ("true", "1", "yes")
-
-        if use_delegated_access:
-            # Delegated access (OBO flow) - use user token
-            if user_access_token:
-                crew_mcp_manager.set_user_token(user_access_token)
-                log.info("Using SharePoint delegated access (OBO flow) with user token")
-            else:
-                crew_mcp_manager.set_user_token(None)
-                log.warning(
-                    "SHP_USE_DELEGATED_ACCESS=true but no user token available - SharePoint access may fail"
-                )
-        else:
-            # Application access (client credentials flow) - no user token needed
-            crew_mcp_manager.set_user_token(None)
-            log.info(
-                "Using SharePoint application access (client credentials flow) - SHP_USE_DELEGATED_ACCESS=false"
-            )
-
         # Get available tools first
         tools = crew_mcp_manager.get_available_tools()
         if not tools:
@@ -408,6 +384,7 @@ async def run_crew_query(
                 crew_mcp_manager.run_intelligent_crew,
                 request.query,
                 selected_tools,
+                user_access_token,
             )
 
         # Unpack the (result_str, token_usage, mcp_process) tuple returned by run_intelligent_crew
@@ -527,30 +504,6 @@ async def run_multi_server_crew_query(
         )
         log.info(f"User access token available: {bool(user_access_token)}")
 
-        # Check SharePoint authentication mode
-        import os
-
-        use_delegated_access = os.getenv(
-            "SHP_USE_DELEGATED_ACCESS", "true"
-        ).lower() in ("true", "1", "yes")
-
-        if use_delegated_access:
-            # Delegated access (OBO flow) - use user token
-            if user_access_token:
-                crew_mcp_manager.set_user_token(user_access_token)
-                log.info("Using SharePoint delegated access (OBO flow) with user token")
-            else:
-                crew_mcp_manager.set_user_token(None)
-                log.warning(
-                    "SHP_USE_DELEGATED_ACCESS=true but no user token available - SharePoint access may fail"
-                )
-        else:
-            # Application access (client credentials flow) - no user token needed
-            crew_mcp_manager.set_user_token(None)
-            log.info(
-                "Using SharePoint application access (client credentials flow) - SHP_USE_DELEGATED_ACCESS=false"
-            )
-
         # Get available tools first
         tools = crew_mcp_manager.get_available_tools()
         if not tools:
@@ -573,6 +526,7 @@ async def run_multi_server_crew_query(
                 crew_mcp_manager.run_intelligent_crew,
                 request.query,
                 selected_tools,
+                user_access_token,
             )
 
         # Unpack the (result_str, token_usage, mcp_process) tuple
