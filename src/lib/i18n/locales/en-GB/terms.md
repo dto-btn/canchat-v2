@@ -210,5 +210,5 @@ For general inquiries about CANChat or these Terms of Use, please contact:
 
 **Artificial Intelligence Program Contact:**
 
-- **Email:** dsaiclientengagement.sdiaclientmobilisation@ssc-spc.gc.ca
+- **Email:** [AI Client Engagement and Mobilization](mailto:dsaiclientengagement.sdiaclientmobilisation@ssc-spc.gc.ca)
 - **Internal Website:** https://gcxgce.sharepoint.com/teams/1000538/SitePages/GC-AI-Hub.aspx
