@@ -5,4 +5,4 @@
 		"./src/lib/i18n/locales/fr-CA/cspell.yaml"
 	],
 	"ignorePaths": ["**/cspell.json", "**/cspell.yaml", "**/cspell.yml", "**/cspell.jsonc"]
-np
+}
