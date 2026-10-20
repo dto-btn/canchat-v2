@@ -123,17 +123,22 @@ def test_single_user_crew(monkeypatch, integration, manager, selected_tools):
 
 
 @pytest.mark.parametrize("direct", [False, True])
+@pytest.mark.parametrize("user_access_token", [None, "", " ", "\t\r\n"])
 def test_missing_token_rejected_without_environment_fallback(
-    monkeypatch, integration, manager, direct
+    monkeypatch, integration, manager, direct, user_access_token
 ):
     monkeypatch.setenv("SHP_USE_DELEGATED_ACCESS", "true")
     monkeypatch.setenv("USER_JWT_TOKEN", "another-users-token")
     received = _stub_tools(monkeypatch, integration)
-    with pytest.raises(ValueError, match="Graph access token is required"):
+    with pytest.raises(
+        integration.MissingGraphTokenError, match="Graph access token is required"
+    ):
         if direct:
-            manager.run_sharepoint_crew("MPO", "Search")
+            manager.run_sharepoint_crew("MPO", "Search", user_access_token)
         else:
-            manager.run_intelligent_crew("Search", ["mcp_mpo_sharepoint_server"])
+            manager.run_intelligent_crew(
+                "Search", ["mcp_mpo_sharepoint_server"], user_access_token
+            )
     assert received == []
 
 

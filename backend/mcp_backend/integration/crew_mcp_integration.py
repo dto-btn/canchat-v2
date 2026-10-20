@@ -415,7 +415,9 @@ class CrewMCPManager:
         use_delegated_access = os.getenv(
             "SHP_USE_DELEGATED_ACCESS", "true"
         ).lower() in ("true", "1", "yes")
-        if use_delegated_access and not user_access_token:
+        if use_delegated_access and (
+            not user_access_token or not user_access_token.strip()
+        ):
             raise MissingGraphTokenError(
                 "Graph access token is required for delegated SharePoint access"
             )
