@@ -104,7 +104,7 @@
 							<img
 								src={selectedUser.profile_image_url}
 								class=" max-w-[55px] object-cover rounded-full"
-								alt="User profile"
+								alt=""
 							/>
 						</div>
 

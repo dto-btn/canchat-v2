@@ -358,7 +358,7 @@
 											>
 												<img
 													src={item.model?.info?.meta?.profile_image_url ?? '/static/favicon.png'}
-													alt="Model"
+													alt=""
 													class="rounded-full size-5 flex items-center mr-2"
 												/>
 												{item.label}

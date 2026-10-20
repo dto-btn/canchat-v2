@@ -224,6 +224,7 @@
 							<button
 								class="relative rounded-full w-fit h-fit shrink-0"
 								type="button"
+								aria-label={$i18n.t('Change profile image')}
 								on:click={() => {
 									imageInputElement.click();
 								}}
@@ -231,7 +232,7 @@
 								<img
 									src={profileImageUrl}
 									class="size-16 rounded-full object-cover shrink-0"
-									alt="Profile"
+									alt=""
 								/>
 
 								<div
