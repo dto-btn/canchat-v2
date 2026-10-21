@@ -9,6 +9,7 @@ et ce projet adhère au [Versionnage sémantique](https://semver.org/lang/fr/spe
 
 ### Corrigé
 
+- **Isolation des jetons CrewAI (OBS-11)** : Les jetons d'accès Graph sont transmis à chaque exécution plutôt que stockés globalement, ce qui empêche le partage d'identifiants entre utilisateurs simultanés. Les requêtes SharePoint en accès délégué sans jeton renvoient maintenant une erreur explicite.
 - **Confidentialité des journaux de recherche Web (OBS-12)** : Suppression des entrées DEBUG sensibles, des courriels et noms des utilisateurs, des chemins et identifiants des URL et des détails des exceptions dans les journaux opérationnels de recherche Web. Les URL malformées sont omises; les métadonnées INFO d'envoi et les métriques de recherche Web sont conservées.
 - **🔒 Données sensibles dans les journaux** : Les invites des utilisateurs, les réponses des modèles, les fragments de jetons d'accès Graph, les clés d'API, les jetons et revendications OAuth, les adresses courriel, les URL de webhooks et le texte des documents ne sont plus écrits dans les journaux du serveur. Des longueurs, des décomptes et des identifiants sont journalisés à la place.
 
