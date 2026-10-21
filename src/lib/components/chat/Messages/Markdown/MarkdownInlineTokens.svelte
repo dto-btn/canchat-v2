@@ -61,7 +61,7 @@
 		<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
 		<code
 			class="codespan cursor-pointer"
-			on:click={() => {
+			onclick={() => {
 				copyToClipboard(unescapeHtml(token.text));
 				toast.success($i18n.t('Copied to clipboard'));
 			}}>{unescapeHtml(token.text)}</code
@@ -86,7 +86,11 @@
 			title={token.fileId}
 			width="100%"
 			frameborder="0"
-			onload="this.style.height=(this.contentWindow.document.body.scrollHeight+20)+'px';"
+			onload={(event) => {
+				const iframe = event.currentTarget as HTMLIFrameElement;
+				const contentHeight = (iframe.contentWindow?.document.body.scrollHeight ?? 0) + 20;
+				iframe.style.height = `${contentHeight}px`;
+			}}
 		></iframe>
 	{:else if token.type === 'text'}
 		{token.raw}

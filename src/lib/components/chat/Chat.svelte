@@ -100,6 +100,8 @@
 	let atSelectedModel: Model | undefined;
 	let selectedModelIds: any[] = [];
 	$: selectedModelIds = atSelectedModel !== undefined ? [atSelectedModel.id] : selectedModels;
+	let activeChatId = '';
+	$: activeChatId = $chatId;
 
 	let chat: any = null;
 	let tags = [];
@@ -944,7 +946,7 @@
 
 		await tick();
 
-		if ($chatId == chatId) {
+		if (activeChatId == chatId) {
 			if (!$temporaryChatEnabled) {
 				chat = await updateChatById(getRequestToken(), chatId, {
 					models: selectedModels,
@@ -1002,7 +1004,7 @@
 			}
 		}
 
-		if ($chatId == chatId) {
+		if (activeChatId == chatId) {
 			if (!$temporaryChatEnabled) {
 				chat = await updateChatById(getRequestToken(), chatId, {
 					models: selectedModels,
@@ -2049,7 +2051,7 @@
 	</title>
 </svelte:head>
 
-<audio id="audioElement" src="" style="display: none;" />
+<audio id="audioElement" src="" style="display: none;"></audio>
 
 <EventConfirmDialog
 	bind:show={showEventConfirmation}
