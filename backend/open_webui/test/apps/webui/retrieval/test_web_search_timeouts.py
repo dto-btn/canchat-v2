@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import time
 from types import SimpleNamespace
 
@@ -6,8 +7,10 @@ import pytest
 import requests
 from bs4 import BeautifulSoup
 
+from open_webui.retrieval.web import bing
 from open_webui.retrieval.web import brave
 from open_webui.retrieval.web import google_pse
+from open_webui.retrieval.web import searxng
 from open_webui.retrieval.web import utils as web_utils
 from open_webui.retrieval.web import serper
 from open_webui.retrieval.web.utils import SafeWebBaseLoader
@@ -163,6 +166,147 @@ def test_http_helper_non_json_response_raises_request_exception(monkeypatch):
             "https://provider.example",
             provider_name="Test Provider",
         )
+
+
+def test_http_helper_invalid_json_log_does_not_include_response_details(
+    monkeypatch, caplog
+):
+    """Invalid JSON parser details may contain response content and must not be logged."""
+
+    class FakeResponse:
+        status_code = 200
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            raise ValueError("sensitive-response-content")
+
+    monkeypatch.setattr(
+        web_utils.requests,
+        "request",
+        lambda *args, **kwargs: FakeResponse(),
+    )
+
+    with pytest.raises(requests.exceptions.RequestException):
+        web_utils.get_json_with_timeout(
+            "https://provider.example/private?token=sensitive-url-token",
+            provider_name="Test Provider",
+        )
+
+    assert "sensitive-response-content" not in caplog.text
+    assert "sensitive-url-token" not in caplog.text
+
+
+def test_web_search_provider_logs_do_not_include_urls_or_exception_details(
+    monkeypatch, caplog
+):
+    """Provider diagnostics should not emit user URLs or exception messages."""
+    sensitive_url = "not-a-url?token=sensitive-url-token"
+    caplog.set_level(logging.DEBUG)
+
+    def fail_request(*args, **kwargs):
+        raise requests.exceptions.RequestException("sensitive-error-detail")
+
+    monkeypatch.setattr(bing, "get_json_with_timeout", fail_request)
+    monkeypatch.setattr(searxng, "get_json_with_timeout", lambda *args, **kwargs: {})
+    with pytest.raises(requests.exceptions.RequestException):
+        bing.search_bing("key", "https://bing.example", "en-US", "query", 1)
+
+    searxng.search_searxng(sensitive_url, "query", 1)
+
+    brave.validate_url(sensitive_url)
+
+    assert "sensitive-url-token" not in caplog.text
+    assert "sensitive-error-detail" not in caplog.text
+
+
+def test_web_loader_logs_do_not_include_urls_or_exception_details(monkeypatch, caplog):
+    sensitive_url = "https://private.example/path?token=sensitive-url-token"
+    loader = SafeWebBaseLoader([sensitive_url])
+
+    def fail_fetch(*args, **kwargs):
+        raise requests.exceptions.RequestException("sensitive-error-detail")
+
+    monkeypatch.setattr(loader.session, "get", fail_fetch)
+    with pytest.raises(requests.exceptions.RequestException):
+        loader._scrape(sensitive_url)
+
+    def fail_scrape(*args, **kwargs):
+        raise requests.exceptions.RequestException("sensitive-error-detail")
+
+    monkeypatch.setattr(loader, "_scrape", fail_scrape)
+    list(loader.lazy_load())
+
+    assert "sensitive-url-token" not in caplog.text
+    assert "sensitive-error-detail" not in caplog.text
+
+
+def test_web_search_errors_return_generic_details_and_logs(monkeypatch, caplog):
+    """Search failures should not expose provider exception details to logs or callers."""
+
+    sensitive_detail = "sensitive-provider-response"
+
+    def fail_search(*args, **kwargs):
+        raise requests.exceptions.RequestException(sensitive_detail)
+
+    monkeypatch.setattr(retrieval.RAG_WEB_SEARCH_TOTAL_TIMEOUT, "value", 5)
+    monkeypatch.setattr(retrieval, "search_web", fail_search)
+    request = SimpleNamespace(
+        app=SimpleNamespace(
+            state=SimpleNamespace(
+                config=SimpleNamespace(RAG_WEB_SEARCH_ENGINE="brave")
+            )
+        )
+    )
+
+    with pytest.raises(retrieval.HTTPException) as exc:
+        asyncio.run(
+            retrieval.process_web_search(
+                request, retrieval.SearchForm(query="query"), user=None
+            )
+        )
+
+    assert sensitive_detail not in caplog.text
+    assert sensitive_detail not in exc.value.detail
+
+
+def test_web_content_load_errors_return_generic_details_and_logs(monkeypatch, caplog):
+    """Content-load failures should not expose exception messages or URLs."""
+    sensitive_detail = "sensitive-content-load-response"
+    sensitive_url = "https://private.example/path?token=sensitive-url-token"
+
+    def successful_search(*args, **kwargs):
+        return [SimpleNamespace(link=sensitive_url)]
+
+    def fail_loader(*args, **kwargs):
+        raise requests.exceptions.RequestException(sensitive_detail)
+
+    monkeypatch.setattr(retrieval.RAG_WEB_SEARCH_TOTAL_TIMEOUT, "value", 5)
+    monkeypatch.setattr(retrieval, "search_web", successful_search)
+    monkeypatch.setattr(retrieval, "get_web_loader", fail_loader)
+    request = SimpleNamespace(
+        app=SimpleNamespace(
+            state=SimpleNamespace(
+                config=SimpleNamespace(
+                    RAG_WEB_SEARCH_ENGINE="brave",
+                    ENABLE_RAG_WEB_LOADER_SSL_VERIFICATION=True,
+                    RAG_WEB_SEARCH_CONCURRENT_REQUESTS=1,
+                )
+            )
+        )
+    )
+
+    with pytest.raises(retrieval.HTTPException) as exc:
+        asyncio.run(
+            retrieval.process_web_search(
+                request, retrieval.SearchForm(query="query"), user=None
+            )
+        )
+
+    assert sensitive_detail not in caplog.text
+    assert sensitive_url not in caplog.text
+    assert sensitive_detail not in exc.value.detail
 
 
 def test_remaining_timeout_propagates_to_search_and_loader(monkeypatch):

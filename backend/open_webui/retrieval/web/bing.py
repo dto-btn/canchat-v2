@@ -44,8 +44,8 @@ def search_bing(
             for result in results
         ]
     except Exception as ex:
-        log.error(f"Error: {ex}")
-        raise ex
+        log.error("Bing search failed (%s)", type(ex).__name__)
+        raise
 
 
 def main():

@@ -19,7 +19,7 @@ def validate_url(url: str) -> bool:
     if validators.url(url):
         return True
     else:
-        log.error(f'Badly formatted URL: "{url}"')
+        log.error("Brave search returned a malformed result URL")
         return False
 
 

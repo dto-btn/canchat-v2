@@ -1418,11 +1418,11 @@ async def process_web_search(
             except TimeoutError:
                 raise
             except Exception as e:
-                log.exception(e)
+                log.error("Web search failed (%s)", type(e).__name__)
 
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=ERROR_MESSAGES.WEB_SEARCH_ERROR(e),
+                    detail=ERROR_MESSAGES.WEB_SEARCH_ERROR(),
                 )
 
             log.debug(
@@ -1535,10 +1535,10 @@ async def process_web_search(
                     engine=request.app.state.config.RAG_WEB_SEARCH_ENGINE,
                     error=e,
                 )
-                log.exception(e)
+                log.error("Web search content loading failed (%s)", type(e).__name__)
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=ERROR_MESSAGES.DEFAULT(e),
+                    detail=ERROR_MESSAGES.DEFAULT(),
                 )
     except (TimeoutError, asyncio.TimeoutError):
         if loaded_docs:

@@ -62,7 +62,7 @@ def search_searxng(
         # Strip all query parameters from the URL
         query_url = query_url.split("?")[0]
 
-    log.debug(f"searching {query_url}")
+    log.debug("Searching SearXNG")
 
     json_response = get_json_with_timeout(
         query_url,
