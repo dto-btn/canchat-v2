@@ -201,6 +201,55 @@ select {
 	scrollbar-width: none; /* Firefox */
 }
 
+html {
+	--placeholder-color: #595959;
+	--form-control-border-color: #707070;
+}
+
+html.dark {
+	--placeholder-color: #b4b4b4;
+	--form-control-border-color: #8f8f8f;
+}
+
+html:not(.dark) .text-gray-300,
+html:not(.dark) .text-gray-400,
+html:not(.dark) .text-gray-500,
+html:not(.dark) .text-gray-600 {
+	color: #595959;
+}
+
+html:not(.dark) ::placeholder {
+	color: var(--placeholder-color);
+	opacity: 1;
+}
+
+html.dark
+	input:not([type='checkbox']):not([type='radio']):not([type='range']):not(
+		[type='file']
+	)::placeholder,
+html.dark textarea::placeholder,
+html.dark select::placeholder {
+	color: var(--placeholder-color);
+	opacity: 1;
+}
+
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not(
+		[type='hidden']
+	):not([type='button']):not([type='submit']):not([type='reset']):not([type='color']),
+textarea,
+select {
+	border: 1px solid var(--form-control-border-color);
+}
+
+html :focus-visible {
+	outline: 2px solid #005ea8;
+	outline-offset: 2px;
+}
+
+html.dark :focus-visible {
+	outline-color: #80c7ff;
+}
+
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
 	/* display: none; <- Crashes Chrome on hover */
