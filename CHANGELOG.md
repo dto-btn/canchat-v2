@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **CrewAI Token Isolation (OBS-11)**: Pass Graph access tokens per crew invocation instead of storing them globally, preventing concurrent users from sharing credentials. Delegated SharePoint requests without a token now return an explicit error.
 - **🔒 Sensitive Log Data**: Stopped writing user prompts, model responses, Graph access token fragments, API keys, OAuth tokens and claims, email addresses, webhook URLs and document text to backend logs. Lengths, counts and IDs are logged instead.
 
 ## [0.5.7-ccv2-1.16.0] - 2026-08-12
