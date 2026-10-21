@@ -87,15 +87,14 @@ class TestSafeUserAttrs:
         attrs = _safe_user_attrs(fake_user)
         assert attrs["user_id"] == "user-abc-123"
         assert attrs["user_role"] == "user"
-        assert attrs["user_email"] == "test.user@example.gc.ca"
+        assert "user_email" not in attrs
+        assert "user_name" not in attrs
 
     def test_with_none(self):
         attrs = _safe_user_attrs(None)
         assert attrs == {
             "user_id": None,
             "user_role": None,
-            "user_email": None,
-            "user_name": None,
         }
 
 
@@ -119,7 +118,7 @@ class TestStructuredAuditLogs:
         assert record["user_email"] is None
         assert record["user_name"] is None
 
-    def test_dispatch_logs_sensitive_fields_at_debug(self, audit_caplog, fake_user):
+    def test_dispatch_omits_sensitive_fields_at_debug(self, audit_caplog, fake_user):
         audit_caplog.set_level(logging.DEBUG, logger=LOGGER_NAME)
 
         log_web_search_dispatch(
@@ -130,15 +129,114 @@ class TestStructuredAuditLogs:
         )
 
         info_record = _extract_audit_records(audit_caplog)[-1]
-        sensitive_record = _extract_sensitive_audit_records(audit_caplog)[-1]
 
         assert info_record["query"] is None
         assert info_record["user_email"] is None
         assert info_record["user_name"] is None
-        assert sensitive_record["event_type"] == "web_search_dispatch_sensitive"
-        assert sensitive_record["query"] == "audit test query"
-        assert sensitive_record["user_email"] == "test.user@example.gc.ca"
-        assert sensitive_record["user_name"] == "Test User"
+        assert _extract_sensitive_audit_records(audit_caplog) == []
+
+    def test_debug_output_excludes_sensitive_canaries(self, audit_caplog, capsys):
+        audit_caplog.set_level(logging.DEBUG)
+        audit_caplog.set_level(logging.DEBUG, logger=LOGGER_NAME)
+        query = "OBS12_QUERY_CANARY"
+        email = "OBS12_EMAIL_CANARY@example.com"
+        name = "OBS12_NAME_CANARY"
+        sensitive_text = f"{query} {email} {name}"
+        urls = [
+            f"https://{email}:password@example.com/{query}/{name}?q={query}#secret",
+            f"https://[invalid/{sensitive_text}",
+            f"/{sensitive_text}",
+        ]
+        ctx = log_web_search_dispatch(
+            engine="brave",
+            query=query,
+            result_count_requested=3,
+            user=SimpleNamespace(id="user-id", role="user", email=email, name=name),
+        )
+        log_web_search_result(
+            dispatch_ctx=ctx,
+            results=[SimpleNamespace(link=url) for url in urls],
+            error=ConnectionError(sensitive_text),
+        )
+        log_web_search_content_load(
+            event_id=ctx.event_id,
+            urls=urls,
+            docs_loaded=0,
+            latency_ms=1,
+            error=RuntimeError(sensitive_text),
+        )
+
+        records = _extract_audit_records(audit_caplog)
+        assert len(records) == 3
+        assert records[1]["result_urls"] == ["https://example.com"]
+        assert records[1]["result_domains"] == ["example.com"]
+        assert records[1]["error_message"] is None
+        assert records[2]["error_message"] is None
+        captured = capsys.readouterr()
+        output = audit_caplog.text + repr([vars(record) for record in audit_caplog.records])
+        output += captured.out + captured.err
+        for canary in (query, email, name, "password"):
+            assert canary not in output
+
+    @pytest.mark.parametrize(
+        "failure_site",
+        ["serialization", "counter", "histogram", "dispatch", "result", "content_load"],
+    )
+    def test_internal_failures_omit_exception_details(
+        self, audit_caplog, capsys, monkeypatch, failure_site
+    ):
+        audit_caplog.set_level(logging.DEBUG, logger=LOGGER_NAME)
+        sensitive_text = "OBS12_QUERY_CANARY OBS12_EMAIL@example.com OBS12_NAME_CANARY"
+
+        def fail(*args, **kwargs):
+            raise RuntimeError(sensitive_text)
+
+        ctx = web_search_logger.WebSearchAuditContext(
+            event_id="wsd_failure", engine="brave"
+        )
+        if failure_site == "serialization":
+            monkeypatch.setattr(web_search_logger.json, "dumps", fail)
+            web_search_logger._emit_audit_record({"event_type": "test"})
+        elif failure_site == "counter":
+            web_search_logger._record_counter(SimpleNamespace(add=fail), 1, {})
+        elif failure_site == "histogram":
+            web_search_logger._record_histogram(SimpleNamespace(record=fail), 1, {})
+        else:
+            monkeypatch.setattr(web_search_logger, "_emit_audit_record", fail)
+            if failure_site == "dispatch":
+                log_web_search_dispatch(
+                    engine="brave", query=sensitive_text, result_count_requested=1
+                )
+            elif failure_site == "result":
+                log_web_search_result(dispatch_ctx=ctx, results=[])
+                assert ctx.result_logged is True
+            else:
+                log_web_search_content_load(
+                    event_id=ctx.event_id, urls=[], docs_loaded=0, latency_ms=1
+                )
+
+        assert len(audit_caplog.records) == 1
+        captured = capsys.readouterr()
+        output = audit_caplog.text + repr([vars(record) for record in audit_caplog.records])
+        output += captured.out + captured.err
+        for canary in sensitive_text.split():
+            assert canary not in output
+        assert audit_caplog.records[0].exc_info is None
+
+    @pytest.mark.parametrize(
+        ("url", "expected"),
+        [
+            ("https://example.com/path;params?q=secret#fragment", ["https://example.com"]),
+            ("https://user:secret@example.com:8443/path", ["https://example.com:8443"]),
+            ("https://[::1]:8443/path", ["https://[::1]:8443"]),
+            ("https://[invalid/secret", []),
+            ("https://example.com:secret/path", []),
+            ("/relative/secret", []),
+            ("mailto:secret@example.com", []),
+        ],
+    )
+    def test_url_sanitization_fails_closed(self, url, expected):
+        assert web_search_logger._sanitize_urls([url], 20) == expected
 
     def test_dispatch_generates_uuid_event_id(self, audit_caplog):
         ctx = log_web_search_dispatch(
@@ -185,7 +283,7 @@ class TestStructuredAuditLogs:
         log_web_search_result(dispatch_ctx=ctx, results=results)
 
         record = _extract_audit_records(audit_caplog)[-1]
-        assert record["result_urls"] == ["https://example.com/page"]
+        assert record["result_urls"] == ["https://example.com"]
 
     def test_result_failure(self, audit_caplog):
         ctx = {
@@ -218,7 +316,7 @@ class TestStructuredAuditLogs:
         assert record["docs_loaded"] == 2
         assert record["collection_name"] == "web_search_1234-abcd"
 
-    def test_content_load_logs_sanitized_urls_at_info_and_full_urls_at_debug(
+    def test_content_load_omits_full_urls_at_debug(
         self, audit_caplog
     ):
         audit_caplog.set_level(logging.DEBUG, logger=LOGGER_NAME)
@@ -232,13 +330,10 @@ class TestStructuredAuditLogs:
         )
 
         info_record = _extract_audit_records(audit_caplog)[-1]
-        sensitive_record = _extract_sensitive_audit_records(audit_caplog)[-1]
 
         assert info_record["event_type"] == "web_search_content_load"
-        assert sensitive_record["event_type"] == "web_search_content_load_sensitive"
-        assert sensitive_record["urls_requested"] == [
-            "https://a.com/path?token=secret#frag"
-        ]
+        assert _extract_sensitive_audit_records(audit_caplog) == []
+        assert "token=secret" not in audit_caplog.text
 
     def test_context_manager_logs_failure(self, audit_caplog):
         with pytest.raises(ConnectionError, match="API unreachable"):
@@ -261,7 +356,8 @@ class TestStructuredAuditLogs:
 
 
 class TestOpenTelemetryMetrics:
-    def test_metrics_are_emitted(self, monkeypatch):
+    @pytest.mark.parametrize("error", [None, ConnectionError("sensitive provider detail")])
+    def test_metrics_are_emitted(self, monkeypatch, error):
         class FakeCounter:
             def __init__(self):
                 self.calls = []
@@ -304,6 +400,7 @@ class TestOpenTelemetryMetrics:
         log_web_search_result(
             dispatch_ctx=ctx,
             results=[SimpleNamespace(link="https://a.com", title="A", snippet="S")],
+            error=error,
         )
         log_web_search_content_load(
             event_id=ctx.event_id,
@@ -311,6 +408,7 @@ class TestOpenTelemetryMetrics:
             urls=["https://a.com"],
             docs_loaded=1,
             latency_ms=123,
+            error=error,
         )
 
         assert len(dispatch_counter.calls) == 1
@@ -320,10 +418,22 @@ class TestOpenTelemetryMetrics:
         assert len(result_count.calls) == 1
         assert len(content_latency.calls) == 1
 
-        dispatch_attrs = dispatch_counter.calls[0][1]
-        assert dispatch_attrs["engine"] == "brave"
+        assert dispatch_counter.calls == [
+            (1, {"engine": "brave", "domain_filter_active": False})
+        ]
         result_attrs = result_counter.calls[0][1]
-        assert result_attrs["success"] is True
+        assert result_attrs == {
+            "engine": "brave",
+            "success": error is None,
+            "error_type": "ConnectionError" if error else "none",
+        }
+        assert result_counter.calls == [(1, result_attrs)]
+        assert result_count.calls == [(1, result_attrs)]
+        assert result_latency.calls[0][0] >= 0
+        assert result_latency.calls[0][1] == result_attrs
+        content_attrs = {**result_attrs, "bypass_embedding": False}
+        assert content_counter.calls == [(1, content_attrs)]
+        assert content_latency.calls == [(123, content_attrs)]
 
 
 class TestSearchWebLogging:
