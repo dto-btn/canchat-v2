@@ -34,7 +34,8 @@ def integration(monkeypatch):
         imports.setitem(sys.modules, "crewai", crewai)
         imports.setitem(sys.modules, "crewai_tools", tools)
         imports.setitem(sys.modules, "mcp", mcp)
-        imports.setenv("OTEL_SDK_DISABLED", "true")
+        imports.setenv("CREWAI_DISABLE_TELEMETRY", "true")
+        imports.setenv("CREWAI_TRACING_ENABLED", "false")
         spec.loader.exec_module(module)
     return module
 

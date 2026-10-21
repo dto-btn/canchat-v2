@@ -46,38 +46,39 @@ class WebSearchMetricsInstruments:
     content_load_latency_histogram: Any = None
 
 
-def _create_metrics_instruments() -> WebSearchMetricsInstruments:
-    if otel_meter is None:
+def _create_metrics_instruments(meter=None) -> WebSearchMetricsInstruments:
+    meter = meter if meter is not None else otel_meter
+    if meter is None:
         return WebSearchMetricsInstruments()
 
     try:
         return WebSearchMetricsInstruments(
-            dispatch_counter=otel_meter.create_counter(
+            dispatch_counter=meter.create_counter(
                 name="web_search_dispatch_total",
                 description="Total web-search requests dispatched to providers",
                 unit="{dispatch}",
             ),
-            result_counter=otel_meter.create_counter(
+            result_counter=meter.create_counter(
                 name="web_search_result_total",
                 description="Total web-search provider results (success and failure)",
                 unit="{result}",
             ),
-            result_latency_histogram=otel_meter.create_histogram(
+            result_latency_histogram=meter.create_histogram(
                 name="web_search_result_latency_ms",
                 description="Latency of provider web-search calls in milliseconds",
                 unit="ms",
             ),
-            result_count_histogram=otel_meter.create_histogram(
+            result_count_histogram=meter.create_histogram(
                 name="web_search_result_count",
                 description="Number of search results returned by providers",
                 unit="{result}",
             ),
-            content_load_counter=otel_meter.create_counter(
+            content_load_counter=meter.create_counter(
                 name="web_search_content_load_total",
                 description="Total web-search content-load phases",
                 unit="{load}",
             ),
-            content_load_latency_histogram=otel_meter.create_histogram(
+            content_load_latency_histogram=meter.create_histogram(
                 name="web_search_content_load_latency_ms",
                 description="Latency of web-search content loading in milliseconds",
                 unit="ms",

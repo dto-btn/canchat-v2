@@ -7,6 +7,18 @@ et ce projet adhère au [Versionnage sémantique](https://semver.org/lang/fr/spe
 
 ## [Non publié] - À déterminer
 
+### Ajouté
+
+- **📈 Fournisseurs OpenTelemetry (OBS-14)** : Ajout du module `observability` du serveur. Il initialise une seule fois par processus les fournisseurs de métriques, de traces et de journaux, avec des attributs communs de nom de service, de version et d'environnement, puis les vide et les arrête à l'arrêt de l'application. Nouveaux paramètres : `OTEL_ENABLED`, `OTEL_SERVICE_NAME`, `OTEL_EXPORTER_OTLP_ENDPOINT` (URL de base; les chemins par signal sont ajoutés) et `OTEL_METRIC_EXPORT_INTERVAL` (15000 ms par défaut). L'exportation est activée par défaut dans les conteneurs et en production et désactivée en développement local; lorsqu'elle est désactivée, rien n'est envoyé et aucune erreur d'exportation n'est journalisée.
+
+### Modifié
+
+- **Télémétrie CrewAI (OBS-14)** : La télémétrie de CrewAI est maintenant désactivée avec `CREWAI_DISABLE_TELEMETRY=true` et `CREWAI_TRACING_ENABLED=false`. La variable globale `OTEL_SDK_DISABLED=true`, qui désactivait aussi la télémétrie de CANChat, n'est plus définie; retirez-la des fichiers `.env` existants.
+
+### Obsolète
+
+- **Paramètres d'instrumentation (OBS-14)** : `INSTRUMENTATION_SERVICE_NAME`, `INSTRUMENTATION_ENDPOINT` et `INSTRUMENTATION_EXPORT_INTERVAL_MS` sont encore lus pendant une version, avec une priorité inférieure aux noms `OTEL_*`. Le suffixe `/v1/metrics` de `INSTRUMENTATION_ENDPOINT` est retiré automatiquement.
+
 ### Corrigé
 
 - **Isolation des jetons CrewAI (OBS-11)** : Les jetons d'accès Graph sont transmis à chaque exécution plutôt que stockés globalement, ce qui empêche le partage d'identifiants entre utilisateurs simultanés. Les requêtes SharePoint en accès délégué sans jeton renvoient maintenant une erreur explicite.

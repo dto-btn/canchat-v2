@@ -34,6 +34,7 @@ from open_webui.env import (
 
 # Needs to be imported before fastapi to ensure instrumentation is set up correctly
 from open_webui.instrumentation import meter
+from open_webui.observability import shutdown_providers
 
 
 from fastapi import (
@@ -549,6 +550,12 @@ async def lifespan(app: FastAPI):
                 log.info("Redis lock manager cleanup completed")
             except Exception as e:
                 log.error(f"Error during Redis lock manager cleanup: {e}")
+
+        try:
+            shutdown_providers()
+            log.info("OpenTelemetry provider shutdown completed")
+        except Exception:
+            log.exception("OpenTelemetry provider shutdown failed")
 
 
 app = FastAPI(

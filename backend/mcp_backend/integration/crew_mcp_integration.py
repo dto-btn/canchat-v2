@@ -11,8 +11,10 @@ import logging
 from pathlib import Path
 from pydantic import BaseModel
 
-# Disable CrewAI telemetry to avoid connection timeout errors
-os.environ["OTEL_SDK_DISABLED"] = "true"
+# Disable only CrewAI's own telemetry; OTEL_SDK_DISABLED would also disable
+# the application's OpenTelemetry providers for the whole process.
+os.environ.setdefault("CREWAI_DISABLE_TELEMETRY", "true")
+os.environ.setdefault("CREWAI_TRACING_ENABLED", "false")
 
 from crewai import Agent, Task, Crew, Process, LLM
 from crewai_tools import MCPServerAdapter

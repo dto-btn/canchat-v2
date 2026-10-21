@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - TBD
 
+### Added
+
+- **📈 OpenTelemetry Providers (OBS-14)**: Added the backend `observability` package. It initializes the meter, tracer and logger providers once per process with shared service name, version and environment attributes, and flushes and shuts them down at application shutdown. New settings: `OTEL_ENABLED`, `OTEL_SERVICE_NAME`, `OTEL_EXPORTER_OTLP_ENDPOINT` (base URL; signal paths are appended) and `OTEL_METRIC_EXPORT_INTERVAL` (default 15000 ms). Export is enabled by default in containers and production and disabled for local development; when disabled, nothing is sent and no export errors are logged.
+
+### Changed
+
+- **CrewAI Telemetry (OBS-14)**: CrewAI telemetry is now disabled with `CREWAI_DISABLE_TELEMETRY=true` and `CREWAI_TRACING_ENABLED=false`. The process-wide `OTEL_SDK_DISABLED=true`, which also disabled CANChat's own telemetry, is no longer set; remove it from existing `.env` files.
+
+### Deprecated
+
+- **Instrumentation Settings (OBS-14)**: `INSTRUMENTATION_SERVICE_NAME`, `INSTRUMENTATION_ENDPOINT` and `INSTRUMENTATION_EXPORT_INTERVAL_MS` are still read for one release, with lower precedence than the `OTEL_*` names. A trailing `/v1/metrics` on `INSTRUMENTATION_ENDPOINT` is removed automatically.
+
 ### Fixed
 
 - **CrewAI Token Isolation (OBS-11)**: Pass Graph access tokens per crew invocation instead of storing them globally, preventing concurrent users from sharing credentials. Delegated SharePoint requests without a token now return an explicit error.
