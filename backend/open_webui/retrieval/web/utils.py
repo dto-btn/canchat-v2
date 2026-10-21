@@ -59,10 +59,10 @@ def request_json_with_timeout(
     except ValueError as e:
         status_code = response.status_code if "response" in locals() else "unknown"
         log.error(
-            "%s returned invalid JSON (status=%s): %s",
+            "%s returned invalid JSON (status=%s; error=%s)",
             provider_name,
             status_code,
-            e,
+            type(e).__name__,
         )
         raise requests.exceptions.RequestException(
             f"{provider_name} returned invalid JSON"
@@ -143,16 +143,20 @@ class SafeWebBaseLoader(WebBaseLoader):
             elapsed = time.time() - start
             content_length = len(html_doc.content) if html_doc.content else 0
             log.info(
-                f"Fetched {url} in {elapsed:.2f}s ({content_length} bytes, status={html_doc.status_code})"
+                f"Fetched web page in {elapsed:.2f}s ({content_length} bytes, status={html_doc.status_code})"
             )
             html_doc.raise_for_status()
         except requests.exceptions.Timeout:
             elapsed = time.time() - start
-            log.error(f"Timeout fetching {url} after {elapsed:.2f} seconds")
+            log.error(f"Timeout fetching web page after {elapsed:.2f} seconds")
             raise
         except Exception as e:
             elapsed = time.time() - start
-            log.error(f"Error fetching {url} after {elapsed:.2f}s: {e}")
+            log.error(
+                "Error fetching web page after %.2fs (%s)",
+                elapsed,
+                type(e).__name__,
+            )
             raise
 
         return BeautifulSoup(
@@ -179,10 +183,10 @@ class SafeWebBaseLoader(WebBaseLoader):
 
                 yield Document(page_content=text, metadata=metadata)
             except requests.exceptions.Timeout:
-                log.error(f"Timeout loading content from {path}")
+                log.error("Timeout loading web page content")
             except Exception as e:
                 # Log the error and continue with the next URL
-                log.error(f"Error loading {path}: {e}")
+                log.error("Error loading web page content (%s)", type(e).__name__)
 
 
 def get_web_loader(
