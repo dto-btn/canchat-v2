@@ -110,6 +110,22 @@ def test_missing_field_is_rejected(monkeypatch, field):
         _load_metric_definitions()
 
 
+@pytest.mark.parametrize("name", ["", "   "])
+def test_empty_name_is_rejected(monkeypatch, name):
+    definition = {
+        "name": name,
+        "type": "counter",
+        "description": "",
+        "unit": "",
+    }
+    monkeypatch.setenv("METRIC_DEFINITIONS", json.dumps([definition]))
+    with pytest.raises(
+        ValueError,
+        match=r"METRIC_DEFINITIONS\[0\]\.name: expected a non-empty string",
+    ):
+        _load_metric_definitions()
+
+
 def test_unsupported_type_reports_definition_index(monkeypatch):
     definition = {"name": "test", "type": "counter", "description": "", "unit": ""}
     monkeypatch.setenv(
@@ -117,6 +133,13 @@ def test_unsupported_type_reports_definition_index(monkeypatch):
         json.dumps([definition, {**definition, "type": "unsupported"}]),
     )
     with pytest.raises(ValueError, match=r"METRIC_DEFINITIONS\[1\].type: expected"):
+        _load_metric_definitions()
+
+
+def test_empty_type_is_rejected(monkeypatch):
+    definition = {"name": "test", "type": "", "description": "", "unit": ""}
+    monkeypatch.setenv("METRIC_DEFINITIONS", json.dumps([definition]))
+    with pytest.raises(ValueError, match=r"METRIC_DEFINITIONS\[0\].type: expected"):
         _load_metric_definitions()
 
 

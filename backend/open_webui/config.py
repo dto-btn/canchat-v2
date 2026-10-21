@@ -853,6 +853,12 @@ def _load_metric_definitions():
                 f"(invalid: {fields})"
             ) from None
 
+        if not definition.name.strip():
+            raise ValueError(
+                f"Invalid METRIC_DEFINITIONS[{index}].name: "
+                "expected a non-empty string"
+            )
+
         if definition.type.lower() not in {"counter", "histogram", "gauge"}:
             raise ValueError(
                 f"Invalid METRIC_DEFINITIONS[{index}].type: "
