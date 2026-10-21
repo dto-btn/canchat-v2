@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **CrewAI Token Isolation (OBS-11)**: Pass Graph access tokens per crew invocation instead of storing them globally, preventing concurrent users from sharing credentials. Delegated SharePoint requests without a token now return an explicit error.
 - **Metric Configuration (OBS-13)**: Parse `METRIC_DEFINITIONS` as a JSON array and validate metric fields and supported types at startup. Unset values retain the built-in defaults; invalid values produce a clear startup error without exposing definition values.
 - **🔒 Sensitive Log Data**: Stopped writing user prompts, model responses, Graph access token fragments, API keys, OAuth tokens and claims, email addresses, webhook URLs and document text to backend logs. Lengths, counts and IDs are logged instead.
 

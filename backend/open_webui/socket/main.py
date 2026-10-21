@@ -449,7 +449,6 @@ async def crew_mcp_query(sid, data):
         # Import crew_mcp_manager
         try:
             from mcp_backend.routers.crew_mcp import crew_mcp_manager
-            import os
             import asyncio
             import concurrent.futures
         except ImportError as e:
@@ -477,31 +476,6 @@ async def crew_mcp_query(sid, data):
             "crew-mcp-query: graph_access_token present=%s", bool(user_access_token)
         )
 
-        use_delegated_access = os.getenv(
-            "SHP_USE_DELEGATED_ACCESS", "false"
-        ).lower() in ("true", "1", "yes")
-
-        log.info(f"crew-mcp-query:  SHP_USE_DELEGATED_ACCESS={use_delegated_access}")
-
-        if use_delegated_access:
-            # Delegated access (OBO flow) - use user token
-            if user_access_token:
-                crew_mcp_manager.set_user_token(user_access_token)
-                log.info(
-                    "crew-mcp-query: Set user token on crew_mcp_manager (delegated access)"
-                )
-            else:
-                crew_mcp_manager.set_user_token(None)
-                log.warning(
-                    "crew-mcp-query: SHP_USE_DELEGATED_ACCESS=true but no user token available - SharePoint access may fail"
-                )
-        else:
-            # Application access (client credentials flow) - no user token needed
-            crew_mcp_manager.set_user_token(None)
-            log.info(
-                "crew-mcp-query: Using SharePoint application access (client credentials flow) - SHP_USE_DELEGATED_ACCESS=false"
-            )
-
         # Get available tools
         tools = crew_mcp_manager.get_available_tools()
         if not tools:
@@ -528,6 +502,7 @@ async def crew_mcp_query(sid, data):
                 crew_mcp_manager.run_intelligent_crew,
                 query,
                 selected_tools,
+                user_access_token,
             )
 
         # Unpack the (result_str, token_usage, mcp_process) tuple returned by run_intelligent_crew
