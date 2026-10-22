@@ -110,6 +110,34 @@ def test_local_development_disables_otel_by_default():
         ({"INSTRUMENTATION_EXPORT_INTERVAL_MS": "0"}, "OTEL_METRIC_EXPORT_INTERVAL"),
         ({"OTEL_SERVICE_NAME": ""}, "OTEL_SERVICE_NAME"),
         ({"OTEL_EXPORTER_OTLP_ENDPOINT": ""}, "OTEL_EXPORTER_OTLP_ENDPOINT"),
+        (
+            {"OTEL_EXPORTER_OTLP_ENDPOINT": "ftp://collector:4318"},
+            "OTEL_EXPORTER_OTLP_ENDPOINT",
+        ),
+        (
+            {"OTEL_EXPORTER_OTLP_ENDPOINT": "http:///v1/metrics"},
+            "OTEL_EXPORTER_OTLP_ENDPOINT",
+        ),
+        (
+            {"OTEL_EXPORTER_OTLP_ENDPOINT": "http://collector:invalid"},
+            "OTEL_EXPORTER_OTLP_ENDPOINT",
+        ),
+        (
+            {"OTEL_EXPORTER_OTLP_ENDPOINT": "http://bad host:4318"},
+            "OTEL_EXPORTER_OTLP_ENDPOINT",
+        ),
+        (
+            {"OTEL_EXPORTER_OTLP_ENDPOINT": "http://collector:65536"},
+            "OTEL_EXPORTER_OTLP_ENDPOINT",
+        ),
+        (
+            {"OTEL_EXPORTER_OTLP_ENDPOINT": "http://collector:4318?token=x"},
+            "OTEL_EXPORTER_OTLP_ENDPOINT",
+        ),
+        (
+            {"OTEL_EXPORTER_OTLP_ENDPOINT": "http://collector:4318#metrics"},
+            "OTEL_EXPORTER_OTLP_ENDPOINT",
+        ),
     ],
 )
 def test_invalid_settings_fail_clearly(values, message):

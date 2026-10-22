@@ -2,8 +2,10 @@
 
 import atexit
 import importlib.metadata
+import ipaddress
 import json
 import os
+import re
 import threading
 from dataclasses import dataclass
 from pathlib import Path
@@ -123,6 +125,52 @@ def _strip_legacy_metric_path(endpoint: str) -> str:
     ).rstrip("/")
 
 
+def _is_valid_hostname(hostname: str) -> bool:
+    try:
+        ipaddress.ip_address(hostname)
+        return True
+    except ValueError:
+        try:
+            ascii_hostname = hostname.encode("idna").decode("ascii")
+        except UnicodeError:
+            return False
+
+        if len(ascii_hostname) > 253:
+            return False
+        if ascii_hostname.endswith("."):
+            ascii_hostname = ascii_hostname[:-1]
+        return bool(ascii_hostname) and all(
+            re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?", label)
+            for label in ascii_hostname.split(".")
+        )
+
+
+def _validate_endpoint(endpoint: str) -> None:
+    try:
+        parts = urlsplit(endpoint)
+        port = parts.port
+    except ValueError as error:
+        raise ValueError(
+            "OTEL_EXPORTER_OTLP_ENDPOINT must be a valid HTTP(S) base URL"
+        ) from error
+
+    hostname = parts.hostname
+    if (
+        parts.scheme.lower() not in {"http", "https"}
+        or not hostname
+        or not _is_valid_hostname(hostname)
+        or parts.username is not None
+        or parts.password is not None
+        or parts.query
+        or parts.fragment
+        or "?" in endpoint
+        or "#" in endpoint
+        or port == 0
+        or any(character.isspace() for character in endpoint)
+    ):
+        raise ValueError("OTEL_EXPORTER_OTLP_ENDPOINT must be a valid HTTP(S) base URL")
+
+
 def load_settings(environ: Mapping[str, str] | None = None) -> OTelSettings:
     """Resolve OTEL settings, preferring current names over legacy aliases."""
     values = os.environ if environ is None else environ
@@ -146,6 +194,7 @@ def load_settings(environ: Mapping[str, str] | None = None) -> OTelSettings:
         endpoint = DEFAULT_ENDPOINT
     if not endpoint:
         raise ValueError("OTEL_EXPORTER_OTLP_ENDPOINT must not be empty")
+    _validate_endpoint(endpoint)
 
     interval_value = _resolve_setting(
         values,
