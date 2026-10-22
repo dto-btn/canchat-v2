@@ -1,9 +1,3 @@
-**Date d’entrée en vigueur :** 9 janvier 2026
-
-**Version :** 3.0
-
----
-
 ## Bienvenue à CANChat
 
 CANChat est une solution d’intelligence artificielle générative avancée fournie par Services partagés Canada (SPC). Il est conçu pour aider le personnel du gouvernement du Canada (GC) à accroître la productivité, à rationaliser les tâches et à améliorer la communication.

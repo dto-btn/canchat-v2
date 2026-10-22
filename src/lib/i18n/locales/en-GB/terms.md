@@ -1,9 +1,3 @@
-**Effective Date:** January 9, 2026
-
-**Version:** 3.0
-
----
-
 ## Welcome to CANChat
 
 CANChat is an advanced generative artificial intelligence solution provided by Shared Services Canada (SSC). It is designed to assist Government of Canada (GC) personnel in enhancing productivity, streamlining tasks, and improving communication.
