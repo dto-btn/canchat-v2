@@ -197,7 +197,7 @@
 	</div>
 
 	<p class="text-xs text-gray-500 dark:text-gray-400">
-		{$i18n.t('Fields marked with * are required.')}
+		{$i18n.t('Fields marked with an asterisk (*) are required.')}
 	</p>
 
 	<div>

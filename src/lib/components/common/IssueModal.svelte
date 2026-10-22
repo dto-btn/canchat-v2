@@ -147,7 +147,7 @@
 					</div>
 				{/if}
 				<p class="text-sm text-gray-600 dark:text-gray-300">
-					{$i18n.t('Fields marked with * are required.')}
+					{$i18n.t('Fields marked with an asterisk (*) are required.')}
 				</p>
 				<div>
 					<label for="description" class="text-sm mb-2 block text-gray-900 dark:text-gray-100"
