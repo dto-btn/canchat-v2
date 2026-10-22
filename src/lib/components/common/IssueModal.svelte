@@ -35,7 +35,7 @@
 	const handleFileChange = (event: Event) => {
 		const input = event.target as HTMLInputElement;
 		if (input.files && input.files.length > MAX_FILES) {
-			error = $i18n.t('You can only upload up to {{maxCount}} files', {
+			error = $i18n.t('Error: Choose Files - You can only upload up to {{maxCount}} files', {
 				maxCount: MAX_FILES
 			});
 			input.value = ''; // Clear the selection
@@ -49,7 +49,7 @@
 				(file) => !file.type.startsWith('image/')
 			);
 			if (invalidFiles.length > 0) {
-				error = $i18n.t('Only image files are allowed.');
+				error = $i18n.t('Error: Choose Files - Only image files are allowed.');
 				input.value = '';
 				files = null;
 				return;
@@ -139,10 +139,16 @@
 			</p>
 			<form on:submit|preventDefault={submit} class="space-y-4">
 				{#if error}
-					<div class="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
+					<div
+						role="alert"
+						class="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded-lg"
+					>
 						<p>{error}</p>
 					</div>
 				{/if}
+				<p class="text-sm text-gray-600 dark:text-gray-300">
+					{$i18n.t('Fields marked with * are required.')}
+				</p>
 				<div>
 					<label for="description" class="text-sm mb-2 block text-gray-900 dark:text-gray-100"
 						>{$i18n.t('Description')} *</label

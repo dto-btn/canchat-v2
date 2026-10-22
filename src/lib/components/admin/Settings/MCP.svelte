@@ -918,6 +918,9 @@
 			<!-- Modal Content -->
 			<div class="space-y-4 max-h-96 overflow-y-auto">
 				<form on:submit|preventDefault={saveServerHandler} class="space-y-4">
+					<p class="text-sm text-gray-600 dark:text-gray-300">
+						{$i18n.t('Fields marked with * are required.')}
+					</p>
 					<!-- Basic Information -->
 					<div class="space-y-3">
 						<h3 class="text-sm font-medium text-gray-900 dark:text-gray-100">

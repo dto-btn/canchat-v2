@@ -196,6 +196,10 @@
 		</div>
 	</div>
 
+	<p class="text-xs text-gray-500 dark:text-gray-400">
+		{$i18n.t('Fields marked with * are required.')}
+	</p>
+
 	<div>
 		{#if reasons.length > 0}
 			<div class="text-sm mt-1.5 font-medium">
