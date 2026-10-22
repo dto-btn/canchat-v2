@@ -248,6 +248,7 @@ class TestAuths(AbstractPostgresTest):
         refresh_token = signin_response.cookies.get(WEBUI_REFRESH_TOKEN_COOKIE_NAME)
         refresh_session_id = get_refresh_token_session_id(refresh_token)
 
+        self.fast_api_client.cookies.clear()
         self.fast_api_client.cookies.set(
             WEBUI_REFRESH_TOKEN_COOKIE_NAME,
             f"{refresh_session_id}.tampered-refresh-secret",
