@@ -199,6 +199,15 @@ sequenceDiagram
 | `audit.py` | `emit_audit_event(...)` validates a versioned metadata schema and persists an event with a unique ID before asynchronous delivery. A logger call is not the durable record. | Reuse serialization patterns, not the existing best-effort delivery contract. New database outbox and transaction integration are required. |
 | `content_audit.py` | Optional `record_prompt(...)` / `record_response(...)` use a restricted, lifecycle-aware repository. Never fall back to stdout, app logs or span attributes. | `ENABLE_CONTENT_AUDIT=false` by default; explicit size limits and truncation markers. See §8 before enabling. |
 
+**Provider lifecycle (implemented in OBS-14).**
+
+1. `open_webui.main` imports `open_webui.env` first, so `.env` values are loaded before any OTel setting is read. `observability/providers.py` reads only `os.environ` and imports neither `env.py` nor `config.py`.
+2. `main.py` then imports the `instrumentation` compatibility shim, which imports `open_webui.observability`. That module builds the meter, tracer and logger providers once per process (guarded by a lock), registers them as the global providers and registers an idempotent `atexit` shutdown for processes that never run the FastAPI lifespan.
+3. Routers and modules imported afterwards (for example `web_search_logger.py`, `crew_mcp`) create their instruments from these providers. `crew_mcp_integration.py` no longer sets the process-wide `OTEL_SDK_DISABLED`; it defaults the CrewAI-only switches `CREWAI_DISABLE_TELEMETRY=true` and `CREWAI_TRACING_ENABLED=false` instead.
+4. On shutdown the lifespan stops background tasks, the MCP manager, the scheduler, the Qdrant client and the Redis lock manager, then calls `shutdown_providers()`. It flushes and shuts down the logger, tracer and meter providers in that order, exactly once; the SDK's own `atexit` hooks are disabled so the providers are not shut down twice.
+
+With `OTEL_ENABLED=false` the providers are still created, so instruments work and can be read in tests, but no OTLP exporter, reader or processor is attached. Nothing is sent and no export errors are logged. The existing stdout logging configuration is unchanged. The OTLP logging bridge and shared handler filters belong to `logging_config.py` (OBS-15).
+
 **Log record contract.** Every operational log line (stdout and OTLP) is one JSON object with the fields below. Names follow OTel log semantic conventions where one exists so Loki queries work the same for backend and (later) Faro records.
 
 | Field | Type | Source | Notes |
@@ -444,18 +453,19 @@ Loki/Tempo/Prometheus TTLs are configuration values, but activity-based expiry, 
 
 ### 12. Configuration reference
 
-All settings are environment variables read once at startup in `observability/__init__.py` (backend) or served through `/api/config` (frontend). Existing `INSTRUMENTATION_*` names remain as aliases with lower precedence than the `OTEL_*` names for one release, then are removed.
+All settings are environment variables read once at startup in `observability/__init__.py` (backend) or served through `/api/config` (frontend). Existing `INSTRUMENTATION_*` names remain as aliases with lower precedence than the `OTEL_*` names for one release, then are removed. An `OTEL_*` variable that is present in the environment wins over its alias even if it is empty; empty or invalid values fail at startup with an error naming the `OTEL_*` variable. `INSTRUMENTATION_METER_NAME` (default `canchat-meter`) is kept unchanged as the instrumentation scope name for existing metrics.
 
 | Variable | Default (container / local dev) | Phase | Purpose |
 |---|---|---|---|
 | `LOG_FORMAT` | `json` / `text` | 1 | Root handler formatter |
 | `GLOBAL_LOG_LEVEL`, `<SOURCE>_LOG_LEVEL` | existing | 1 | Unchanged; `AUDIT` and `MCP` added to `log_sources` |
 | `LOG_RATE_LIMIT` | `100/10s` | 1 | Per-logger burst filter; `0` disables |
-| `OTEL_ENABLED` | `true` / `false` | 1 | Master switch for SDK export of logs, traces and metrics. Does **not** affect audit persistence or stdout logging |
+| `OTEL_ENABLED` | `true` / `false` | 1 | Master switch for SDK export of logs, traces and metrics. Does **not** affect audit persistence or stdout logging. When unset, `true` if `DOCKER=true` or `ENV` is not `dev`, otherwise `false`. Accepts only `true` or `false` |
 | `OTEL_SERVICE_NAME` | `canchat-backend` | 1 | Resource attribute (alias: `INSTRUMENTATION_SERVICE_NAME`) |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://otel-collector:4318` | 1 | Base OTLP/HTTP endpoint; signal paths appended by the SDK (alias: `INSTRUMENTATION_ENDPOINT`, which today includes `/v1/metrics` and must be stripped) |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://otel-collector:4318` | 1 | Valid HTTP(S) base URL with a hostname and optional valid port; query strings and fragments are not supported. Signal paths are appended by the SDK (alias: `INSTRUMENTATION_ENDPOINT`, which today includes `/v1/metrics` and must be stripped) |
 | `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_EXPORTER_OTLP_CERTIFICATE` | unset | 4 | Collector auth / TLS |
-| `OTEL_METRIC_EXPORT_INTERVAL` | `15000` ms | 1 | Replaces `INSTRUMENTATION_EXPORT_INTERVAL_MS` (5000) |
+| `OTEL_METRIC_EXPORT_INTERVAL` | `15000` ms | 1 | Positive integer in milliseconds. Replaces `INSTRUMENTATION_EXPORT_INTERVAL_MS` (old default 5000), which is still read as an alias |
+| `CREWAI_DISABLE_TELEMETRY`, `CREWAI_TRACING_ENABLED` | `true`, `false` | 1 | Defaulted by `crew_mcp_integration.py` to stop CrewAI's own telemetry and trace upload. Replace the former process-wide `OTEL_SDK_DISABLED=true`, which must not be set because it disables CANChat's providers too |
 | `OTEL_TRACES_SAMPLER_RATIO` | `0.1` / `1.0` | 2 | Parent-based ratio sampler; audit and metrics are never sampled |
 | `OTEL_TRACES_HEALTHCHECKS` | `false` | 2 | Emit server spans for `/health*` |
 | `OTEL_SEMCONV_STABILITY_OPT_IN` | `http` | 2 | Must be set before instrumentors load |
