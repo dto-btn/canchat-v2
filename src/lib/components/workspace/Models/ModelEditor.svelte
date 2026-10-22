@@ -386,6 +386,7 @@
 								? 'bg-transparent'
 								: 'bg-white'} shadow-xl group relative"
 							type="button"
+							aria-label={$i18n.t('Change profile image')}
 							on:click={() => {
 								filesInputElement.click();
 							}}
@@ -393,13 +394,13 @@
 							{#if info.meta.profile_image_url}
 								<img
 									src={info.meta.profile_image_url}
-									alt="model profile"
+									alt=""
 									class="rounded-xl size-72 md:size-60 object-cover shrink-0"
 								/>
 							{:else}
 								<img
 									src="/static/favicon.png"
-									alt="model profile"
+									alt=""
 									class=" rounded-xl size-72 md:size-60 object-cover shrink-0"
 								/>
 							{/if}
