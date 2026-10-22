@@ -462,7 +462,7 @@ All settings are environment variables read once at startup in `observability/__
 | `LOG_RATE_LIMIT` | `100/10s` | 1 | Per-logger burst filter; `0` disables |
 | `OTEL_ENABLED` | `true` / `false` | 1 | Master switch for SDK export of logs, traces and metrics. Does **not** affect audit persistence or stdout logging. When unset, `true` if `DOCKER=true` or `ENV` is not `dev`, otherwise `false`. Accepts only `true` or `false` |
 | `OTEL_SERVICE_NAME` | `canchat-backend` | 1 | Resource attribute (alias: `INSTRUMENTATION_SERVICE_NAME`) |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://otel-collector:4318` | 1 | Base OTLP/HTTP endpoint; signal paths appended by the SDK (alias: `INSTRUMENTATION_ENDPOINT`, which today includes `/v1/metrics` and must be stripped) |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://otel-collector:4318` | 1 | Valid HTTP(S) base URL with a hostname and optional valid port; query strings and fragments are not supported. Signal paths are appended by the SDK (alias: `INSTRUMENTATION_ENDPOINT`, which today includes `/v1/metrics` and must be stripped) |
 | `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_EXPORTER_OTLP_CERTIFICATE` | unset | 4 | Collector auth / TLS |
 | `OTEL_METRIC_EXPORT_INTERVAL` | `15000` ms | 1 | Positive integer in milliseconds. Replaces `INSTRUMENTATION_EXPORT_INTERVAL_MS` (old default 5000), which is still read as an alias |
 | `CREWAI_DISABLE_TELEMETRY`, `CREWAI_TRACING_ENABLED` | `true`, `false` | 1 | Defaulted by `crew_mcp_integration.py` to stop CrewAI's own telemetry and trace upload. Replace the former process-wide `OTEL_SDK_DISABLED=true`, which must not be set because it disables CANChat's providers too |
