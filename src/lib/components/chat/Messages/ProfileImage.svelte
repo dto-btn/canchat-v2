@@ -16,6 +16,6 @@
 			? src
 			: `/user.png`}
 	class=" {className} object-cover rounded-full -translate-y-[1px]"
-	alt="profile"
+	alt=""
 	draggable="false"
 />

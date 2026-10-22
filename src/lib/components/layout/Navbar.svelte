@@ -158,6 +158,7 @@
 				{#if $user !== undefined}
 					<UserMenu
 						className="max-w-[200px]"
+						ariaLabel={$i18n.t('User Menu')}
 						role={$user.role}
 						on:show={(e) => {
 							if (e.detail === 'archived-chat') {
@@ -172,7 +173,7 @@
 							<img
 								src={$user?.profile_image_url}
 								class="size-6 object-cover rounded-full"
-								alt="User profile"
+								alt=""
 								draggable="false"
 							/>
 						</button>
