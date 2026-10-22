@@ -1,7 +1,6 @@
 import requests
 import logging
 import ftfy
-import sys
 
 from docling.document_converter import (
     DocumentConverter,
@@ -25,11 +24,10 @@ from langchain_community.document_loaders import (
     UnstructuredXMLLoader,
 )
 from langchain_core.documents import Document
-from open_webui.env import SRC_LOG_LEVELS, GLOBAL_LOG_LEVEL, DATA_DIR
+from open_webui.env import SRC_LOG_LEVELS, DATA_DIR
 from open_webui.config import UPLOAD_DIR, CACHE_DIR
 from open_webui.utils.misc import validate_path
 
-logging.basicConfig(stream=sys.stdout, level=GLOBAL_LOG_LEVEL)
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["RAG"])
 

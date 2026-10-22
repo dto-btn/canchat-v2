@@ -85,6 +85,9 @@ def run_migrations():
         from alembic.config import Config
 
         alembic_cfg = Config(OPEN_WEBUI_DIR / "alembic.ini")
+        # Keep the application's logging configuration; alembic.ini would
+        # replace the root handlers and level.
+        alembic_cfg.attributes["configure_logger"] = False
 
         # Set the script location dynamically
         migrations_path = OPEN_WEBUI_DIR / "migrations"
@@ -98,9 +101,14 @@ def run_migrations():
 run_migrations()
 
 SQLALCHEMY_DATABASE_URL = DATABASE_URL
+# Bound parameters can hold chat content or credentials; keep them out of SQL
+# logs and exception messages.
+ENGINE_OPTIONS = {"hide_parameters": True}
 if "sqlite" in SQLALCHEMY_DATABASE_URL:
     engine = create_engine(
-        SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+        SQLALCHEMY_DATABASE_URL,
+        connect_args={"check_same_thread": False},
+        **ENGINE_OPTIONS,
     )
 else:
     if DATABASE_POOL_SIZE > 0:
@@ -112,10 +120,14 @@ else:
             pool_recycle=DATABASE_POOL_RECYCLE,
             pool_pre_ping=True,
             poolclass=QueuePool,
+            **ENGINE_OPTIONS,
         )
     else:
         engine = create_engine(
-            SQLALCHEMY_DATABASE_URL, pool_pre_ping=True, poolclass=NullPool
+            SQLALCHEMY_DATABASE_URL,
+            pool_pre_ping=True,
+            poolclass=NullPool,
+            **ENGINE_OPTIONS,
         )
 
 

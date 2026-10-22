@@ -3,7 +3,6 @@ import json
 import logging
 import mimetypes
 import os
-import sys
 import time
 
 from contextlib import asynccontextmanager
@@ -15,7 +14,6 @@ from sqlalchemy import text
 from open_webui.env import (
     CHANGELOG,
     CHANGELOG_FR,
-    GLOBAL_LOG_LEVEL,
     SAFE_MODE,
     SRC_LOG_LEVELS,
     VERSION,
@@ -35,6 +33,10 @@ from open_webui.env import (
 # Needs to be imported before fastapi to ensure instrumentation is set up correctly
 from open_webui.instrumentation import meter
 from open_webui.observability import shutdown_providers
+from open_webui.observability.logging_config import (
+    apply_logger_policy,
+    shutdown_logging,
+)
 
 
 from fastapi import (
@@ -332,7 +334,6 @@ if SAFE_MODE:
     print("SAFE MODE ENABLED")
     Functions.deactivate_all_functions()
 
-logging.basicConfig(stream=sys.stdout, level=GLOBAL_LOG_LEVEL)
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["MAIN"])
 
@@ -372,6 +373,11 @@ https://github.com/open-webui/open-webui
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # uvicorn.run() and late imports (such as LiteLLM) add their own handlers
+    # after this module is imported, so route them through the root again.
+    reconfigure_access_log()
+    apply_logger_policy()
+
     # Validate Redis lock manager health (already initialized during import)
     # The lock manager creation will fail fast if REDIS_URL is not set or Redis is unavailable
     try:
@@ -552,6 +558,7 @@ async def lifespan(app: FastAPI):
                 log.error(f"Error during Redis lock manager cleanup: {e}")
 
         try:
+            shutdown_logging()
             shutdown_providers()
             log.info("OpenTelemetry provider shutdown completed")
         except Exception:

@@ -53,6 +53,7 @@ class ProviderBundle:
     logger_provider: LoggerProvider
     meter: Meter
     tracer: trace.Tracer
+    export_enabled: bool = False
 
     def shutdown(self) -> None:
         errors: list[Exception] = []
@@ -235,6 +236,7 @@ def create_providers(
         logger_provider=logger_provider,
         meter=meter_provider.get_meter(settings.meter_name),
         tracer=tracer_provider.get_tracer(settings.meter_name),
+        export_enabled=settings.enabled,
     )
 
 

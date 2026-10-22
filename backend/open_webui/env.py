@@ -3,7 +3,6 @@ import json
 import logging
 import os
 import pkgutil
-import sys
 import shutil
 import redis
 from pathlib import Path
@@ -69,16 +68,8 @@ except Exception:
 log_levels = ["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"]
 
 GLOBAL_LOG_LEVEL = os.environ.get("GLOBAL_LOG_LEVEL", "").upper()
-if GLOBAL_LOG_LEVEL in log_levels:
-    logging.basicConfig(stream=sys.stdout, level=GLOBAL_LOG_LEVEL, force=True)
-else:
+if GLOBAL_LOG_LEVEL not in log_levels:
     GLOBAL_LOG_LEVEL = "INFO"
-
-log = logging.getLogger(__name__)
-log.info(f"GLOBAL_LOG_LEVEL: {GLOBAL_LOG_LEVEL}")
-
-if "cuda_error" in locals():
-    log.exception(cuda_error)
 
 log_sources = [
     "AUDIO",
@@ -97,16 +88,31 @@ log_sources = [
     "SOCKET",
     "JIRA",
     "METRICS",
+    "AUDIT",
+    "MCP",
 ]
 
 SRC_LOG_LEVELS = {}
 
 for source in log_sources:
-    log_env_var = source + "_LOG_LEVEL"
-    SRC_LOG_LEVELS[source] = os.environ.get(log_env_var, "").upper()
+    SRC_LOG_LEVELS[source] = os.environ.get(source + "_LOG_LEVEL", "").upper()
     if SRC_LOG_LEVELS[source] not in log_levels:
         SRC_LOG_LEVELS[source] = GLOBAL_LOG_LEVEL
-    log.info(f"{log_env_var}: {SRC_LOG_LEVELS[source]}")
+
+# Imported after .env is loaded: importing the package initializes the
+# OpenTelemetry providers from the environment.
+from open_webui.observability.logging_config import configure_logging  # noqa: E402
+
+configure_logging(GLOBAL_LOG_LEVEL, SRC_LOG_LEVELS)
+
+log = logging.getLogger(__name__)
+log.info(f"GLOBAL_LOG_LEVEL: {GLOBAL_LOG_LEVEL}")
+
+if "cuda_error" in locals():
+    log.exception(cuda_error)
+
+for source in log_sources:
+    log.info(f"{source}_LOG_LEVEL: {SRC_LOG_LEVELS[source]}")
 
 log.setLevel(SRC_LOG_LEVELS["CONFIG"])
 

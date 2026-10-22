@@ -1,6 +1,5 @@
 import time
 import logging
-import sys
 import requests
 import re
 import tiktoken
@@ -79,12 +78,10 @@ from open_webui.config import (
 )
 from open_webui.env import (
     SRC_LOG_LEVELS,
-    GLOBAL_LOG_LEVEL,
     ENABLE_REALTIME_CHAT_SAVE,
 )
 from open_webui.constants import TASKS
 
-logging.basicConfig(stream=sys.stdout, level=GLOBAL_LOG_LEVEL)
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["MAIN"])
 

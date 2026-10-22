@@ -1,6 +1,5 @@
 import time
 import logging
-import sys
 
 from fastapi import Request
 
@@ -20,9 +19,8 @@ from open_webui.config import (
     DEFAULT_ARENA_MODEL,
 )
 
-from open_webui.env import SRC_LOG_LEVELS, GLOBAL_LOG_LEVEL
+from open_webui.env import SRC_LOG_LEVELS
 
-logging.basicConfig(stream=sys.stdout, level=GLOBAL_LOG_LEVEL)
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["MAIN"])
 
