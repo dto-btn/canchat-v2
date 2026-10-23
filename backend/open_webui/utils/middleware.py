@@ -10,9 +10,11 @@ from typing import Optional
 import json
 import inspect
 from datetime import datetime
+from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 from uuid import uuid4
 
+from bs4 import BeautifulSoup
 from open_webui.models.message_metrics import MessageMetrics
 from fastapi import Request
 
@@ -163,6 +165,49 @@ def fetch_wikipedia_title_and_excerpt(url: str) -> tuple[str, str, int | None]:
 
     except Exception as e:
         log.warning(f"Error fetching Wikipedia summary for {url}: {e}")
+        return "", "", None
+
+
+def fetch_tbs_policy_title_and_excerpt(url: str) -> tuple[str, str, int | None]:
+    """Fetch a French TBS policy title and excerpt for localized source previews."""
+    if not isinstance(url, str):
+        return "", "", None
+    parsed_url = urlsplit(url)
+    if (
+        parsed_url.scheme != "https"
+        or parsed_url.hostname != "www.tbs-sct.canada.ca"
+        or parsed_url.path != "/pol/doc-fra.aspx"
+    ):
+        return "", "", None
+
+    try:
+        response = requests.get(
+            url,
+            timeout=3,
+            headers={
+                "User-Agent": "CanChat/2.0 (https://github.com/dto-btn/canchat-v2; contact@example.com) requests/2.31.0",
+                "Accept": "text/html",
+                "Accept-Language": "fr-CA,fr;q=0.9",
+            },
+        )
+        if response.status_code != 200:
+            return "", "", response.status_code
+
+        soup = BeautifulSoup(response.text, "html.parser")
+        title_tag = soup.find("h1")
+        title = title_tag.get_text(" ", strip=True) if title_tag else ""
+        content_area = soup.find("div", id="ps-doc") or soup.find("main")
+        if content_area is None:
+            return title, "", response.status_code
+
+        for tag in content_area.find_all(
+            ["script", "style", "nav", "header", "footer"]
+        ):
+            tag.decompose()
+        excerpt = content_area.get_text(" ", strip=True)
+        return title, excerpt, response.status_code
+    except Exception as e:
+        log.warning(f"Error fetching French TBS policy preview: {type(e).__name__}")
         return "", "", None
 
 
@@ -923,16 +968,36 @@ async def chat_wiki_grounding_handler(
             sources_summary = []
             for source in grounding_data["grounding_data"]:
                 original_url = source.get("url", "")
-                # EKH results already carry their own language and URL.
-                if source.get("language"):
+                # Preserve EKH page-ID URLs only when EKH provides their language.
+                if source.get("source") == "ekh-tbs-policies":
+                    converted_url = original_url
+                    source_language = source.get("language") or detected_language
+                elif (
+                    isinstance(source.get("source"), str)
+                    and source["source"].startswith("ekh-")
+                    and source.get("language_specific_url")
+                ):
                     converted_url, source_language = original_url, source["language"]
                 else:
                     converted_url, source_language = convert_wikipedia_url_for_language(
                         original_url, detected_language
                     )
 
+                if (
+                    source.get("source") == "ekh-tbs-policies"
+                    and source_language == "fr"
+                ):
+                    french_title, french_excerpt, _ = (
+                        fetch_tbs_policy_title_and_excerpt(converted_url)
+                    )
+                    title = french_title or source.get("title", "")
+                    preview = french_excerpt or source.get("content", "")
+                    content = preview[:200] + "..." if len(preview) > 200 else preview
+                    final_url = converted_url
+                    final_language = "fr"
+                    fallback_reason = None
                 # If we converted to a French URL, try to fetch the French title and content
-                if source_language == "fr" and converted_url != original_url:
+                elif source_language == "fr" and converted_url != original_url:
                     french_title, french_excerpt, status_code = (
                         fetch_wikipedia_title_and_excerpt(converted_url)
                     )
@@ -987,6 +1052,7 @@ async def chat_wiki_grounding_handler(
                     "url": final_url,
                     "score": primary_score,  # This is what frontend displays as relevance
                     "language": final_language,
+                    "source": source.get("source"),
                 }
 
                 # Add reranking information if available

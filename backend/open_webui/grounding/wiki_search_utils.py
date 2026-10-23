@@ -12,10 +12,14 @@ import weakref
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, List, Optional
 from datetime import datetime
+from urllib.parse import quote
 
 from open_webui.env import SRC_LOG_LEVELS
 from . import ekh_client
-from .context_analysis import analyze_conversation_context
+from .context_analysis import (
+    analyze_conversation_context,
+    enhance_query_with_temporal_context,
+)
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["GROUNDING"])
@@ -509,12 +513,7 @@ class WikiSearchGrounder:
 
             # Apply temporal enhancement AFTER translation to English
             # This ensures decade detection works properly for all languages
-            from .context_analysis import ConversationContextAnalyzer
-
-            temp_analyzer = ConversationContextAnalyzer()
-            temporal_enhanced_query = (
-                temp_analyzer._enhance_query_with_temporal_context(search_query)
-            )
+            temporal_enhanced_query = enhance_query_with_temporal_context(search_query)
 
             if temporal_enhanced_query != search_query:
                 log.info(
@@ -719,12 +718,9 @@ class WikiSearchGrounder:
             EKH_BASE_URL,
             EKH_TIMEOUT_SECONDS,
         )
-        from .context_analysis import ConversationContextAnalyzer
 
         knowledge_source = _get_ekh_knowledge_source()
-        search_query = (
-            ConversationContextAnalyzer()._enhance_query_with_temporal_context(query)
-        )
+        search_query = enhance_query_with_temporal_context(query)
 
         rows = await ekh_client.search_wikipedia(
             search_query,
@@ -735,31 +731,44 @@ class WikiSearchGrounder:
             api_key=EKH_API_KEY or None,
         )
 
-        best: Dict[tuple, Dict] = {}
+        best: Dict[tuple, tuple[Dict, float]] = {}
         for row in rows:
+            if not isinstance(row, dict):
+                continue
+            similarity = row.get("similarity")
+            if not isinstance(similarity, (int, float)):
+                similarity = 0
             key = (row.get("source"), row.get("id"), row.get("name"))
-            if key not in best or row.get("similarity", 0) > best[key].get(
-                "similarity", 0
-            ):
-                best[key] = row
+            if key not in best or similarity > best[key][1]:
+                best[key] = (row, similarity)
 
         results = []
-        for row in sorted(
-            best.values(), key=lambda r: r.get("similarity", 0), reverse=True
+        for row, similarity in sorted(
+            best.values(), key=lambda item: item[1], reverse=True
         )[: self.max_search_results]:
-            content = row.get("content", "")
+            content = row.get("content") or ""
+            if not isinstance(content, str):
+                continue
             if len(content) > self.max_content_length:
                 content = content[: self.max_content_length] + "..."
-            title = row.get("name", "")
+            title = row.get("name") or ""
+            if not isinstance(title, str):
+                title = str(title)
             if knowledge_source == "tbs-policies":
+                document_language = self._detect_language(query)
+                document_name = (
+                    "doc-fra.aspx" if document_language == "fr" else "doc-eng.aspx"
+                )
                 url = row.get("url") or (
-                    f"https://www.tbs-sct.canada.ca/pol/doc-eng.aspx?id={row['id']}"
+                    "https://www.tbs-sct.canada.ca/pol/"
+                    f"{document_name}?id={quote(str(row['id']), safe='')}"
                     if row.get("id") is not None
                     else None
                 )
             elif knowledge_source == "wikipedia":
                 url = row.get("url") or (
-                    f"https://en.wikipedia.org/wiki/{title.replace(' ', '_')}"
+                    "https://en.wikipedia.org/wiki/"
+                    f"{quote(title.replace(' ', '_'), safe='()_,')}"
                 )
             else:
                 url = row.get("url")
@@ -767,10 +776,12 @@ class WikiSearchGrounder:
                 {
                     "title": title,
                     "content": content,
-                    "score": row.get("similarity", 0),
+                    "score": similarity,
                     "url": url,
-                    "language": row.get("language")
-                    or ("en" if knowledge_source == "wikipedia" else None),
+                    "language": row.get("language"),
+                    "language_specific_url": bool(
+                        row.get("url") and row.get("language")
+                    ),
                     "source": f"ekh-{knowledge_source}",
                     "original_query": query,
                     "search_query": search_query,

@@ -88,6 +88,7 @@ from open_webui.config import (
     ENABLE_WIKIPEDIA_GROUNDING_RERANKER,
     RAG_WEB_SEARCH_REQUEST_TIMEOUT,
     RAG_WEB_SEARCH_TOTAL_TIMEOUT,
+    WIKIPEDIA_GROUNDING_PROVIDER,
 )
 from open_webui.env import (
     SRC_LOG_LEVELS,
@@ -370,6 +371,7 @@ async def get_rag_config(request: Request, user=Depends(get_admin_user)):
         "RAG_FULL_CONTEXT": request.app.state.config.RAG_FULL_CONTEXT,
         "enable_google_drive_integration": request.app.state.config.ENABLE_GOOGLE_DRIVE_INTEGRATION,
         "enable_wikipedia_grounding": request.app.state.config.ENABLE_WIKIPEDIA_GROUNDING,
+        "wikipedia_grounding_provider": WIKIPEDIA_GROUNDING_PROVIDER,
         "ekh_knowledge_source": request.app.state.config.EKH_KNOWLEDGE_SOURCE,
         "content_extraction": {
             "engine": request.app.state.config.CONTENT_EXTRACTION_ENGINE,
@@ -599,12 +601,14 @@ async def update_rag_config(
 
     if form_data.ekh_knowledge_source is not None:
         request.app.state.config.EKH_KNOWLEDGE_SOURCE = form_data.ekh_knowledge_source
+        log.info(f"EKH knowledge source updated to: {form_data.ekh_knowledge_source}")
 
     return {
         "status": True,
         "pdf_extract_images": request.app.state.config.PDF_EXTRACT_IMAGES,
         "RAG_FULL_CONTEXT": request.app.state.config.RAG_FULL_CONTEXT,
         "enable_wikipedia_grounding": request.app.state.config.ENABLE_WIKIPEDIA_GROUNDING,
+        "wikipedia_grounding_provider": WIKIPEDIA_GROUNDING_PROVIDER,
         "ekh_knowledge_source": request.app.state.config.EKH_KNOWLEDGE_SOURCE,
         "file": {
             "max_size": request.app.state.config.FILE_MAX_SIZE,

@@ -11,6 +11,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from open_webui.grounding import ekh_client
 from open_webui.grounding.wiki_search_utils import WikiSearchGrounder
+from open_webui.utils.middleware import fetch_tbs_policy_title_and_excerpt
 
 
 def _fake_config(provider="ekh", knowledge_source="wikipedia"):
@@ -197,7 +198,74 @@ async def test_ekh_search_dedupes_chunks_and_maps_fields():
     assert top["score"] == 0.41
     assert top["content"] == "Antoine Meillet chunk 7"
     assert top["url"] == "https://fr.wikipedia.org/?curid=3"
+    assert top["language_specific_url"] is True
     assert top["source"] == "ekh-wikipedia"
+
+
+@pytest.mark.asyncio
+async def test_ekh_wikipedia_fallback_url_encodes_titles_without_language():
+    row = {
+        "id": 5,
+        "source": "enwiki",
+        "name": "C# 100% & other?",
+        "content": "A page",
+        "similarity": 0.9,
+    }
+    with (
+        patch.dict(sys.modules, {"open_webui.config": _fake_config()}),
+        patch.object(ekh_client, "search_wikipedia", AsyncMock(return_value=[row])),
+    ):
+        results = await WikiSearchGrounder().search("C sharp")
+
+    assert results[0]["url"] == (
+        "https://en.wikipedia.org/wiki/C%23_100%25_%26_other%3F"
+    )
+    assert results[0]["language"] is None
+    assert results[0]["language_specific_url"] is False
+
+
+@pytest.mark.asyncio
+async def test_ekh_tbs_fallback_url_uses_french_path_and_encodes_id():
+    row = {
+        "id": "42&part=2",
+        "source": "tbs-policies",
+        "name": "Policy",
+        "content": "Policy text",
+        "similarity": 0.9,
+    }
+    with (
+        patch.dict(
+            sys.modules,
+            {"open_webui.config": _fake_config(knowledge_source="tbs-policies")},
+        ),
+        patch.object(WikiSearchGrounder, "_detect_language", return_value="fr"),
+        patch.object(ekh_client, "search_wikipedia", AsyncMock(return_value=[row])),
+    ):
+        results = await WikiSearchGrounder().search("politique")
+
+    assert results[0]["url"] == (
+        "https://www.tbs-sct.canada.ca/pol/doc-fra.aspx?id=42%26part%3D2"
+    )
+
+
+@pytest.mark.asyncio
+async def test_ekh_search_handles_null_and_malformed_row_fields():
+    row = {
+        "id": 7,
+        "source": "enwiki",
+        "name": None,
+        "content": None,
+        "similarity": None,
+    }
+    with (
+        patch.dict(sys.modules, {"open_webui.config": _fake_config()}),
+        patch.object(ekh_client, "search_wikipedia", AsyncMock(return_value=[row])),
+    ):
+        results = await WikiSearchGrounder().search("unknown")
+
+    assert results[0]["title"] == ""
+    assert results[0]["content"] == ""
+    assert results[0]["score"] == 0
 
 
 @pytest.mark.asyncio
@@ -268,6 +336,44 @@ async def test_tbs_policies_source_maps_policy_citation():
     assert "Source: ekh-tbs-policies" in WikiSearchGrounder().format_grounding_context(
         data
     )
+
+
+def test_fetch_tbs_policy_preview_extracts_french_title_and_text():
+    response = type(
+        "Response",
+        (),
+        {
+            "status_code": 200,
+            "text": """
+                <html>
+                    <h1>Directive sur les dépenses</h1>
+                    <div id="ps-doc">
+                        <p>Cette directive établit les exigences en matière de dépenses.</p>
+                    </div>
+                </html>
+            """,
+        },
+    )()
+    with patch("open_webui.utils.middleware.requests.get", return_value=response):
+        title, excerpt, status_code = fetch_tbs_policy_title_and_excerpt(
+            "https://www.tbs-sct.canada.ca/pol/doc-fra.aspx?id=42"
+        )
+
+    assert title == "Directive sur les dépenses"
+    assert excerpt == "Cette directive établit les exigences en matière de dépenses."
+    assert status_code == 200
+
+
+def test_fetch_tbs_policy_preview_rejects_non_tbs_urls():
+    with patch("open_webui.utils.middleware.requests.get") as get:
+        result = fetch_tbs_policy_title_and_excerpt(
+            "https://example.com/doc-fra.aspx?id=42"
+        )
+        missing_url_result = fetch_tbs_policy_title_and_excerpt(None)
+
+    assert result == ("", "", None)
+    assert missing_url_result == ("", "", None)
+    get.assert_not_called()
 
 
 @pytest.mark.asyncio

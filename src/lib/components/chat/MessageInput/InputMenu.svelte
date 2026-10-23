@@ -50,7 +50,7 @@
 		$i18n.t('Retrieve PMO SharePoint document by ID from search results');
 		$i18n.t('Search and retrieve PMO SharePoint documents');
 		$i18n.t('MCP tools disabled - Web Search is active');
-		$i18n.t('MCP tools disabled - Wiki Grounding is active');
+		$i18n.t('MCP tools disabled - Knowledge Grounding is active');
 	};
 
 	export let screenCaptureHandler: Function;
@@ -69,16 +69,16 @@
 	// Reactive statement for tooltip content
 	// IMPORTANT: Keep these tooltip strings short. Long strings overflowed the message input bar
 	// in the activated-state pill — this was the issue fixed in chat-1714 (e.g.
-	// 'Wikipedia Grounding: Context-aware information enhancement enabled' was too long).
+	// A long activated-state label previously overflowed the message input bar.
 	$: tooltipContent = (() => {
 		if (webSearchEnabled) {
-			return $i18n.t('Wiki Grounding disabled - Web Search is active');
+			return $i18n.t('Knowledge Grounding disabled - Web Search is active');
 		} else if (hasMcpToolsEnabled) {
-			return $i18n.t('Wiki Grounding disabled - MCP tools are active');
+			return $i18n.t('Knowledge Grounding disabled - MCP tools are active');
 		} else if (wikiGroundingEnabled) {
-			return $i18n.t('Wikipedia Grounding enabled');
+			return $i18n.t('Knowledge Grounding enabled');
 		} else {
-			return $i18n.t('Wikipedia Grounding: Click to enable');
+			return $i18n.t('Knowledge Grounding: Click to enable');
 		}
 	})();
 
@@ -187,7 +187,7 @@
 							content={tools[toolId].isMcp && webSearchEnabled
 								? $i18n.t('MCP tools disabled - Web Search is active')
 								: tools[toolId].isMcp && wikiGroundingEnabled
-									? $i18n.t('MCP tools disabled - Wiki Grounding is active')
+									? $i18n.t('MCP tools disabled - Knowledge Grounding is active')
 									: getToolTooltipContent(tools[toolId], $i18n)}
 							placement="right"
 							className="w-full"
@@ -305,7 +305,7 @@
 			{#if showWebSearch}
 				<Tooltip
 					content={wikiGroundingEnabled
-						? $i18n.t('Web Search disabled - Wiki Grounding is active')
+						? $i18n.t('Web Search disabled - Knowledge Grounding is active')
 						: hasMcpToolsEnabled
 							? $i18n.t('Web Search disabled - MCP tools are active')
 							: $i18n.t('Web Search (Beta)')}
@@ -356,7 +356,7 @@
 				>
 					<button
 						role="menuitem"
-						aria-label={$i18n.t('Wiki Grounding')}
+						aria-label={$i18n.t('Knowledge Grounding')}
 						class="flex w-full justify-between gap-2 items-center px-3 py-2 text-sm font-medium cursor-pointer rounded-xl {webSearchEnabled ||
 						hasMcpToolsEnabled
 							? 'opacity-50 cursor-not-allowed'
@@ -380,14 +380,14 @@
 						<div class="flex-1 flex items-center gap-2">
 							<BookOpen />
 							<div class="line-clamp-1">
-								{$i18n.t('Wiki Grounding')}
+								{$i18n.t('Knowledge Sources')}
 							</div>
 						</div>
 
 						<div class="flex items-center">
 							<Switch
 								state={wikiGroundingEnabled}
-								ariaLabel={$i18n.t('Toggle Wiki Grounding')}
+								ariaLabel={$i18n.t('Toggle Knowledge Grounding')}
 								disabled={webSearchEnabled || hasMcpToolsEnabled}
 							/>
 						</div>
