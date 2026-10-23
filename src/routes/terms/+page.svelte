@@ -5,9 +5,7 @@
 	import {
 		TERMS_SUPPORT_EMAIL,
 		TERMS_MAX_RETRY_ATTEMPTS,
-		TERMS_RETRY_DELAY_MS,
-		TERMS_VERSION,
-		TERMS_VERSION_DATE
+		TERMS_RETRY_DELAY_MS
 	} from '$lib/constants';
 	import { toast } from 'svelte-sonner';
 	import { onMount } from 'svelte';
@@ -122,14 +120,6 @@
 				</a>
 			</div>
 		</div>
-
-		<p class="text-sm text-neutral-600 dark:text-neutral-400 mt-1 pl-1">
-			Effective Date: {TERMS_VERSION_DATE.toLocaleDateString('en-GB', {
-				day: 'numeric',
-				month: 'long',
-				year: 'numeric'
-			})} | Version: {TERMS_VERSION}
-		</p>
 
 		<div
 			class="mt-2 p-3 w-full rounded-lg border border-neutral-500 text-neutral-900 dark:text-neutral-100 dark:bg-gray-900 shadow"

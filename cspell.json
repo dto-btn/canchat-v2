@@ -4,5 +4,6 @@
 		"./src/lib/i18n/locales/en-GB/cspell.yaml",
 		"./src/lib/i18n/locales/fr-CA/cspell.yaml"
 	],
+	"ignoreRegExpList": ["Email", "Urls"],
 	"ignorePaths": ["**/cspell.json", "**/cspell.yaml", "**/cspell.yml", "**/cspell.jsonc"]
 }
