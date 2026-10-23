@@ -16,6 +16,12 @@ from urllib.parse import quote
 
 from open_webui.env import SRC_LOG_LEVELS
 from . import ekh_client
+from .constants import (
+    EKH_SOURCE_TBS_POLICIES,
+    EKH_SOURCE_WIKIPEDIA,
+    PROVIDER_EKH,
+    PROVIDER_TXTAI,
+)
 from .context_analysis import (
     analyze_conversation_context,
     enhance_query_with_temporal_context,
@@ -23,9 +29,6 @@ from .context_analysis import (
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["GROUNDING"])
-
-PROVIDER_TXTAI = "txtai"
-PROVIDER_EKH = "ekh"
 
 
 def _get_provider() -> str:
@@ -36,8 +39,16 @@ def _get_provider() -> str:
 
 def _get_ekh_knowledge_source() -> str:
     from open_webui.config import EKH_KNOWLEDGE_SOURCE
+    from .constants import EKH_KNOWLEDGE_SOURCES, EKH_SOURCE_WIKIPEDIA
 
-    return getattr(EKH_KNOWLEDGE_SOURCE, "value", EKH_KNOWLEDGE_SOURCE)
+    source = getattr(EKH_KNOWLEDGE_SOURCE, "value", EKH_KNOWLEDGE_SOURCE)
+    if isinstance(source, str) and source.strip().lower() in EKH_KNOWLEDGE_SOURCES:
+        return source.strip().lower()
+    log.warning(
+        "Invalid EKH_KNOWLEDGE_SOURCE value; defaulting to %r",
+        EKH_SOURCE_WIKIPEDIA,
+    )
+    return EKH_SOURCE_WIKIPEDIA
 
 
 def _get_txtai_embeddings():
@@ -722,7 +733,7 @@ class WikiSearchGrounder:
         knowledge_source = _get_ekh_knowledge_source()
         search_query = enhance_query_with_temporal_context(query)
 
-        rows = await ekh_client.search_wikipedia(
+        rows = await ekh_client.search_knowledge_source(
             search_query,
             base_url=EKH_BASE_URL,
             knowledge_source=knowledge_source,
@@ -754,7 +765,7 @@ class WikiSearchGrounder:
             title = row.get("name") or ""
             if not isinstance(title, str):
                 title = str(title)
-            if knowledge_source == "tbs-policies":
+            if knowledge_source == EKH_SOURCE_TBS_POLICIES:
                 document_language = self._detect_language(query)
                 document_name = (
                     "doc-fra.aspx" if document_language == "fr" else "doc-eng.aspx"
@@ -765,7 +776,7 @@ class WikiSearchGrounder:
                     if row.get("id") is not None
                     else None
                 )
-            elif knowledge_source == "wikipedia":
+            elif knowledge_source == EKH_SOURCE_WIKIPEDIA:
                 url = row.get("url") or (
                     "https://en.wikipedia.org/wiki/"
                     f"{quote(title.replace(' ', '_'), safe='()_,')}"

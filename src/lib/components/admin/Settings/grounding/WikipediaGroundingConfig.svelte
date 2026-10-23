@@ -1,7 +1,12 @@
 <script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
-	import { getRAGConfig } from '$lib/apis/retrieval';
+	import {
+		EKH_KNOWLEDGE_SOURCES,
+		WIKIPEDIA_GROUNDING_PROVIDERS,
+		getRAGConfig
+	} from '$lib/apis/retrieval';
+	import type { EkhKnowledgeSource, WikipediaGroundingProvider } from '$lib/apis/retrieval';
 	import Switch from '$lib/components/common/Switch.svelte';
 	import { onMount } from 'svelte';
 	import { getRequestToken } from '$lib/services/auth';
@@ -11,12 +16,12 @@
 
 	export let config: {
 		enabled: boolean;
-		source: 'wikipedia' | 'tbs-policies';
-		provider: 'txtai' | 'ekh';
+		source: EkhKnowledgeSource;
+		provider: WikipediaGroundingProvider;
 	} = {
 		enabled: false,
-		source: 'wikipedia',
-		provider: 'txtai'
+		source: EKH_KNOWLEDGE_SOURCES[0],
+		provider: WIKIPEDIA_GROUNDING_PROVIDERS[0]
 	};
 
 	export let loaded = false;
@@ -31,13 +36,15 @@
 			}
 			if (
 				typeof res.enable_wikipedia_grounding !== 'boolean' ||
-				!['wikipedia', 'tbs-policies'].includes(res.ekh_knowledge_source)
+				!EKH_KNOWLEDGE_SOURCES.includes(res.ekh_knowledge_source)
 			) {
 				throw new Error('Grounding settings response was invalid');
 			}
 			config.enabled = res.enable_wikipedia_grounding;
-			config.provider = res.wikipedia_grounding_provider === 'ekh' ? 'ekh' : 'txtai';
-			config.source = res.ekh_knowledge_source === 'tbs-policies' ? 'tbs-policies' : 'wikipedia';
+			config.provider = WIKIPEDIA_GROUNDING_PROVIDERS.includes(res.wikipedia_grounding_provider)
+				? res.wikipedia_grounding_provider
+				: WIKIPEDIA_GROUNDING_PROVIDERS[0];
+			config.source = res.ekh_knowledge_source;
 			loaded = true;
 		} catch (error) {
 			console.error('Error loading grounding settings:', error);
@@ -56,14 +63,14 @@
 					id="knowledge-grounding-label"
 					class="text-sm font-semibold text-gray-900 dark:text-gray-100"
 				>
-					{#if config.provider === 'ekh'}
+					{#if config.provider === WIKIPEDIA_GROUNDING_PROVIDERS[1]}
 						{$i18n.t('Enterprise Knowledge Hub (EKH) grounding')}
 					{:else}
 						{$i18n.t('Wikipedia Grounding')}
 					{/if}
 				</h3>
 				<p id="knowledge-grounding-desc" class="text-xs text-gray-600 dark:text-gray-400 mt-1">
-					{#if config.provider === 'ekh'}
+					{#if config.provider === WIKIPEDIA_GROUNDING_PROVIDERS[1]}
 						{$i18n.t('Enhance responses with the selected EKH source')}
 					{:else}
 						{$i18n.t('Enhance responses with Wikipedia knowledge')}
@@ -78,7 +85,7 @@
 			/>
 		</div>
 
-		{#if config.provider === 'ekh'}
+		{#if config.provider === WIKIPEDIA_GROUNDING_PROVIDERS[1]}
 			<div class="flex items-center justify-between gap-3">
 				<label
 					for="ekh-grounding-source"
@@ -92,8 +99,8 @@
 					bind:value={config.source}
 					disabled={loading || !loaded}
 				>
-					<option value="wikipedia">{$i18n.t('Wikipedia')}</option>
-					<option value="tbs-policies">{$i18n.t('TBS Policies')}</option>
+					<option value={EKH_KNOWLEDGE_SOURCES[0]}>{$i18n.t('Wikipedia')}</option>
+					<option value={EKH_KNOWLEDGE_SOURCES[1]}>{$i18n.t('TBS Policies')}</option>
 				</select>
 			</div>
 
@@ -101,7 +108,7 @@
 				<div
 					class="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-md p-3"
 				>
-					{#if config.source === 'tbs-policies'}
+					{#if config.source === EKH_KNOWLEDGE_SOURCES[1]}
 						{$i18n.t('Grounding will use TBS Policies indexed in EKH.')}
 					{:else}
 						{$i18n.t('Grounding will use Wikipedia indexed in EKH.')}

@@ -2,7 +2,12 @@
 	import { getI18n } from '$lib/utils/context';
 
 	import WikipediaGroundingConfig from './grounding/WikipediaGroundingConfig.svelte';
-	import { updateRAGConfig } from '$lib/apis/retrieval';
+	import {
+		EKH_KNOWLEDGE_SOURCES,
+		updateRAGConfig,
+		WIKIPEDIA_GROUNDING_PROVIDERS
+	} from '$lib/apis/retrieval';
+	import type { EkhKnowledgeSource, WikipediaGroundingProvider } from '$lib/apis/retrieval';
 	import { toast } from 'svelte-sonner';
 	import { getRequestToken } from '$lib/services/auth';
 
@@ -10,10 +15,14 @@
 
 	export let saveHandler: Function;
 
-	let wikipediaConfig = {
+	let wikipediaConfig: {
+		enabled: boolean;
+		source: EkhKnowledgeSource;
+		provider: WikipediaGroundingProvider;
+	} = {
 		enabled: false,
-		source: 'wikipedia' as 'wikipedia' | 'tbs-policies',
-		provider: 'txtai' as 'txtai' | 'ekh'
+		source: EKH_KNOWLEDGE_SOURCES[0],
+		provider: WIKIPEDIA_GROUNDING_PROVIDERS[0]
 	};
 	let configLoaded = false;
 	let loading = false;

@@ -10,6 +10,14 @@ from aiohttp.test_utils import TestServer
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from open_webui.grounding import ekh_client
+from open_webui.config import (
+    EKH_KNOWLEDGE_SOURCES,
+    PROVIDER_TXTAI,
+    WIKIPEDIA_GROUNDING_PROVIDERS,
+    _ekh_timeout_from_env,
+    _validated_env_choice,
+    normalize_ekh_knowledge_source,
+)
 from open_webui.grounding.wiki_search_utils import WikiSearchGrounder
 from open_webui.utils.middleware import fetch_tbs_policy_title_and_excerpt
 
@@ -38,6 +46,46 @@ def _row(pid, source, name, similarity, chunk=0):
     }
 
 
+def test_grounding_environment_choices_are_validated(monkeypatch, caplog):
+    monkeypatch.setenv("WIKIPEDIA_GROUNDING_PROVIDER", "ekhh")
+    assert (
+        _validated_env_choice(
+            "WIKIPEDIA_GROUNDING_PROVIDER",
+            WIKIPEDIA_GROUNDING_PROVIDERS,
+            PROVIDER_TXTAI,
+        )
+        == PROVIDER_TXTAI
+    )
+    assert "defaulting to 'txtai'" in caplog.text
+
+    monkeypatch.setenv("EKH_KNOWLEDGE_SOURCE", "tbs")
+    assert (
+        normalize_ekh_knowledge_source(
+            _validated_env_choice(
+                "EKH_KNOWLEDGE_SOURCE",
+                EKH_KNOWLEDGE_SOURCES,
+                EKH_KNOWLEDGE_SOURCES[0],
+            )
+        )
+        == EKH_KNOWLEDGE_SOURCES[0]
+    )
+    assert "defaulting to 'wikipedia'" in caplog.text
+
+
+@pytest.mark.parametrize("value", ["not-a-number", "nan", "inf", "0", "-2"])
+def test_ekh_timeout_invalid_values_use_default(monkeypatch, value, caplog):
+    monkeypatch.setenv("EKH_TIMEOUT_SECONDS", value)
+
+    assert _ekh_timeout_from_env() == 5.0
+    assert "defaulting to 5" in caplog.text
+
+
+def test_ekh_timeout_accepts_positive_finite_value(monkeypatch):
+    monkeypatch.setenv("EKH_TIMEOUT_SECONDS", "2.5")
+
+    assert _ekh_timeout_from_env() == 2.5
+
+
 # ── ekh_client ───────────────────────────────────────────────────────────────
 
 
@@ -61,8 +109,12 @@ async def test_client_returns_results_and_sends_params():
 
     server = await _serve(handler)
     try:
-        rows = await ekh_client.search_wikipedia(
-            "ottawa", base_url=str(server.make_url("/")), limit=7, api_key="k"
+        rows = await ekh_client.search_knowledge_source(
+            "ottawa",
+            base_url=str(server.make_url("/")),
+            knowledge_source="wikipedia",
+            limit=7,
+            api_key="k",
         )
     finally:
         await server.close()
@@ -82,7 +134,9 @@ async def test_client_omits_api_key_header_when_unset():
 
     server = await _serve(handler)
     try:
-        await ekh_client.search_wikipedia("x", base_url=str(server.make_url("/")))
+        await ekh_client.search_knowledge_source(
+            "x", base_url=str(server.make_url("/")), knowledge_source="wikipedia"
+        )
     finally:
         await server.close()
 
@@ -96,8 +150,8 @@ async def test_client_returns_empty_on_http_error():
 
     server = await _serve(handler)
     try:
-        rows = await ekh_client.search_wikipedia(
-            "x", base_url=str(server.make_url("/"))
+        rows = await ekh_client.search_knowledge_source(
+            "x", base_url=str(server.make_url("/")), knowledge_source="wikipedia"
         )
     finally:
         await server.close()
@@ -112,8 +166,8 @@ async def test_client_returns_empty_on_malformed_payload():
 
     server = await _serve(handler)
     try:
-        rows = await ekh_client.search_wikipedia(
-            "x", base_url=str(server.make_url("/"))
+        rows = await ekh_client.search_knowledge_source(
+            "x", base_url=str(server.make_url("/")), knowledge_source="wikipedia"
         )
     finally:
         await server.close()
@@ -131,8 +185,11 @@ async def test_client_returns_empty_on_timeout():
 
     server = await _serve(handler)
     try:
-        rows = await ekh_client.search_wikipedia(
-            "x", base_url=str(server.make_url("/")), timeout_seconds=0.1
+        rows = await ekh_client.search_knowledge_source(
+            "x",
+            base_url=str(server.make_url("/")),
+            knowledge_source="wikipedia",
+            timeout_seconds=0.1,
         )
     finally:
         await server.close()
@@ -142,10 +199,18 @@ async def test_client_returns_empty_on_timeout():
 
 @pytest.mark.asyncio
 async def test_client_returns_empty_when_unreachable_or_unconfigured():
-    assert await ekh_client.search_wikipedia("x", base_url="") == []
     assert (
-        await ekh_client.search_wikipedia(
-            "x", base_url="http://127.0.0.1:1", timeout_seconds=1
+        await ekh_client.search_knowledge_source(
+            "x", base_url="", knowledge_source="wikipedia"
+        )
+        == []
+    )
+    assert (
+        await ekh_client.search_knowledge_source(
+            "x",
+            base_url="http://127.0.0.1:1",
+            knowledge_source="wikipedia",
+            timeout_seconds=1,
         )
         == []
     )
@@ -161,7 +226,7 @@ async def test_client_uses_configured_knowledge_source_route():
 
     server = await _serve(handler)
     try:
-        await ekh_client.search_wikipedia(
+        await ekh_client.search_knowledge_source(
             "leave policy",
             base_url=str(server.make_url("/")),
             knowledge_source="tbs-policies",
@@ -185,7 +250,9 @@ async def test_ekh_search_dedupes_chunks_and_maps_fields():
     ]
     with (
         patch.dict(sys.modules, {"open_webui.config": _fake_config()}),
-        patch.object(ekh_client, "search_wikipedia", AsyncMock(return_value=rows)),
+        patch.object(
+            ekh_client, "search_knowledge_source", AsyncMock(return_value=rows)
+        ),
     ):
         results = await WikiSearchGrounder().search("history")
 
@@ -213,7 +280,9 @@ async def test_ekh_wikipedia_fallback_url_encodes_titles_without_language():
     }
     with (
         patch.dict(sys.modules, {"open_webui.config": _fake_config()}),
-        patch.object(ekh_client, "search_wikipedia", AsyncMock(return_value=[row])),
+        patch.object(
+            ekh_client, "search_knowledge_source", AsyncMock(return_value=[row])
+        ),
     ):
         results = await WikiSearchGrounder().search("C sharp")
 
@@ -239,7 +308,9 @@ async def test_ekh_tbs_fallback_url_uses_french_path_and_encodes_id():
             {"open_webui.config": _fake_config(knowledge_source="tbs-policies")},
         ),
         patch.object(WikiSearchGrounder, "_detect_language", return_value="fr"),
-        patch.object(ekh_client, "search_wikipedia", AsyncMock(return_value=[row])),
+        patch.object(
+            ekh_client, "search_knowledge_source", AsyncMock(return_value=[row])
+        ),
     ):
         results = await WikiSearchGrounder().search("politique")
 
@@ -259,7 +330,9 @@ async def test_ekh_search_handles_null_and_malformed_row_fields():
     }
     with (
         patch.dict(sys.modules, {"open_webui.config": _fake_config()}),
-        patch.object(ekh_client, "search_wikipedia", AsyncMock(return_value=[row])),
+        patch.object(
+            ekh_client, "search_knowledge_source", AsyncMock(return_value=[row])
+        ),
     ):
         results = await WikiSearchGrounder().search("unknown")
 
@@ -272,7 +345,7 @@ async def test_ekh_search_handles_null_and_malformed_row_fields():
 async def test_ekh_search_returns_empty_when_ekh_fails():
     with (
         patch.dict(sys.modules, {"open_webui.config": _fake_config()}),
-        patch.object(ekh_client, "search_wikipedia", AsyncMock(return_value=[])),
+        patch.object(ekh_client, "search_knowledge_source", AsyncMock(return_value=[])),
     ):
         grounder = WikiSearchGrounder()
         assert await grounder.search("history") == []
@@ -296,7 +369,9 @@ async def test_ground_query_labels_ekh_source_in_context():
     rows = [_row(1, "enwiki", "Ottawa", 0.8)]
     with (
         patch.dict(sys.modules, {"open_webui.config": _fake_config()}),
-        patch.object(ekh_client, "search_wikipedia", AsyncMock(return_value=rows)),
+        patch.object(
+            ekh_client, "search_knowledge_source", AsyncMock(return_value=rows)
+        ),
     ):
         grounder = WikiSearchGrounder()
         data = await grounder.ground_query("capital of canada")
@@ -321,7 +396,7 @@ async def test_tbs_policies_source_maps_policy_citation():
             {"open_webui.config": _fake_config(knowledge_source="tbs-policies")},
         ),
         patch.object(
-            ekh_client, "search_wikipedia", AsyncMock(return_value=[row])
+            ekh_client, "search_knowledge_source", AsyncMock(return_value=[row])
         ) as search,
     ):
         data = await WikiSearchGrounder().ground_query("values and ethics")
@@ -381,7 +456,7 @@ async def test_txtai_provider_does_not_call_ekh():
     grounder = WikiSearchGrounder()
     with (
         patch.dict(sys.modules, {"open_webui.config": _fake_config(provider="txtai")}),
-        patch.object(ekh_client, "search_wikipedia", AsyncMock()) as ekh_search,
+        patch.object(ekh_client, "search_knowledge_source", AsyncMock()) as ekh_search,
         patch.object(grounder, "ensure_initialized", AsyncMock(return_value=False)),
     ):
         assert await grounder.search("history") == []

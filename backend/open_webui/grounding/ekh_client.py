@@ -11,14 +11,13 @@ log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["GROUNDING"])
 
 
-async def search_wikipedia(
+async def search_knowledge_source(
     query: str,
     base_url: str,
+    knowledge_source: str,
     limit: int = 15,
     timeout_seconds: float = 5.0,
     api_key: Optional[str] = None,
-    source: Optional[str] = None,
-    knowledge_source: str = "wikipedia",
 ) -> List[Dict]:
     """Search an EKH knowledge source, returning [] on failure."""
     if not base_url:
@@ -27,8 +26,6 @@ async def search_wikipedia(
 
     url = f"{base_url.rstrip('/')}/database/{knowledge_source}/search"
     params = {"query": query, "limit": str(limit)}
-    if source:
-        params["source"] = source
     headers = {"X-API-Key": api_key} if api_key else {}
 
     try:

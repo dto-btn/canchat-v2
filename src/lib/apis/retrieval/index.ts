@@ -1,5 +1,10 @@
 import { RETRIEVAL_API_BASE_URL } from '$lib/constants';
 
+export const EKH_KNOWLEDGE_SOURCES = ['wikipedia', 'tbs-policies'] as const;
+export type EkhKnowledgeSource = (typeof EKH_KNOWLEDGE_SOURCES)[number];
+export const WIKIPEDIA_GROUNDING_PROVIDERS = ['txtai', 'ekh'] as const;
+export type WikipediaGroundingProvider = (typeof WIKIPEDIA_GROUNDING_PROVIDERS)[number];
+
 export const getRAGConfig = async (token: string) => {
 	let error = null;
 
@@ -47,7 +52,7 @@ type RAGConfigForm = {
 	pdf_extract_images?: boolean;
 	enable_google_drive_integration?: boolean;
 	enable_wikipedia_grounding?: boolean;
-	ekh_knowledge_source?: 'wikipedia' | 'tbs-policies';
+	ekh_knowledge_source?: EkhKnowledgeSource;
 	chunk?: ChunkConfigForm;
 	content_extraction?: ContentExtractConfigForm;
 	web_loader_ssl_verification?: boolean;
