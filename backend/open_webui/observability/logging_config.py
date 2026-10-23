@@ -64,6 +64,7 @@ RESOURCE_FIELDS = ("service.name", "service.version", "deployment.environment")
 CONTEXT_FIELDS = tuple(LOG_CONTEXT_VARS)
 ACCESS_FIELDS = (
     "http.request.method",
+    "http.route",
     "url.path",
     "http.response.status_code",
     "http.response.body.size",

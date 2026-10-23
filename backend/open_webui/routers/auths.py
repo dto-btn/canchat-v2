@@ -54,6 +54,7 @@ from open_webui.utils.auth import (
     resolve_current_user,
     verify_refresh_token,
 )
+from open_webui.observability.context import user_id_var
 from open_webui.utils.webhook import post_webhook
 from open_webui.utils.access_control import get_permissions
 
@@ -229,6 +230,8 @@ async def get_session_user(
     refresh_token = request.cookies.get(WEBUI_REFRESH_TOKEN_COOKIE_NAME)
     if refresh_token:
         refresh_session, user = _get_refresh_session_user(refresh_token)
+        request.state.auth_user_id = user.id
+        user_id_var.set(user.id)
 
         token, expires_at = _issue_tokens_for_user(
             request,
@@ -246,6 +249,7 @@ async def get_session_user(
             raise HTTPException(status_code=403, detail="Not authenticated")
 
         user = auth_context.user
+        user_id_var.set(user.id)
         token, expires_at = _issue_tokens_for_user(request, response, user.id)
 
     return _build_session_user_response(request, user, token, expires_at)
