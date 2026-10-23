@@ -14,6 +14,7 @@
 		url: string;
 		score: number;
 		language?: string;
+		source?: string;
 		fallback_reason?: string;
 	}> = [];
 
@@ -27,7 +28,14 @@
 				class="flex items-center gap-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition"
 			>
 				<BookOpen className="size-4" />
-				<span>{$i18n.t('Wikipedia Sources')} ({sources.length})</span>
+				<span>
+					{#if sources.some((source) => source.source === 'ekh-tbs-policies')}
+						{$i18n.t('Sources: TBS Policies')}
+					{:else}
+						{$i18n.t('Sources: Wikipedia')}
+					{/if}
+					({sources.length})
+				</span>
 				{#if open}
 					<ChevronUp strokeWidth="3.5" className="size-3.5" />
 				{:else}
