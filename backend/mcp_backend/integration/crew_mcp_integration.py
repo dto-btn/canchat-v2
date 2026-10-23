@@ -20,8 +20,6 @@ from crewai import Agent, Task, Crew, Process, LLM
 from crewai_tools import MCPServerAdapter
 from mcp import StdioServerParameters
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # CrewAI verbosity control - disable in production for cleaner logs

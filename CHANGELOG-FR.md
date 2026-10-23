@@ -10,14 +10,20 @@ et ce projet adhère au [Versionnage sémantique](https://semver.org/lang/fr/spe
 ### Ajouté
 
 - **📈 Fournisseurs OpenTelemetry (OBS-14)** : Ajout du module `observability` du serveur. Il initialise une seule fois par processus les fournisseurs de métriques, de traces et de journaux, avec des attributs communs de nom de service, de version et d'environnement, puis les vide et les arrête à l'arrêt de l'application. Nouveaux paramètres : `OTEL_ENABLED`, `OTEL_SERVICE_NAME`, `OTEL_EXPORTER_OTLP_ENDPOINT` (URL de base; les chemins par signal sont ajoutés) et `OTEL_METRIC_EXPORT_INTERVAL` (15000 ms par défaut). L'exportation est activée par défaut dans les conteneurs et en production et désactivée en développement local; lorsqu'elle est désactivée, rien n'est envoyé et aucune erreur d'exportation n'est journalisée.
+- **🧾 Journalisation JSON structurée (OBS-15)** : Les journaux du serveur sont écrits sur la sortie standard à raison d'un objet JSON par ligne, avec l'horodatage, la gravité, le journaliseur, le nom du service, la version, l'environnement, le contexte de trace et de requête, l'événement et les champs d'exception. Lorsque `OTEL_ENABLED=true`, les mêmes entrées sont aussi exportées par OTLP. Nouveaux paramètres : `LOG_FORMAT` (`json` ou `text`; le texte reste la valeur par défaut en développement local) et `LOG_RATE_LIMIT` (`100/10s` par journaliseur par défaut; `0` le désactive), qui écarte les rafales de journaux et les signale dans une seule ligne de résumé. Nouveaux niveaux par source : `AUDIT_LOG_LEVEL` et `MCP_LOG_LEVEL`.
 
 ### Modifié
 
 - **Télémétrie CrewAI (OBS-14)** : La télémétrie de CrewAI est maintenant désactivée avec `CREWAI_DISABLE_TELEMETRY=true` et `CREWAI_TRACING_ENABLED=false`. La variable globale `OTEL_SDK_DISABLED=true`, qui désactivait aussi la télémétrie de CANChat, n'est plus définie; retirez-la des fichiers `.env` existants.
+- **Configuration de la journalisation (OBS-15)** : La journalisation est configurée à un seul endroit plutôt que dans plusieurs modules. Les journaliseurs bavards des bibliothèques (uvicorn, SQLAlchemy, clients HTTP, LiteLLM, CrewAI, MCP) ne consignent que les avertissements et les erreurs; définissez explicitement `MAIN_LOG_LEVEL`, `DB_LOG_LEVEL` ou `MCP_LOG_LEVEL` pour revoir les lignes INFO d'uvicorn, SQL ou MCP. Les lignes du journal d'accès n'incluent plus les chaînes de requête des URL. Les journaliseurs d'audit n'écrivent plus dans le journal de l'application.
 
 ### Obsolète
 
 - **Paramètres d'instrumentation (OBS-14)** : `INSTRUMENTATION_SERVICE_NAME`, `INSTRUMENTATION_ENDPOINT` et `INSTRUMENTATION_EXPORT_INTERVAL_MS` sont encore lus pendant une version, avec une priorité inférieure aux noms `OTEL_*`. Le suffixe `/v1/metrics` de `INSTRUMENTATION_ENDPOINT` est retiré automatiquement.
+
+### Sécurité
+
+- **🔒 Paramètres SQL dans les journaux (OBS-15)** : Les moteurs de base de données masquent les paramètres SQL liés; les valeurs des requêtes n'apparaissent plus dans les journaux SQL ni dans les messages d'erreur de la base de données.
 
 ### Corrigé
 

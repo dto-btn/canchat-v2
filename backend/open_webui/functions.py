@@ -1,5 +1,4 @@
 import logging
-import sys
 import inspect
 import json
 
@@ -23,7 +22,7 @@ from open_webui.models.models import Models
 from open_webui.utils.plugin import load_function_module_by_id
 from open_webui.utils.tools import get_tools_async
 
-from open_webui.env import SRC_LOG_LEVELS, GLOBAL_LOG_LEVEL
+from open_webui.env import SRC_LOG_LEVELS
 
 from open_webui.utils.misc import (
     openai_chat_chunk_message_template,
@@ -34,7 +33,6 @@ from open_webui.utils.payload import (
     apply_model_system_prompt_to_body,
 )
 
-logging.basicConfig(stream=sys.stdout, level=GLOBAL_LOG_LEVEL)
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["MAIN"])
 

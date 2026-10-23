@@ -10,14 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **📈 OpenTelemetry Providers (OBS-14)**: Added the backend `observability` package. It initializes the meter, tracer and logger providers once per process with shared service name, version and environment attributes, and flushes and shuts them down at application shutdown. New settings: `OTEL_ENABLED`, `OTEL_SERVICE_NAME`, `OTEL_EXPORTER_OTLP_ENDPOINT` (base URL; signal paths are appended) and `OTEL_METRIC_EXPORT_INTERVAL` (default 15000 ms). Export is enabled by default in containers and production and disabled for local development; when disabled, nothing is sent and no export errors are logged.
+- **🧾 Structured JSON Logging (OBS-15)**: Backend logs are written to stdout as one JSON object per line, with timestamp, severity, logger, service name, version, environment, trace and request context, event and exception fields. When `OTEL_ENABLED=true`, the same records are also exported over OTLP. New settings: `LOG_FORMAT` (`json` or `text`; text remains the default for local development) and `LOG_RATE_LIMIT` (default `100/10s` per logger; `0` disables), which drops log floods and reports them in one summary line. New per-source levels: `AUDIT_LOG_LEVEL` and `MCP_LOG_LEVEL`.
 
 ### Changed
 
 - **CrewAI Telemetry (OBS-14)**: CrewAI telemetry is now disabled with `CREWAI_DISABLE_TELEMETRY=true` and `CREWAI_TRACING_ENABLED=false`. The process-wide `OTEL_SDK_DISABLED=true`, which also disabled CANChat's own telemetry, is no longer set; remove it from existing `.env` files.
+- **Logging Configuration (OBS-15)**: Logging is configured in one place instead of several modules. Noisy library loggers (uvicorn, SQLAlchemy, HTTP clients, LiteLLM, CrewAI, MCP) only log warnings and errors; set `MAIN_LOG_LEVEL`, `DB_LOG_LEVEL` or `MCP_LOG_LEVEL` explicitly to see uvicorn, SQL or MCP INFO lines again. Access log lines no longer include URL query strings. Audit loggers no longer write to the application log.
 
 ### Deprecated
 
 - **Instrumentation Settings (OBS-14)**: `INSTRUMENTATION_SERVICE_NAME`, `INSTRUMENTATION_ENDPOINT` and `INSTRUMENTATION_EXPORT_INTERVAL_MS` are still read for one release, with lower precedence than the `OTEL_*` names. A trailing `/v1/metrics` on `INSTRUMENTATION_ENDPOINT` is removed automatically.
+
+### Security
+
+- **🔒 SQL Parameters in Logs (OBS-15)**: Database engines hide bound SQL parameters, so query values no longer appear in SQL logs or database error messages.
 
 ### Fixed
 
