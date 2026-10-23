@@ -56,6 +56,12 @@ MANAGED_LOGGERS = (
 )
 
 
+@pytest.fixture(autouse=True)
+def enabled_otel_sdk(monkeypatch):
+    """Keep local test providers recording even when the shell disables OTel."""
+    monkeypatch.delenv("OTEL_SDK_DISABLED", raising=False)
+
+
 @pytest.fixture
 def isolated_logging(monkeypatch):
     """Restore every logger touched by the policy; yields the root logger.
@@ -743,21 +749,44 @@ def test_in_process_migrations_keep_application_logging(monkeypatch, tmp_path, c
     assert (tmp_path / "migrations.db").stat().st_size > 0
 
 
-def test_no_in_process_basic_config_calls():
-    standalone = {"mcp_backend/servers", "scripts"}
+def _logging_config_offenders(backend_dir):
     offenders = []
-    for path in BACKEND_DIR.rglob("*.py"):
-        relative = path.relative_to(BACKEND_DIR).as_posix()
-        if "/test/" in relative or any(
-            relative.startswith(p + "/") for p in standalone
-        ):
-            continue
-        if re.search(
-            r"logging\.basicConfig\(|fileConfig\(|dictConfig\(", path.read_text()
-        ):
-            offenders.append(relative)
+    for package in ("open_webui", "mcp_backend"):
+        for path in (backend_dir / package).rglob("*.py"):
+            relative = path.relative_to(backend_dir).as_posix()
+            if relative.startswith(("open_webui/test/", "mcp_backend/servers/")):
+                continue
+            if re.search(
+                r"logging\.basicConfig\(|fileConfig\(|dictConfig\(", path.read_text()
+            ):
+                offenders.append(relative)
+    return sorted(offenders)
+
+
+def test_no_in_process_basic_config_calls():
     # The alembic CLI entrypoint keeps fileConfig, guarded for in-process runs.
-    assert offenders == ["open_webui/migrations/env.py"]
+    assert _logging_config_offenders(BACKEND_DIR) == ["open_webui/migrations/env.py"]
+
+
+def test_logging_config_scan_only_checks_in_process_source(tmp_path):
+    in_process = (
+        "open_webui/env.py",
+        "open_webui/routers/chat.py",
+        "mcp_backend/integration/example.py",
+    )
+    excluded = (
+        ".venv/bin/debug.py",
+        ".venv/lib/python3.12/site-packages/example.py",
+        "scripts/example.py",
+        "mcp_backend/servers/example.py",
+        "open_webui/test/example.py",
+    )
+    for relative in (*in_process, *excluded):
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("logging.basicConfig()\n")
+
+    assert _logging_config_offenders(tmp_path) == sorted(in_process)
 
 
 def test_env_import_configures_json_logging_in_fresh_process(tmp_path):

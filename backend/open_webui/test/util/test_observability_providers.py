@@ -201,6 +201,7 @@ def test_enabled_otel_uses_signal_endpoints(monkeypatch):
 
 
 def test_web_search_metrics_are_recorded_with_in_memory_reader(monkeypatch):
+    monkeypatch.delenv("OTEL_SDK_DISABLED", raising=False)
     reader = InMemoryMetricReader()
     providers = create_providers(_settings(enabled=False), metric_readers=[reader])
     monkeypatch.setattr(
