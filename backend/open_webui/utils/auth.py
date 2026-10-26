@@ -26,7 +26,9 @@ from open_webui.utils.misc import parse_duration
 from fastapi import Depends, HTTPException, Request, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from passlib.context import CryptContext
+from starlette.concurrency import run_in_threadpool
 
+from open_webui.observability.context import user_id_var
 logging.getLogger("passlib").setLevel(logging.ERROR)
 
 log = logging.getLogger(__name__)
@@ -415,6 +417,7 @@ def resolve_current_user(
                 )
 
         user = get_current_user_by_api_key(token)
+        request.state.auth_user_id = user.id
         return ResolvedAuthContext(user=user, token=token, source="api_key")
 
     # auth by jwt token
@@ -435,6 +438,7 @@ def resolve_current_user(
             )
 
         Users.update_user_last_active_by_id(user.id)
+        request.state.auth_user_id = user.id
         return ResolvedAuthContext(
             user=user,
             token=token,
@@ -447,23 +451,30 @@ def resolve_current_user(
     )
 
 
-def get_current_user(
+async def get_current_user(
     request: Request,
     auth_token: HTTPAuthorizationCredentials = Depends(bearer_security),
 ) -> UserModel:
-    resolved_auth = resolve_current_user(request, auth_token, require_auth=True)
+    resolved_auth = await run_in_threadpool(
+        resolve_current_user, request, auth_token, True
+    )
+    user_id_var.set(resolved_auth.user.id)
     return resolved_auth.user
 
 
-def get_current_user_optional(
+async def get_current_user_optional(
     request: Request,
     auth_token: HTTPAuthorizationCredentials = Depends(bearer_security),
 ) -> Optional[UserModel]:
     try:
-        resolved_auth = resolve_current_user(request, auth_token, require_auth=False)
+        resolved_auth = await run_in_threadpool(
+            resolve_current_user, request, auth_token, False
+        )
     except HTTPException:
         return None
 
+    if resolved_auth is not None:
+        user_id_var.set(resolved_auth.user.id)
     return resolved_auth.user if resolved_auth else None
 
 
