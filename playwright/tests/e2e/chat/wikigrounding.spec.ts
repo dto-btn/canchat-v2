@@ -11,9 +11,9 @@ test.describe('Feature: Wiki Grounding', () => {
 		);
 
 		await userPage.goto('/');
-		await userPage.toggleChatTool(userPage.getTranslation('Wiki Grounding'), true);
+		await userPage.toggleChatTool(userPage.getTranslation('Knowledge Grounding'), true);
 		await expect(userPage.page.locator('#chat-container')).toContainText(
-			userPage.getTranslation('Wiki Grounding'),
+			userPage.getTranslation('Knowledge Grounding'),
 			{
 				timeout: 15000
 			}

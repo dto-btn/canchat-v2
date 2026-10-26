@@ -549,7 +549,7 @@
 											</span>
 										</div>
 										<Tooltip
-											content={$i18n.t('Wikipedia context-aware enhancement enabled')}
+											content={$i18n.t('Knowledge Grounding enabled')}
 											placement="right"
 											tippyOptions={{
 												placement: 'right',
@@ -566,7 +566,7 @@
 											}}
 										>
 											<div class=" ">
-												{$i18n.t('Wiki Grounding')}
+												{$i18n.t('Knowledge Grounding')}
 											</div>
 										</Tooltip>
 									</div>
