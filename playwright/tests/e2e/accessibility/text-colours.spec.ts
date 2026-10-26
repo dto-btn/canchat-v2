@@ -14,6 +14,13 @@ const markup = `
 	<span id="themed" class="text-gray-500 dark:text-gray-400">Themed</span>
 	<input id="input" placeholder="Input placeholder" />
 	<textarea id="textarea" placeholder="Textarea placeholder"></textarea>
+	<input id="rename" class="bg-transparent w-full outline-none mr-10" />
+	<input id="search" class="w-full text-sm pr-4 py-1 rounded-r-xl outline-none bg-transparent" />
+	<input id="reaction" class="w-full text-sm bg-transparent outline-none" />
+	<select id="select"><option>Option</option></select>
+	<input id="borderless" class="border-0" />
+	<input id="transparent-border" class="border border-transparent" />
+	<input id="bordered" class="border-2 border-gray-300 focus:border-blue-500 dark:border-gray-600 dark:focus:border-blue-400" />
 `;
 
 let styles: string;
@@ -58,6 +65,38 @@ for (const { theme, color } of [
 	{ theme: 'light', color: 'rgb(89, 89, 89)' },
 	{ theme: 'dark', color: 'rgb(180, 180, 180)' }
 ]) {
+	test(`${theme}-mode controls retain their explicit border styling`, async ({ page }) => {
+		await page.evaluate((theme) => {
+			document.documentElement.classList.toggle('dark', theme === 'dark');
+		}, theme);
+		for (const id of [
+			'input',
+			'textarea',
+			'rename',
+			'search',
+			'reaction',
+			'select',
+			'borderless'
+		]) {
+			await expect(page.locator(`#${id}`)).toHaveCSS('border-top-width', '0px');
+		}
+		await expect(page.locator('#transparent-border')).toHaveCSS(
+			'border-top-color',
+			'rgba(0, 0, 0, 0)'
+		);
+		const bordered = page.locator('#bordered');
+		await expect(bordered).toHaveCSS('border-top-width', '2px');
+		await expect(bordered).toHaveCSS(
+			'border-top-color',
+			theme === 'dark' ? 'rgb(103, 103, 103)' : 'rgb(205, 205, 205)'
+		);
+		await bordered.focus();
+		await expect(bordered).toHaveCSS(
+			'border-top-color',
+			theme === 'dark' ? 'rgb(96, 165, 250)' : 'rgb(59, 130, 246)'
+		);
+	});
+
 	test(`${theme}-mode placeholders share the theme colour and full opacity`, async ({ page }) => {
 		await page.evaluate((theme) => {
 			document.documentElement.classList.toggle('dark', theme === 'dark');

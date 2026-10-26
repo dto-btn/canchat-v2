@@ -204,12 +204,10 @@ select {
 html {
 	--text-muted-color: #595959;
 	--placeholder-color: var(--text-muted-color);
-	--form-control-border-color: #707070;
 }
 
 html.dark {
 	--placeholder-color: #b4b4b4;
-	--form-control-border-color: #8f8f8f;
 }
 
 :where(html:not(.dark)) .text-gray-300,
@@ -223,14 +221,6 @@ input::placeholder,
 textarea::placeholder {
 	color: var(--placeholder-color);
 	opacity: 1;
-}
-
-input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not(
-		[type='hidden']
-	):not([type='button']):not([type='submit']):not([type='reset']):not([type='color']),
-textarea,
-select {
-	border: 1px solid var(--form-control-border-color);
 }
 
 html :focus-visible {
