@@ -202,7 +202,8 @@ select {
 }
 
 html {
-	--placeholder-color: #595959;
+	--text-muted-color: #595959;
+	--placeholder-color: var(--text-muted-color);
 	--form-control-border-color: #707070;
 }
 
@@ -211,24 +212,15 @@ html.dark {
 	--form-control-border-color: #8f8f8f;
 }
 
-html:not(.dark) .text-gray-300,
-html:not(.dark) .text-gray-400,
-html:not(.dark) .text-gray-500,
-html:not(.dark) .text-gray-600 {
-	color: #595959;
+:where(html:not(.dark)) .text-gray-300,
+:where(html:not(.dark)) .text-gray-400,
+:where(html:not(.dark)) .text-gray-500 {
+	color: var(--text-muted-color);
 }
 
-html:not(.dark) ::placeholder {
-	color: var(--placeholder-color);
-	opacity: 1;
-}
-
-html.dark
-	input:not([type='checkbox']):not([type='radio']):not([type='range']):not(
-		[type='file']
-	)::placeholder,
-html.dark textarea::placeholder,
-html.dark select::placeholder {
+::placeholder,
+input::placeholder,
+textarea::placeholder {
 	color: var(--placeholder-color);
 	opacity: 1;
 }
