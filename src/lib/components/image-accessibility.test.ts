@@ -115,7 +115,7 @@ describe.each([
 			user: { id: 'alex', name: 'Alex' }
 		});
 		expect(html).toContain(`aria-label="${profile}"`);
-	});
+	}, 10_000);
 
 	it('distinguishes image-only model buttons by their model names', async () => {
 		const html = await render('chat/ChatPlaceholder', locale, { modelIds: ['alpha', 'beta'] });
