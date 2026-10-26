@@ -135,15 +135,17 @@ class TestStructuredAuditLogs:
         assert info_record["user_name"] is None
         assert _extract_sensitive_audit_records(audit_caplog) == []
 
-    def test_debug_output_excludes_sensitive_canaries(self, audit_caplog, capsys):
+    def test_debug_output_excludes_sensitive_canaries(
+        self, audit_caplog, canary_harness
+    ):
         audit_caplog.set_level(logging.DEBUG)
         audit_caplog.set_level(logging.DEBUG, logger=LOGGER_NAME)
-        query = "OBS12_QUERY_CANARY"
-        email = "OBS12_EMAIL_CANARY@example.com"
-        name = "OBS12_NAME_CANARY"
+        canaries = canary_harness.canaries
+        query, email, name = canaries.prompt, canaries.email, canaries.name
         sensitive_text = f"{query} {email} {name}"
         urls = [
-            f"https://{email}:password@example.com/{query}/{name}?q={query}#secret",
+            f"https://{email}:{canaries.password}@example.com/{query}/{name}"
+            f"?q={query}&key={canaries.api_key}#{canaries.token}",
             f"https://[invalid/{sensitive_text}",
             f"/{sensitive_text}",
         ]
@@ -172,21 +174,18 @@ class TestStructuredAuditLogs:
         assert records[1]["result_domains"] == ["example.com"]
         assert records[1]["error_message"] is None
         assert records[2]["error_message"] is None
-        captured = capsys.readouterr()
-        output = audit_caplog.text + repr([vars(record) for record in audit_caplog.records])
-        output += captured.out + captured.err
-        for canary in (query, email, name, "password"):
-            assert canary not in output
+        canary_harness.assert_no_canaries()
 
     @pytest.mark.parametrize(
         "failure_site",
         ["serialization", "counter", "histogram", "dispatch", "result", "content_load"],
     )
     def test_internal_failures_omit_exception_details(
-        self, audit_caplog, capsys, monkeypatch, failure_site
+        self, audit_caplog, canary_harness, monkeypatch, failure_site
     ):
         audit_caplog.set_level(logging.DEBUG, logger=LOGGER_NAME)
-        sensitive_text = "OBS12_QUERY_CANARY OBS12_EMAIL@example.com OBS12_NAME_CANARY"
+        canaries = canary_harness.canaries
+        sensitive_text = f"{canaries.prompt} {canaries.email} {canaries.token}"
 
         def fail(*args, **kwargs):
             raise RuntimeError(sensitive_text)
@@ -195,7 +194,8 @@ class TestStructuredAuditLogs:
             event_id="wsd_failure", engine="brave"
         )
         if failure_site == "serialization":
-            monkeypatch.setattr(web_search_logger.json, "dumps", fail)
+            # Patch only this module's json; the harness sinks need the real one.
+            monkeypatch.setattr(web_search_logger, "json", SimpleNamespace(dumps=fail))
             web_search_logger._emit_audit_record({"event_type": "test"})
         elif failure_site == "counter":
             web_search_logger._record_counter(SimpleNamespace(add=fail), 1, {})
@@ -216,17 +216,16 @@ class TestStructuredAuditLogs:
                 )
 
         assert len(audit_caplog.records) == 1
-        captured = capsys.readouterr()
-        output = audit_caplog.text + repr([vars(record) for record in audit_caplog.records])
-        output += captured.out + captured.err
-        for canary in sensitive_text.split():
-            assert canary not in output
         assert audit_caplog.records[0].exc_info is None
+        canary_harness.assert_no_canaries()
 
     @pytest.mark.parametrize(
         ("url", "expected"),
         [
-            ("https://example.com/path;params?q=secret#fragment", ["https://example.com"]),
+            (
+                "https://example.com/path;params?q=secret#fragment",
+                ["https://example.com"],
+            ),
             ("https://user:secret@example.com:8443/path", ["https://example.com:8443"]),
             ("https://[::1]:8443/path", ["https://[::1]:8443"]),
             ("https://[invalid/secret", []),
@@ -316,9 +315,7 @@ class TestStructuredAuditLogs:
         assert record["docs_loaded"] == 2
         assert record["collection_name"] == "web_search_1234-abcd"
 
-    def test_content_load_omits_full_urls_at_debug(
-        self, audit_caplog
-    ):
+    def test_content_load_omits_full_urls_at_debug(self, audit_caplog):
         audit_caplog.set_level(logging.DEBUG, logger=LOGGER_NAME)
 
         log_web_search_content_load(
@@ -356,7 +353,9 @@ class TestStructuredAuditLogs:
 
 
 class TestOpenTelemetryMetrics:
-    @pytest.mark.parametrize("error", [None, ConnectionError("sensitive provider detail")])
+    @pytest.mark.parametrize(
+        "error", [None, ConnectionError("sensitive provider detail")]
+    )
     def test_metrics_are_emitted(self, monkeypatch, error):
         class FakeCounter:
             def __init__(self):

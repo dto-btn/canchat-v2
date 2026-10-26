@@ -445,7 +445,13 @@ OBS-10 already handled the exception paths in `socket/main.py` (`crew-mcp-query`
 
 ---
 
-### OBS-19: Remove remaining low-risk query metadata from logs
+ environments or redact it.
+
+PR #606 review reconfirmed the title and hash risks. Prefer removing the logged hash rather than introducing a salt: a public or fixed salt still permits dictionary recovery of common queries. If lock correlation is required, use the keyed HMAC option below with a secret configuration key; do not change the internal query-lock key just to sanitize logs.
+
+**Acceptance criteria**
+- [ ] Wikipedia titles replaced with counts, ranks or scores only.
+- [ ] Query hash re### OBS-19: Remove remaining low-risk query metadata from logs
 
 **Type:** Security | **Priority:** Medium | **Depends on:** none | **Ref:** §7, OBS-10 scan follow-up
 
@@ -454,13 +460,7 @@ The OBS-10 scan found these smaller items that were left out of scope:
 - `grounding/wiki_search_utils.py` logs Wikipedia article titles at INFO ("Boosted '{title}'" ~lines 621 and 660, "top result: {title}" ~line 631). Titles reveal the topic of the user's question.
 - `grounding/wiki_search_utils.py` logs an 8-character prefix of an unsalted MD5 hash of the query at DEBUG (~lines 149–205). Short or common queries can be recovered by dictionary lookup.
 - `mcp_backend/servers/sharepoint_oauth_client.py` logs the raw Entra ID / Graph error body (`error_text`) at ERROR/WARNING (~lines 126, 166, 271, 492, 541, 609). These bodies usually hold error codes and correlation IDs, but Graph errors can include item paths or names.
-- `backend/scripts/generate_test_chats.py` prints user email and name. It is a standalone developer script, so this is accepted as intentional output; confirm it is never run in shared environments or redact it.
-
-PR #606 review reconfirmed the title and hash risks. Prefer removing the logged hash rather than introducing a salt: a public or fixed salt still permits dictionary recovery of common queries. If lock correlation is required, use the keyed HMAC option below with a secret configuration key; do not change the internal query-lock key just to sanitize logs.
-
-**Acceptance criteria**
-- [ ] Wikipedia titles replaced with counts, ranks or scores only.
-- [ ] Query hash removed from logs, or replaced with a keyed HMAC (key from config) if lock correlation is still needed.
+- `backend/scripts/generate_test_chats.py` prints user email and name. It is a standalone developer script, so this is accepted as intentional output; confirm it is never run in sharedmoved from logs, or replaced with a keyed HMAC (key from config) if lock correlation is still needed.
 - [ ] SharePoint/Graph error logs keep status, `error.code` and correlation/request IDs only; the raw body is not logged.
 - [ ] Decision on `generate_test_chats.py` recorded (accept with a note in the script, or redact).
 
