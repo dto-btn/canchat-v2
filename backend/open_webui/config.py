@@ -2053,6 +2053,7 @@ _DEFAULT_MODEL_CONTEXT_LENGTHS = {
     "o1-pro": 200000,
     "o1": 200000,
     # Google Gemini
+    "gemini-3.5-flash": 1048576,
     "gemini-2.5-flash": 1048576,
     "gemini-2.5-pro": 1048576,
     "gemini-2.0-flash": 1048576,
