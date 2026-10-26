@@ -75,7 +75,13 @@ def isolated_logging(monkeypatch):
     saved = {}
     for name in MANAGED_LOGGERS:
         lg = logging.getLogger(name)
-        saved[name] = (lg.level, lg.propagate, list(lg.handlers), list(lg.filters))
+        saved[name] = (
+            lg.level,
+            lg.propagate,
+            lg.disabled,
+            list(lg.handlers),
+            list(lg.filters),
+        )
         for handler in list(lg.handlers):
             lg.removeHandler(handler)
     monkeypatch.setattr(logging_config, "_state", logging_config._LoggingState())
@@ -86,12 +92,13 @@ def isolated_logging(monkeypatch):
         if logging_config._is_owned(handler):
             root.removeHandler(handler)
     root.setLevel(root_level)
-    for name, (level, propagate, handlers, filters) in saved.items():
+    for name, (level, propagate, disabled, handlers, filters) in saved.items():
         lg = logging.getLogger(name)
         for handler in list(lg.handlers):
             lg.removeHandler(handler)
         lg.setLevel(level)
         lg.propagate = propagate
+        lg.disabled = disabled
         lg.handlers[:] = handlers
         lg.filters[:] = filters
 
@@ -627,72 +634,29 @@ def test_no_otlp_handler_when_export_disabled(isolated_logging, monkeypatch):
 # ── Access log, SQLAlchemy and process-level checks ──────────────────────────
 
 
-def test_access_records_are_structured_without_query_string(
+def test_uvicorn_access_logger_is_suppressed_in_json_mode(
     isolated_logging, monkeypatch
 ):
-    stream = _capture_stdout(monkeypatch)
+    _capture_stdout(monkeypatch)
     _configure("INFO", SOURCE_LEVELS, {"LOG_FORMAT": "json"})
     custom_logging.reconfigure_access_log()
     custom_logging.reconfigure_access_log()
     access = logging.getLogger("uvicorn.access")
-    assert access.propagate is True and access.handlers == []
-    assert len(access.filters) == 3
-
-    tokens = [
-        custom_logging._user_context.set("user-1"),
-        custom_logging._request_id_context.set("req-abcdef12"),
-        custom_logging._request_duration_context.set(0.25),
-        custom_logging._context_length_context.set(512),
-    ]
-    try:
-        args = ("10.0.0.1:5555", "GET", "/api/chats?token=SECRET-CANARY", "1.1", 200)
-        access.info('%s - "%s %s HTTP/%s" %d', *args)
-        access.info(
-            '%s - "%s %s HTTP/%s" %d', "10.0.0.1:5555", "GET", "/health", "1.1", 200
-        )
-        custom_logging._request_id_context.set("bad id\nwith newline")
-        access.info('%s - "%s %s HTTP/%s" %d', *args)
-    finally:
-        for var, token in zip(
-            (
-                custom_logging._user_context,
-                custom_logging._request_id_context,
-                custom_logging._request_duration_context,
-                custom_logging._context_length_context,
-            ),
-            tokens,
-        ):
-            var.reset(token)
-
-    assert "SECRET-CANARY" not in stream.getvalue()
-    first, second = [json.loads(line) for line in stream.getvalue().splitlines()]
-    assert first["body"] == '10.0.0.1:5555 - "GET /api/chats HTTP/1.1" 200'
-    assert {k: first[k] for k in logging_config.ACCESS_FIELDS} == {
-        "http.request.method": "GET",
-        "url.path": "/api/chats",
-        "http.response.status_code": 200,
-        "http.response.body.size": 512,
-        "duration_ms": 250.0,
-        "client.address": "10.0.0.1",
-        "network.protocol.version": "1.1",
-    }
-    assert first["user_id"] == "user-1"
-    assert first["request_id"] == "req-abcdef12"
-    assert "request_id" not in second
+    assert access.disabled is True
+    assert access.handlers == []
+    assert access.propagate is False
 
 
-def test_access_text_format_is_kept(isolated_logging, monkeypatch):
+def test_uvicorn_access_logger_is_suppressed_in_text_mode(
+    isolated_logging, monkeypatch
+):
     stream = _capture_stdout(monkeypatch)
     _configure("INFO", SOURCE_LEVELS, {"LOG_FORMAT": "text"})
     custom_logging.reconfigure_access_log()
     logging.getLogger("uvicorn.access").info(
         '%s - "%s %s HTTP/%s" %d', "10.0.0.1:5555", "POST", "/api/x?q=1", "1.1", 201
     )
-    line = stream.getvalue()
-    assert line.startswith("uvicorn.access: 10.0.0.1:5555 - N/A - unauthenticated [")
-    assert '"POST /api/x HTTP/1.1"' in line and line.rstrip().endswith(
-        "201 -1B -1.000000s"
-    )
+    assert stream.getvalue() == ""
 
 
 def test_sqlalchemy_engine_never_logs_bound_parameters(caplog):

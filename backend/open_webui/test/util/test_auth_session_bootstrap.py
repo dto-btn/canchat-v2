@@ -178,7 +178,7 @@ def test_get_current_user_optional_ignores_invalid_token():
         scheme="Bearer", credentials="invalid-access-token"
     )
 
-    assert auth.get_current_user_optional(request, invalid_auth) is None
+    assert asyncio.run(auth.get_current_user_optional(request, invalid_auth)) is None
 
 
 def test_get_refresh_failure_reason_maps_known_errors():

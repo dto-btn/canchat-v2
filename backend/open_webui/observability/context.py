@@ -34,11 +34,11 @@ def log_context(**values: str | None) -> Iterator[None]:
     unknown = set(values) - set(LOG_CONTEXT_VARS)
     if unknown:
         raise ValueError(f"Unknown log context fields: {sorted(unknown)}")
-    tokens = [
-        (LOG_CONTEXT_VARS[name], LOG_CONTEXT_VARS[name].set(value))
-        for name, value in values.items()
-    ]
+    tokens = []
     try:
+        for name, value in values.items():
+            var = LOG_CONTEXT_VARS[name]
+            tokens.append((var, var.set(value)))
         yield
     finally:
         for var, token in reversed(tokens):
