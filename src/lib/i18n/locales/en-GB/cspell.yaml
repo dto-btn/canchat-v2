@@ -1,0 +1,47 @@
+overrides:
+  - filename: '**/*'
+    language: 'en-GB'
+    words:
+      #Known spelling variations
+      - analyzed
+      - Behavior
+      - Enrollments
+      - vibile
+
+      # CANChat terminology
+      - CANCHAT
+      - PSIA
+      - dialog
+
+      # Products and services
+      - Docling
+      - Jina
+      - Kagi
+      - Mirostat
+      - Mojeek
+      - Ollama
+      - Searxng
+      - Serper
+      - Serply
+      - Serpstack
+      - Tavily
+      - Tika
+      - Tiktoken
+
+      # Technical terminology
+      - dept
+      - GGUF
+      - logits
+      - mlock
+      - mmap
+      - Modelfile
+      - reranking
+      - timezone
+      - toolkits
+      - webui
+
+  # Ignore JSON property names and HTML tags.
+  - filename: 'src/lib/i18n/locales/en-GB/**/*.json'
+    ignoreRegExpList:
+      - '/\x22(?:\\.|[^\x22\\])*\x22\s*:/g'
+      - '/<\/?[A-Za-z][^>]*>/g'

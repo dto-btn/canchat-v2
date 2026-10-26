@@ -69,6 +69,7 @@
 			url: string;
 			score: number;
 			language?: string;
+			source?: string;
 			fallback_reason?: string;
 		}[];
 		count?: number;
