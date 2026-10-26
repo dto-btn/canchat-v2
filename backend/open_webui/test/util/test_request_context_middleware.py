@@ -51,6 +51,16 @@ async def _empty_receive() -> Message:
     return {"type": "http.request", "body": b"", "more_body": False}
 
 
+@pytest.fixture
+def context_caplog(caplog):
+    log_filter = LogContextFilter()
+    caplog.handler.addFilter(log_filter)
+    try:
+        yield caplog
+    finally:
+        caplog.handler.removeFilter(log_filter)
+
+
 @pytest.mark.parametrize(
     "incoming, expected",
     [
@@ -60,10 +70,10 @@ async def _empty_receive() -> Message:
         (None, None),
     ],
 )
-def test_request_id_is_validated_and_echoed(incoming, expected, caplog):
+def test_request_id_is_validated_and_echoed(incoming, expected, context_caplog):
+    caplog = context_caplog
     headers = [] if incoming is None else [(b"x-request-id", incoming)]
     middleware = RequestContextMiddleware(_response_app)
-    caplog.handler.addFilter(LogContextFilter())
 
     with caplog.at_level(logging.INFO, logger="open_webui.access"):
         messages = asyncio.run(_invoke(middleware, _scope(headers=headers)))
@@ -98,6 +108,7 @@ def test_streaming_access_record_covers_final_chunk_and_counts_bytes(caplog):
     assert record.__dict__["http.response.status_code"] == 206
     assert record.__dict__["http.request.method"] == "GET"
     assert record.__dict__["http.route"] == "/items/{item_id}"
+    assert record.__dict__["url.path"] == "/items/123"
     assert record.__dict__["client.address"] == "10.0.0.1"
     assert record.event == "http.request.completed"
 
@@ -152,10 +163,11 @@ def test_socket_io_polling_request_is_logged_as_http(caplog):
     records = [r for r in caplog.records if r.name == "open_webui.access"]
     assert len(records) == 1
     assert records[0].__dict__["url.path"] == "/ws/socket.io/"
+    assert "http.route" not in records[0].__dict__
 
 
-def test_concurrent_requests_keep_context_and_identity_isolation(caplog):
-    caplog.handler.addFilter(LogContextFilter())
+def test_concurrent_requests_keep_context_and_identity_isolation(context_caplog):
+    caplog = context_caplog
     observed = {}
 
     async def app(scope, _receive, send):
@@ -216,8 +228,10 @@ def test_cancellation_logs_partial_response_and_propagates(caplog):
     assert records[0].__dict__["http.response.body.size"] == 4
 
 
-def test_resolved_identity_is_available_to_sync_route_logs(monkeypatch, caplog):
-    caplog.handler.addFilter(LogContextFilter())
+def test_resolved_identity_is_available_to_sync_route_logs(
+    monkeypatch, context_caplog
+):
+    caplog = context_caplog
     user = SimpleNamespace(id="request-user")
     app = FastAPI()
 

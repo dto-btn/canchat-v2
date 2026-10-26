@@ -79,21 +79,21 @@ class RequestContextMiddleware:
                     else time.perf_counter()
                 )
                 duration_ms = (completed_at - started_at) * 1000
-                path = self._route(scope)
+                path = scope.get("path", "")
                 if not path.startswith(HEALTH_PATH_PREFIX):
-                    log.info(
-                        "HTTP request completed",
-                        extra={
-                            "event": "http.request.completed",
-                            "http.request.method": scope.get("method", "UNKNOWN"),
-                            "http.route": path,
-                            "url.path": path,
-                            "http.response.status_code": status_code,
-                            "http.response.body.size": body_size,
-                            "duration_ms": round(duration_ms, 3),
-                            "client.address": self._client_address(scope),
-                        },
-                    )
+                    extra = {
+                        "event": "http.request.completed",
+                        "http.request.method": scope.get("method", "UNKNOWN"),
+                        "url.path": path,
+                        "http.response.status_code": status_code,
+                        "http.response.body.size": body_size,
+                        "duration_ms": round(duration_ms, 3),
+                        "client.address": self._client_address(scope),
+                    }
+                    route = self._route(scope)
+                    if route is not None:
+                        extra["http.route"] = route
+                    log.info("HTTP request completed", extra=extra)
             finally:
                 user_id_var.reset(user_token)
                 request_id_var.reset(request_token)
@@ -115,10 +115,9 @@ class RequestContextMiddleware:
         return str(uuid.uuid4())
 
     @staticmethod
-    def _route(scope: Scope) -> str:
-        route = scope.get("route")
-        route_path = getattr(route, "path", None)
-        return route_path if isinstance(route_path, str) else scope.get("path", "")
+    def _route(scope: Scope) -> str | None:
+        route_path = getattr(scope.get("route"), "path", None)
+        return route_path if isinstance(route_path, str) else None
 
     @staticmethod
     def _client_address(scope: Scope) -> str:
