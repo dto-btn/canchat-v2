@@ -402,11 +402,6 @@
 	onMount(async () => {
 		loaded = true;
 
-		window.setTimeout(() => {
-			const chatInput = document.getElementById('chat-input');
-			chatInput?.focus();
-		}, 0);
-
 		window.addEventListener('keydown', handleKeyDown);
 
 		await tick();

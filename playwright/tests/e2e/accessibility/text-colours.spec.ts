@@ -25,6 +25,9 @@ const markup = `
 	<input id="transparent-border" class="border border-transparent" />
 	<input id="bordered" class="border-2 border-gray-300 focus:border-blue-500 dark:border-gray-600 dark:focus:border-blue-400" />
 	<button id="default-focus" class="outline-none">Default focus</button>
+	<button id="colour-only-focus" class="focus:outline-none focus:ring-blue-500">Colour only</button>
+	<button id="offset-only-focus" class="focus-visible:outline-none focus-visible:ring-offset-2">Offset only</button>
+	<button id="zero-ring-focus" class="focus:outline-none focus:ring-0">Zero ring</button>
 	<button id="ring-focus" class="focus:outline-none focus:ring-2 focus:ring-blue-500">Ring focus</button>
 	<button id="visible-ring-focus" class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-600">Visible ring focus</button>
 	<div id="contrast" class="bg-white text-black dark:bg-gray-900 dark:text-white p-4">
@@ -106,6 +109,15 @@ for (const { theme, color } of [
 			'outline-color',
 			theme === 'dark' ? 'rgb(128, 199, 255)' : 'rgb(0, 94, 168)'
 		);
+		for (const id of ['colour-only-focus', 'offset-only-focus', 'zero-ring-focus']) {
+			await page.locator(`#${id}`).focus();
+			await expect(page.locator(`#${id}`)).toHaveCSS('outline-style', 'solid');
+			await expect(page.locator(`#${id}`)).toHaveCSS('outline-width', '2px');
+			await expect(page.locator(`#${id}`)).toHaveCSS(
+				'outline-color',
+				theme === 'dark' ? 'rgb(128, 199, 255)' : 'rgb(0, 94, 168)'
+			);
+		}
 		for (const id of ['ring-focus', 'visible-ring-focus']) {
 			await page.locator(`#${id}`).focus();
 			await expect(page.locator(`#${id}`)).not.toHaveCSS('box-shadow', 'none');

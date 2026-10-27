@@ -11,7 +11,10 @@ test.describe.configure({ mode: 'default' });
 test.beforeAll(async () => {
 	server = await createServer({
 		configFile: false,
-		optimizeDeps: { noDiscovery: true },
+		optimizeDeps: {
+			noDiscovery: true,
+			include: ['lowlight', 'highlight.js/lib/core', 'turndown']
+		},
 		define: { APP_VERSION: '"test"', APP_BUILD_HASH: '"test"' },
 		resolve: { alias: { $lib: resolve('src/lib') } },
 		server: { host: '127.0.0.1', port: 0, watch: null, hmr: false },
@@ -40,6 +43,7 @@ test.beforeAll(async () => {
 								import IssueModal from '/src/lib/components/common/IssueModal.svelte';
 								import SuggestionModal from '/src/lib/components/common/SuggestionModal.svelte';
 								import RateComment from '/src/lib/components/chat/Messages/RateComment.svelte';
+								import RichTextInput from '/src/lib/components/common/RichTextInput.svelte';
 								import fr from '/src/lib/i18n/locales/fr-CA/translation.json?import';
 								import '/src/tailwind.css?import';
 								import '/src/app.css?import';
@@ -50,12 +54,14 @@ test.beforeAll(async () => {
 									lng: locale, fallbackLng: 'en-GB', returnEmptyString: false,
 									resources: { 'fr-CA': { translation: fr } }
 								});
-								const components = { issue: IssueModal, suggestion: SuggestionModal, rating: RateComment };
+								const components = { issue: IssueModal, suggestion: SuggestionModal, rating: RateComment, composer: RichTextInput };
 								const Component = components[params.get('form')];
 								new Component({
 									target: document.getElementById('fixture'),
 									context: new Map([['i18n', writable(i18n)]]),
-									props: { show: true, message: { id: 'test', annotation: { rating: 1 } } }
+									props: params.get('form') === 'composer'
+										? { id: 'chat-input', messageInput: true, ariaLabel: 'Type your message here' }
+										: { show: true, message: { id: 'test', annotation: { rating: 1 } } }
 								});
 							</script></body></html>`
 								)
@@ -92,6 +98,21 @@ for (const locale of ['en-GB', 'fr-CA']) {
 			await expect(input).toHaveAccessibleName(
 				locale === 'fr-CA' ? 'Choisir les fichiers à téléverser' : 'Choose files to upload'
 			);
+			await page.keyboard.press('Tab');
+			for (const theme of ['light', 'dark']) {
+				await page.evaluate((theme) => {
+					document.documentElement.classList.toggle('dark', theme === 'dark');
+				}, theme);
+				for (const textarea of await page.locator('textarea').all()) {
+					await textarea.focus();
+					await expect(textarea).toHaveCSS('outline-style', 'solid');
+					await expect(textarea).toHaveCSS('outline-width', '2px');
+					await expect(textarea).toHaveCSS(
+						'outline-color',
+						theme === 'dark' ? 'rgb(128, 199, 255)' : 'rgb(0, 94, 168)'
+					);
+				}
+			}
 			await input.setInputFiles({
 				name: 'invalid.txt',
 				mimeType: 'text/plain',
@@ -150,4 +171,20 @@ test('rating reasons are labelled and pressed, and the comment is required', asy
 	await expect(save).toBeEnabled();
 	await comment.fill('   ');
 	await expect(save).toBeDisabled();
+});
+
+test('message editor does not autofocus on load or refresh but remains keyboard accessible', async ({
+	page
+}) => {
+	await page.goto(`${baseURL}/__accessibility-forms?form=composer`);
+	for (const refresh of [false, true]) {
+		if (refresh) await page.reload();
+		const input = page.locator('#chat-input[contenteditable="true"]');
+		await expect(input).toBeVisible({ timeout: 30_000 });
+		await expect(input).not.toBeFocused();
+		await page.keyboard.press('Tab');
+		await expect(input).toBeFocused();
+		await expect(input).toHaveCSS('outline-style', 'solid');
+		await expect(input).toHaveCSS('outline-color', 'rgb(0, 94, 168)');
+	}
 });
