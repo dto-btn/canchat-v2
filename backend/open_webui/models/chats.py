@@ -953,7 +953,7 @@ class ChatTable:
                             result_chats.append(chat_model)
                         except Exception as e:
                             log.error(
-                                f"Error converting chat {chat.id} to ChatModel: {e}"
+                                f"Error converting chat {chat.id} to ChatModel: {type(e).__name__}"
                             )
                             continue
 
@@ -973,7 +973,7 @@ class ChatTable:
                 return result_chats
 
         except Exception as e:
-            log.error(f"Error getting chats for cleanup: {e}")
+            log.error(f"Error getting chats for cleanup: {type(e).__name__}")
             return []
 
     def get_chats_for_cleanup_batch(
@@ -1034,13 +1034,15 @@ class ChatTable:
                         chat_model = ChatModel.model_validate(chat)
                         result_chats.append(chat_model)
                     except Exception as e:
-                        log.error(f"Error converting chat {chat.id} to ChatModel: {e}")
+                        log.error(
+                            f"Error converting chat {chat.id} to ChatModel: {type(e).__name__}"
+                        )
                         continue
 
                 return result_chats
 
         except Exception as e:
-            log.error(f"Error getting chat batch for cleanup: {e}")
+            log.error(f"Error getting chat batch for cleanup: {type(e).__name__}")
             return []
 
     # Backward compatibility methods
@@ -1155,7 +1157,7 @@ class ChatTable:
             return result
 
         except Exception as e:
-            log.error(f"Error in bulk chat deletion: {e}")
+            log.error(f"Error in bulk chat deletion: {type(e).__name__}")
             return {
                 "deleted_count": 0,
                 "failed_count": len(chat_ids),

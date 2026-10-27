@@ -89,7 +89,7 @@ def process_pipeline_inlet_filter(request, payload, user, models):
             payload = r.json()
         except Exception as e:
             # Handle connection error here
-            print(f"Connection error: {e}")
+            print(f"Connection error: {type(e).__name__}")
 
             if r is not None:
                 res = r.json()
@@ -132,7 +132,7 @@ def process_pipeline_outlet_filter(request, payload, user, models):
                 payload = data
         except Exception as e:
             # Handle connection error here
-            print(f"Connection error: {e}")
+            print(f"Connection error: {type(e).__name__}")
 
             if r is not None:
                 try:
@@ -222,7 +222,7 @@ async def upload_pipeline(
         return {**data}
     except Exception as e:
         # Handle connection error here
-        print(f"Connection error: {e}")
+        print(f"Connection error: {type(e).__name__}")
 
         detail = None
         status_code = status.HTTP_404_NOT_FOUND
@@ -273,7 +273,7 @@ async def add_pipeline(
         return {**data}
     except Exception as e:
         # Handle connection error here
-        print(f"Connection error: {e}")
+        print(f"Connection error: {type(e).__name__}")
 
         detail = None
         if r is not None:
@@ -318,7 +318,7 @@ async def delete_pipeline(
         return {**data}
     except Exception as e:
         # Handle connection error here
-        print(f"Connection error: {e}")
+        print(f"Connection error: {type(e).__name__}")
 
         detail = None
         if r is not None:
@@ -352,7 +352,7 @@ async def get_pipelines(
         return {**data}
     except Exception as e:
         # Handle connection error here
-        print(f"Connection error: {e}")
+        print(f"Connection error: {type(e).__name__}")
 
         detail = None
         if r is not None:
@@ -391,7 +391,7 @@ async def get_pipeline_valves(
         return {**data}
     except Exception as e:
         # Handle connection error here
-        print(f"Connection error: {e}")
+        print(f"Connection error: {type(e).__name__}")
 
         detail = None
         if r is not None:
@@ -431,7 +431,7 @@ async def get_pipeline_valves_spec(
         return {**data}
     except Exception as e:
         # Handle connection error here
-        print(f"Connection error: {e}")
+        print(f"Connection error: {type(e).__name__}")
 
         detail = None
         if r is not None:
@@ -473,7 +473,7 @@ async def update_pipeline_valves(
         return {**data}
     except Exception as e:
         # Handle connection error here
-        print(f"Connection error: {e}")
+        print(f"Connection error: {type(e).__name__}")
 
         detail = None
 

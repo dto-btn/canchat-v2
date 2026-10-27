@@ -62,7 +62,7 @@ try:
     generic_sharepoint_server = mcp
 
 except ImportError as e:
-    logging.error(f"Failed to import required modules: {e}")
+    logging.error(f"Failed to import required modules: {type(e).__name__}")
     raise
 
 
@@ -189,7 +189,7 @@ def initialize_department_server(department_prefix: str):
 
     except Exception as e:
         logger.error(
-            f"Failed to initialize SharePoint server for {department_prefix}: {e}"
+            f"Failed to initialize SharePoint server for {department_prefix}: {type(e).__name__}"
         )
         # Return False to allow other MCP servers to continue
         return False
@@ -385,7 +385,9 @@ async def _get_sharepoint_document_content_impl(
             }
 
         except Exception as parse_error:
-            logger.error(f"Error parsing document {file_name}: {parse_error}")
+            logger.error(
+                f"Error parsing document {file_name}: {type(parse_error).__name__}"
+            )
             return {
                 "status": "error",
                 "folder": folder_name,
@@ -396,7 +398,7 @@ async def _get_sharepoint_document_content_impl(
             }
 
     except Exception as e:
-        logger.error(f"Error getting document content: {e}")
+        logger.error(f"Error getting document content: {type(e).__name__}")
         return {
             "status": "error",
             "folder": folder_name,
@@ -516,7 +518,7 @@ async def _get_all_documents_comprehensive_impl(
         }
 
     except Exception as e:
-        logger.error(f"Error in comprehensive document retrieval: {e}")
+        logger.error(f"Error in comprehensive document retrieval: {type(e).__name__}")
         return {
             "status": "error",
             "message": f"Failed to get all documents: {str(e)}",
@@ -587,7 +589,7 @@ async def _traverse_all_folders_recursive(
                     )
 
     except Exception as e:
-        logger.warning(f"Error traversing folder {folder_path}: {e}")
+        logger.warning(f"Error traversing folder {folder_path}: {type(e).__name__}")
 
 
 async def _list_folder_contents_impl(
@@ -843,7 +845,7 @@ async def _list_folder_contents_impl(
         }
 
     except Exception as e:
-        logger.error(f"Error listing folder contents: {e}")
+        logger.error(f"Error listing folder contents: {type(e).__name__}")
         return {
             "status": "error",
             "message": f"Failed to list folder: {str(e)}",
@@ -1060,7 +1062,7 @@ async def _search_documents_fast_impl(
         }
 
     except Exception as e:
-        logger.error(f"Error in fast document search: {e}")
+        logger.error(f"Error in fast document search: {type(e).__name__}")
         return {
             "status": "error",
             "message": f"Fast search failed: {str(e)}",
@@ -1175,7 +1177,7 @@ async def _get_document_by_id_impl(
         }
 
     except Exception as e:
-        logger.error(f"Error retrieving document by ID: {e}")
+        logger.error(f"Error retrieving document by ID: {type(e).__name__}")
         return {
             "status": "error",
             "message": f"Document retrieval failed: {str(e)}",
@@ -1245,7 +1247,7 @@ async def _analyze_all_documents_for_content_impl(
                 relevant_documents = []
 
         except Exception as analysis_error:
-            logger.error(f"Document analysis crashed: {str(analysis_error)}")
+            logger.error(f"Document analysis crashed: {type(analysis_error).__name__}")
             return {
                 "status": "error",
                 "message": f"Document analysis failed: {str(analysis_error)}",
@@ -1565,7 +1567,9 @@ async def _check_sharepoint_permissions_impl(
         }
 
     except Exception as e:
-        logger.error(f"Error checking {config.org_name} SharePoint permissions: {e}")
+        logger.error(
+            f"Error checking {config.org_name} SharePoint permissions: {type(e).__name__}"
+        )
         return {
             "status": "error",
             "error": str(e),
@@ -1604,7 +1608,7 @@ async def parse_document_content_embedded(content: bytes, file_name: str) -> str
             return await parse_generic_content_embedded(content, file_name)
 
     except Exception as e:
-        logger.error(f"Error parsing document {file_name}: {e}")
+        logger.error(f"Error parsing document {file_name}: {type(e).__name__}")
         return f"Error parsing document: {str(e)}"
 
 
@@ -1638,7 +1642,7 @@ async def parse_pdf_content_embedded(content: bytes, file_name: str) -> str:
                         text_content.append(text.strip())
                 except Exception as page_error:
                     logger.warning(
-                        f"Error extracting page {page_num + 1} from {file_name}: {page_error}"
+                        f"Error extracting page {page_num + 1} from {file_name}: {type(page_error).__name__}"
                     )
                     continue
 
@@ -1766,7 +1770,9 @@ async def parse_pptx_content_embedded(content: bytes, file_name: str) -> str:
     except ImportError:
         return f"python-pptx library not available. Cannot parse {file_name}"
     except Exception as e:
-        logger.warning(f"Error parsing PowerPoint document {file_name}: {e}")
+        logger.warning(
+            f"Error parsing PowerPoint document {file_name}: {type(e).__name__}"
+        )
         return f"Error parsing PowerPoint document {file_name}: {str(e)}"
 
 
@@ -1825,14 +1831,18 @@ async def parse_generic_content_embedded(content: bytes, file_name: str) -> str:
             if len(cleaned_text.strip()) > 10:  # If we got reasonable text
                 return cleaned_text
         except Exception as decode_error:
-            logger.warning(f"Could not decode {file_name} as text: {decode_error}")
+            logger.warning(
+                f"Could not decode {file_name} as text: {type(decode_error).__name__}"
+            )
 
         # If text extraction failed, provide file info
         file_size = len(content)
         return f"Binary file {file_name} ({file_size} bytes). Content type not supported for text extraction."
 
     except Exception as e:
-        logger.error(f"Error in generic content parsing for {file_name}: {e}")
+        logger.error(
+            f"Error in generic content parsing for {file_name}: {type(e).__name__}"
+        )
         return f"Error parsing file {file_name}: {str(e)}"
 
 

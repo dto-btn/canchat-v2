@@ -19,6 +19,7 @@ from open_webui.observability.redaction import (
     RedactionFilter,
     SecretRegistry,
     format_exception_safe,
+    invalidate_secrets,
     is_secret_setting,
     redact_text,
 )
@@ -88,35 +89,86 @@ def test_redact_text_keeps_safe_fields(text):
     assert redact_text(text) == text
 
 
-def test_configured_secret_values_are_masked_and_follow_runtime_changes():
-    registry = SecretRegistry()
+class _Clock:
+    def __init__(self):
+        self.now = 100.0
+
+    def __call__(self):
+        return self.now
+
+
+def test_configured_secret_values_are_cached_and_refreshed():
+    clock = _Clock()
+    registry = SecretRegistry(refresh_interval=5.0, clock=clock)
     settings = {"OPENAI_API_KEYS": ["first-provider-key", "x"], "ENABLE_API_KEY": True}
-    registry.add_source(lambda: settings.items())
+    reads = []
+
+    def source():
+        reads.append(1)
+        return list(settings.items())
+
+    registry.add_source(source)
     assert registry.pattern().sub(REDACTED, "used first-provider-key") == (
         f"used {REDACTED}"
     )
     settings["OPENAI_API_KEYS"] = ["rotated-provider-key"]
+    # Cached until the refresh interval or an explicit invalidation.
+    assert registry.pattern().pattern == "first\\-provider\\-key"
+    assert len(reads) == 1
+
+    clock.now += 5.0
     pattern = registry.pattern()
     assert pattern.sub(REDACTED, "first-provider-key rotated-provider-key") == (
         f"first-provider-key {REDACTED}"
     )
+    assert len(reads) == 2
+
+    settings["OPENAI_API_KEYS"] = ["third-provider-key"]
+    registry.invalidate()
+    assert registry.pattern().sub(REDACTED, "third-provider-key") == REDACTED
 
 
 def test_environment_secret_is_masked(monkeypatch):
     monkeypatch.setenv("CANARY_WEBHOOK_SECRET", "env-secret-value-123")
+    # Environment changes are picked up on the next refresh.
+    invalidate_secrets()
     assert redact_text("sent env-secret-value-123") == f"sent {REDACTED}"
 
 
-def test_persistent_config_secrets_are_registered(monkeypatch):
+def test_persistent_config_secret_changes_are_masked_at_once(monkeypatch):
     from open_webui import config
 
     item = config.PersistentConfig.__new__(config.PersistentConfig)
     item.env_name = "CANARY_SEARCH_API_KEY"
     item.value = "persistent-config-key-123"
     monkeypatch.setattr(config, "PERSISTENT_CONFIG_REGISTRY", [item])
+    invalidate_secrets()
     assert redact_text("rejected key persistent-config-key-123") == (
         f"rejected key {REDACTED}"
     )
+
+    # An admin rotates the key: setting ``value`` invalidates the cache.
+    item.value = "rotated-config-key-456"
+    assert redact_text("rejected key rotated-config-key-456") == (
+        f"rejected key {REDACTED}"
+    )
+
+
+def test_redaction_cost_is_linear_for_slash_heavy_text():
+    import base64
+    import os
+    import time
+
+    samples = [
+        base64.b64encode(os.urandom(750_000)).decode(),
+        "/" * 200_000,
+        "a+" * 250_000,
+    ]
+    for text in samples:
+        started = time.perf_counter()
+        redact_text(text)
+        # Quadratic patterns took seconds on these inputs.
+        assert time.perf_counter() - started < 1.0
 
 
 @pytest.mark.parametrize(
@@ -128,6 +180,10 @@ def test_persistent_config_secrets_are_registered(monkeypatch):
         ("JIRA_API_TOKEN", True),
         ("LDAP_APP_PASSWORD", True),
         ("DATABASE_URL", True),
+        ("BING_SEARCH_V7_SUBSCRIPTION_KEY", True),
+        ("AZURE_STORAGE_KEY", True),
+        ("AUTOMATIC1111_API_AUTH", True),
+        ("JIRA_PROJECT_KEY", False),
         ("ACCESS_TOKEN_EXPIRES_IN", False),
         ("ENABLE_API_KEY", False),
         ("RAG_CONTEXT_FALLBACK_MAX_TOKENS", False),

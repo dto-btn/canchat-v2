@@ -83,7 +83,7 @@ class FolderTable:
                 else:
                     return None
             except Exception as e:
-                print(e)
+                log.error("insert_new_folder failed: %s", type(e).__name__)
                 return None
 
     def get_folder_by_id_and_user_id(
@@ -149,7 +149,9 @@ class FolderTable:
 
                 return FolderModel.model_validate(folder)
         except Exception as e:
-            log.error(f"get_folder_by_parent_id_and_user_id_and_name: {e}")
+            log.error(
+                f"get_folder_by_parent_id_and_user_id_and_name: {type(e).__name__}"
+            )
             return None
 
     def get_folders_by_parent_id_and_user_id(
@@ -183,7 +185,7 @@ class FolderTable:
 
                 return FolderModel.model_validate(folder)
         except Exception as e:
-            log.error(f"update_folder: {e}")
+            log.error(f"update_folder: {type(e).__name__}")
             return
 
     def update_folder_name_by_id_and_user_id(
@@ -212,7 +214,7 @@ class FolderTable:
 
                 return FolderModel.model_validate(folder)
         except Exception as e:
-            log.error(f"update_folder: {e}")
+            log.error(f"update_folder: {type(e).__name__}")
             return
 
     def update_folder_is_expanded_by_id_and_user_id(
@@ -232,7 +234,7 @@ class FolderTable:
 
                 return FolderModel.model_validate(folder)
         except Exception as e:
-            log.error(f"update_folder: {e}")
+            log.error(f"update_folder: {type(e).__name__}")
             return
 
     def delete_folder_by_id_and_user_id(self, id: str, user_id: str) -> bool:
@@ -265,7 +267,7 @@ class FolderTable:
                 db.commit()
                 return True
         except Exception as e:
-            log.error(f"delete_folder: {e}")
+            log.error(f"delete_folder: {type(e).__name__}")
             return False
 
 

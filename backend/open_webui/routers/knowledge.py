@@ -519,7 +519,9 @@ async def delete_knowledge_by_id(id: str, user=Depends(get_verified_user)):
                     Storage.delete_file(file.path)
                     log.info(f"Deleted physical file: {file.path}")
                 except Exception as e:
-                    log.warning(f"Could not delete physical file {file.path}: {e}")
+                    log.warning(
+                        f"Could not delete physical file {file.path}: {type(e).__name__}"
+                    )
 
                 # Delete file from database
                 Files.delete_file_by_id(file_id)
@@ -530,7 +532,9 @@ async def delete_knowledge_by_id(id: str, user=Depends(get_verified_user)):
                 )
 
         except Exception as e:
-            log.error(f"Error cleaning up file {file_id} from knowledge base {id}: {e}")
+            log.error(
+                f"Error cleaning up file {file_id} from knowledge base {id}: {type(e).__name__}"
+            )
             # Continue with other files even if one fails
 
     # Get all models
@@ -565,7 +569,7 @@ async def delete_knowledge_by_id(id: str, user=Depends(get_verified_user)):
         await VECTOR_DB_CLIENT.delete_collection(collection_name=id)
         log.info(f"Deleted knowledge base collection: {id}")
     except Exception as e:
-        log.debug(f"Error deleting knowledge base collection {id}: {e}")
+        log.debug(f"Error deleting knowledge base collection {id}: {type(e).__name__}")
         pass
 
     # Delete knowledge base from database
@@ -654,7 +658,8 @@ async def add_files_to_knowledge_batch(
         )
     except Exception as e:
         log.error(
-            f"add_files_to_knowledge_batch: Exception occurred: {e}", exc_info=True
+            f"add_files_to_knowledge_batch: Exception occurred: {type(e).__name__}",
+            exc_info=True,
         )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 

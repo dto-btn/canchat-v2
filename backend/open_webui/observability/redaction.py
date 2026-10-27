@@ -24,6 +24,7 @@ import os
 import re
 import sys
 import threading
+import time
 import traceback
 from functools import lru_cache
 from typing import Callable, Iterable, Mapping
@@ -35,13 +36,17 @@ _REDACTED_MARK = "_canchat_redacted"
 _MAX_CHAIN = 16
 _MIN_SECRET_LENGTH = 8
 
-# Absolute URLs, and path-like tokens followed by a key=value query.
+# Absolute URLs, and path-like tokens followed by a query. A path only starts
+# at the beginning of a token, and runs are bounded, so slash-heavy text such
+# as base64 is scanned in linear time.
 _URL_QUERY = re.compile(
-    r"(?P<prefix>(?:\b[a-zA-Z][a-zA-Z0-9+.-]*://[^\s'\"<>?#]*|(?<![\w?])/[^\s'\"<>?#]*)\?)"
+    r"(?P<prefix>(?:\b[a-zA-Z][a-zA-Z0-9+.-]{0,31}://[^\s'\"<>?#]{0,2048}"
+    r"|(?<![^\s'\"<>(\[{=,:])/[^\s'\"<>?#]{0,2048})\?)"
     r"(?P<query>[^\s'\"<>#]+)"
 )
 _URL_USERINFO = re.compile(
-    r"(?P<scheme>\b[a-zA-Z][a-zA-Z0-9+.-]*://)[^\s/@:'\"<>]+:[^\s/@'\"<>]+@"
+    r"(?P<scheme>\b[a-zA-Z][a-zA-Z0-9+.-]{0,31}://)"
+    r"[^\s/@:'\"<>]{1,256}:[^\s/@'\"<>]{1,256}@"
 )
 _AUTH_HEADER = re.compile(
     r"(?P<name>\b(?:proxy-)?authorization\b[\"']?\s*[:=]\s*[\"']?)"
@@ -73,8 +78,12 @@ _SECRET_SETTING = re.compile(
     r"|CREDENTIALS?|PRIVATE_KEY|ACCESS_KEY|CONNECTION_STRING|CONN_STR|DSN"
     r"|WEBHOOK_URL|DATABASE_URL|REDIS_URL)(?:_|$)"
 )
+# Any other ``*_KEY``/``*_KEYS``/``*_AUTH`` name (subscription keys, storage
+# keys, ``user:pass`` API auth) is treated as a credential too.
+_SECRET_SUFFIX = re.compile(r"(?:^|_)(?:KEYS?|AUTH)$")
 _NOT_SECRET_SETTING = re.compile(
     r"EXPIRE|ENABLE|ALLOWED|TIMEOUT|LIMIT|HEADER|COOKIE_|_TTL|_LENGTH|_NAME$"
+    r"|PROJECT_KEY$|PARTITION_KEY$"
 )
 
 
@@ -82,7 +91,9 @@ _NOT_SECRET_SETTING = re.compile(
 def is_secret_setting(name: str) -> bool:
     """Whether a setting name (``OPENAI_API_KEYS``) holds a credential."""
     upper = name.upper()
-    return bool(_SECRET_SETTING.search(upper)) and not _NOT_SECRET_SETTING.search(upper)
+    return bool(
+        _SECRET_SETTING.search(upper) or _SECRET_SUFFIX.search(upper)
+    ) and not _NOT_SECRET_SETTING.search(upper)
 
 
 def _secret_values(value: object) -> Iterable[str]:
@@ -107,26 +118,41 @@ SecretSource = Callable[[], Iterable[tuple[str, object]]]
 class SecretRegistry:
     """Current values of secret settings, matched literally in log text.
 
-    Sources are re-read on every lookup so a key changed at runtime (for
-    example in the admin settings) is masked at once; the pattern is rebuilt
-    only when the set of values changes.
+    Collecting the values walks the environment and every registered source, so
+    the result is cached. :meth:`invalidate` (called when a ``PersistentConfig``
+    value changes) forces the next lookup to re-read them at once; otherwise
+    they are re-read every ``refresh_interval`` seconds, which covers runtime
+    environment changes.
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        refresh_interval: float = 5.0,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
         self._lock = threading.Lock()
         self._sources: list[SecretSource] = []
         self._values: frozenset[str] = frozenset()
         self._pattern: re.Pattern[str] | None = None
+        self._refresh_interval = refresh_interval
+        self._clock = clock
+        self._expires_at: float | None = None
 
     def add_source(self, source: SecretSource) -> None:
         with self._lock:
             if source not in self._sources:
                 self._sources.append(source)
+            self._expires_at = None
 
     def remove_source(self, source: SecretSource) -> None:
         with self._lock:
             if source in self._sources:
                 self._sources.remove(source)
+            self._expires_at = None
+
+    def invalidate(self) -> None:
+        """Re-read every source on the next lookup."""
+        self._expires_at = None
 
     def _collect(self) -> frozenset[str]:
         values: set[str] = set()
@@ -140,6 +166,9 @@ class SecretRegistry:
         return frozenset(values)
 
     def pattern(self) -> re.Pattern[str] | None:
+        expires_at = self._expires_at
+        if expires_at is not None and self._clock() < expires_at:
+            return self._pattern
         values = self._collect()
         with self._lock:
             if values != self._values:
@@ -153,6 +182,7 @@ class SecretRegistry:
                     if values
                     else None
                 )
+            self._expires_at = self._clock() + self._refresh_interval
             return self._pattern
 
 
@@ -170,6 +200,11 @@ SECRETS.add_source(environment_secrets())
 def register_secret_source(source: SecretSource) -> None:
     """Add ``(setting name, value)`` pairs whose secret values must be masked."""
     SECRETS.add_source(source)
+
+
+def invalidate_secrets() -> None:
+    """Call when a registered secret value changes, so it is masked at once."""
+    SECRETS.invalidate()
 
 
 def _mask_auth_header(match: re.Match[str]) -> str:

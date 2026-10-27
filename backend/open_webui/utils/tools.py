@@ -71,7 +71,7 @@ async def call_mcp_tool(
             return str(content)
 
     except Exception as e:
-        log.error(f"Error calling MCP tool {tool_name}: {e}")
+        log.error(f"Error calling MCP tool {tool_name}: {type(e).__name__}")
         return f"Error calling MCP tool {tool_name}: {str(e)}"
 
 
@@ -136,7 +136,7 @@ async def get_mcp_tools(request: Request) -> dict:
         return tools_dict
 
     except Exception as e:
-        log.error(f"Error getting MCP tools: {e}")
+        log.error(f"Error getting MCP tools: {type(e).__name__}")
         return {}
 
 
@@ -238,7 +238,7 @@ async def get_tools_async(
             log.info(f"Adding MCP tool {tool_name} (ID: {mcp_tool_id}) to tools_dict")
             tools_dict[tool_name] = tool_dict
     except Exception as e:
-        log.error(f"Error loading MCP tools: {e}")
+        log.error(f"Error loading MCP tools: {type(e).__name__}")
 
     return tools_dict
 
@@ -251,7 +251,7 @@ def get_tools(
     try:
         return asyncio.run(get_tools_async(request, tool_ids, user, extra_params))
     except Exception as e:
-        log.error(f"Error in synchronous get_tools wrapper: {e}")
+        log.error(f"Error in synchronous get_tools wrapper: {type(e).__name__}")
         return {}
 
 

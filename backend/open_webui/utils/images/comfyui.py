@@ -30,7 +30,7 @@ def queue_prompt(prompt, client_id, base_url, api_key):
         response = urllib.request.urlopen(req).read()
         return json.loads(response)
     except Exception as e:
-        log.exception(f"Error while queuing prompt: {e}")
+        log.exception(f"Error while queuing prompt: {type(e).__name__}")
         raise e
 
 
@@ -175,7 +175,7 @@ async def comfyui_generate_image(
         ws.connect(f"{ws_url}/ws?clientId={client_id}", header=headers)
         log.info("WebSocket connection established.")
     except Exception as e:
-        log.exception(f"Failed to connect to WebSocket server: {e}")
+        log.exception(f"Failed to connect to WebSocket server: {type(e).__name__}")
         return None
 
     try:
@@ -185,7 +185,7 @@ async def comfyui_generate_image(
             get_images, ws, workflow, client_id, base_url, api_key
         )
     except Exception as e:
-        log.exception(f"Error while receiving images: {e}")
+        log.exception(f"Error while receiving images: {type(e).__name__}")
         images = None
 
     ws.close()

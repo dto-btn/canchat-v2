@@ -25,7 +25,10 @@ from open_webui.env import (
 from open_webui.internal.db import get_db
 from open_webui.metrics.service import MetricsDefinition
 from open_webui.models.base import Base
-from open_webui.observability.redaction import register_secret_source
+from open_webui.observability.redaction import (
+    invalidate_secrets,
+    register_secret_source,
+)
 
 ####################################
 # Config helpers
@@ -300,6 +303,12 @@ class PersistentConfig(Generic[T]):
                 "PersistentConfig object cannot be converted to dict, use config_get or .value instead."
             )
         return super().__getattribute__(item)
+
+    def __setattr__(self, name, value):
+        super().__setattr__(name, value)
+        if name == "value":
+            # Mask a new or rotated secret value in logs right away.
+            invalidate_secrets()
 
     def update(self):
         new_value = get_config_value(self.config_path)
@@ -679,7 +688,7 @@ if frontend_favicon.exists():
     try:
         shutil.copyfile(frontend_favicon, STATIC_DIR / "favicon.png")
     except Exception as e:
-        logging.error(f"An error occurred: {e}")
+        logging.error(f"An error occurred: {type(e).__name__}")
 else:
     logging.warning(f"Frontend favicon not found at {frontend_favicon}")
 
@@ -689,7 +698,7 @@ if frontend_splash.exists():
     try:
         shutil.copyfile(frontend_splash, STATIC_DIR / "splash.png")
     except Exception as e:
-        logging.error(f"An error occurred: {e}")
+        logging.error(f"An error occurred: {type(e).__name__}")
 else:
     logging.warning(f"Frontend splash not found at {frontend_splash}")
 
@@ -1347,7 +1356,7 @@ try:
     banners = json.loads(os.environ.get("WEBUI_BANNERS", "[]"))
     banners = [BannerModel(**banner) for banner in banners]
 except Exception as e:
-    print(f"Error loading WEBUI_BANNERS: {e}")
+    print(f"Error loading WEBUI_BANNERS: {type(e).__name__}")
     banners = []
 
 WEBUI_BANNERS = PersistentConfig("WEBUI_BANNERS", "ui.banners", banners)

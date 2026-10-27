@@ -84,7 +84,7 @@ class ExportLogsTable:
                     created_at=export_log.created_at,
                 )
             except Exception as e:
-                logger.error(f"Error inserting export log: {e}")
+                logger.error(f"Error inserting export log: {type(e).__name__}")
                 return None
 
     def get_export_logs_by_user(self, user_id: str) -> list[ExportLogModel]:
@@ -108,7 +108,9 @@ class ExportLogsTable:
                     for log in export_logs
                 ]
             except Exception as e:
-                logger.error(f"Error getting export logs for user {user_id}: {e}")
+                logger.error(
+                    f"Error getting export logs for user {user_id}: {type(e).__name__}"
+                )
                 return []
 
     def get_all_export_logs(self) -> list[ExportLogModel]:
@@ -130,7 +132,7 @@ class ExportLogsTable:
                     for log in export_logs
                 ]
             except Exception as e:
-                logger.error(f"Error getting all export logs: {e}")
+                logger.error(f"Error getting all export logs: {type(e).__name__}")
                 return []
 
 

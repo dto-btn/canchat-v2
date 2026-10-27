@@ -266,7 +266,7 @@ async def chat_completed(request: Request, form_data: dict, user: Any):
                             )
                         )
                 except Exception as e:
-                    print(e)
+                    log.error("chat_completed failed: %s", type(e).__name__)
 
                 params = {**params, "__user__": __user__}
 
@@ -368,7 +368,7 @@ async def chat_action(request: Request, action_id: str, form_data: dict, user: A
                             )
                         )
                 except Exception as e:
-                    print(e)
+                    log.error("chat_action failed: %s", type(e).__name__)
 
                 params = {**params, "__user__": __user__}
 

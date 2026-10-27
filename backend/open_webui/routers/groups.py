@@ -11,6 +11,9 @@ from open_webui.models.groups import (
 from open_webui.constants import ERROR_MESSAGES
 from fastapi import APIRouter, Depends, HTTPException, status
 from open_webui.utils.auth import get_admin_user, get_verified_user
+import logging
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -45,7 +48,7 @@ async def create_new_function(form_data: GroupForm, user=Depends(get_admin_user)
                 detail=ERROR_MESSAGES.DEFAULT("Error creating group"),
             )
     except Exception as e:
-        print(e)
+        log.error("create_new_function failed: %s", type(e).__name__)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ERROR_MESSAGES.DEFAULT(e),
@@ -96,7 +99,7 @@ async def update_group_by_id(
                 detail=ERROR_MESSAGES.DEFAULT("Error updating group"),
             )
     except Exception as e:
-        print(e)
+        log.error("update_group_by_id failed: %s", type(e).__name__)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ERROR_MESSAGES.DEFAULT(e),
@@ -115,7 +118,7 @@ async def get_available_domains(user=Depends(get_admin_user)):
         domains = Users.get_user_domains()
         return sorted(domains)  # Return sorted list of domains
     except Exception as e:
-        print(f"Error getting domains: {e}")
+        print(f"Error getting domains: {type(e).__name__}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ERROR_MESSAGES.DEFAULT("Error retrieving domains"),
@@ -139,7 +142,7 @@ async def delete_group_by_id(id: str, user=Depends(get_admin_user)):
                 detail=ERROR_MESSAGES.DEFAULT("Error deleting group"),
             )
     except Exception as e:
-        print(e)
+        log.error("delete_group_by_id failed: %s", type(e).__name__)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ERROR_MESSAGES.DEFAULT(e),

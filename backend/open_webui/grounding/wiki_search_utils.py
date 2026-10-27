@@ -295,7 +295,7 @@ class WikiSearchGrounder:
             log.info("French-to-English translation model loaded successfully")
             return True
         except Exception as e:
-            log.warning(f"Translation model failed to load: {e}")
+            log.warning(f"Translation model failed to load: {type(e).__name__}")
             return False
 
     def _load_reranker_model(self) -> bool:
@@ -337,7 +337,7 @@ class WikiSearchGrounder:
             log.info("txtai reranker pipeline loaded successfully")
             return True
         except Exception as e:
-            log.warning(f"Reranker pipeline failed to load: {e}")
+            log.warning(f"Reranker pipeline failed to load: {type(e).__name__}")
             return False
 
     def _detect_language(self, text: str) -> str:
@@ -387,7 +387,7 @@ class WikiSearchGrounder:
                 return translated_text
             return text
         except Exception as e:
-            log.warning(f"Translation failed, using original query: {e}")
+            log.warning(f"Translation failed, using original query: {type(e).__name__}")
             return text
 
     def _load_txtai_model(self) -> bool:
@@ -463,7 +463,7 @@ class WikiSearchGrounder:
             log.info("txtai-wikipedia model loaded successfully from HuggingFace Hub")
             return True
         except Exception as e:
-            log.error(f"Failed to load txtai-wikipedia: {e}")
+            log.error(f"Failed to load txtai-wikipedia: {type(e).__name__}")
             return False
 
     async def search(self, query: str) -> List[Dict]:
@@ -632,7 +632,7 @@ class WikiSearchGrounder:
                     )
 
                 except Exception as e:
-                    log.warning(f"🚨 Reranking failed: {e}")
+                    log.warning(f"🚨 Reranking failed: {type(e).__name__}")
                     # Keep original results if reranking fails
                 finally:
                     # Always release the semaphore lock after reranking
@@ -677,7 +677,7 @@ class WikiSearchGrounder:
             )  # At least 3 results
 
         except Exception as e:
-            log.error(f"Search failed: {e}")
+            log.error(f"Search failed: {type(e).__name__}")
             return []
 
     async def ground_query(

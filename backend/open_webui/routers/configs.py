@@ -53,7 +53,7 @@ async def update_chat_lifetime_config(
 
         update_cleanup_schedule()
     except Exception as e:
-        log.error(f"Failed to update chat cleanup schedule: {e}")
+        log.error(f"Failed to update chat cleanup schedule: {type(e).__name__}")
 
     return {
         "enabled": request.app.state.config.CHAT_LIFETIME_ENABLED,
@@ -71,7 +71,7 @@ async def get_chat_lifetime_schedule(request: Request, user=Depends(get_admin_us
 
         return get_schedule_info()
     except Exception as e:
-        log.error(f"Failed to get schedule info: {e}")
+        log.error(f"Failed to get schedule info: {type(e).__name__}")
         return {"enabled": False, "status": "error", "next_run": None, "error": str(e)}
 
 

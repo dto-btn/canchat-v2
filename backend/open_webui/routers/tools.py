@@ -16,6 +16,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from open_webui.utils.tools import get_tools_specs
 from open_webui.utils.auth import get_admin_user, get_verified_user
 from open_webui.utils.access_control import has_access, has_permission
+import logging
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -117,7 +120,7 @@ async def get_tools(request: Request, user=Depends(get_verified_user)):
                 )
                 tools.append(mcp_tool_entry)
     except Exception as e:
-        print(f"Error loading MCP tools in tools router: {e}")
+        print(f"Error loading MCP tools in tools router: {type(e).__name__}")
 
     return tools
 
@@ -200,7 +203,7 @@ async def create_new_tools(
                     detail=ERROR_MESSAGES.DEFAULT("Error creating tools"),
                 )
         except Exception as e:
-            print(e)
+            log.error("create_new_tools failed: %s", type(e).__name__)
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=ERROR_MESSAGES.DEFAULT(str(e)),
@@ -428,7 +431,7 @@ async def update_tools_valves_by_id(
         Tools.update_tool_valves_by_id(id, valves.model_dump())
         return valves.model_dump()
     except Exception as e:
-        print(e)
+        log.error("update_tools_valves_by_id failed: %s", type(e).__name__)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ERROR_MESSAGES.DEFAULT(str(e)),
@@ -506,7 +509,7 @@ async def update_tools_user_valves_by_id(
                 )
                 return user_valves.model_dump()
             except Exception as e:
-                print(e)
+                log.error("update_tools_user_valves_by_id failed: %s", type(e).__name__)
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=ERROR_MESSAGES.DEFAULT(str(e)),

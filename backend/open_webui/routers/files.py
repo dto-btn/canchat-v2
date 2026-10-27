@@ -367,7 +367,9 @@ async def delete_file_by_id(id: str, user=Depends(get_verified_user)):
                 )
 
         except Exception as e:
-            log.exception(f"Error during vector cleanup for file {file.id}: {e}")
+            log.exception(
+                f"Error during vector cleanup for file {file.id}: {type(e).__name__}"
+            )
             # Continue with file deletion even if vector cleanup fails
 
         result = Files.delete_file_by_id(id)

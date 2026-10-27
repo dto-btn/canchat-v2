@@ -463,7 +463,7 @@ async def get_range_metrics(
             },
         }
     except Exception as e:
-        log.exception(f"Error getting range metrics: {e}")
+        log.exception(f"Error getting range metrics: {type(e).__name__}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get range metrics: {str(e)}",
@@ -498,7 +498,9 @@ async def get_inter_prompt_latency_histogram(
         )
         return histogram_data
     except Exception as e:
-        log.exception(f"Error getting inter-prompt latency histogram: {e}")
+        log.exception(
+            f"Error getting inter-prompt latency histogram: {type(e).__name__}"
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get inter-prompt latency histogram: {str(e)}",
@@ -663,7 +665,7 @@ async def export_metrics_data(
             detail=f"Invalid date format. Use YYYY-MM-DD: {str(e)}",
         )
     except Exception as e:
-        log.exception(f"Error exporting metrics data: {e}")
+        log.exception(f"Error exporting metrics data: {type(e).__name__}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to export data: {str(e)}",
@@ -688,7 +690,7 @@ async def get_export_logs(user=Depends(get_metrics_user)):
         return {"export_logs": export_logs}
 
     except Exception as e:
-        log.exception(f"Error getting export logs: {e}")
+        log.exception(f"Error getting export logs: {type(e).__name__}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get export logs: {str(e)}",

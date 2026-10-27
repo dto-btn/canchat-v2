@@ -120,7 +120,7 @@ class FilesTable:
                 else:
                     return None
             except Exception as e:
-                print(f"Error creating tool: {e}")
+                print(f"Error creating tool: {type(e).__name__}")
                 return None
 
     def get_file_by_id(self, id: str) -> Optional[FileModel]:

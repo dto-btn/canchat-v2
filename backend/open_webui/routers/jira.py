@@ -123,7 +123,7 @@ async def create_bug(
                                     )
                         except Exception as e:
                             log.exception(
-                                f"Unexpected error while attaching file {file.filename}: {str(e)}"
+                                f"Unexpected error while attaching file {file.filename}: {type(e).__name__}"
                             )
                             continue
 
@@ -134,7 +134,7 @@ async def create_bug(
         log.error(f"HTTPException: {http_exc.detail}")
         raise
     except Exception as e:
-        log.error(f"Unexpected error: {str(e)}")
+        log.error(f"Unexpected error: {type(e).__name__}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred while processing your request.",
@@ -241,7 +241,7 @@ async def create_task(
                                     )
                         except Exception as e:
                             log.error(
-                                f"Unexpected error while attaching file {file.filename}: {str(e)}"
+                                f"Unexpected error while attaching file {file.filename}: {type(e).__name__}"
                             )
                             continue
 
@@ -252,7 +252,7 @@ async def create_task(
         log.error(f"HTTPException: {http_exc.detail}")
         raise
     except Exception as e:
-        log.error(f"Unexpected error: {str(e)}")
+        log.error(f"Unexpected error: {type(e).__name__}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred while processing your request.",

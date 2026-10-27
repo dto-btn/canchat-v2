@@ -260,7 +260,7 @@ async def generate_function_chat_completion(
                     return
 
             except Exception as e:
-                log.error(f"Error: {e}")
+                log.error(f"Error: {type(e).__name__}")
                 yield f"data: {json.dumps({'error': {'detail': str(e)}})}\n\n"
                 return
 
@@ -290,7 +290,7 @@ async def generate_function_chat_completion(
             res = await execute_pipe(pipe, params)
 
         except Exception as e:
-            log.error(f"Error: {e}")
+            log.error(f"Error: {type(e).__name__}")
             return {"error": {"detail": str(e)}}
 
         if isinstance(res, StreamingResponse) or isinstance(res, dict):

@@ -320,7 +320,7 @@ class OAuthManager:
                                 picture_url = f"data:{guessed_mime_type};base64,{base64_encoded_picture}"
                     except Exception as e:
                         log.error(
-                            f"Error downloading profile image '{picture_url}': {e}"
+                            f"Error downloading profile image '{picture_url}': {type(e).__name__}"
                         )
                         picture_url = ""
                 if not picture_url:

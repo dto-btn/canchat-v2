@@ -10,6 +10,9 @@ from starlette.responses import FileResponse
 from open_webui.utils.misc import get_gravatar_url
 from open_webui.utils.pdf_generator import PDFGenerator
 from open_webui.utils.auth import get_admin_user
+import logging
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -65,7 +68,7 @@ async def download_chat_as_pdf(
             headers={"Content-Disposition": "attachment;filename=chat.pdf"},
         )
     except Exception as e:
-        print(e)
+        log.error("download_chat_as_pdf failed: %s", type(e).__name__)
         raise HTTPException(status_code=400, detail=str(e))
 
 

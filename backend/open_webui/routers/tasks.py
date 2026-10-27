@@ -267,7 +267,7 @@ async def generate_chat_tags(
     try:
         return await generate_chat_completion(request, form_data=payload, user=user)
     except Exception as e:
-        log.error(f"Error generating chat completion: {e}")
+        log.error(f"Error generating chat completion: {type(e).__name__}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"detail": "An internal error has occurred."},
@@ -470,7 +470,7 @@ async def generate_autocompletion(
     try:
         return await generate_chat_completion(request, form_data=payload, user=user)
     except Exception as e:
-        log.error(f"Error generating chat completion: {e}")
+        log.error(f"Error generating chat completion: {type(e).__name__}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"detail": "An internal error has occurred."},

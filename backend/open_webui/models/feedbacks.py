@@ -120,7 +120,7 @@ class FeedbackTable:
                 else:
                     return None
             except Exception as e:
-                print(e)
+                log.error("insert_new_feedback failed: %s", type(e).__name__)
                 return None
 
     def get_feedback_by_id(self, id: str) -> Optional[FeedbackModel]:

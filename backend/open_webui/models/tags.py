@@ -59,7 +59,7 @@ class TagTable:
                 else:
                     return None
             except Exception as e:
-                print(e)
+                log.error("insert_new_tag failed: %s", type(e).__name__)
                 return None
 
     def get_tag_by_name_and_user_id(
@@ -100,7 +100,7 @@ class TagTable:
                 db.commit()
                 return True
         except Exception as e:
-            log.error(f"delete_tag: {e}")
+            log.error(f"delete_tag: {type(e).__name__}")
             return False
 
 

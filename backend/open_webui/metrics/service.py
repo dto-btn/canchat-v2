@@ -36,9 +36,13 @@ class MetricsService:
                 registry[definition.name] = inst
 
             except ValidationError as e:
-                print(f"[MetricsService] Invalid metric definition {raw_def}: {e}")
+                print(
+                    f"[MetricsService] Invalid metric definition {raw_def}: {type(e).__name__}"
+                )
             except Exception as e:
-                print(f"[MetricsService] Failed to create '{raw_def}': {e}")
+                print(
+                    f"[MetricsService] Failed to create '{raw_def}': {type(e).__name__}"
+                )
 
         return registry
 
