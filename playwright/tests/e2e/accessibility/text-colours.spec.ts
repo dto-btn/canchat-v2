@@ -9,10 +9,12 @@ const markup = `
 	<button id="hover" class="text-gray-500 hover:text-gray-700">Hover</button>
 	<button id="focus" class="text-gray-400 focus:text-gray-700">Focus</button>
 	<div id="group" class="group">
-		<span id="group-child" class="text-gray-300 group-hover:text-gray-700">Group hover</span>
+		<span id="group-child" class="text-gray-400 group-hover:text-gray-700">Group hover</span>
 	</div>
 	<span id="gray-600" class="text-gray-600">Secondary</span>
 	<span id="themed" class="text-gray-500 dark:text-gray-400">Themed</span>
+	<button id="disabled" class="text-gray-500 disabled:text-gray-300" disabled>Disabled</button>
+	<div class="bg-gray-900"><span id="dark-surface" class="text-gray-300">Dark surface</span></div>
 	<input id="input" placeholder="Input placeholder" />
 	<textarea id="textarea" placeholder="Textarea placeholder"></textarea>
 	<input id="rename" class="bg-transparent w-full outline-none mr-10" />
@@ -26,7 +28,6 @@ const markup = `
 	<button id="ring-focus" class="focus:outline-none focus:ring-2 focus:ring-blue-500">Ring focus</button>
 	<button id="visible-ring-focus" class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-600">Visible ring focus</button>
 	<div id="contrast" class="bg-white text-black dark:bg-gray-900 dark:text-white p-4">
-		<p class="text-gray-300">Muted text</p>
 		<p class="text-gray-400">Secondary text</p>
 		<p class="text-gray-500">Supporting text</p>
 		<p class="text-gray-600 dark:text-gray-400">Additional text</p>
@@ -56,6 +57,8 @@ test('light-mode muted text preserves interactive colours and gray-600', async (
 		await expect(page.locator(`#${id}`)).toHaveCSS('color', 'rgb(89, 89, 89)');
 	}
 	await expect(page.locator('#gray-600')).toHaveCSS('color', 'rgb(103, 103, 103)');
+	await expect(page.locator('#disabled')).toHaveCSS('color', 'rgb(205, 205, 205)');
+	await expect(page.locator('#dark-surface')).toHaveCSS('color', 'rgb(205, 205, 205)');
 
 	await page.locator('#hover').hover();
 	await expect(page.locator('#hover')).toHaveCSS('color', 'rgb(78, 78, 78)');
@@ -69,7 +72,7 @@ test('dark mode preserves Tailwind text colours', async ({ page }) => {
 	await page.evaluate(() => document.documentElement.classList.add('dark'));
 	await expect(page.locator('#hover')).toHaveCSS('color', 'rgb(155, 155, 155)');
 	await expect(page.locator('#focus')).toHaveCSS('color', 'rgb(180, 180, 180)');
-	await expect(page.locator('#group-child')).toHaveCSS('color', 'rgb(205, 205, 205)');
+	await expect(page.locator('#group-child')).toHaveCSS('color', 'rgb(180, 180, 180)');
 	await expect(page.locator('#themed')).toHaveCSS('color', 'rgb(180, 180, 180)');
 });
 

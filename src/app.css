@@ -212,7 +212,6 @@ html.dark {
 	--focus-outline-color: #80c7ff;
 }
 
-:where(html:not(.dark)) .text-gray-300,
 :where(html:not(.dark)) .text-gray-400,
 :where(html:not(.dark)) .text-gray-500 {
 	color: var(--text-muted-color);
