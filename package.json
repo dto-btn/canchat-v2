@@ -32,11 +32,12 @@
 		"format": "prettier --plugin-search-dir --write \"**/*.{js,ts,svelte,css,md,html,json}\"",
 		"format:backend": "black . --exclude \".venv/|/venv/\"",
 		"i18n:parse": "i18next --config i18next-parser.config.ts && prettier --write \"src/lib/i18n/**/*.{js,json}\"",
-		"test:frontend": "vitest --passWithNoTests",
+		"test:frontend": "vitest src --passWithNoTests",
 		"pyodide:fetch": "node scripts/prepare-pyodide.js",
 		"prepare": "husky"
 	},
 	"devDependencies": {
+		"@axe-core/playwright": "^4.10.2",
 		"@istanbuljs/nyc-config-typescript": "^1.0.2",
 		"@playwright/test": "^1.56.1",
 		"@sveltejs/adapter-auto": "3.2.2",

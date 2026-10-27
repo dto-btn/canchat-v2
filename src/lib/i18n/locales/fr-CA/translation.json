@@ -1463,7 +1463,7 @@
 	"Version {{selectedVersion}} of {{totalVersions}}": "Version {{selectedVersion}} de {{totalVersions}}",
 	"vibile tabs found": "onglets visibles trouvés",
 	"View Exports": "Voir les exportations",
-	"View profile for {{name}}": "Voir le profil de {{name}}",
+	"View profile for {{name}}": "Voir le profil : {{name}}",
 	"View prompt": "Affiche d'invite",
 	"View Replies": "Voir les réponses",
 	"Visibility": "Visibilité",
