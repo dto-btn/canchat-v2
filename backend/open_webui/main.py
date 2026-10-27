@@ -1449,6 +1449,7 @@ if len(OAUTH_PROVIDERS) > 0:
         https_only=WEBUI_SESSION_COOKIE_SECURE,
     )
 
+
 @app.get("/oauth/{provider}/login")
 async def oauth_login(provider: str, request: Request):
     return await oauth_manager.handle_login(provider, request)

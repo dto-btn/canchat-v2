@@ -17,24 +17,24 @@ Artifacts:
 
 ## 2. Envelope v1
 
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| `event_id` | UUID v4 | yes | Created once by `emit_audit_event`. It is the idempotency key for every destination |
-| `schema_version` | `"1.0"` | yes | See *Versioning* below |
-| `time` | RFC 3339, UTC, ms precision | yes | When the action took effect (commit time for state changes). Offsets other than `Z`/`+00:00` and naive times are rejected |
-| `category` | enum | yes | `auth`, `admin`, `access`, `resource`, `mcp`, `export`, `chat` |
-| `action` | enum | yes | §3. The discriminator: it decides which `target` and `details` are allowed |
-| `outcome` | enum | yes | `success`, `failure`, `denied`, `error`, `cancelled`. Each action allows only some of these (§3) |
-| `actor.type` | enum | yes | `user` or `anonymous` |
-| `actor.id` | UUID | for `user` | Internal user ID. Not allowed for `anonymous` |
-| `actor.role` | enum | no | `admin`, `user`, `pending`, `analyst`, `global_analyst` at the time of the action |
-| `actor.auth_method` | enum | login/signup only | `password`, `ldap`, `oauth`, `trusted_header`, `api_key`, `session`, `refresh_token` |
-| `actor.subject_pseudonym` | `ps1:<kid>:<22 chars>` | `login.failure` only | Keyed pseudonym of the submitted login identifier (§6) |
-| `target` | object | depends on action | `{type, id}`. `type` is fixed per action. `id` is a UUID, a model ID (`^[A-Za-z0-9._:/-]{1,128}$`) or a built-in MCP server name. `config`/`permissions` targets have no `id` |
-| `details` | object | depends on action | A closed, action-specific model (§3) |
-| `correlation` | object | no | `request_id`, `operation_id` (`^[A-Za-z0-9._-]{8,64}$`, same rule as `X-Request-Id` validation), `trace_id` (32 hex), `span_id` (16 hex), `session_id` (refresh-session UUID) |
-| `client.address` | IPv4/IPv6 | no | Recorded for `auth` and `access` events (security-log source address; decided 2026-10-13). Not allowed in other categories. Never sent to metrics or analytics |
-| `source` | object | yes | `service` (label), `version`, `environment` |
+| Field                     | Type                        | Required             | Notes                                                                                                                                                                         |
+| ------------------------- | --------------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `event_id`                | UUID v4                     | yes                  | Created once by `emit_audit_event`. It is the idempotency key for every destination                                                                                           |
+| `schema_version`          | `"1.0"`                     | yes                  | See _Versioning_ below                                                                                                                                                        |
+| `time`                    | RFC 3339, UTC, ms precision | yes                  | When the action took effect (commit time for state changes). Offsets other than `Z`/`+00:00` and naive times are rejected                                                     |
+| `category`                | enum                        | yes                  | `auth`, `admin`, `access`, `resource`, `mcp`, `export`, `chat`                                                                                                                |
+| `action`                  | enum                        | yes                  | §3. The discriminator: it decides which `target` and `details` are allowed                                                                                                    |
+| `outcome`                 | enum                        | yes                  | `success`, `failure`, `denied`, `error`, `cancelled`. Each action allows only some of these (§3)                                                                              |
+| `actor.type`              | enum                        | yes                  | `user` or `anonymous`                                                                                                                                                         |
+| `actor.id`                | UUID                        | for `user`           | Internal user ID. Not allowed for `anonymous`                                                                                                                                 |
+| `actor.role`              | enum                        | no                   | `admin`, `user`, `pending`, `analyst`, `global_analyst` at the time of the action                                                                                             |
+| `actor.auth_method`       | enum                        | login/signup only    | `password`, `ldap`, `oauth`, `trusted_header`, `api_key`, `session`, `refresh_token`                                                                                          |
+| `actor.subject_pseudonym` | `ps1:<kid>:<22 chars>`      | `login.failure` only | Keyed pseudonym of the submitted login identifier (§6)                                                                                                                        |
+| `target`                  | object                      | depends on action    | `{type, id}`. `type` is fixed per action. `id` is a UUID, a model ID (`^[A-Za-z0-9._:/-]{1,128}$`) or a built-in MCP server name. `config`/`permissions` targets have no `id` |
+| `details`                 | object                      | depends on action    | A closed, action-specific model (§3)                                                                                                                                          |
+| `correlation`             | object                      | no                   | `request_id`, `operation_id` (`^[A-Za-z0-9._-]{8,64}$`, same rule as `X-Request-Id` validation), `trace_id` (32 hex), `span_id` (16 hex), `session_id` (refresh-session UUID) |
+| `client.address`          | IPv4/IPv6                   | no                   | Recorded for `auth` and `access` events (security-log source address; decided 2026-10-13). Not allowed in other categories. Never sent to metrics or analytics                |
+| `source`                  | object                      | yes                  | `service` (label), `version`, `environment`                                                                                                                                   |
 
 **Other rules** (enforced by model validators; JSON Schema can't express them):
 
@@ -96,12 +96,12 @@ Notes:
 
 These must never appear in an audit event, outbox row, search copy or audit metric label, under any key:
 
-| Class | Examples |
-|---|---|
-| Credentials and secrets | passwords and hashes, access/refresh/ID tokens, API keys, OAuth client secrets, LDAP bind passwords, `Authorization`/`Cookie` headers, config values, MCP `env`/`args`/`command`/`url` values |
-| Direct identifiers | email, user name, first/last/display name, username, LDAP DN, raw login identifier (failed logins use the pseudonym only), email domain |
-| Content | prompt, response, message text, chat title, search query, file name, knowledge-base name/description, document text, tool input/output |
-| High-entropy client data | user agent, full URL/path with query string, exception message or stack trace |
+| Class                    | Examples                                                                                                                                                                                      |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Credentials and secrets  | passwords and hashes, access/refresh/ID tokens, API keys, OAuth client secrets, LDAP bind passwords, `Authorization`/`Cookie` headers, config values, MCP `env`/`args`/`command`/`url` values |
+| Direct identifiers       | email, user name, first/last/display name, username, LDAP DN, raw login identifier (failed logins use the pseudonym only), email domain                                                       |
+| Content                  | prompt, response, message text, chat title, search query, file name, knowledge-base name/description, document text, tool input/output                                                        |
+| High-entropy client data | user agent, full URL/path with query string, exception message or stack trace                                                                                                                 |
 
 Enforcement is layered:
 
@@ -112,13 +112,13 @@ Enforcement is layered:
 
 ## 5. Failure policy (`AUDIT_FAIL_POLICY`)
 
-This policy covers failure to **build, validate, encrypt or insert** the event locally. A SIEM or Loki outage is *not* an audit failure: the event is already durable in the outbox (§8).
+This policy covers failure to **build, validate, encrypt or insert** the event locally. A SIEM or Loki outage is _not_ an audit failure: the event is already durable in the outbox (§8).
 
-| Mode | `block_privileged` (default) | `block_all` | Actions |
-|---|---|---|---|
-| **C**: closed | Change rolled back, HTTP 503, nothing applied | same | Every state change: `signup`, `password.change`, `api_key.*`, all `admin`, `resource`, `mcp`, `export`, `chat.share`/`unshare` |
-| **O**: open with alert | Request succeeds, failure metric + alert | Closed: login returns 503 | `login.success` |
-| **N**: never block | Normal response (the refusal, logout or chat reply), failure metric + alert | same | `login.failure`, `token.refresh.failure`, `model.denied`, `admin_route.denied`, `logout`, `message` |
+| Mode                   | `block_privileged` (default)                                                | `block_all`               | Actions                                                                                                                        |
+| ---------------------- | --------------------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **C**: closed          | Change rolled back, HTTP 503, nothing applied                               | same                      | Every state change: `signup`, `password.change`, `api_key.*`, all `admin`, `resource`, `mcp`, `export`, `chat.share`/`unshare` |
+| **O**: open with alert | Request succeeds, failure metric + alert                                    | Closed: login returns 503 | `login.success`                                                                                                                |
+| **N**: never block     | Normal response (the refusal, logout or chat reply), failure metric + alert | same                      | `login.failure`, `token.refresh.failure`, `model.denied`, `admin_route.denied`, `logout`, `message`                            |
 
 - **Why N exists:** these requests are already refused, or they end a session. Blocking them adds no protection. Blocking logout would also stop users from revoking sessions while auditing is down.
 - **Fail open, as OBS-02 §3.5 describes:** catch errors from build/validate/encrypt only, and skip the insert. An insert failure means the database is failing, so the state change fails too.
@@ -143,33 +143,33 @@ pseudonym  = "ps1:" + key_id + ":" + base64url(HMAC-SHA256(key, utf8(normalized)
 
 **Key management**
 
-| Item | Decision |
-|---|---|
-| Material | ≥ 256-bit random key from a CSPRNG. Generated and stored in the SSC-approved secret store, never in the repo, image or database. `pseudonymize` rejects keys shorter than 32 bytes |
-| Delivery | Mounted file `AUDIT_PSEUDONYM_KEY_FILE` (Kubernetes Secret from the secret store), plus `AUDIT_PSEUDONYM_KEY_ID` (`^[a-z0-9-]{1,32}$`, for example `k2026a`). The key ID is stored in every pseudonym |
-| Access | Only the backend workload identity reads the active key. Retired keys are readable only by the investigation role, not the app |
-| Rotation | Every 12 months, and right away when compromise is suspected or a holder leaves. Rotation means a new key ID plus a rolling restart. Pseudonyms under different keys don't match by design, so investigations that span a rotation compute both |
+| Item         | Decision                                                                                                                                                                                                                                                                          |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Material     | ≥ 256-bit random key from a CSPRNG. Generated and stored in the SSC-approved secret store, never in the repo, image or database. `pseudonymize` rejects keys shorter than 32 bytes                                                                                                |
+| Delivery     | Mounted file `AUDIT_PSEUDONYM_KEY_FILE` (Kubernetes Secret from the secret store), plus `AUDIT_PSEUDONYM_KEY_ID` (`^[a-z0-9-]{1,32}$`, for example `k2026a`). The key ID is stored in every pseudonym                                                                             |
+| Access       | Only the backend workload identity reads the active key. Retired keys are readable only by the investigation role, not the app                                                                                                                                                    |
+| Rotation     | Every 12 months, and right away when compromise is suspected or a holder leaves. Rotation means a new key ID plus a rolling restart. Pseudonyms under different keys don't match by design, so investigations that span a rotation compute both                                   |
 | Retired keys | Kept in the secret store for verification only, for as long as any event that names that key ID is retained (SIEM schedule, currently ≥ 2 years). After that they are destroyed, and that destruction is recorded. Destroying the key makes old pseudonyms permanently unlinkable |
-| Lookups | An investigator with an identifier computes its pseudonym under the relevant key IDs through a restricted tool, then searches for it. No reverse mapping table exists. The investigation workflow records tool use (records-management design) |
-| Compromise | Rotate right away. Treat events under the compromised key ID as linkable to identifiers for anyone holding the key, and notify Security/ATIP under the privacy breach process |
+| Lookups      | An investigator with an identifier computes its pseudonym under the relevant key IDs through a restricted tool, then searches for it. No reverse mapping table exists. The investigation workflow records tool use (records-management design)                                    |
+| Compromise   | Rotate right away. Treat events under the compromised key ID as linkable to identifiers for anyone holding the key, and notify Security/ATIP under the privacy breach process                                                                                                     |
 
 ## 7. Metric label cardinality
 
 **Allowed labels**
 
-| Label | Used on | Allowed values | Bounding |
-|---|---|---|---|
-| `model` | `llm_*`, chat operation metrics | IDs in the server's resolved model list (`app.state.MODELS`) when recorded, lower-cased | Values not in the list become `other`. A per-process cap of 100 distinct values (first seen); after that `other`, plus a `metrics_label_overflow_total{metric,label}` increment |
-| `provider` | `llm_*` | `openai`, `ollama`, `arena`, `function`, `crewai`, `other` | Enum (from `owned_by` and the code path) |
-| `tool` | `mcp_*`, chat tool metrics | Registered built-in MCP server names; `external` for all user-created servers; `none` | Enum built at startup. User-chosen server names are never used as labels |
-| `event` | `socket_*` | `connect`, `disconnect`, `usage`, `crew-mcp-query`, `user-join`, `join-channels`, `channel-events`, `user-list`, `other` | Enum from the registered handlers |
-| `outcome` | all domain metrics | `success`, `error`, `cancelled`, `timeout`, `denied`, `rejected` | Enum |
-| `type` | `llm_tokens_total` | `prompt`, `completion` | Enum |
-| `category`, `action` | `audit_*` | Schema enums (§3) | Enum; 46 actions |
-| `stage` | `audit_emit_failures_total` | `build`, `validate`, `encrypt`, `persist` | Enum |
-| `destination` | `audit_delivery_*` | `siem`, `loki` | Enum |
-| `http.*` | `http.server.request.duration` | Stable semconv from `FastAPIInstrumentor`. `http.route` is the route template | Instrumentor; unmatched routes have no route value |
-| existing `web_search_*` | web search | Unchanged in v1. OBS-47 checks them against this table | |
+| Label                   | Used on                         | Allowed values                                                                                                           | Bounding                                                                                                                                                                        |
+| ----------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `model`                 | `llm_*`, chat operation metrics | IDs in the server's resolved model list (`app.state.MODELS`) when recorded, lower-cased                                  | Values not in the list become `other`. A per-process cap of 100 distinct values (first seen); after that `other`, plus a `metrics_label_overflow_total{metric,label}` increment |
+| `provider`              | `llm_*`                         | `openai`, `ollama`, `arena`, `function`, `crewai`, `other`                                                               | Enum (from `owned_by` and the code path)                                                                                                                                        |
+| `tool`                  | `mcp_*`, chat tool metrics      | Registered built-in MCP server names; `external` for all user-created servers; `none`                                    | Enum built at startup. User-chosen server names are never used as labels                                                                                                        |
+| `event`                 | `socket_*`                      | `connect`, `disconnect`, `usage`, `crew-mcp-query`, `user-join`, `join-channels`, `channel-events`, `user-list`, `other` | Enum from the registered handlers                                                                                                                                               |
+| `outcome`               | all domain metrics              | `success`, `error`, `cancelled`, `timeout`, `denied`, `rejected`                                                         | Enum                                                                                                                                                                            |
+| `type`                  | `llm_tokens_total`              | `prompt`, `completion`                                                                                                   | Enum                                                                                                                                                                            |
+| `category`, `action`    | `audit_*`                       | Schema enums (§3)                                                                                                        | Enum; 46 actions                                                                                                                                                                |
+| `stage`                 | `audit_emit_failures_total`     | `build`, `validate`, `encrypt`, `persist`                                                                                | Enum                                                                                                                                                                            |
+| `destination`           | `audit_delivery_*`              | `siem`, `loki`                                                                                                           | Enum                                                                                                                                                                            |
+| `http.*`                | `http.server.request.duration`  | Stable semconv from `FastAPIInstrumentor`. `http.route` is the route template                                            | Instrumentor; unmatched routes have no route value                                                                                                                              |
+| existing `web_search_*` | web search                      | Unchanged in v1. OBS-47 checks them against this table                                                                   |                                                                                                                                                                                 |
 
 **Never used as metric labels:** user ID, email or domain, role combined with user, session, socket, request, operation, trace, chat, message, file, knowledge, group or MCP server IDs, raw URLs/paths, query strings, exception messages, model names not in the server list, and any free text.
 
@@ -188,10 +188,10 @@ pseudonym  = "ps1:" + key_id + ":" + base64url(HMAC-SHA256(key, utf8(normalized)
 
 **Receipt definitions**
 
-| Destination | Counts as delivered when | Stored receipt |
-|---|---|---|
+| Destination                               | Counts as delivered when                                                                                                                                                                                                                                                                                                                 | Stored receipt                                                  |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
 | **SIEM/evidence archive** (authoritative) | The SSC adapter confirms **at the application level that the event is durably committed**. For example: an HTTP 2xx whose body contains the `event_id` and the SIEM's record/ingest ID, or an indexer acknowledgement. **Not enough:** a TCP/TLS syslog send, a load-balancer or collector 2xx before commit, or a fire-and-forget queue | `receipt_id`, SIEM receive time, our ack time, `payload_sha256` |
-| **Loki search copy** (non-authoritative) | Collector OTLP 2xx (`forwarded`) | ack time |
+| **Loki search copy** (non-authoritative)  | Collector OTLP 2xx (`forwarded`)                                                                                                                                                                                                                                                                                                         | ack time                                                        |
 
 **Retries:** exponential backoff with full jitter, 1 s base, 5 min cap, no attempt limit for transient errors (network errors, timeouts, 408, 429, 5xx). Any other 4xx or a schema rejection moves the destination to `dead_letter` right away. Delivery is at-least-once, and consumers order by `time`.
 
@@ -201,13 +201,13 @@ pseudonym  = "ps1:" + key_id + ":" + base64url(HMAC-SHA256(key, utf8(normalized)
 
 **Outage behaviour:** requests keep succeeding and keep writing to the outbox. A destination outage never triggers the fail policy. Alerts:
 
-| Condition | Severity |
-|---|---|
-| Oldest undelivered SIEM event > 15 min | warning |
-| Oldest undelivered SIEM event > 1 h, or outbox > 80 % of reserved capacity | critical |
-| Any `dead_letter` row | critical |
-| Oldest Loki copy > 15 min | warning |
-| `AUDIT_DELIVERY_ENABLED=false` with pending rows | warning (backlog alert stays on) |
+| Condition                                                                  | Severity                         |
+| -------------------------------------------------------------------------- | -------------------------------- |
+| Oldest undelivered SIEM event > 15 min                                     | warning                          |
+| Oldest undelivered SIEM event > 1 h, or outbox > 80 % of reserved capacity | critical                         |
+| Any `dead_letter` row                                                      | critical                         |
+| Oldest Loki copy > 15 min                                                  | warning                          |
+| `AUDIT_DELIVERY_ENABLED=false` with pending rows                           | warning (backlog alert stays on) |
 
 Reserved outbox capacity covers **7 days of SIEM outage at peak event rate** (≈ 1 KiB per row encrypted). OBS-06 supplies the rate.
 
@@ -219,11 +219,11 @@ Reserved outbox capacity covers **7 days of SIEM outage at peak event rate** (�
 
 ## 9. Configuration added to §12
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `AUDIT_PSEUDONYM_KEY_FILE` | unset | Path to the active pseudonym key (≥ 32 bytes). Required in production when `AUDIT_ENABLED=true` |
-| `AUDIT_OUTBOX_KEY_FILE`, `AUDIT_OUTBOX_KEY_ID` | unset | Outbox payload encryption key and its ID |
-| `AUDIT_OUTBOX_RETENTION_DAYS` | `7` | How long a row is kept after its SIEM receipt |
+| Variable                                       | Default | Purpose                                                                                         |
+| ---------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------- |
+| `AUDIT_PSEUDONYM_KEY_FILE`                     | unset   | Path to the active pseudonym key (≥ 32 bytes). Required in production when `AUDIT_ENABLED=true` |
+| `AUDIT_OUTBOX_KEY_FILE`, `AUDIT_OUTBOX_KEY_ID` | unset   | Outbox payload encryption key and its ID                                                        |
+| `AUDIT_OUTBOX_RETENTION_DAYS`                  | `7`     | How long a row is kept after its SIEM receipt                                                   |
 
 `AUDIT_FAIL_POLICY` and `AUDIT_PSEUDONYM_KEY_ID` already exist in §12.
 
@@ -231,17 +231,17 @@ Reserved outbox capacity covers **7 days of SIEM outage at peak event rate** (�
 
 Decided 2026-10-13:
 
-| # | Question | Decision |
-|---|---|---|
-| 1 | Record `client.address` in `auth`/`access` events? | **Yes** |
-| 2 | Record `target.user` on failed logins for existing accounts? | **Yes** |
-| 3 | Audit rejected admin-route attempts? | **Yes**, in v1, as `access` / `admin_route.denied` (§3) |
-| 4 | Remove duplicate deliveries on `event_id`? | **No**, duplicates are kept and counted by distinct `event_id` (§8). May change later |
-| 5 | Circuit breaker for chat under `block_all`? | **Not yet**; `message` never blocks (§5). May change later |
+| #   | Question                                                     | Decision                                                                              |
+| --- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| 1   | Record `client.address` in `auth`/`access` events?           | **Yes**                                                                               |
+| 2   | Record `target.user` on failed logins for existing accounts? | **Yes**                                                                               |
+| 3   | Audit rejected admin-route attempts?                         | **Yes**, in v1, as `access` / `admin_route.denied` (§3)                               |
+| 4   | Remove duplicate deliveries on `event_id`?                   | **No**, duplicates are kept and counted by distinct `event_id` (§8). May change later |
+| 5   | Circuit breaker for chat under `block_all`?                  | **Not yet**; `message` never blocks (§5). May change later                            |
 
 Still open: **SSC SIEM interface.** Which adapter and protocol give an application-level durable acknowledgement (§8)?
 
-| Role | Name | Decision | Date |
-|---|---|---|---|
-| SSC Security | | | |
-| Tech lead | | | |
+| Role         | Name | Decision | Date |
+| ------------ | ---- | -------- | ---- |
+| SSC Security |      |          |      |
+| Tech lead    |      |          |      |

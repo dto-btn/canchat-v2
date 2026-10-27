@@ -139,11 +139,7 @@ def test_non_http_scopes_pass_through_unchanged(caplog):
         return {"type": "websocket.receive", "bytes": b""}
 
     scope = _scope(path="/ws/socket.io", scope_type="websocket")
-    asyncio.run(
-        RequestContextMiddleware(websocket_app)(
-            scope, receive, send
-        )
-    )
+    asyncio.run(RequestContextMiddleware(websocket_app)(scope, receive, send))
 
     assert received == ["websocket", "websocket.accept"]
     assert not [r for r in caplog.records if r.name == "open_webui.access"]
@@ -228,9 +224,7 @@ def test_cancellation_logs_partial_response_and_propagates(caplog):
     assert records[0].__dict__["http.response.body.size"] == 4
 
 
-def test_resolved_identity_is_available_to_sync_route_logs(
-    monkeypatch, context_caplog
-):
+def test_resolved_identity_is_available_to_sync_route_logs(monkeypatch, context_caplog):
     caplog = context_caplog
     user = SimpleNamespace(id="request-user")
     app = FastAPI()
@@ -267,9 +261,7 @@ def test_resolved_identity_is_available_to_sync_route_logs(
 
     assert response.status_code == 200
     assert response.json() == {"id": "request-user"}
-    record = next(
-        r for r in caplog.records if r.getMessage() == "inside request"
-    )
+    record = next(r for r in caplog.records if r.getMessage() == "inside request")
     assert record.user_id == "request-user"
     assert record.request_id == "request-1234"
     assert user_id_var.get() is None

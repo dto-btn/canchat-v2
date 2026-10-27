@@ -29,6 +29,7 @@ from passlib.context import CryptContext
 from starlette.concurrency import run_in_threadpool
 
 from open_webui.observability.context import user_id_var
+
 logging.getLogger("passlib").setLevel(logging.ERROR)
 
 log = logging.getLogger(__name__)
