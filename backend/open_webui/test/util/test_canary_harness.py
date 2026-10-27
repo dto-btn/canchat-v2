@@ -1,4 +1,10 @@
-"""OBS-17: self-tests for the source-confidentiality canary harness."""
+"""OBS-17: self-tests for the source-confidentiality canary harness.
+
+Most tests check that the harness detects leaks, so they use raw records
+(``source_filters=False``); the production redaction filter would otherwise
+mask some of the deliberate leaks. The last tests check that the default
+harness applies the production source filters (OBS-18).
+"""
 
 import logging
 import subprocess
@@ -15,6 +21,12 @@ from open_webui.test.util.canary_harness import (
 )
 
 leaky = logging.getLogger("open_webui.test.leaky")
+
+
+@pytest.fixture
+def canary_harness(capfd):
+    with CanaryHarness(capfd, source_filters=False) as harness:
+        yield harness
 
 
 def _leaks(harness):
@@ -42,7 +54,7 @@ def test_leaky_debug_logger_is_detected_in_every_log_sink(canary_harness):
 def test_application_loggers_are_lowered_to_debug(capfd):
     leaky.setLevel(logging.WARNING)
     try:
-        with CanaryHarness(capfd) as harness:
+        with CanaryHarness(capfd, source_filters=False) as harness:
             leaky.debug("token=%s", harness.canaries.token)
             assert ("token", "log records") in _leaks(harness)
         assert leaky.level == logging.WARNING
@@ -86,8 +98,9 @@ def test_exception_chain_is_detected(canary_harness):
 
     found = _leaks(canary_harness)
     assert ("prompt", "log records") in found
-    assert ("prompt", "json handler") in found
-    assert ("prompt", "otlp logs") in found
+    # The production formatters never render exception messages (OBS-18).
+    assert ("prompt", "json handler") not in found
+    assert ("prompt", "otlp logs") not in found
 
 
 def test_print_and_stderr_are_detected(canary_harness):
@@ -135,7 +148,7 @@ def test_non_propagating_logger_is_captured(capfd):
     isolated = logging.getLogger("open_webui.test.leaky.isolated")
     isolated.propagate = False
     try:
-        with CanaryHarness(capfd) as harness:
+        with CanaryHarness(capfd, source_filters=False) as harness:
             isolated.warning("key=%s", harness.canaries.api_key)
             assert ("api key", "log records") in _leaks(harness)
     finally:
@@ -198,3 +211,28 @@ def test_canaries_are_unique_per_harness():
     assert first.token.count(".") == 2 and first.token.startswith("eyJ")
     extra = first.add("tool result", "tool-output-xyz")
     assert first["tool result"].value == extra
+
+
+def test_default_harness_applies_production_source_filters(capfd):
+    with CanaryHarness(capfd) as harness:
+        canaries = harness.canaries
+        try:
+            raise ValueError(f"provider echoed {canaries.prompt}")
+        except ValueError:
+            leaky.exception("request failed with %s", canaries.token)
+        harness.assert_no_canaries()
+        (record,) = [r for r in harness.records if r.name == leaky.name]
+        assert "Traceback (most recent call last)" in record.exc_text
+        assert "test_canary_harness.py" in record.exc_text
+        assert "ValueError: [message omitted]" in record.exc_text
+
+
+def test_default_harness_still_detects_unmaskable_text(capfd):
+    with CanaryHarness(capfd) as harness:
+        leaky.info("prompt=%s", harness.canaries.prompt)
+        found = _leaks(harness)
+    assert {
+        ("prompt", "log records"),
+        ("prompt", "json handler"),
+        ("prompt", "otlp logs"),
+    } <= found

@@ -16,7 +16,6 @@ import pytest
 sys.modules.setdefault("uvicorn", types.ModuleType("uvicorn"))
 
 from open_webui.socket import main as socket_main  # noqa: E402
-from open_webui.test.util.canary_harness import CanaryLeakError  # noqa: E402
 
 SID = "sid-canary"
 
@@ -137,11 +136,6 @@ def test_no_tools_error_path(monkeypatch, canary_harness):
     canary_harness.assert_no_canaries()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=CanaryLeakError,
-    reason="OBS-18: the token-metrics warning formats the exception text",
-)
 def test_metrics_failure_does_not_log_exception_text(monkeypatch, canary_harness):
     from open_webui.models import message_metrics
 

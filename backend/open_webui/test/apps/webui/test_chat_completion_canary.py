@@ -16,7 +16,6 @@ sys.modules.setdefault("uvicorn", types.ModuleType("uvicorn"))
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from open_webui.test.util.canary_harness import CanaryLeakError  # noqa: E402
 from open_webui.utils import middleware  # noqa: E402
 from open_webui.utils.auth import get_verified_user  # noqa: E402
 
@@ -146,12 +145,6 @@ def test_debug_path_runs_debug_logging_without_canaries(chat, canary_harness):
     canary_harness.assert_no_canaries()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=CanaryLeakError,
-    reason="OBS-18: process_chat_payload logs tool/file handler failures with "
-    "log.exception(e), which includes the exception text.",
-)
 def test_tool_handler_exception_keeps_canaries_out_of_sinks(
     chat, canary_harness, monkeypatch
 ):

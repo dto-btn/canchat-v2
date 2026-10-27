@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 
 - **🔒 SQL Parameters in Logs (OBS-15)**: Database engines hide bound SQL parameters, so query values no longer appear in SQL logs or database error messages.
+- **🔒 Exception Text in Logs (OBS-18)**: Logged errors and tracebacks keep the exception type and code locations but no longer include exception messages, which could repeat prompts, request bodies, tool arguments or credentials. URL query strings, `Authorization`/`Bearer` values, JWT-shaped strings, API keys and configured secret values are masked in every stdout and OTLP log record, and logging failures no longer print the log record to stderr. Configuration updates no longer log the new value.
 
 ### Fixed
 

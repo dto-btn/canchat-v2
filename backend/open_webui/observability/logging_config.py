@@ -3,7 +3,8 @@
 One root stdout handler writes JSON (``LOG_FORMAT=json``) or text
 (``LOG_FORMAT=text``). When OTLP export is enabled, a second root handler sends
 the same records to the logger provider. Both handlers share one filter chain:
-a per-logger rate limit and log context resolution. Standalone entrypoints
+a per-logger rate limit, log context resolution and source redaction (no
+exception messages, credential-shaped values masked; see ``redaction``). Standalone entrypoints
 (MCP subprocess servers, ``backend/scripts``) keep their own bootstrap: if the
 root logger already has handlers this module did not install, they are kept.
 """
@@ -19,7 +20,6 @@ import re
 import sys
 import threading
 import time
-import traceback
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Callable, Mapping
@@ -32,6 +32,12 @@ from opentelemetry.instrumentation.logging.handler import std_to_otel
 
 from open_webui.observability.context import LOG_CONTEXT_VARS
 from open_webui.observability.providers import initialize_providers
+from open_webui.observability.redaction import (
+    RedactionFilter,
+    SafeHandleErrorMixin,
+    exception_fields,
+    format_exception_safe,
+)
 
 LOG_LEVELS = ("CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG")
 DEFAULT_RATE_LIMIT = "100/10s"
@@ -129,13 +135,9 @@ def record_attributes(record: logging.LogRecord) -> dict[str, object]:
         value = record.__dict__.get(name)
         if _present(value):
             attributes[name] = value
-    if record.exc_info and record.exc_info[0] is not None:
-        exc_type, exc_value, exc_tb = record.exc_info
-        attributes["exception.type"] = exc_type.__name__
-        attributes["exception.message"] = str(exc_value)
-        attributes["exception.stacktrace"] = "".join(
-            traceback.format_exception(exc_type, exc_value, exc_tb)
-        )
+    # Exception messages are never emitted: they can repeat prompts, URLs or
+    # tool arguments. The stack trace keeps frames and exception types.
+    attributes.update(exception_fields(record))
     attributes["source"] = f"{record.module}:{record.lineno}"
     return attributes
 
@@ -194,6 +196,9 @@ class TextFormatter(logging.Formatter):
 
     def __init__(self) -> None:
         super().__init__(logging.BASIC_FORMAT)
+
+    def formatException(self, ei) -> str:  # noqa: N802
+        return format_exception_safe(ei[1]).rstrip("\n") if ei[1] else ""
 
     def format(self, record: logging.LogRecord) -> str:
         formatter = _TEXT_FORMATTERS.get(record.name)
@@ -326,14 +331,21 @@ class _ExcludeLoggersFilter(logging.Filter):
         )
 
 
-class ContractOTLPHandler(_OTelLoggingHandler):
+class ContractOTLPHandler(SafeHandleErrorMixin, _OTelLoggingHandler):
     """OTLP log handler that exports only the log record contract fields."""
 
     def _get_attributes(self, record: logging.LogRecord) -> dict[str, object]:
         return record_attributes(record)
 
+    def emit(self, record: logging.LogRecord) -> None:
+        # The SDK handler lets translation/export errors reach the caller.
+        try:
+            super().emit(record)
+        except Exception:
+            self.handleError(record)
 
-class _StdoutHandler(logging.StreamHandler):
+
+class _StdoutHandler(SafeHandleErrorMixin, logging.StreamHandler):
     """Writes to the current ``sys.stdout``, even if it is replaced later."""
 
     def __init__(self) -> None:
@@ -431,7 +443,11 @@ def configure_logging(
             if settings.rate_limit
             else None
         )
-        filter_chain = [f for f in (rate_limit, LogContextFilter()) if f is not None]
+        filter_chain = [
+            f
+            for f in (rate_limit, LogContextFilter(), RedactionFilter())
+            if f is not None
+        ]
 
         stdout_handler = _StdoutHandler()
         stdout_handler.setFormatter(

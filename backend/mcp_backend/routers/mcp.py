@@ -32,7 +32,7 @@ async def create_mcp_client(url: str, headers: Optional[Dict] = None):
         client = Client(url)
         return client
     except Exception as e:
-        log.exception(f"Failed to create MCP client for {url}: {e}")
+        log.exception(f"Failed to create MCP client for {url}: {type(e).__name__}")
         raise HTTPException(
             status_code=400,
             detail=f"MCP: Unable to connect to server at {url}. Please check the URL and try again.",
@@ -115,7 +115,7 @@ async def verify_connection(
                     "message": "FastMCP manager not available",
                 }
         except Exception as e:
-            log.exception(f"FastMCP manager verification failed: {e}")
+            log.exception(f"FastMCP manager verification failed: {type(e).__name__}")
             return {
                 "status": "failed",
                 "error": str(e),
@@ -137,7 +137,9 @@ async def verify_connection(
             }
 
     except Exception as e:
-        log.exception(f"MCP connection verification failed for {url}: {e}")
+        log.exception(
+            f"MCP connection verification failed for {url}: {type(e).__name__}"
+        )
         return {
             "status": "failed",
             "error": str(e),
@@ -195,7 +197,7 @@ async def get_tools_from_mcp_server(url: str, idx: int, api_config: Dict):
             tools = await client.list_tools()
             return tools
     except Exception as e:
-        log.exception(f"Failed to get tools from MCP server {url}: {e}")
+        log.exception(f"Failed to get tools from MCP server {url}: {type(e).__name__}")
         return []
 
 
@@ -225,7 +227,9 @@ async def get_all_mcp_tools(request: Request) -> Dict[str, List]:
 
             log.info(f"Got {len(crew_tools)} tools from CrewAI singleton adapters")
     except Exception as e:
-        log.exception(f"Error getting tools from CrewAI singleton adapters: {e}")
+        log.exception(
+            f"Error getting tools from CrewAI singleton adapters: {type(e).__name__}"
+        )
 
     # Then, get tools from external MCP servers (if any configured)
     try:
@@ -266,12 +270,12 @@ async def get_all_mcp_tools(request: Request) -> Dict[str, List]:
 
                 except Exception as e:
                     log.exception(
-                        f"Error getting tools from external MCP server {url}: {e}"
+                        f"Error getting tools from external MCP server {url}: {type(e).__name__}"
                     )
                     continue
 
     except Exception as e:
-        log.exception(f"Error getting external MCP tools: {e}")
+        log.exception(f"Error getting external MCP tools: {type(e).__name__}")
 
     return {"tools": all_tools}
 
@@ -318,7 +322,9 @@ async def get_mcp_tools(
             return {"tools": tools_list}
 
         except Exception as e:
-            log.exception(f"Error getting tools from external MCP server {url}: {e}")
+            log.exception(
+                f"Error getting tools from external MCP server {url}: {type(e).__name__}"
+            )
             raise HTTPException(
                 status_code=500,
                 detail=f"Error getting tools from external MCP server: {str(e)}",
@@ -377,7 +383,9 @@ async def call_mcp_tool(
                         log.info(f"Found tool '{clean_tool_name}' on server '{name}'")
                         break
                 except Exception as e:
-                    log.warning(f"Failed to get tools from server {name}: {e}")
+                    log.warning(
+                        f"Failed to get tools from server {name}: {type(e).__name__}"
+                    )
                     continue
 
             if not server_name:
@@ -407,7 +415,7 @@ async def call_mcp_tool(
             raise HTTPException(status_code=500, detail="FastMCP manager not available")
 
     except Exception as e:
-        log.exception(f"Error calling MCP tool {tool_name}: {e}")
+        log.exception(f"Error calling MCP tool {tool_name}: {type(e).__name__}")
         raise HTTPException(status_code=500, detail=f"Error calling MCP tool: {str(e)}")
 
 
@@ -537,7 +545,7 @@ async def restart_builtin_server(
     except HTTPException:
         raise
     except Exception as e:
-        log.exception(f"Error restarting built-in MCP server: {e}")
+        log.exception(f"Error restarting built-in MCP server: {type(e).__name__}")
         raise HTTPException(
             status_code=500, detail=f"Error restarting built-in server: {str(e)}"
         )
@@ -615,7 +623,7 @@ async def get_external_servers(request: Request, user=Depends(get_admin_user)):
 
         return {"servers": server_dicts}
     except Exception as e:
-        log.exception(f"Error getting external MCP servers: {e}")
+        log.exception(f"Error getting external MCP servers: {type(e).__name__}")
         raise HTTPException(
             status_code=500, detail=f"Error getting external servers: {str(e)}"
         )
@@ -697,7 +705,7 @@ async def create_external_server(
                         )
 
             except Exception as e:
-                log.exception(f"Error adding server to MCP manager: {e}")
+                log.exception(f"Error adding server to MCP manager: {type(e).__name__}")
                 # Don't fail the entire operation, just log the warning
 
         return {"server": server, "message": "External MCP server created successfully"}
@@ -705,7 +713,7 @@ async def create_external_server(
     except HTTPException:
         raise
     except Exception as e:
-        log.exception(f"Error creating external MCP server: {e}")
+        log.exception(f"Error creating external MCP server: {type(e).__name__}")
         raise HTTPException(
             status_code=500, detail=f"Error creating external server: {str(e)}"
         )
@@ -730,7 +738,7 @@ async def get_external_server(server_id: str, user=Depends(get_admin_user)):
     except HTTPException:
         raise
     except Exception as e:
-        log.exception(f"Error getting external MCP server: {e}")
+        log.exception(f"Error getting external MCP server: {type(e).__name__}")
         raise HTTPException(
             status_code=500, detail=f"Error getting external server: {str(e)}"
         )
@@ -820,14 +828,16 @@ async def update_external_server(
                     await request.app.state.mcp_manager.stop_server(new_name)
 
             except Exception as e:
-                log.exception(f"Error updating server in MCP manager: {e}")
+                log.exception(
+                    f"Error updating server in MCP manager: {type(e).__name__}"
+                )
 
         return {"server": server, "message": "External MCP server updated successfully"}
 
     except HTTPException:
         raise
     except Exception as e:
-        log.exception(f"Error updating external MCP server: {e}")
+        log.exception(f"Error updating external MCP server: {type(e).__name__}")
         raise HTTPException(
             status_code=500, detail=f"Error updating external server: {str(e)}"
         )
@@ -858,7 +868,9 @@ async def delete_external_server(
                 if server.name in request.app.state.mcp_manager.server_configs:
                     del request.app.state.mcp_manager.server_configs[server.name]
             except Exception as e:
-                log.exception(f"Error removing server from MCP manager: {e}")
+                log.exception(
+                    f"Error removing server from MCP manager: {type(e).__name__}"
+                )
 
         # Delete from database
         success = MCPServers.delete_server_by_id(server_id)
@@ -872,7 +884,7 @@ async def delete_external_server(
     except HTTPException:
         raise
     except Exception as e:
-        log.exception(f"Error deleting external MCP server: {e}")
+        log.exception(f"Error deleting external MCP server: {type(e).__name__}")
         raise HTTPException(
             status_code=500, detail=f"Error deleting external server: {str(e)}"
         )
@@ -933,7 +945,7 @@ async def start_external_server(
     except HTTPException:
         raise
     except Exception as e:
-        log.exception(f"Error starting external MCP server: {e}")
+        log.exception(f"Error starting external MCP server: {type(e).__name__}")
         raise HTTPException(
             status_code=500, detail=f"Error starting external server: {str(e)}"
         )
@@ -976,7 +988,7 @@ async def stop_external_server(
     except HTTPException:
         raise
     except Exception as e:
-        log.exception(f"Error stopping external MCP server: {e}")
+        log.exception(f"Error stopping external MCP server: {type(e).__name__}")
         raise HTTPException(
             status_code=500, detail=f"Error stopping external server: {str(e)}"
         )
@@ -1019,7 +1031,7 @@ async def restart_external_server(
     except HTTPException:
         raise
     except Exception as e:
-        log.exception(f"Error restarting external MCP server: {e}")
+        log.exception(f"Error restarting external MCP server: {type(e).__name__}")
         raise HTTPException(
             status_code=500, detail=f"Error restarting external server: {str(e)}"
         )

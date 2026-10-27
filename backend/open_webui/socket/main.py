@@ -183,26 +183,26 @@ async def periodic_usage_pool_cleanup():
                         await sio.emit("usage", {"models": get_models_in_use()})
 
                 except Exception as e:
-                    log.error(f"Error during usage pool cleanup: {e}")
+                    log.error(f"Error during usage pool cleanup: {type(e).__name__}")
                     # Continue running even if cleanup fails
 
                 await asyncio.sleep(TIMEOUT_DURATION)
 
             except Exception as e:
                 log.error(
-                    f"Error in cleanup loop: {e}. Will retry in {TIMEOUT_DURATION} seconds."
+                    f"Error in cleanup loop: {type(e).__name__}. Will retry in {TIMEOUT_DURATION} seconds."
                 )
                 await asyncio.sleep(TIMEOUT_DURATION)
                 continue
 
     except Exception as e:
-        log.error(f"Fatal error in periodic_usage_pool_cleanup: {e}")
+        log.error(f"Fatal error in periodic_usage_pool_cleanup: {type(e).__name__}")
     finally:
         try:
             await release_func()
             log.debug("Released usage pool cleanup lock")
         except Exception as e:
-            log.error(f"Error releasing cleanup lock:  {e}")
+            log.error(f"Error releasing cleanup lock:  {type(e).__name__}")
 
     log.info("Periodic usage pool cleanup task exited gracefully")
 
@@ -244,7 +244,7 @@ def flush_user_and_session_pools(prune_session_pool: bool = False):
                 connected = bool(sio.manager.is_connected(sid, namespace="/"))
             except Exception as e:
                 log.debug(
-                    f"Unable to resolve Socket.IO connection state for sid={sid}: {e}"
+                    f"Unable to resolve Socket.IO connection state for sid={sid}: {type(e).__name__}"
                 )
                 connected = False
 
@@ -287,7 +287,9 @@ def flush_user_and_session_pools(prune_session_pool: bool = False):
                         pass
                     stats["stale_user_entries_removed"] += 1
             except Exception as e:
-                log.warning(f"Error cleaning USER_POOL entry for user {user_id}: {e}")
+                log.warning(
+                    f"Error cleaning USER_POOL entry for user {user_id}: {type(e).__name__}"
+                )
 
         stats["users_after"] = len(list(USER_POOL.keys()))
         stats["active_sids_detected"] = len(
@@ -332,7 +334,10 @@ def flush_user_and_session_pools(prune_session_pool: bool = False):
         )
 
     except Exception as e:
-        log.error(f"Error during Redis session pool cleanup: {e}", exc_info=True)
+        log.error(
+            f"Error during Redis session pool cleanup: {type(e).__name__}",
+            exc_info=True,
+        )
 
     return stats
 
@@ -449,7 +454,7 @@ async def crew_mcp_query(sid, data):
             import asyncio
             import concurrent.futures
         except ImportError as e:
-            log.error(f"Failed to import CrewMCP dependencies: {e}")
+            log.error(f"Failed to import CrewMCP dependencies: {type(e).__name__}")
             await sio.emit(
                 "crew-mcp-error",
                 {"error": "CrewMCP integration not available", "code": 503},
@@ -537,7 +542,9 @@ async def crew_mcp_query(sid, data):
                     mcp_tool=mcp_process,
                 )
         except Exception as metrics_err:
-            log.warning(f"crew-mcp-query: Failed to log token metrics: {metrics_err}")
+            log.warning(
+                f"crew-mcp-query: Failed to log token metrics: {type(metrics_err).__name__}"
+            )
 
         used_tools = [tool["name"] for tool in tools]
 

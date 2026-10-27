@@ -93,7 +93,7 @@ class QdrantClient:
             if close_method is not None:
                 await self._maybe_await(close_method())
         except Exception as e:
-            log.debug(f"Error closing stale Qdrant client: {type(e).__name__}: {e}")
+            log.debug(f"Error closing stale Qdrant client: {type(e).__name__}")
 
     def _prune_closed_loops(self) -> None:
         """Remove entries for closed event loops. Must be called with _client_lock held.
@@ -288,7 +288,7 @@ class QdrantClient:
             if not await client.collection_exists(collection_name=collection_name):
                 return True
             log.error(
-                f"Error deleting collection {collection_name}: {type(e).__name__}: {e}"
+                f"Error deleting collection {collection_name}: {type(e).__name__}"
             )
             raise
 
@@ -336,7 +336,9 @@ class QdrantClient:
 
             return self._result_to_get_result(points)
         except Exception as e:
-            log.error(f"Error querying Qdrant collection {collection_name}: {e}")
+            log.error(
+                f"Error querying Qdrant collection {collection_name}: {type(e).__name__}"
+            )
             return None
 
     @with_qdrant_client
@@ -402,7 +404,7 @@ class QdrantClient:
             if await client.collection_exists(collection_name=collection_name):
                 return
             log.error(
-                f"Error creating collection {collection_name}: {type(e).__name__}: {e}"
+                f"Error creating collection {collection_name}: {type(e).__name__}"
             )
             raise
 

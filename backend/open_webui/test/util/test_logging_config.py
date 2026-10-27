@@ -37,6 +37,7 @@ from open_webui.observability.logging_config import (
     load_log_settings,
     parse_rate_limit,
 )
+from open_webui.observability.redaction import RedactionFilter
 
 BACKEND_DIR = Path(__file__).resolve().parents[3]
 RESOURCE = {
@@ -176,19 +177,27 @@ def test_json_formatter_emits_all_contract_fields():
 
 
 def test_json_formatter_exception_fields():
+    detail = "bad value"
     try:
-        raise ValueError("bad value")
+        raise ValueError(detail)
     except ValueError:
         fields = _json(_record("failed", (), logging.ERROR, exc_info=sys.exc_info()))
 
     assert fields["severity_text"] == "ERROR"
     assert fields["severity_number"] == 17
     assert fields["exception.type"] == "ValueError"
-    assert fields["exception.message"] == "bad value"
+    # OBS-18: exception messages are never emitted, even without the filter.
+    assert "exception.message" not in fields
+    assert "bad value" not in json.dumps(fields)
     assert fields["exception.stacktrace"].startswith(
         "Traceback (most recent call last)"
     )
-    assert fields["exception.stacktrace"].rstrip().endswith("ValueError: bad value")
+    assert "test_json_formatter_exception_fields" in fields["exception.stacktrace"]
+    assert (
+        fields["exception.stacktrace"]
+        .rstrip()
+        .endswith("ValueError: [message omitted]")
+    )
 
 
 def test_json_formatter_omits_missing_context():
@@ -601,6 +610,35 @@ def test_otlp_handler_shares_filter_chain_and_fields(
     assert record.severity_text == json_lines[0]["severity_text"] == "WARN"
     assert record.severity_number.value == json_lines[0]["severity_number"]
     assert "CANARY" not in json.dumps(attributes)
+
+
+def test_stdout_and_otlp_handlers_redact_messages_and_exceptions(
+    isolated_logging, monkeypatch, otlp_bundle
+):
+    stream = _capture_stdout(monkeypatch)
+    _configure("INFO", SOURCE_LEVELS, {"LOG_FORMAT": "json"})
+    for handler in isolated_logging.handlers:
+        assert any(isinstance(f, RedactionFilter) for f in handler.filters)
+
+    secret = "provider echoed the prompt"
+    try:
+        raise RuntimeError(secret)
+    except RuntimeError:
+        logging.getLogger("open_webui.redact").exception(
+            "call to %s failed", "https://api.example/v1?api-key=abc123456"
+        )
+
+    line = json.loads(stream.getvalue())
+    record = otlp_bundle.get_finished_logs()[0].log_record
+    attributes = dict(record.attributes)
+    expected_body = "call to https://api.example/v1?[REDACTED] failed"
+    assert line["body"] == record.body == expected_body
+    for fields in (line, attributes):
+        assert fields["exception.type"] == "RuntimeError"
+        assert "exception.message" not in fields
+        assert "test_stdout_and_otlp_handlers_redact" in fields["exception.stacktrace"]
+        assert secret not in json.dumps(fields)
+        assert "abc123456" not in json.dumps(fields)
 
 
 def test_shutdown_logging_detaches_otlp_handler(

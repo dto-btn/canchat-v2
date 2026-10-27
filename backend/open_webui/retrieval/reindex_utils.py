@@ -75,7 +75,9 @@ async def attempt_reindex_and_retry(
                     )
                     return result.model_dump() if result else None
                 except Exception as retry_e:
-                    log.error(f"Query failed even after re-indexing: {retry_e}")
+                    log.error(
+                        f"Query failed even after re-indexing: {type(retry_e).__name__}"
+                    )
                     return None
             else:
                 log.error(f"Re-indexing failed for {file_id}")
@@ -88,7 +90,7 @@ async def attempt_reindex_and_retry(
             return None
 
     except Exception as e:
-        log.error(f"Re-indexing failed for {file_id}: {e}")
+        log.error(f"Re-indexing failed for {file_id}: {type(e).__name__}")
         return None
 
 
@@ -135,9 +137,9 @@ async def handle_collection_query_with_reindex(
         # Reduce log level for connection errors since they often self-recover
         if "transport" in error_str.lower() or "closed" in error_str.lower():
             log.warning(
-                f"Transient connection error when querying collection (functionality still works): {e}"
+                f"Transient connection error when querying collection (functionality still works): {type(e).__name__}"
             )
         else:
-            log.exception(f"Error when querying the collection: {e}")
+            log.exception(f"Error when querying the collection: {type(e).__name__}")
 
     return None

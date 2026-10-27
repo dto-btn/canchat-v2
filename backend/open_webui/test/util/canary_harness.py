@@ -38,6 +38,13 @@ What is captured while the harness is active:
     Records exported through the production :class:`ContractOTLPHandler` to an
     in-memory exporter, plus anything else emitted through the process-wide
     OTel logger provider.
+
+Source filters (OBS-18): like the production stdout and OTLP handlers, every
+handler the harness installs first runs the production :class:`RedactionFilter`.
+It redacts the record in place, so the ``log records`` sink holds exactly what
+any production handler receives: no exception messages and masked
+credential-shaped values. Extra fields are still checked in full. Pass
+``source_filters=False`` to see raw records (the harness self-tests do this).
 ``spans``
     Every span ended on the process-wide OTel tracer provider (name,
     attributes, events including exception events, status and resource),
@@ -93,6 +100,7 @@ from open_webui.observability.logging_config import (
     LogContextFilter,
 )
 from open_webui.observability.providers import initialize_providers
+from open_webui.observability.redaction import RedactionFilter
 
 FRAGMENT_LENGTH = 12
 SINK_NAMES = (
@@ -323,8 +331,15 @@ def _sdk_provider(provider, kind: type, signal: str):
 class CanaryHarness:
     """Captures every operational sink and checks it for canary values."""
 
-    def __init__(self, capfd, canaries: Canaries | None = None) -> None:
+    def __init__(
+        self,
+        capfd,
+        canaries: Canaries | None = None,
+        *,
+        source_filters: bool = True,
+    ) -> None:
         self.canaries = canaries or Canaries()
+        self._source_filters = source_filters
         self._capfd = capfd
         self._stdout: list[str] = []
         self._stderr: list[str] = []
@@ -425,10 +440,17 @@ class CanaryHarness:
         json_handler.addFilter(LogContextFilter())
         otlp_handler = ContractOTLPHandler(logger_provider=self._otlp_provider)
         otlp_handler.addFilter(LogContextFilter())
+        if self._source_filters:
+            # One shared instance, as in production; it redacts in place.
+            redaction = RedactionFilter()
+            for handler in (self._records, json_handler, otlp_handler):
+                handler.addFilter(redaction)
 
         root = logging.getLogger()
-        for handler in (self._records, json_handler, otlp_handler):
-            self._add_handler(root, handler)
+        # First in line, so they see each record before any handler that the
+        # process logging configuration installed earlier.
+        for index, handler in enumerate((self._records, json_handler, otlp_handler)):
+            self._add_handler(root, handler, index=index)
         for name, logger in list(logging.root.manager.loggerDict.items()):
             if (
                 isinstance(logger, logging.Logger)
@@ -437,8 +459,16 @@ class CanaryHarness:
             ):
                 self._add_handler(logger, self._records)
 
-    def _add_handler(self, logger: logging.Logger, handler: logging.Handler) -> None:
-        logger.addHandler(handler)
+    def _add_handler(
+        self,
+        logger: logging.Logger,
+        handler: logging.Handler,
+        index: int | None = None,
+    ) -> None:
+        if index is None:
+            logger.addHandler(handler)
+        elif handler not in logger.handlers:
+            logger.handlers.insert(index, handler)
         self._installed.append((logger, handler))
 
     # ── public API ─────────────────────────────────────────────────────────

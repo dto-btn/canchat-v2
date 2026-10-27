@@ -25,6 +25,7 @@ from open_webui.env import (
 from open_webui.internal.db import get_db
 from open_webui.metrics.service import MetricsDefinition
 from open_webui.models.base import Base
+from open_webui.observability.redaction import register_secret_source
 
 ####################################
 # Config helpers
@@ -244,6 +245,12 @@ def get_config_value(config_path: str):
 
 PERSISTENT_CONFIG_REGISTRY = []
 
+# Secret settings (API keys, client secrets) can be changed at runtime, so
+# the log redaction reads their current values instead of a startup copy.
+register_secret_source(
+    lambda: [(item.env_name, item.value) for item in PERSISTENT_CONFIG_REGISTRY]
+)
+
 
 def save_config(config):
     global CONFIG_DATA
@@ -298,7 +305,7 @@ class PersistentConfig(Generic[T]):
         new_value = get_config_value(self.config_path)
         if new_value is not None:
             self.value = new_value
-            log.info(f"Updated {self.env_name} to new value {self.value}")
+            log.info(f"Updated {self.env_name} from the database")
 
     def save(self):
         log.info(f"Saving '{self.env_name}' to the database")

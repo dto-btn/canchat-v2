@@ -162,7 +162,7 @@ def fetch_wikipedia_title_and_excerpt(url: str) -> tuple[str, str, int | None]:
             return "", "", response.status_code
 
     except Exception as e:
-        log.warning(f"Error fetching Wikipedia summary for {url}: {e}")
+        log.warning(f"Error fetching Wikipedia summary for {url}: {type(e).__name__}")
         return "", "", None
 
 
@@ -178,7 +178,9 @@ def detect_query_language(query: str) -> str:
     try:
         return get_wiki_search_grounder()._detect_language(query)
     except Exception as e:
-        log.warning(f"Language detection failed, defaulting to English: {e}")
+        log.warning(
+            f"Language detection failed, defaulting to English: {type(e).__name__}"
+        )
         return "en"
 
 
@@ -281,7 +283,11 @@ async def chat_completion_filter_functions_handler(request, body, model, extra_p
                             )
                         )
                     except Exception as e:
-                        print(e)
+                        log.warning(
+                            "Failed to load user valves for filter %s: %s",
+                            filter_id,
+                            type(e).__name__,
+                        )
 
                 if inspect.iscoroutinefunction(inlet):
                     body = await inlet(**params)
@@ -289,7 +295,7 @@ async def chat_completion_filter_functions_handler(request, body, model, extra_p
                     body = inlet(**params)
 
             except Exception as e:
-                print(f"Error: {e}")
+                log.error("Filter %s inlet failed: %s", filter_id, type(e).__name__)
                 raise e
 
     if skip_files and "files" in body.get("metadata", {}):
@@ -588,10 +594,10 @@ async def chat_completion_tools_handler(
                         skip_files = True
 
         except Exception as e:
-            log.exception(f"Error: {e}")
+            log.exception(f"Error: {type(e).__name__}")
             content = None
     except Exception as e:
-        log.exception(f"Error: {e}")
+        log.exception(f"Error: {type(e).__name__}")
         content = None
 
     log.debug(
@@ -653,7 +659,7 @@ async def chat_web_search_handler(
             queries = [response]
 
     except Exception as e:
-        log.exception(e)
+        log.exception("Web search query generation failed: %s", type(e).__name__)
         queries = [user_message]
 
     if len(queries) == 0:
@@ -737,7 +743,7 @@ async def chat_web_search_handler(
             )
             terminal_status_sent = True
     except Exception as e:
-        log.exception(e)
+        log.exception("Web search failed: %s", type(e).__name__)
         await event_emitter(
             {
                 "type": "status",
@@ -1071,7 +1077,7 @@ async def chat_wiki_grounding_handler(
             )
 
     except Exception as e:
-        log.error(f"Error in wiki grounding handler: {e}")
+        log.error(f"Error in wiki grounding handler: {type(e).__name__}")
         # Don't emit error status as this shouldn't break the chat flow
         pass
 
@@ -1122,7 +1128,7 @@ async def chat_image_generation_handler(
                 prompt = user_message
 
         except Exception as e:
-            log.exception(e)
+            log.exception("Image prompt generation failed: %s", type(e).__name__)
             prompt = user_message
 
     system_message_content = ""
@@ -1151,7 +1157,7 @@ async def chat_image_generation_handler(
 
         system_message_content = "<context>User is shown the generated image, tell the user that the image has been generated</context>"
     except Exception as e:
-        log.exception(e)
+        log.exception("Image generation failed: %s", type(e).__name__)
         await __event_emitter__(
             {
                 "type": "status",
@@ -1222,7 +1228,7 @@ async def chat_completion_files_handler(
                 full_context=request.app.state.config.RAG_FULL_CONTEXT,
             )
         except Exception as e:
-            log.exception(e)
+            log.exception("Retrieval of chat file context failed: %s", type(e).__name__)
 
         log.debug(
             "[chat_completion_file_handler] rag contexts: %d sources", len(sources)
@@ -1438,13 +1444,13 @@ async def process_chat_payload(request, form_data, metadata, user, model):
         )
         sources.extend(flags.get("sources", []))
     except Exception as e:
-        log.exception(e)
+        log.exception("Chat tools handler failed: %s", type(e).__name__)
 
     try:
         form_data, flags = await chat_completion_files_handler(request, form_data, user)
         sources.extend(flags.get("sources", []))
     except Exception as e:
-        log.exception(e)
+        log.exception("Chat files handler failed: %s", type(e).__name__)
 
     # If context is not empty, insert it into the messages
     if len(sources) > 0:

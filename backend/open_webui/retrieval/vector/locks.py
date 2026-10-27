@@ -197,7 +197,7 @@ class AsyncRedisLock:
                         )
                     log.error(
                         f"[LOCK:HEARTBEAT_ERROR] Error extending lock TTL: {self.lock_name}, "
-                        f"error={type(e).__name__}: {e}"
+                        f"error={type(e).__name__}"
                     )
         except asyncio.CancelledError:
             log.debug(
@@ -205,7 +205,7 @@ class AsyncRedisLock:
             )
         except Exception as e:
             log.error(
-                f"[LOCK:HEARTBEAT_FATAL] Fatal error in heartbeat: {type(e).__name__}: {e}"
+                f"[LOCK:HEARTBEAT_FATAL] Fatal error in heartbeat: {type(e).__name__}"
             )
 
     def _start_heartbeat(self):
@@ -271,7 +271,7 @@ class AsyncRedisLock:
                 return False
             except Exception as e:
                 log.error(
-                    f"Exception acquiring local lock {self.lock_name}: {type(e).__name__}: {e}"
+                    f"Exception acquiring local lock {self.lock_name}: {type(e).__name__}"
                 )
                 return False
 
@@ -339,7 +339,7 @@ class AsyncRedisLock:
                         e, f"acquire:{self.lock_name}"
                     )
                 log.error(
-                    f"Exception acquiring Redis lock {self.lock_name}: {type(e).__name__}: {e}"
+                    f"Exception acquiring Redis lock {self.lock_name}: {type(e).__name__}"
                 )
                 return False
 
@@ -418,7 +418,7 @@ class AsyncRedisLock:
                     e, f"release:{self.lock_name}"
                 )
             log.error(
-                f"Exception releasing Redis lock {self.lock_name}: {type(e).__name__}: {e}"
+                f"Exception releasing Redis lock {self.lock_name}: {type(e).__name__}"
             )
             return False
 
@@ -453,7 +453,7 @@ class AsyncRedisLock:
         except Exception as e:
             if isinstance(e, RedisError):
                 await self.manager._mark_client_unhealthy(e, f"extend:{self.lock_name}")
-            log.error(f"Error extending lock TTL: {type(e).__name__}: {e}")
+            log.error(f"Error extending lock TTL: {type(e).__name__}")
             return False
 
     def get_metrics(self) -> Dict[str, Any]:
@@ -587,7 +587,7 @@ class RedisCollectionLockManager:
                 await self._maybe_await(close_method())
         except Exception as e:
             log.debug(
-                f"[LOCK:CLOSE_CLIENT_ERROR] Error closing Redis client: {type(e).__name__}: {e}"
+                f"[LOCK:CLOSE_CLIENT_ERROR] Error closing Redis client: {type(e).__name__}"
             )
 
     def _close_client_in_loop(
@@ -623,7 +623,7 @@ class RedisCollectionLockManager:
         except Exception as e:
             log.debug(
                 f"[LOCK:CLOSE_CLIENT_SCHEDULE_ERROR] Failed to schedule stale client close: "
-                f"{type(e).__name__}: {e}"
+                f"{type(e).__name__}"
             )
             return False
 
@@ -696,7 +696,9 @@ class RedisCollectionLockManager:
                 if attempt < retries - 1:
                     await asyncio.sleep(delay)
                 else:
-                    log.debug(f"[LOCK:INIT_PENDING] Redis not ready yet: {e}")
+                    log.debug(
+                        f"[LOCK:INIT_PENDING] Redis not ready yet: {type(e).__name__}"
+                    )
                     with self._client_state_lock:
                         self._initialized = bool(self._redis_clients_by_loop)
 
@@ -881,7 +883,7 @@ class RedisCollectionLockManager:
             except Exception as e:
                 log.error(
                     f"[LOCK:CONTEXT_ERROR] Error releasing lock in context manager: "
-                    f"collection={collection_name}, error={type(e).__name__}: {e}"
+                    f"collection={collection_name}, error={type(e).__name__}"
                 )
 
     async def health_check(self, retries: int = 5) -> bool:
@@ -929,7 +931,7 @@ class RedisCollectionLockManager:
                 await self._mark_client_unhealthy(e, "health_check")
                 log.warning(
                     f"[LOCK:HEALTH_RETRY] Redis health check attempt {attempt + 1}/{retries} failed "
-                    f"(consecutive failures: {self.consecutive_failures}): {type(e).__name__}: {e}"
+                    f"(consecutive failures: {self.consecutive_failures}): {type(e).__name__}"
                 )
 
             if attempt < retries - 1:

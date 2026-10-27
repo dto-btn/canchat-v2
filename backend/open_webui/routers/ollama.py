@@ -76,7 +76,7 @@ async def send_get_request(url, key=None):
                 return await response.json()
     except Exception as e:
         # Handle connection error here
-        log.error(f"Connection error: {e}")
+        log.error(f"Connection error: {type(e).__name__}")
         return None
 
 
@@ -95,7 +95,7 @@ async def send_post_request_json(url, payload, key=None):
             ) as response:
                 return await response.json()
     except Exception as e:
-        log.error(f"Connection error: {e}")
+        log.error(f"Connection error: {type(e).__name__}")
         return None
 
 
@@ -235,12 +235,12 @@ async def verify_connection(
                 data = await r.json()
                 return data
         except aiohttp.ClientError as e:
-            log.exception(f"Client error: {str(e)}")
+            log.exception(f"Client error: {type(e).__name__}")
             raise HTTPException(
                 status_code=500, detail="Open WebUI: Server Connection Error"
             )
         except Exception as e:
-            log.exception(f"Unexpected error: {e}")
+            log.exception(f"Unexpected error: {type(e).__name__}")
             error_detail = f"Unexpected error: {str(e)}"
             raise HTTPException(status_code=500, detail=error_detail)
 

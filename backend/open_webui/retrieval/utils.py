@@ -94,7 +94,8 @@ async def query_doc(
 
         return result
     except Exception as e:
-        print(e)
+        # Vector DB errors can include the query vector, filters or the client URL.
+        log.error("query_doc failed: %s", type(e).__name__)
         raise e
 
 
@@ -107,7 +108,7 @@ async def get_doc(collection_name: str, user: UserModel = None):
 
         return result
     except Exception as e:
-        print(e)
+        log.error("get_doc failed: %s", type(e).__name__)
         raise e
 
 
@@ -254,7 +255,7 @@ async def get_all_items_from_collections(collection_names: list[str]) -> dict:
                 if result is not None:
                     results.append(result.model_dump())
             except Exception as e:
-                log.exception(f"Error when querying the collection: {e}")
+                log.exception(f"Error when querying the collection: {type(e).__name__}")
         else:
             pass
 
@@ -320,7 +321,9 @@ async def query_collection_with_hybrid_search(
                 )
                 results.append(result)
         except Exception as e:
-            log.exception(f"Error when querying the collection with hybrid_search: {e}")
+            log.exception(
+                f"Error when querying the collection with hybrid_search: {type(e).__name__}"
+            )
             error = True
 
     if error:
@@ -579,7 +582,7 @@ def get_model_path(model: str, update_model: bool = False):
         log.debug(f"model_repo_path: {model_repo_path}")
         return model_repo_path
     except Exception as e:
-        log.exception(f"Cannot determine model snapshot path: {e}")
+        log.exception(f"Cannot determine model snapshot path: {type(e).__name__}")
         return model
 
 
@@ -602,8 +605,18 @@ def generate_openai_batch_embeddings(
         else:
             raise "Something went wrong :/"
     except Exception as e:
-        print(e)
+        # requests errors include the full URL; provider bodies can echo input.
+        log.error(
+            "OpenAI batch embedding request failed: %s (status=%s)",
+            type(e).__name__,
+            _response_status(e),
+        )
         return None
+
+
+def _response_status(error: Exception) -> Optional[int]:
+    response = getattr(error, "response", None)
+    return getattr(response, "status_code", None)
 
 
 def generate_ollama_batch_embeddings(
@@ -626,7 +639,11 @@ def generate_ollama_batch_embeddings(
         else:
             raise "Something went wrong :/"
     except Exception as e:
-        print(e)
+        log.error(
+            "Ollama batch embedding request failed: %s (status=%s)",
+            type(e).__name__,
+            _response_status(e),
+        )
         return None
 
 

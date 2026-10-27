@@ -90,7 +90,7 @@ async def get_graph_access_token_for_user(request: Request) -> Optional[str]:
 try:
     from mcp_backend.integration.crew_mcp_integration import CrewMCPManager
 except ImportError as e:
-    logging.error(f"Failed to import CrewMCPManager: {e}")
+    logging.error(f"Failed to import CrewMCPManager: {type(e).__name__}")
     CrewMCPManager = None
 
 log = logging.getLogger(__name__)
@@ -131,7 +131,9 @@ async def _setup_event_emitter(request: CrewMCPQuery, user):
             }
         )
     except Exception as e:
-        log.warning(f"Could not set up event emitter for chat {request.chat_id}: {e}")
+        log.warning(
+            f"Could not set up event emitter for chat {request.chat_id}: {type(e).__name__}"
+        )
         return None
 
 
@@ -236,7 +238,9 @@ async def _emit_event(event_emitter, event_type: str, data, chat_id: str):
         await event_emitter({"type": event_type, "data": data})
         log.info(f"Emitted {event_type} event for chat {chat_id}")
     except Exception as e:
-        log.error(f"Failed to emit {event_type} event for chat {chat_id}: {e}")
+        log.error(
+            f"Failed to emit {event_type} event for chat {chat_id}: {type(e).__name__}"
+        )
 
 
 async def generate_title_and_tags_background(
@@ -308,7 +312,7 @@ if CrewMCPManager:
         # Initialize MCP adapters once at startup
         crew_mcp_manager.initialize_mcp_adapters()
     except Exception as e:
-        logging.error(f"Failed to initialize CrewMCPManager: {e}")
+        logging.error(f"Failed to initialize CrewMCPManager: {type(e).__name__}")
 
 
 @router.get("/tools")
@@ -324,7 +328,7 @@ async def get_mcp_tools(user=Depends(get_verified_user)) -> MCPToolsResponse:
         tools = crew_mcp_manager.get_available_tools()
         return MCPToolsResponse(tools=tools, count=len(tools))
     except Exception as e:
-        log.exception(f"Error getting MCP tools: {e}")
+        log.exception(f"Error getting MCP tools: {type(e).__name__}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -410,7 +414,9 @@ async def run_crew_query(
                     f"Logged CrewAI token usage: {token_usage} for MCP process: {mcp_process}, model: {crewai_model}"
                 )
             except Exception as metric_err:
-                log.warning(f"Failed to log CrewAI token usage: {metric_err}")
+                log.warning(
+                    f"Failed to log CrewAI token usage: {type(metric_err).__name__}"
+                )
 
         log.info(
             f"Crew execution finished. Result type: {type(result)}, length: {len(result) if result else 0}"
@@ -469,7 +475,7 @@ async def run_crew_query(
         return response
 
     except Exception as e:
-        log.exception(f"Error running CrewAI query: {e}")
+        log.exception(f"Error running CrewAI query: {type(e).__name__}")
         error_response = CrewMCPResponse(
             result="", tools_used=[], success=False, error=str(e)
         )
@@ -556,14 +562,16 @@ async def run_multi_server_crew_query(
                     f"Logged CrewAI token usage (multi): {token_usage} for MCP process: {mcp_process}"
                 )
             except Exception as metric_err:
-                log.warning(f"Failed to log CrewAI token usage (multi): {metric_err}")
+                log.warning(
+                    f"Failed to log CrewAI token usage (multi): {type(metric_err).__name__}"
+                )
 
         return CrewMCPResponse(
             result=result, tools_used=[tool["name"] for tool in tools], success=True
         )
 
     except Exception as e:
-        log.exception(f"Error running CrewAI multi-server query: {e}")
+        log.exception(f"Error running CrewAI multi-server query: {type(e).__name__}")
         return CrewMCPResponse(result="", tools_used=[], success=False, error=str(e))
 
 
@@ -602,7 +610,7 @@ async def get_crew_mcp_status(user=Depends(get_verified_user)) -> dict:
             "multi_server_support": True,
         }
     except Exception as e:
-        log.exception(f"Error getting CrewAI MCP status: {e}")
+        log.exception(f"Error getting CrewAI MCP status: {type(e).__name__}")
         return {
             "status": "error",
             "error": str(e),
