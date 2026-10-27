@@ -30,6 +30,15 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
+      - name: Test Frontend
+        run: npm run test:frontend -- --run
+
+      - name: Install accessibility test browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Test accessibility styles
+        run: npx playwright test playwright/tests/e2e/accessibility --project=chromium-en --no-deps --reporter=list
+
       - name: Format Frontend
         run: npm run format
 

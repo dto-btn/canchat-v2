@@ -166,7 +166,7 @@
 												: `${WEBUI_BASE_URL}/static/favicon.png`)}
 										class=" size-9 sm:size-10 rounded-full border-[1px] border-gray-200 dark:border-none"
 										alt={$i18n.t('Select {{model}}', {
-											model: getModelName(model) ?? selectedModels[modelIdx]
+											model: getModelName(model) || selectedModels[modelIdx]
 										})}
 										draggable="false"
 									/>

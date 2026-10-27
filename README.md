@@ -153,6 +153,25 @@ npm run dev
 
 Keep this terminal running; it's serving your frontend!
 
+#### 2.4 Frontend Accessibility Tests
+
+Run the frontend unit and server-rendered component tests:
+
+```bash
+npm run test:frontend -- --run
+```
+
+Run the standalone accessibility browser tests (no backend or signed-in session required):
+
+```bash
+npx playwright install chromium
+npx playwright test playwright/tests/e2e/accessibility --project=chromium-en --no-deps --reporter=list
+```
+
+The frontend CI workflow runs both suites. Browser coverage includes rendered navigation
+structure, image alternatives, shared text/placeholder contrast, keyboard focus indicators,
+and border styling. These focused checks do not replace a full-page accessibility audit.
+
 ---
 
 #### 3. Backend Setup (API and Server)

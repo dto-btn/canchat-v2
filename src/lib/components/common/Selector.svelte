@@ -44,7 +44,7 @@
 >
 	<Select.Trigger class="relative w-full" aria-label={placeholder}>
 		<Select.Value
-			class="inline-flex h-input px-0.5 w-full outline-none bg-transparent truncate text-lg font-semibold placeholder-gray-400  focus:outline-none"
+			class="inline-flex h-input px-0.5 w-full outline-none bg-transparent truncate text-lg font-semibold placeholder-gray-400"
 			{placeholder}
 		/>
 		<ChevronDown className="absolute end-2 top-1/2 -translate-y-[45%] size-3.5" strokeWidth="2.5" />
