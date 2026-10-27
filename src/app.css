@@ -202,52 +202,32 @@ select {
 }
 
 html {
-	--placeholder-color: #595959;
-	--form-control-border-color: #707070;
+	--text-muted-color: #595959;
+	--placeholder-color: var(--text-muted-color);
+	--focus-outline-color: #005ea8;
 }
 
 html.dark {
 	--placeholder-color: #b4b4b4;
-	--form-control-border-color: #8f8f8f;
+	--focus-outline-color: #80c7ff;
 }
 
-html:not(.dark) .text-gray-300,
-html:not(.dark) .text-gray-400,
-html:not(.dark) .text-gray-500,
-html:not(.dark) .text-gray-600 {
-	color: #595959;
+:where(html:not(.dark)) .text-gray-300,
+:where(html:not(.dark)) .text-gray-400,
+:where(html:not(.dark)) .text-gray-500 {
+	color: var(--text-muted-color);
 }
 
-html:not(.dark) ::placeholder {
+::placeholder,
+input::placeholder,
+textarea::placeholder {
 	color: var(--placeholder-color);
 	opacity: 1;
 }
 
-html.dark
-	input:not([type='checkbox']):not([type='radio']):not([type='range']):not(
-		[type='file']
-	)::placeholder,
-html.dark textarea::placeholder,
-html.dark select::placeholder {
-	color: var(--placeholder-color);
-	opacity: 1;
-}
-
-input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not(
-		[type='hidden']
-	):not([type='button']):not([type='submit']):not([type='reset']):not([type='color']),
-textarea,
-select {
-	border: 1px solid var(--form-control-border-color);
-}
-
-html :focus-visible {
-	outline: 2px solid #005ea8;
+html :focus-visible:not(:where([class*='focus:ring-'], [class*='focus-visible:ring-'])) {
+	outline: 2px solid var(--focus-outline-color);
 	outline-offset: 2px;
-}
-
-html.dark :focus-visible {
-	outline-color: #80c7ff;
 }
 
 input::-webkit-outer-spin-button,

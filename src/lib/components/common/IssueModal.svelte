@@ -115,9 +115,7 @@
 		</h3>
 		<button
 			on:click={() => !loading && (show = false)}
-			class="text-gray-400 {loading
-				? 'opacity-50 cursor-not-allowed'
-				: 'hover:text-gray-500'} focus:outline-none"
+			class="text-gray-400 {loading ? 'opacity-50 cursor-not-allowed' : 'hover:text-gray-500'}"
 			disabled={loading}
 		>
 			<span class="sr-only">{$i18n.t('Close')}</span>

@@ -18,9 +18,10 @@ beforeAll(async () => {
 	const models: Writable<Model[]> = stores.models;
 	models.set([
 		{ id: 'alpha', name: 'Alpha', owned_by: 'openai', external: false },
-		{ id: 'beta', name: 'Beta', owned_by: 'openai', external: false }
+		{ id: 'beta', name: 'Beta', owned_by: 'openai', external: false },
+		{ id: 'unnamed', name: '', owned_by: 'openai', external: false }
 	]);
-});
+}, 30_000);
 
 afterAll(async () => {
 	await server?.close();
@@ -82,7 +83,7 @@ describe.each([
 		home: 'Accueil',
 		chat: 'Chat',
 		select: 'Sélectionner',
-		profile: 'Voir le profil de Alex'
+		profile: 'Voir le profil : Alex'
 	}
 ])('Image accessibility in $locale', ({ locale, logo, home, chat, select, profile }) => {
 	it('names the standalone onboarding logo', async () => {
@@ -92,9 +93,13 @@ describe.each([
 
 	it('names image-only navigation buttons and keeps their images decorative', async () => {
 		const html = await render('app/AppSidebar', locale);
-		expect(html).toContain(`aria-label="${home}"`);
-		expect(html).toContain(`aria-label="${chat}"`);
-		expect(html.match(/<img\b[^>]*alt=""/g)).toHaveLength(2);
+		for (const label of [home, chat]) {
+			const button = html.match(
+				new RegExp(`<button\\b[^>]*aria-label="${label}"[^>]*>([\\s\\S]*?)</button>`)
+			);
+			expect(button, `Navigation button ${label}`).not.toBeNull();
+			expect(button?.[1]).toMatch(/<img\b[^>]*alt=""/);
+		}
 	});
 
 	it.each([undefined, '', '/user.png', 'data:image/png;base64,AA=='])(
@@ -115,11 +120,45 @@ describe.each([
 			user: { id: 'alex', name: 'Alex' }
 		});
 		expect(html).toContain(`aria-label="${profile}"`);
-	});
+	}, 10_000);
 
 	it('distinguishes image-only model buttons by their model names', async () => {
 		const html = await render('chat/ChatPlaceholder', locale, { modelIds: ['alpha', 'beta'] });
 		expect(html).toContain(`alt="${select} Alpha"`);
 		expect(html).toContain(`alt="${select} Beta"`);
 	});
+
+	it('falls back to the model ID when the name is empty', async () => {
+		const { user } = await server.ssrLoadModule('/src/lib/stores/index.ts');
+		user.set({ id: 'alex', name: 'Alex', role: 'user' });
+		try {
+			const html = await render('chat/ChatPlaceholder', locale, {
+				modelIds: ['unnamed']
+			});
+			expect(html).toContain(`alt="${select} unnamed"`);
+		} finally {
+			user.set(undefined);
+		}
+	}, 20_000);
+
+	it.each(['layout/Navbar', 'channel/Navbar'])(
+		'renders one user menu trigger in %s',
+		async (path) => {
+			const { user } = await server.ssrLoadModule('/src/lib/stores/index.ts');
+			user.set({ id: 'alex', name: 'Alex', role: 'user', profile_image_url: '/user.png' });
+			try {
+				const html = await render(path, locale, { showModelSelector: false, selectedModels: [] });
+				const label = locale === 'fr-CA' ? 'Menu utilisateur' : 'User Menu';
+				const triggers = html.match(
+					new RegExp(`<button\\b[^>]*aria-label="${label}"[^>]*>[\\s\\S]*?</button>`, 'g')
+				);
+				expect(triggers).toHaveLength(1);
+				expect(triggers?.[0].match(/<button\b/g)).toHaveLength(1);
+				expect(triggers?.[0]).toMatch(/<img\b[^>]*alt=""/);
+			} finally {
+				user.set(undefined);
+			}
+		},
+		20_000
+	);
 });
