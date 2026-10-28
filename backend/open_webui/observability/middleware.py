@@ -74,9 +74,7 @@ class RequestContextMiddleware:
                 user_id = state.get("auth_user_id")
                 user_id_var.set(user_id if isinstance(user_id, str) else None)
                 completed_at = (
-                    final_body_at
-                    if final_body_at is not None
-                    else time.perf_counter()
+                    final_body_at if final_body_at is not None else time.perf_counter()
                 )
                 duration_ms = (completed_at - started_at) * 1000
                 path = scope.get("path", "")
@@ -101,9 +99,7 @@ class RequestContextMiddleware:
     @staticmethod
     def _request_id(headers: list[tuple[bytes, bytes]]) -> str:
         request_ids = [
-            value
-            for name, value in headers
-            if name.lower() == b"x-request-id"
+            value for name, value in headers if name.lower() == b"x-request-id"
         ]
         if len(request_ids) == 1:
             try:
