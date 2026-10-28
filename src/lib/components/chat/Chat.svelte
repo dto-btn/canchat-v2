@@ -911,6 +911,7 @@
 				...(m.sources ? { sources: m.sources } : {})
 			})),
 			chat_id: chatId,
+			id: responseMessageId,
 			session_id: $socket?.id ?? ''
 		}).catch((error) => {
 			toast.error(`${error}`);
