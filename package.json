@@ -147,7 +147,7 @@
 		"immutable": "5.1.8",
 		"linkify-it": "5.0.2",
 		"lodash-es": "4.18.0",
-		"markdown-it": "14.3.1",
+		"markdown-it": "14.3.3",
 		"nanoid": "5.1.16",
 		"protobufjs": "7.6.5",
 		"sharp": "0.35.5",
