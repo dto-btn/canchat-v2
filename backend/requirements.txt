@@ -83,7 +83,7 @@ docling-ibm-models==4.0.2
 docx2txt==0.8
 extract_msg==0.56.1
 faster-whisper==1.0.3
-fpdf2==2.8.2
+fpdf2==2.8.8
 Markdown==3.8.1
 nltk==3.10.3
 opencv-python-headless==4.10.0.84
