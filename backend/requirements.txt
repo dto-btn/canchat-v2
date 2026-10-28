@@ -124,7 +124,7 @@ validators==0.34.0
 # ==========================================
 aiocache==0.12.3
 aiofiles==24.1.0 #crewai requires 24.1.0
-aiohttp==3.14.3
+aiohttp==3.14.4
 async-timeout==5.0.1
 requests==2.34.2
 websocket-client>=0.32.0
