@@ -77,9 +77,9 @@ sqlalchemy==2.0.32
 # ==========================================
 # Document Parsing & Extraction
 # ==========================================
-docling==2.132.0
-docling-core==2.99.0
-docling-ibm-models==4.0.2
+docling==2.142.0
+docling-core>=2.99.0
+docling-ibm-models>=4.0.2
 docx2txt==0.8
 extract_msg==0.56.1
 faster-whisper==1.0.3
