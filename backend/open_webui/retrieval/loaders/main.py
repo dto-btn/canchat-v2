@@ -155,7 +155,7 @@ class DoclingLoader:
             return self._extract_documents(result, file_ext)
 
         except Exception as e:
-            log.error(f"Error processing document with Docling: {str(e)}")
+            log.error(f"Error processing document with Docling: {type(e).__name__}")
             raise Exception(f"Error processing document with Docling: {str(e)}")
 
     def _get_format_options(self, file_ext: str) -> dict:
@@ -206,7 +206,7 @@ class DoclingLoader:
             keyword in error_msg.lower()
             for keyword in ["font", "download", "modelscope", "rapidocr"]
         ):
-            log.warning(f"OCR failed due to dependency issue: {error}")
+            log.warning(f"OCR failed due to dependency issue: {type(error).__name__}")
             log.info("Attempting conversion with OCR disabled")
 
             if file_ext == ".pdf":

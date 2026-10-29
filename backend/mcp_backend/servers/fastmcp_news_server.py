@@ -308,7 +308,7 @@ def get_top_headlines(
         return final_response
 
     except Exception as e:
-        logger.error(f"Error in get_top_headlines: {str(e)}")
+        logger.error(f"Error in get_top_headlines: {type(e).__name__}")
         import traceback
 
         logger.error(f"Full traceback: {traceback.format_exc()}")

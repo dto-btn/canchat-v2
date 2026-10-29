@@ -411,7 +411,7 @@ def save_b64_image(b64_str):
             return image_filename
 
     except Exception as e:
-        log.exception(f"Error saving image: {e}")
+        log.exception(f"Error saving image: {type(e).__name__}")
         return None
 
 
@@ -446,7 +446,7 @@ def save_url_image(url, headers=None):
             return None
 
     except Exception as e:
-        log.exception(f"Error saving image: {e}")
+        log.exception(f"Error saving image: {type(e).__name__}")
         return None
 
 

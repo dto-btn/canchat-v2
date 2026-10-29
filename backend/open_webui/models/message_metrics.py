@@ -87,7 +87,7 @@ class MessageMetricsTable:
                 models = db.query(MessageMetric.model).distinct().all()
                 return [model[0] for model in models if model[0]]
         except Exception as e:
-            logger.error(f"Failed to get used models: {e}")
+            logger.error(f"Failed to get used models: {type(e).__name__}")
             return []
 
     def get_domains(self) -> list[str]:
@@ -96,7 +96,7 @@ class MessageMetricsTable:
                 domains = db.query(MessageMetric.user_domain).distinct().all()
                 return [domain[0] for domain in domains if domain[0]]
         except Exception as e:
-            logger.error(f"Failed to get domains: {e}")
+            logger.error(f"Failed to get domains: {type(e).__name__}")
             return []
 
     def get_mcp_processes(self) -> list[str]:
@@ -111,7 +111,7 @@ class MessageMetricsTable:
                 )
                 return [p[0] for p in processes if p[0]]
         except Exception as e:
-            logger.error(f"Failed to get MCP processes: {e}")
+            logger.error(f"Failed to get MCP processes: {type(e).__name__}")
             return []
 
     def get_messages_number(
@@ -126,7 +126,7 @@ class MessageMetricsTable:
                     query = query.filter(MessageMetric.model == model)
                 return query.count()
         except Exception as e:
-            logger.error(f"Failed to get messages number: {e}")
+            logger.error(f"Failed to get messages number: {type(e).__name__}")
             return 0
 
     def get_daily_messages_number(
@@ -151,7 +151,7 @@ class MessageMetricsTable:
 
                 return query.count()
         except Exception as e:
-            logger.error(f"Failed to get daily messages number: {e}")
+            logger.error(f"Failed to get daily messages number: {type(e).__name__}")
             return 0
 
     def _apply_mcp_filter(self, query, mcp_tool: Optional[str]):
@@ -193,7 +193,7 @@ class MessageMetricsTable:
                 ).first()
                 return round(result[0], 2) if result and result[0] else 0
         except Exception as e:
-            logger.error(f"Failed to get message tokens number: {e}")
+            logger.error(f"Failed to get message tokens number: {type(e).__name__}")
             return 0  # Return 0 instead of None
 
     def get_daily_message_tokens_sum(
@@ -223,7 +223,9 @@ class MessageMetricsTable:
 
                 return round(result[0], 2) if result and result[0] else 0
         except Exception as e:
-            logger.error(f"Failed to get daily message tokens number: {e}")
+            logger.error(
+                f"Failed to get daily message tokens number: {type(e).__name__}"
+            )
             return 0  # Return 0 instead of None
 
     def get_historical_messages_data(
@@ -269,7 +271,7 @@ class MessageMetricsTable:
                 for date in sorted(expected_dates.keys())
             ]
         except Exception as e:
-            logger.error(f"Failed to get historical messages data: {e}")
+            logger.error(f"Failed to get historical messages data: {type(e).__name__}")
             # Fallback: return zeros for each day in the range
             fallback = []
             for offset in reversed(range(days)):
@@ -326,7 +328,7 @@ class MessageMetricsTable:
                 for date in sorted(expected_dates.keys())
             ]
         except Exception as e:
-            logger.error(f"Failed to get historical tokens data: {e}")
+            logger.error(f"Failed to get historical tokens data: {type(e).__name__}")
             fallback = []
             current_time = int(time.time())
             today_midnight = current_time - (current_time % 86400)
@@ -374,7 +376,7 @@ class MessageMetricsTable:
 
                 return {"total_prompts": total_prompts, "total_tokens": total_tokens}
         except Exception as e:
-            logger.error(f"Failed to get range metrics: {e}")
+            logger.error(f"Failed to get range metrics: {type(e).__name__}")
             return {"total_prompts": 0, "total_tokens": 0}
 
     def get_model_token_usage(
@@ -411,7 +413,7 @@ class MessageMetricsTable:
 
                 return model_usage
         except Exception as e:
-            logger.error(f"Failed to get model token usage: {e}")
+            logger.error(f"Failed to get model token usage: {type(e).__name__}")
             return []
 
     def get_historical_daily_data(
@@ -451,7 +453,7 @@ class MessageMetricsTable:
 
             return result
         except Exception as e:
-            logger.error(f"Failed to get historical daily data: {e}")
+            logger.error(f"Failed to get historical daily data: {type(e).__name__}")
             return []
 
     def get_historical_daily_tokens(
@@ -497,7 +499,7 @@ class MessageMetricsTable:
 
             return result
         except Exception as e:
-            logger.error(f"Failed to get historical daily tokens: {e}")
+            logger.error(f"Failed to get historical daily tokens: {type(e).__name__}")
             return []
 
     # This function is here and not with Users model since the values needed are in the message metrics table.
@@ -544,7 +546,9 @@ class MessageMetricsTable:
                 # Return in chronological order (oldest to newest)
                 return sorted(output, key=lambda x: x["date"])
         except Exception as e:
-            logger.error(f"Failed to get historical daily user counts: {e}")
+            logger.error(
+                f"Failed to get historical daily user counts: {type(e).__name__}"
+            )
             # Fallback: return zeros for each day
             fallback = []
             current_time = int(time.time())
@@ -609,7 +613,9 @@ class MessageMetricsTable:
                 return self._create_latency_histogram(latencies)
 
         except Exception as e:
-            logger.error(f"Failed to get inter-prompt latency histogram: {e}")
+            logger.error(
+                f"Failed to get inter-prompt latency histogram: {type(e).__name__}"
+            )
             return self._get_empty_histogram()
 
     def _get_empty_histogram(self) -> dict:
@@ -718,7 +724,7 @@ class MessageMetricsTable:
 
                 return export_data
         except Exception as e:
-            logger.error(f"Failed to get export data: {e}")
+            logger.error(f"Failed to get export data: {type(e).__name__}")
             return []
 
 

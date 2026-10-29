@@ -61,7 +61,7 @@ async def renew_lock_periodically(
         log.debug(f"Lock renewal task for {lock_name} cancelled")
         raise
     except Exception as e:
-        log.error(f"Error in lock renewal task for {lock_name}: {e}")
+        log.error(f"Error in lock renewal task for {lock_name}: {type(e).__name__}")
         if lock:
             lock.lock_obtained = False
         if on_lock_lost:
@@ -89,7 +89,7 @@ class RedisLock:
             return self.lock_obtained
         except Exception as e:
             self.last_error = e
-            log.error(f"Error acquiring Redis lock: {e}")
+            log.error(f"Error acquiring Redis lock: {type(e).__name__}")
             return False
 
     async def renew_lock(self):
@@ -112,7 +112,7 @@ class RedisLock:
             return renewed == 1
         except Exception as e:
             self.last_error = e
-            log.error(f"Error renewing Redis lock: {e}")
+            log.error(f"Error renewing Redis lock: {type(e).__name__}")
             return False
 
     async def release_lock(self):
@@ -139,7 +139,7 @@ class RedisLock:
             )
             return False
         except Exception as e:
-            log.error(f"Error releasing Redis lock: {e}")
+            log.error(f"Error releasing Redis lock: {type(e).__name__}")
             return False
         finally:
             self.lock_obtained = False

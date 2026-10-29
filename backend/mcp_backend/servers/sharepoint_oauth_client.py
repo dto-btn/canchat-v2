@@ -128,7 +128,7 @@ class SharePointOAuthClient:
                         return None
 
         except Exception as e:
-            logger.error(f"Error obtaining OBO token: {e}")
+            logger.error(f"Error obtaining OBO token: {type(e).__name__}")
             return None
 
     async def get_application_token(self) -> Optional[str]:
@@ -168,7 +168,7 @@ class SharePointOAuthClient:
                         return None
 
         except Exception as e:
-            logger.error(f"Error obtaining application token: {e}")
+            logger.error(f"Error obtaining application token: {type(e).__name__}")
             return None
 
     async def get_access_token(self, user_token: Optional[str] = None) -> Optional[str]:
@@ -276,7 +276,7 @@ class SharePointOAuthClient:
                         }
 
         except Exception as e:
-            logger.error(f"Error making Graph API request: {e}")
+            logger.error(f"Error making Graph API request: {type(e).__name__}")
             return False, {"error": str(e)}
 
     async def get_site_info(self, access_token: str) -> Tuple[bool, Dict[str, Any]]:
@@ -398,7 +398,7 @@ class SharePointOAuthClient:
                         }
 
         except Exception as e:
-            logger.error(f"Error getting file content: {e}")
+            logger.error(f"Error getting file content: {type(e).__name__}")
             return False, {"error": str(e)}
 
     async def search_documents(
@@ -502,7 +502,7 @@ class SharePointOAuthClient:
                         }
 
         except Exception as e:
-            logger.error(f"Error in search_documents: {e}")
+            logger.error(f"Error in search_documents: {type(e).__name__}")
             return False, {"error": str(e)}
 
     async def get_document_content_by_url(
@@ -614,7 +614,7 @@ class SharePointOAuthClient:
                             }
 
         except Exception as e:
-            logger.error(f"Error in get_document_content_by_url: {e}")
+            logger.error(f"Error in get_document_content_by_url: {type(e).__name__}")
             return False, {"error": str(e)}
 
     async def _extract_text_from_bytes(

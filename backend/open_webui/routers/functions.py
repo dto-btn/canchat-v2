@@ -12,6 +12,9 @@ from open_webui.config import CACHE_DIR
 from open_webui.constants import ERROR_MESSAGES
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from open_webui.utils.auth import get_admin_user, get_verified_user
+import logging
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -78,7 +81,7 @@ async def create_new_function(
                     detail=ERROR_MESSAGES.DEFAULT("Error creating function"),
                 )
         except Exception as e:
-            print(e)
+            log.error("create_new_function failed: %s", type(e).__name__)
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=ERROR_MESSAGES.DEFAULT(e),
@@ -298,7 +301,7 @@ async def update_function_valves_by_id(
                 Functions.update_function_valves_by_id(id, valves.model_dump())
                 return valves.model_dump()
             except Exception as e:
-                print(e)
+                log.error("update_function_valves_by_id failed: %s", type(e).__name__)
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=ERROR_MESSAGES.DEFAULT(e),
@@ -387,7 +390,9 @@ async def update_function_user_valves_by_id(
                 )
                 return user_valves.model_dump()
             except Exception as e:
-                print(e)
+                log.error(
+                    "update_function_user_valves_by_id failed: %s", type(e).__name__
+                )
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=ERROR_MESSAGES.DEFAULT(e),

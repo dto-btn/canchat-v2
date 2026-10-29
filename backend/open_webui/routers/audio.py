@@ -622,7 +622,7 @@ def get_available_models(request: Request) -> list[dict]:
                 {"name": model["name"], "id": model["model_id"]} for model in models
             ]
         except requests.RequestException as e:
-            log.error(f"Error fetching voices: {str(e)}")
+            log.error(f"Error fetching voices: {type(e).__name__}")
     return available_models
 
 
@@ -668,7 +668,7 @@ def get_available_voices(request) -> dict:
                     f"{voice['DisplayName']} ({voice['ShortName']})"
                 )
         except requests.RequestException as e:
-            log.error(f"Error fetching voices: {str(e)}")
+            log.error(f"Error fetching voices: {type(e).__name__}")
 
     return available_voices
 
@@ -700,7 +700,7 @@ def get_elevenlabs_voices(api_key: str) -> dict:
             voices[voice["voice_id"]] = voice["name"]
     except requests.RequestException as e:
         # Avoid @lru_cache with exception
-        log.error(f"Error fetching voices: {str(e)}")
+        log.error(f"Error fetching voices: {type(e).__name__}")
         raise RuntimeError(f"Error fetching voices: {str(e)}")
 
     return voices

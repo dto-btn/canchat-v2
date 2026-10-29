@@ -254,9 +254,7 @@ def test_web_search_errors_return_generic_details_and_logs(monkeypatch, caplog):
     monkeypatch.setattr(retrieval, "search_web", fail_search)
     request = SimpleNamespace(
         app=SimpleNamespace(
-            state=SimpleNamespace(
-                config=SimpleNamespace(RAG_WEB_SEARCH_ENGINE="brave")
-            )
+            state=SimpleNamespace(config=SimpleNamespace(RAG_WEB_SEARCH_ENGINE="brave"))
         )
     )
 

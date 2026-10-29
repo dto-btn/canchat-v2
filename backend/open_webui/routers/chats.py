@@ -73,7 +73,9 @@ async def delete_all_user_chats(request: Request, user=Depends(get_verified_user
             file_ids = extract_file_ids_from_chat(chat)
             total_file_references += len(file_ids)
         except Exception as e:
-            log.error(f"Error extracting file IDs from chat {chat.id}: {e}")
+            log.error(
+                f"Error extracting file IDs from chat {chat.id}: {type(e).__name__}"
+            )
 
     log.info(
         f"Found {total_file_references} total file references across all chats - cleanup will be handled by background job"
@@ -446,7 +448,7 @@ async def delete_multiple_chats(
                 )
 
         except Exception as e:
-            log.error(f"Error deleting chat {chat_id}: {e}")
+            log.error(f"Error deleting chat {chat_id}: {type(e).__name__}")
             failed_deletions.append({"id": chat_id, "error": str(e)})
 
     log.info(
@@ -864,5 +866,5 @@ def extract_file_ids_from_chat(chat):
         return file_ids
 
     except Exception as e:
-        log.error(f"Error extracting file IDs from chat {chat.id}: {e}")
+        log.error(f"Error extracting file IDs from chat {chat.id}: {type(e).__name__}")
         return set()

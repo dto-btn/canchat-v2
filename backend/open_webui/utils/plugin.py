@@ -44,7 +44,7 @@ def extract_frontmatter(content):
                     frontmatter[key.strip()] = value.strip()
 
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"An error occurred: {type(e).__name__}")
         return {}
 
     return frontmatter
@@ -128,7 +128,7 @@ def load_tools_module_by_id(toolkit_id, content=None):
         else:
             raise Exception("No Tools class found in the module")
     except Exception as e:
-        log.error(f"Error loading module: {toolkit_id}: {e}")
+        log.error(f"Error loading module: {toolkit_id}: {type(e).__name__}")
         del sys.modules[module_name]  # Clean up
         raise e
     finally:
@@ -194,7 +194,7 @@ def load_function_module_by_id(function_id, content=None):
         else:
             raise Exception("No Function class found in the module")
     except Exception as e:
-        log.error(f"Error loading module: {function_id}: {e}")
+        log.error(f"Error loading module: {function_id}: {type(e).__name__}")
         del sys.modules[module_name]  # Cleanup by removing the module in case of error
 
         Functions.update_function_by_id(function_id, {"is_active": False})

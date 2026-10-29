@@ -63,7 +63,7 @@ def handle_peewee_migration(DATABASE_URL):
         db.close()
 
     except Exception as e:
-        log.error(f"Failed to initialize the database connection: {e}")
+        log.error(f"Failed to initialize the database connection: {type(e).__name__}")
         raise
     finally:
         # Properly closing the database connection
@@ -95,7 +95,7 @@ def run_migrations():
 
         command.upgrade(alembic_cfg, "head")
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error: {type(e).__name__}")
 
 
 run_migrations()

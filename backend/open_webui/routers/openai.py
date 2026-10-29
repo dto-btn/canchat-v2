@@ -60,7 +60,7 @@ async def send_get_request(url, key=None):
                 return await response.json()
     except Exception as e:
         # Handle connection error here
-        log.error(f"Connection error: {e}")
+        log.error(f"Connection error: {type(e).__name__}")
         return None
 
 
@@ -444,7 +444,7 @@ async def get_all_models(request: Request) -> dict[str, list]:
                             break
             except Exception as e:
                 log.warning(
-                    f"Failed to look up context length for model '{model.get('id', 'unknown')}': {e}"
+                    f"Failed to look up context length for model '{model.get('id', 'unknown')}': {type(e).__name__}"
                 )
 
     request.app.state.OPENAI_MODELS = {model["id"]: model for model in models["data"]}
@@ -522,12 +522,12 @@ async def get_models(
                     models = response_data
             except aiohttp.ClientError as e:
                 # ClientError covers all aiohttp requests issues
-                log.exception(f"Client error: {str(e)}")
+                log.exception(f"Client error: {type(e).__name__}")
                 raise HTTPException(
                     status_code=500, detail="Open WebUI: Server Connection Error"
                 )
             except Exception as e:
-                log.exception(f"Unexpected error: {e}")
+                log.exception(f"Unexpected error: {type(e).__name__}")
                 error_detail = f"Unexpected error: {str(e)}"
                 raise HTTPException(status_code=500, detail=error_detail)
 
@@ -573,12 +573,12 @@ async def verify_connection(
 
         except aiohttp.ClientError as e:
             # ClientError covers all aiohttp requests issues
-            log.exception(f"Client error: {str(e)}")
+            log.exception(f"Client error: {type(e).__name__}")
             raise HTTPException(
                 status_code=500, detail="Open WebUI: Server Connection Error"
             )
         except Exception as e:
-            log.exception(f"Unexpected error: {e}")
+            log.exception(f"Unexpected error: {type(e).__name__}")
             error_detail = f"Unexpected error: {str(e)}"
             raise HTTPException(status_code=500, detail=error_detail)
 

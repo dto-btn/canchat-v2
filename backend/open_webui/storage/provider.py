@@ -81,7 +81,7 @@ class LocalStorageProvider(StorageProvider):
                     elif os.path.isdir(file_path):
                         shutil.rmtree(file_path)  # Remove the directory
                 except Exception as e:
-                    print(f"Failed to delete {file_path}. Reason: {e}")
+                    print(f"Failed to delete {file_path}. Reason: {type(e).__name__}")
         else:
             print(f"Directory {UPLOAD_DIR} not found in local storage.")
 

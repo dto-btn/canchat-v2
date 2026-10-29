@@ -343,7 +343,9 @@ try:
         redis_health_client.close()
 
 except (redis.ConnectionError, redis.TimeoutError, Exception) as e:
-    log.warning(f"Redis is unavailable ({e}). " "Redis locks are DISABLED.")
+    log.warning(
+        f"Redis is unavailable ({type(e).__name__}). " "Redis locks are DISABLED."
+    )
     USE_REDIS_LOCKS = False
 
 ####################################

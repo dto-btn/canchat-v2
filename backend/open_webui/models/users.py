@@ -291,7 +291,7 @@ class UsersTable:
 
                 return query.count()
         except Exception as e:
-            logger.error(f"Failed to get daily users number: {e}")
+            logger.error(f"Failed to get daily users number: {type(e).__name__}")
             return None
 
     def update_user_oauth_sub_by_id(
@@ -411,7 +411,7 @@ class UsersTable:
             # Return in chronological order
             return result
         except Exception as e:
-            logger.error(f"Failed to get historical users data: {e}")
+            logger.error(f"Failed to get historical users data: {type(e).__name__}")
             # Generate continuous date range as fallback
             fallback = []
             today = time.strftime("%Y-%m-%d", time.localtime(current_time))
@@ -452,7 +452,7 @@ class UsersTable:
 
                 return {"total_users": total_users, "active_users": active_users}
         except Exception as e:
-            logger.error(f"Failed to get range metrics: {e}")
+            logger.error(f"Failed to get range metrics: {type(e).__name__}")
             return {"total_users": 0, "active_users": 0}
 
     def get_users_count_by_domain(

@@ -400,7 +400,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         log.warning(
             f"Redis validation failed — distributed locking unavailable. "
-            f"Continuing without Redis (single-instance / local dev mode). Error: {e}"
+            f"Continuing without Redis (single-instance / local dev mode). Error: {type(e).__name__}"
         )
         app.state.redis_lock_manager = None
 
@@ -422,7 +422,7 @@ async def lifespan(app: FastAPI):
         )
 
     except Exception as e:
-        log.error(f"Failed to initialize the metrics service: {e}")
+        log.error(f"Failed to initialize the metrics service: {type(e).__name__}")
 
     # Initialize FastMCP manager
     try:
@@ -440,7 +440,7 @@ async def lifespan(app: FastAPI):
             # External MCP servers are loaded from database and managed via API
 
     except Exception as e:
-        log.error(f"Failed to initialize FastMCP manager: {e}")
+        log.error(f"Failed to initialize FastMCP manager: {type(e).__name__}")
 
     # Initialize Wikipedia grounding models in background
     async def initialize_wiki_grounding():
@@ -462,7 +462,7 @@ async def lifespan(app: FastAPI):
                 )
         except Exception as e:
             log.error(
-                f"Error during background Wikipedia grounding initialization: {e}"
+                f"Error during background Wikipedia grounding initialization: {type(e).__name__}"
             )
 
     # Start background initialization (non-blocking)
@@ -478,7 +478,7 @@ async def lifespan(app: FastAPI):
         start_scheduler()
         log.info("Scheduler initialized")
     except Exception as e:
-        log.error(f"Failed to initialize scheduler: {e}")
+        log.error(f"Failed to initialize scheduler: {type(e).__name__}")
 
     # Add task completion callback to log if it exits
     def on_cleanup_done(task):
@@ -492,7 +492,7 @@ async def lifespan(app: FastAPI):
             else:
                 log.info("Periodic usage pool cleanup task completed")
         except Exception as e:
-            log.error(f"Error in cleanup task callback: {e}")
+            log.error(f"Error in cleanup task callback: {type(e).__name__}")
 
     cleanup_task.add_done_callback(on_cleanup_done)
 
@@ -510,7 +510,9 @@ async def lifespan(app: FastAPI):
                     "Wikipedia grounding initialization task cancelled successfully"
                 )
             except Exception as e:
-                log.error(f"Error cancelling Wikipedia initialization task: {e}")
+                log.error(
+                    f"Error cancelling Wikipedia initialization task: {type(e).__name__}"
+                )
 
         # Cancel the cleanup task if it's still running
         if not cleanup_task.done():
@@ -521,7 +523,7 @@ async def lifespan(app: FastAPI):
             except asyncio.CancelledError:
                 log.info("Periodic usage pool cleanup task cancelled successfully")
             except Exception as e:
-                log.error(f"Error cancelling cleanup task: {e}")
+                log.error(f"Error cancelling cleanup task: {type(e).__name__}")
 
         # Cleanup MCP manager and all its server processes
         if hasattr(app.state, "mcp_manager") and app.state.mcp_manager:
@@ -529,7 +531,7 @@ async def lifespan(app: FastAPI):
                 await app.state.mcp_manager.cleanup()
                 log.info("MCP manager cleanup completed")
             except Exception as e:
-                log.error(f"Error during MCP manager cleanup: {e}")
+                log.error(f"Error during MCP manager cleanup: {type(e).__name__}")
 
         # Cleanup scheduler
         try:
@@ -538,7 +540,7 @@ async def lifespan(app: FastAPI):
             stop_scheduler()
             log.info("Scheduler cleanup completed")
         except Exception as e:
-            log.error(f"Error during scheduler cleanup: {e}")
+            log.error(f"Error during scheduler cleanup: {type(e).__name__}")
 
         # Cleanup cached Qdrant client
         try:
@@ -548,7 +550,7 @@ async def lifespan(app: FastAPI):
                 await VECTOR_DB_CLIENT.close()
                 log.info("Qdrant client cleanup completed")
         except Exception as e:
-            log.error(f"Error during Qdrant client cleanup: {e}")
+            log.error(f"Error during Qdrant client cleanup: {type(e).__name__}")
 
         # Cleanup Redis lock manager
         if hasattr(app.state, "redis_lock_manager") and app.state.redis_lock_manager:
@@ -556,7 +558,9 @@ async def lifespan(app: FastAPI):
                 await app.state.redis_lock_manager.close()
                 log.info("Redis lock manager cleanup completed")
             except Exception as e:
-                log.error(f"Error during Redis lock manager cleanup: {e}")
+                log.error(
+                    f"Error during Redis lock manager cleanup: {type(e).__name__}"
+                )
 
         try:
             shutdown_logging()
@@ -790,7 +794,7 @@ try:
         RAG_RERANKING_MODEL_AUTO_UPDATE,
     )
 except Exception as e:
-    log.error(f"Error updating models: {e}")
+    log.error(f"Error updating models: {type(e).__name__}")
     pass
 
 
@@ -995,12 +999,12 @@ async def commit_session_after_request(request: Request, call_next):
         return response
     except Exception as e:
         log.error(
-            f"Error in commit_session_after_request middleware for {request.url.path}: {e}"
+            f"Error in commit_session_after_request middleware for {request.url.path}: {type(e).__name__}"
         )
         try:
             Session.rollback()
         except Exception as rollback_error:
-            log.error(f"Error during session rollback: {rollback_error}")
+            log.error(f"Error during session rollback: {type(rollback_error).__name__}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"detail": "Internal server error"},
@@ -1029,7 +1033,9 @@ async def check_url(request: Request, call_next):
         response.headers["X-Process-Time"] = str(process_time)
         return response
     except Exception as e:
-        log.error(f"Error in check_url middleware for {request.url.path}: {e}")
+        log.error(
+            f"Error in check_url middleware for {request.url.path}: {type(e).__name__}"
+        )
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"detail": "Internal server error"},
@@ -1075,7 +1081,9 @@ async def inspect_websocket(request: Request, call_next):
             )
         return response
     except Exception as e:
-        log.error(f"Error in inspect_websocket middleware for {request.url.path}: {e}")
+        log.error(
+            f"Error in inspect_websocket middleware for {request.url.path}: {type(e).__name__}"
+        )
         # For WebSocket upgrade requests, return a proper error response
         if (
             "/ws/socket.io" in request.url.path
@@ -1449,6 +1457,7 @@ if len(OAUTH_PROVIDERS) > 0:
         https_only=WEBUI_SESSION_COOKIE_SECURE,
     )
 
+
 @app.get("/oauth/{provider}/login")
 async def oauth_login(provider: str, request: Request):
     return await oauth_manager.handle_login(provider, request)
@@ -1492,7 +1501,7 @@ def healthcheck_db():
         with get_db() as db:
             db.execute(text("SELECT 1;")).all()
     except Exception as e:
-        log.error(f"Database health check failed: {e}")
+        log.error(f"Database health check failed: {type(e).__name__}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database connection failed",
@@ -1519,7 +1528,7 @@ def healthcheck_ready():
         try:
             result["redis"] = healthcheck_redis()
         except Exception as e:
-            log.error(f"Readiness check — Redis failed: {e}")
+            log.error(f"Readiness check — Redis failed: {type(e).__name__}")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Redis health check failed",
@@ -1569,7 +1578,7 @@ def healthcheck_redis():
         except HTTPException:
             raise
         except Exception as e:
-            log.error(f"Redis lock health check failed: {e}")
+            log.error(f"Redis lock health check failed: {type(e).__name__}")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Redis lock health check error",
@@ -1581,7 +1590,7 @@ def healthcheck_redis():
             SESSION_POOL.redis.ping()
             result["websocket"] = True
         except Exception as e:
-            log.error(f"Websocket Redis health check failed: {e}")
+            log.error(f"Websocket Redis health check failed: {type(e).__name__}")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Websocket Redis connection failed",

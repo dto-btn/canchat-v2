@@ -70,7 +70,7 @@ class TermsTable:
                     return TermsModel.model_validate(result)
                 return None
         except Exception as e:
-            log.error(f"Error accepting terms: {e}")
+            log.error(f"Error accepting terms: {type(e).__name__}")
             return None
 
     def get_terms_by_user_id(self, user_id: str, version: str) -> Optional[TermsModel]:
@@ -83,7 +83,9 @@ class TermsTable:
                     return None
                 return TermsModel.model_validate(terms)
         except Exception as e:
-            log.error(f"Error retrieving terms for user_id {user_id}: {e}")
+            log.error(
+                f"Error retrieving terms for user_id {user_id}: {type(e).__name__}"
+            )
             return None
 
     def delete_terms_by_user_id(self, user_id: str) -> bool:
@@ -93,7 +95,7 @@ class TermsTable:
                 db.commit()
                 return True
         except Exception as e:
-            log.error(f"Error deleting terms for user_id {user_id}: {e}")
+            log.error(f"Error deleting terms for user_id {user_id}: {type(e).__name__}")
             return False
 
 

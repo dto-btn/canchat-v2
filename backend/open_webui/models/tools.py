@@ -131,7 +131,7 @@ class ToolsTable:
                 else:
                     return None
             except Exception as e:
-                print(f"Error creating tool: {e}")
+                print(f"Error creating tool: {type(e).__name__}")
                 return None
 
     def get_tool_by_id(self, id: str) -> Optional[ToolModel]:
@@ -175,7 +175,7 @@ class ToolsTable:
                 tool = db.get(Tool, id)
                 return tool.valves if tool.valves else {}
         except Exception as e:
-            print(f"An error occurred: {e}")
+            print(f"An error occurred: {type(e).__name__}")
             return None
 
     def update_tool_valves_by_id(self, id: str, valves: dict) -> Optional[ToolValves]:
@@ -204,7 +204,7 @@ class ToolsTable:
 
             return user_settings["tools"]["valves"].get(id, {})
         except Exception as e:
-            print(f"An error occurred: {e}")
+            print(f"An error occurred: {type(e).__name__}")
             return None
 
     def update_user_valves_by_id_and_user_id(
@@ -227,7 +227,7 @@ class ToolsTable:
 
             return user_settings["tools"]["valves"][id]
         except Exception as e:
-            print(f"An error occurred: {e}")
+            print(f"An error occurred: {type(e).__name__}")
             return None
 
     def update_tool_by_id(self, id: str, updated: dict) -> Optional[ToolModel]:

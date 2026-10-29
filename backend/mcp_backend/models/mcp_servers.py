@@ -146,7 +146,7 @@ class MCPServerTable:
                 else:
                     return None
         except Exception as e:
-            print(f"Error creating MCP server: {e}")
+            print(f"Error creating MCP server: {type(e).__name__}")
             return None
 
     def get_server_by_id(self, id: str) -> Optional[MCPServerModel]:
@@ -155,7 +155,7 @@ class MCPServerTable:
                 server = db.query(MCPServer).filter_by(id=id).first()
                 return MCPServerModel.model_validate(server) if server else None
         except Exception as e:
-            print(f"Error getting MCP server by id: {e}")
+            print(f"Error getting MCP server by id: {type(e).__name__}")
             return None
 
     def get_server_by_name(self, name: str) -> Optional[MCPServerModel]:
@@ -164,7 +164,7 @@ class MCPServerTable:
                 server = db.query(MCPServer).filter_by(name=name).first()
                 return MCPServerModel.model_validate(server) if server else None
         except Exception as e:
-            print(f"Error getting MCP server by name: {e}")
+            print(f"Error getting MCP server by name: {type(e).__name__}")
             return None
 
     def get_servers(self, user_id: str = None) -> List[MCPServerModel]:
@@ -182,7 +182,7 @@ class MCPServerTable:
                 ]
                 return servers
         except Exception as e:
-            print(f"Error getting MCP servers: {e}")
+            print(f"Error getting MCP servers: {type(e).__name__}")
             return []
 
     def get_user_created_servers(self, user_id: str = None) -> List[MCPServerModel]:
@@ -200,7 +200,7 @@ class MCPServerTable:
                 ]
                 return servers
         except Exception as e:
-            print(f"Error getting user-created MCP servers: {e}")
+            print(f"Error getting user-created MCP servers: {type(e).__name__}")
             return []
 
     def update_server_by_id(self, id: str, updated: dict) -> Optional[MCPServerModel]:
@@ -221,7 +221,7 @@ class MCPServerTable:
 
                 return MCPServerModel.model_validate(server)
         except Exception as e:
-            print(f"Error updating MCP server: {e}")
+            print(f"Error updating MCP server: {type(e).__name__}")
             return None
 
     def delete_server_by_id(self, id: str) -> bool:
@@ -238,7 +238,7 @@ class MCPServerTable:
                 db.commit()
                 return True
         except Exception as e:
-            print(f"Error deleting MCP server: {e}")
+            print(f"Error deleting MCP server: {type(e).__name__}")
             return False
 
     def update_server_tools(self, id: str, tools: List) -> Optional[MCPServerModel]:

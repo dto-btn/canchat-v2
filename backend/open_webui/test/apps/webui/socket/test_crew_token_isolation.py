@@ -79,17 +79,20 @@ def _stub_tools(monkeypatch, integration, barrier=None):
     return received
 
 
-def test_parallel_crews_keep_tokens_isolated(monkeypatch, integration, manager):
+def test_parallel_crews_keep_tokens_isolated(
+    monkeypatch, integration, manager, canary_harness
+):
     monkeypatch.setenv("SHP_USE_DELEGATED_ACCESS", "true")
     monkeypatch.setenv("USER_JWT_TOKEN", "unrelated-process-token")
     received = _stub_tools(monkeypatch, integration, threading.Barrier(2))
+    base = canary_harness.canaries.token
     with ThreadPoolExecutor(max_workers=2) as executor:
         for iteration in range(50):
-            tokens = [f"user-{user}-{iteration}" for user in (1, 2)]
+            tokens = [f"{base}-{user}-{iteration}" for user in (1, 2)]
             futures = [
                 executor.submit(
                     manager.run_intelligent_crew,
-                    "Search documents",
+                    canary_harness.canaries.prompt,
                     ["mcp_mpo_sharepoint_server"],
                     token,
                 )
@@ -97,11 +100,12 @@ def test_parallel_crews_keep_tokens_isolated(monkeypatch, integration, manager):
             ]
             assert [future.result(timeout=15)[0] for future in futures] == tokens
     assert sorted(received) == sorted(
-        f"user-{user}-{iteration}" for iteration in range(50) for user in (1, 2)
+        f"{base}-{user}-{iteration}" for iteration in range(50) for user in (1, 2)
     )
     assert os.environ["USER_JWT_TOKEN"] == "unrelated-process-token"
     assert not hasattr(manager, "user_jwt_token")
     assert not hasattr(manager, "set_user_token")
+    canary_harness.assert_no_canaries()
 
 
 @pytest.mark.parametrize(
@@ -195,15 +199,19 @@ def socket_handler(monkeypatch, manager):
 
 
 def test_parallel_socket_requests_keep_authenticated_tokens(
-    monkeypatch, integration, socket_handler
+    monkeypatch, integration, socket_handler, canary_harness
 ):
     monkeypatch.setenv("SHP_USE_DELEGATED_ACCESS", "true")
     monkeypatch.setenv("USER_JWT_TOKEN", "unrelated-process-token")
     received = _stub_tools(monkeypatch, integration, threading.Barrier(2))
     socket_main, emitted = socket_handler
+    canaries = canary_harness.canaries
+    payload_token = canaries.add(
+        "payload token", f"untrusted-{canaries.tag}-payload-token"
+    )
     sessions = {
-        "sid-1": {"id": "user-1", "graph_access_token": "user-1-token"},
-        "sid-2": {"id": "user-2", "graph_access_token": "user-2-token"},
+        "sid-1": {"id": "user-1", "graph_access_token": f"{canaries.token}-1"},
+        "sid-2": {"id": "user-2", "graph_access_token": f"{canaries.token}-2"},
     }
     monkeypatch.setattr(socket_main, "SESSION_POOL", sessions)
 
@@ -214,9 +222,9 @@ def test_parallel_socket_requests_keep_authenticated_tokens(
                     socket_main.crew_mcp_query(
                         sid,
                         {
-                            "query": f"Search {iteration}",
+                            "query": f"{canaries.prompt} {iteration}",
                             "selected_tools": ["mcp_mpo_sharepoint_server"],
-                            "graph_access_token": "untrusted-payload-token",
+                            "graph_access_token": payload_token,
                         },
                     )
                     for sid in sessions
@@ -230,20 +238,24 @@ def test_parallel_socket_requests_keep_authenticated_tokens(
     assert not any(event == "crew-mcp-error" for event, _, _ in emitted)
     for _, data, sid in results:
         assert data["result"] == sessions[sid]["graph_access_token"]
+    canary_harness.assert_no_canaries()
 
 
 def test_socket_missing_token_returns_clear_error(
-    monkeypatch, integration, socket_handler
+    monkeypatch, integration, socket_handler, canary_harness
 ):
     monkeypatch.setenv("SHP_USE_DELEGATED_ACCESS", "true")
-    monkeypatch.setenv("USER_JWT_TOKEN", "another-users-token")
+    monkeypatch.setenv("USER_JWT_TOKEN", canary_harness.canaries.token)
     received = _stub_tools(monkeypatch, integration)
     socket_main, emitted = socket_handler
     monkeypatch.setattr(socket_main, "SESSION_POOL", {"sid-1": {"id": "user-1"}})
     asyncio.run(
         socket_main.crew_mcp_query(
             "sid-1",
-            {"query": "Search", "selected_tools": ["mcp_mpo_sharepoint_server"]},
+            {
+                "query": canary_harness.canaries.prompt,
+                "selected_tools": ["mcp_mpo_sharepoint_server"],
+            },
         )
     )
     errors = [data for event, data, _ in emitted if event == "crew-mcp-error"]
@@ -251,3 +263,4 @@ def test_socket_missing_token_returns_clear_error(
     assert "Graph access token is required" in errors[0]["error"]
     assert not any(event == "crew-mcp-result" for event, _, _ in emitted)
     assert received == []
+    canary_harness.assert_no_canaries()

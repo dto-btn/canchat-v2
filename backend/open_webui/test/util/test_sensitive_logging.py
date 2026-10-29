@@ -1,13 +1,12 @@
 """
 OBS-10 review follow-ups: tool output, bound tool context and OAuth callback
 error values must not reach logs, and logging must not break tool isolation.
+
+Every sink is checked with the OBS-17 canary harness (``test/util/canary_harness.py``).
 """
 
 import asyncio
-import contextlib
-import io
 import json
-import logging
 import sys
 import types
 
@@ -23,46 +22,42 @@ from open_webui.utils import middleware  # noqa: E402
 from open_webui.utils import oauth as oauth_module  # noqa: E402
 from open_webui.utils.tools import apply_extra_params_to_tool_function  # noqa: E402
 
-CANARY_PROMPT = "CANARY-PROMPT-1b9e-do-not-log"
-CANARY_EMAIL = "canary.user.5d2c@example.invalid"
-CANARY_TOOL_RESULT = "CANARY-TOOL-RESULT-77aa-do-not-log"
-CANARY_OAUTH_ERROR = "CANARY-OAUTH-ERROR-3f01-do-not-log"
+# Parametrize placeholders, replaced by per-test canaries at runtime.
+PROMPT = object()
+OAUTH_ERROR = object()
 
 
-@contextlib.contextmanager
-def capture_logs(*loggers):
-    stream = io.StringIO()
-    handler = logging.StreamHandler(stream)
-    handler.setLevel(logging.DEBUG)
-    handler.setFormatter(logging.Formatter("%(levelname)s %(name)s %(message)s"))
-    root = logging.getLogger()
-    saved = [(lg, lg.level) for lg in (root, *loggers)]
-    for lg, _ in saved:
-        lg.setLevel(logging.DEBUG)
-    root.addHandler(handler)
-    try:
-        yield stream
-    finally:
-        root.removeHandler(handler)
-        for lg, level in saved:
-            lg.setLevel(level)
+def _messages(harness):
+    return "\n".join(record.getMessage() for record in harness.records)
 
 
-def _assert_absent(output, *canaries):
-    for canary in canaries:
-        assert canary not in output, f"canary {canary!r} leaked to log output"
+def _with_prompt(value, prompt):
+    if value is PROMPT:
+        return prompt
+    if isinstance(value, dict):
+        return {
+            _with_prompt(k, prompt): _with_prompt(v, prompt) for k, v in value.items()
+        }
+    if isinstance(value, list):
+        return [_with_prompt(v, prompt) for v in value]
+    if isinstance(value, tuple) and value and value[0] == "json":
+        return json.dumps(_with_prompt(value[1], prompt))
+    return value
 
 
-def _run_tools_handler(monkeypatch, tool_calls):
+def _run_tools_handler(monkeypatch, harness, tool_calls):
+    canaries = harness.canaries
+    tool_result = canaries.add("tool result", f"{canaries.tag}-tool-result-do-not-log")
+    tool_calls = _with_prompt(tool_calls, canaries.prompt)
     calls = []
 
     async def echo(text: str, __messages__=None, __user__=None):
         calls.append(text)
-        return CANARY_TOOL_RESULT
+        return tool_result
 
     extra_params = {
-        "__messages__": [{"role": "user", "content": CANARY_PROMPT}],
-        "__user__": {"id": "user-1", "email": CANARY_EMAIL},
+        "__messages__": [{"role": "user", "content": canaries.prompt}],
+        "__user__": {"id": "user-1", "email": canaries.email},
     }
     tool_entry = {
         "toolkit_id": "kit",
@@ -101,33 +96,35 @@ def _run_tools_handler(monkeypatch, tool_calls):
     )
     body = {
         "model": "chat-model",
-        "messages": [{"role": "user", "content": CANARY_PROMPT}],
+        "messages": [{"role": "user", "content": canaries.prompt}],
         "metadata": {"tool_ids": ["kit"]},
     }
 
-    with capture_logs(middleware.log) as stream:
-        _, flags = asyncio.run(
-            middleware.chat_completion_tools_handler(
-                request, body, types.SimpleNamespace(id="user-1"), {"task": {}}, {}
-            )
+    _, flags = asyncio.run(
+        middleware.chat_completion_tools_handler(
+            request, body, types.SimpleNamespace(id="user-1"), {"task": {}}, {}
         )
-    return calls, flags, stream.getvalue()
+    )
+    return calls, flags, tool_result
 
 
-def test_tool_output_and_bound_context_not_logged(monkeypatch):
-    calls, flags, output = _run_tools_handler(
-        monkeypatch, [{"name": "echo", "parameters": {"text": "hello"}}]
+def test_tool_output_and_bound_context_not_logged(monkeypatch, canary_harness):
+    calls, flags, tool_result = _run_tools_handler(
+        monkeypatch, canary_harness, [{"name": "echo", "parameters": {"text": "hello"}}]
     )
 
     assert calls == ["hello"]
-    assert flags["sources"][0]["document"] == [CANARY_TOOL_RESULT]
-    assert "tool_contexts: 1 sources" in output
-    _assert_absent(output, CANARY_TOOL_RESULT, CANARY_PROMPT, CANARY_EMAIL)
+    assert flags["sources"][0]["document"] == [tool_result]
+    assert "tool_contexts: 1 sources" in _messages(canary_harness)
+    canary_harness.assert_no_canaries()
 
 
-def test_invalid_tool_parameters_do_not_abort_later_tool_calls(monkeypatch):
-    calls, flags, output = _run_tools_handler(
+def test_invalid_tool_parameters_do_not_abort_later_tool_calls(
+    monkeypatch, canary_harness
+):
+    calls, flags, _ = _run_tools_handler(
         monkeypatch,
+        canary_harness,
         [
             {"name": "broken", "parameters": None},
             {"name": "echo", "parameters": {"text": "after-broken"}},
@@ -136,59 +133,70 @@ def test_invalid_tool_parameters_do_not_abort_later_tool_calls(monkeypatch):
 
     assert calls == ["after-broken"]
     assert len(flags["sources"]) == 2
-    assert "params=NoneType" in output
-    _assert_absent(output, CANARY_TOOL_RESULT, CANARY_PROMPT, CANARY_EMAIL)
+    assert "params=NoneType" in _messages(canary_harness)
+    canary_harness.assert_no_canaries()
 
 
 @pytest.mark.parametrize(
     "invalid_call",
     [
-        {"name": CANARY_PROMPT},
-        {"name": [CANARY_PROMPT]},
-        json.dumps(CANARY_PROMPT),
+        {"name": PROMPT},
+        {"name": [PROMPT]},
+        ("json", PROMPT),
     ],
+    ids=["name", "name-list", "json-string"],
 )
-def test_invalid_tool_calls_not_logged_or_abort_later_calls(monkeypatch, invalid_call):
-    calls, flags, output = _run_tools_handler(
+def test_invalid_tool_calls_not_logged_or_abort_later_calls(
+    monkeypatch, canary_harness, invalid_call
+):
+    calls, flags, _ = _run_tools_handler(
         monkeypatch,
+        canary_harness,
         [invalid_call, {"name": "echo", "parameters": {"text": "hello"}}],
     )
 
     assert calls == ["hello"]
     assert len(flags["sources"]) == 1
-    assert "Tool calls extracted: 2" in output
-    _assert_absent(output, CANARY_PROMPT)
+    assert "Tool calls extracted: 2" in _messages(canary_harness)
+    canary_harness.assert_no_canaries()
 
 
-def test_undeclared_tool_parameter_keys_not_logged(monkeypatch):
-    calls, flags, output = _run_tools_handler(
+def test_undeclared_tool_parameter_keys_not_logged(monkeypatch, canary_harness):
+    calls, flags, tool_result = _run_tools_handler(
         monkeypatch,
-        [{"name": "echo", "parameters": {CANARY_PROMPT: "secret", "text": "hello"}}],
+        canary_harness,
+        [{"name": "echo", "parameters": {PROMPT: "secret", "text": "hello"}}],
     )
 
     assert calls == ["hello"]
-    assert flags["sources"][0]["document"] == [CANARY_TOOL_RESULT]
-    assert "Tool call: echo params=['text']" in output
-    _assert_absent(output, CANARY_PROMPT)
+    assert flags["sources"][0]["document"] == [tool_result]
+    assert "Tool call: echo params=['text']" in _messages(canary_harness)
+    canary_harness.assert_no_canaries()
 
 
 @pytest.mark.parametrize(
     "error_code, expected",
-    [(CANARY_OAUTH_ERROR, "other"), ("access_denied", "access_denied")],
+    [(OAUTH_ERROR, "other"), ("access_denied", "access_denied")],
+    ids=["unknown-code", "allowlisted-code"],
 )
-def test_oauth_callback_error_code_is_allowlisted(monkeypatch, error_code, expected):
+def test_oauth_callback_error_code_is_allowlisted(
+    monkeypatch, canary_harness, error_code, expected
+):
+    canaries = canary_harness.canaries
+    oauth_error = canaries.add("oauth error", f"{canaries.tag}-oauth-error-do-not-log")
+    if error_code is OAUTH_ERROR:
+        error_code = oauth_error
+
     class FakeClient:
         async def authorize_access_token(self, request):
-            raise OAuthError(error=error_code, description=CANARY_OAUTH_ERROR)
+            raise OAuthError(error=error_code, description=oauth_error)
 
     monkeypatch.setattr(oauth_module, "OAUTH_PROVIDERS", {"fake": {}})
     manager = oauth_module.OAuthManager.__new__(oauth_module.OAuthManager)
     manager.get_client = lambda provider: FakeClient()
 
-    with capture_logs(oauth_module.log) as stream:
-        with pytest.raises(HTTPException):
-            asyncio.run(manager.handle_callback("fake", None, None))
+    with pytest.raises(HTTPException):
+        asyncio.run(manager.handle_callback("fake", None, None))
 
-    output = stream.getvalue()
-    assert f"OAuth callback error: OAuthError {expected}" in output
-    _assert_absent(output, CANARY_OAUTH_ERROR)
+    assert f"OAuth callback error: OAuthError {expected}" in _messages(canary_harness)
+    canary_harness.assert_no_canaries()

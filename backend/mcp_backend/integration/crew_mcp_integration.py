@@ -49,7 +49,9 @@ def _extract_token_usage(crew_output) -> dict:
                 "total_tokens": int(getattr(usage, "total_tokens", 0) or 0),
             }
     except Exception as exc:
-        logger.warning(f"Could not extract token usage from crew output: {exc}")
+        logger.warning(
+            f"Could not extract token usage from crew output: {type(exc).__name__}"
+        )
     return {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
 
@@ -146,7 +148,7 @@ class CrewMCPManager:
             _time_server_adapter = adapter.__enter__()  # Get the tools from __enter__()
             logger.info("✅ Time server adapter initialized")
         except Exception as e:
-            logger.error(f"❌ Failed to initialize Time server: {e}")
+            logger.error(f"❌ Failed to initialize Time server: {type(e).__name__}")
             _time_server_adapter = None
 
         # Initialize News Server
@@ -160,7 +162,7 @@ class CrewMCPManager:
             _news_server_adapter = adapter.__enter__()  # Get the tools from __enter__()
             logger.info("✅ News server adapter initialized")
         except Exception as e:
-            logger.error(f"❌ Failed to initialize News server: {e}")
+            logger.error(f"❌ Failed to initialize News server: {type(e).__name__}")
             _news_server_adapter = None
 
         # Initialize SharePoint servers for all configured departments
@@ -180,7 +182,7 @@ class CrewMCPManager:
                 logger.info(f"✅ {dept_key} SharePoint server adapter initialized")
             except Exception as e:
                 logger.error(
-                    f"❌ Failed to initialize {dept_key} SharePoint server: {e}"
+                    f"❌ Failed to initialize {dept_key} SharePoint server: {type(e).__name__}"
                 )
                 _sharepoint_adapters[dept_key] = None
 
@@ -217,7 +219,9 @@ class CrewMCPManager:
                     adapter.__exit__(None, None, None)
                     logger.info(f"✅ {adapter_name} server adapter cleaned up")
                 except Exception as e:
-                    logger.error(f"❌ Error cleaning up {adapter_name} adapter: {e}")
+                    logger.error(
+                        f"❌ Error cleaning up {adapter_name} adapter: {type(e).__name__}"
+                    )
 
         for dept_key, adapter in _sharepoint_adapters.items():
             if adapter is not None:
@@ -226,7 +230,7 @@ class CrewMCPManager:
                     logger.info(f"✅ {dept_key} SharePoint server adapter cleaned up")
                 except Exception as e:
                     logger.error(
-                        f"❌ Error cleaning up {dept_key} SharePoint adapter: {e}"
+                        f"❌ Error cleaning up {dept_key} SharePoint adapter: {type(e).__name__}"
                     )
 
         _time_server_adapter = None
@@ -320,7 +324,7 @@ class CrewMCPManager:
             return str(result), token_usage
 
         except Exception as e:
-            logger.error(f"Error in CrewAI MCP integration: {e}")
+            logger.error(f"Error in CrewAI MCP integration: {type(e).__name__}")
             raise
 
     def run_news_crew(self, query: str = "Get the latest news headlines") -> str:
@@ -390,7 +394,7 @@ class CrewMCPManager:
             return str(result), token_usage
 
         except Exception as e:
-            logger.error(f"Error in CrewAI MCP news integration: {e}")
+            logger.error(f"Error in CrewAI MCP news integration: {type(e).__name__}")
             raise
 
     def run_sharepoint_crew(
@@ -575,15 +579,16 @@ class CrewMCPManager:
                 adapter.__exit__(None, None, None)
                 logger.info(f"✅ Cleaned up {dept_key} SharePoint adapter")
             except Exception as e:
-                logger.warning(f"Failed to cleanup adapter: {e}")
+                logger.warning(f"Failed to cleanup adapter: {type(e).__name__}")
 
             token_usage = _extract_token_usage(result)
             return str(result), token_usage
 
         except Exception as e:
             error_msg = str(e)
+            # The message can echo the query, tool arguments or token errors.
             logger.error(
-                f"Error in CrewAI MCP {dept_key} SharePoint integration: {error_msg}"
+                f"Error in CrewAI MCP {dept_key} SharePoint integration: {type(e).__name__}"
             )
 
             # Provide specific error messages based on the type of failure
@@ -710,7 +715,7 @@ class CrewMCPManager:
         except MissingGraphTokenError:
             raise
         except Exception as e:
-            logger.error(f"Error in intelligent routing: {e}")
+            logger.error(f"Error in intelligent routing: {type(e).__name__}")
             # Emergency fallback - route based on selected tools only
             logger.info("Using emergency fallback routing...")
 
@@ -828,7 +833,9 @@ class CrewMCPManager:
                         )
                     logger.info(f"Found {len(list(tools))} tools from {server_name}")
                 except Exception as e:
-                    logger.error(f"Error getting tools from {server_name}: {e}")
+                    logger.error(
+                        f"Error getting tools from {server_name}: {type(e).__name__}"
+                    )
 
         return all_tools
 
@@ -877,10 +884,9 @@ def main():
         print("\n✅ All tests completed successfully!")
 
     except Exception as e:
-        logger.error(f"❌ Error: {e}")
-        import traceback
+        from open_webui.observability.redaction import format_exception_safe
 
-        traceback.print_exc()
+        logger.error(f"❌ Error: {type(e).__name__}\n{format_exception_safe(e)}")
 
 
 if __name__ == "__main__":

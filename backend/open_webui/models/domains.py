@@ -93,7 +93,7 @@ class DomainTable:
                 db.refresh(domain)
                 return DomainModel.model_validate(domain)
             except Exception as e:
-                log.error(f"Error creating domain: {e}")
+                log.error(f"Error creating domain: {type(e).__name__}")
                 db.rollback()
                 return None
 
@@ -133,7 +133,7 @@ class DomainTable:
                 db.refresh(domain)
                 return DomainModel.model_validate(domain)
             except Exception as e:
-                log.error(f"Error updating domain: {e}")
+                log.error(f"Error updating domain: {type(e).__name__}")
                 db.rollback()
                 return None
 
@@ -148,7 +148,7 @@ class DomainTable:
                 db.commit()
                 return True
             except Exception as e:
-                log.error(f"Error deleting domain: {e}")
+                log.error(f"Error deleting domain: {type(e).__name__}")
                 db.rollback()
                 return False
 

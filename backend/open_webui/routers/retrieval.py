@@ -131,7 +131,7 @@ def load_embedding_model(
             )
         except Exception as e:
             log.error(
-                f"Error loading SentenceTransformer model '{embedding_model}': {e}"
+                f"Error loading SentenceTransformer model '{embedding_model}': {type(e).__name__}"
             )
 
     if ef is None:
@@ -158,7 +158,7 @@ def load_reranker_model(
                 )
 
             except Exception as e:
-                log.error(f"ColBERT: {e}")
+                log.error(f"ColBERT: {type(e).__name__}")
                 raise Exception(ERROR_MESSAGES.DEFAULT(e))
         else:
             import sentence_transformers
@@ -320,7 +320,7 @@ async def update_embedding_config(
             },
         }
     except Exception as e:
-        log.exception(f"Problem updating embedding model: {e}")
+        log.exception(f"Problem updating embedding model: {type(e).__name__}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ERROR_MESSAGES.DEFAULT(e),
@@ -347,7 +347,7 @@ async def update_reranking_config(
                 True,
             )
         except Exception as e:
-            log.error(f"Error loading reranking model: {e}")
+            log.error(f"Error loading reranking model: {type(e).__name__}")
             request.app.state.config.ENABLE_RAG_HYBRID_SEARCH = False
 
         return {
@@ -355,7 +355,7 @@ async def update_reranking_config(
             "reranking_model": request.app.state.config.RAG_RERANKING_MODEL,
         }
     except Exception as e:
-        log.exception(f"Problem updating reranking model: {e}")
+        log.exception(f"Problem updating reranking model: {type(e).__name__}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ERROR_MESSAGES.DEFAULT(e),
@@ -881,7 +881,7 @@ async def save_docs_to_vector_db(
 
     except Exception as e:
         log.error(
-            f"Error saving documents to collection {collection_name}: {type(e).__name__}: {e}",
+            f"Error saving documents to collection {collection_name}: {type(e).__name__}",
             exc_info=True,
         )
         raise e
@@ -1773,11 +1773,11 @@ def reset_upload_dir(user=Depends(get_admin_user)) -> bool:
                     elif os.path.isdir(file_path):
                         shutil.rmtree(file_path)  # Remove the directory
                 except Exception as e:
-                    print(f"Failed to delete {file_path}. Reason: {e}")
+                    log.error("Failed to delete an upload entry: %s", type(e).__name__)
         else:
             print(f"The directory {folder} does not exist")
     except Exception as e:
-        print(f"Failed to process the directory {folder}. Reason: {e}")
+        log.error("Failed to process the upload directory: %s", type(e).__name__)
     return True
 
 
@@ -1844,7 +1844,9 @@ async def process_files_batch(
             results.append(BatchProcessFilesResult(file_id=file.id, status="prepared"))
 
         except Exception as e:
-            log.error(f"process_files_batch: Error processing file {file.id}: {str(e)}")
+            log.error(
+                f"process_files_batch: Error processing file {file.id}: {type(e).__name__}"
+            )
             errors.append(
                 BatchProcessFilesResult(file_id=file.id, status="failed", error=str(e))
             )
@@ -1868,7 +1870,7 @@ async def process_files_batch(
 
         except Exception as e:
             log.error(
-                f"process_files_batch: Error saving documents to vector DB: {str(e)}"
+                f"process_files_batch: Error saving documents to vector DB: {type(e).__name__}"
             )
             for result in results:
                 result.status = "failed"
@@ -1936,7 +1938,7 @@ async def cleanup_file_vectors(file_id: str, collection_name: str = None) -> boo
                     )
                 except Exception as filter_error:
                     log.warning(
-                        f"Could not delete by filter, attempting collection deletion: {filter_error}"
+                        f"Could not delete by filter, attempting collection deletion: {type(filter_error).__name__}"
                     )
                     # Fallback: if filtering doesn't work, log and continue
                     pass
@@ -1950,7 +1952,7 @@ async def cleanup_file_vectors(file_id: str, collection_name: str = None) -> boo
             return True
 
     except Exception as e:
-        log.error(f"Error cleaning up vectors for file {file_id}: {e}")
+        log.error(f"Error cleaning up vectors for file {file_id}: {type(e).__name__}")
         return False
 
 
@@ -1991,7 +1993,7 @@ async def cleanup_orphaned_vectors() -> dict:
             existing_kb_ids = {kb.id for kb in existing_knowledge_bases}
             log.info(f"Found {len(existing_kb_ids)} knowledge bases to preserve")
         except Exception as e:
-            log.warning(f"Could not get knowledge bases: {e}")
+            log.warning(f"Could not get knowledge bases: {type(e).__name__}")
             existing_kb_ids = set()
 
         for collection_name in collections:
@@ -2062,7 +2064,7 @@ async def cleanup_orphaned_vectors() -> dict:
         return cleanup_summary
 
     except Exception as e:
-        log.error(f"Error during orphaned vector cleanup: {e}")
+        log.error(f"Error during orphaned vector cleanup: {type(e).__name__}")
         return {"error": str(e), "collections_cleaned": 0, "vectors_cleaned": 0}
 
 
@@ -2095,7 +2097,7 @@ async def get_vector_db_stats(user) -> dict:
                     "stats": {},
                 }
         except Exception as e:
-            log.error(f"Error getting collections: {e}")
+            log.error(f"Error getting collections: {type(e).__name__}")
             return {"error": f"Error getting collections: {e}", "stats": {}}
 
         stats = {
@@ -2162,7 +2164,7 @@ async def get_vector_db_stats(user) -> dict:
         return {"status": "success", "stats": stats}
 
     except Exception as e:
-        log.error(f"Error getting vector DB stats: {e}")
+        log.error(f"Error getting vector DB stats: {type(e).__name__}")
         return {"error": str(e), "stats": {}}
 
 
@@ -2228,7 +2230,7 @@ async def cleanup_expired_web_searches(
                 )
                 return cleanup_summary
         except Exception as e:
-            log.error(f"Error getting collections: {e}")
+            log.error(f"Error getting collections: {type(e).__name__}")
             cleanup_summary["errors"].append(f"Error getting collections: {e}")
             return cleanup_summary
         cutoff_timestamp = datetime.now() - timedelta(days=max_age_days)
@@ -2292,7 +2294,7 @@ async def cleanup_expired_web_searches(
                                     except (ValueError, TypeError) as e:
                                         # If timestamp is invalid, consider it old
                                         log.debug(
-                                            f"Invalid timestamp format for {collection_name}: {created_at}, error: {e}"
+                                            f"Invalid timestamp format for {collection_name}: {created_at}, error: {type(e).__name__}"
                                         )
                                         should_delete = True
                                 else:
@@ -2310,7 +2312,9 @@ async def cleanup_expired_web_searches(
                             continue
 
                     except Exception as e:
-                        log.error(f"Error checking collection {collection_name}: {e}")
+                        log.error(
+                            f"Error checking collection {collection_name}: {type(e).__name__}"
+                        )
                         cleanup_summary["errors"].append(
                             f"Error checking collection {collection_name}: {e}"
                         )
@@ -2340,7 +2344,7 @@ async def cleanup_expired_web_searches(
         return cleanup_summary
 
     except Exception as e:
-        log.error(f"Error during web search cleanup: {e}")
+        log.error(f"Error during web search cleanup: {type(e).__name__}")
         return {"error": str(e), "collections_cleaned": 0, "vectors_cleaned": 0}
 
 
@@ -2533,7 +2537,7 @@ async def cleanup_expired_web_searches_safe(
         end_time = time.time()
         total_duration = end_time - start_time if "start_time" in locals() else 0
         log.error(
-            f"Critical error during web search cleanup after {total_duration:.2f} seconds: {e}"
+            f"Critical error during web search cleanup after {total_duration:.2f} seconds: {type(e).__name__}"
         )
         return {
             "error": str(e),
@@ -2580,7 +2584,7 @@ async def api_cleanup_orphaned_vectors(user=Depends(get_admin_user)):
             "cleanup_result": result,
         }
     except Exception as e:
-        log.error(f"Orphaned vector cleanup API failed: {str(e)}")
+        log.error(f"Orphaned vector cleanup API failed: {type(e).__name__}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
@@ -2607,7 +2611,7 @@ async def api_cleanup_all_web_search_cache(user=Depends(get_admin_user)):
             "cleanup_result": result,
         }
     except Exception as e:
-        log.error(f"All web search cache cleanup API failed: {str(e)}")
+        log.error(f"All web search cache cleanup API failed: {type(e).__name__}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
@@ -2639,7 +2643,7 @@ async def api_cleanup_web_search_vectors(
             "cleanup_result": result,
         }
     except Exception as e:
-        log.error(f"Web search vector cleanup API failed: {str(e)}")
+        log.error(f"Web search vector cleanup API failed: {type(e).__name__}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
@@ -2743,7 +2747,7 @@ async def api_comprehensive_cleanup(
             "cleanup_results": cleanup_results,
         }
     except Exception as e:
-        log.error(f"Comprehensive vector cleanup API failed: {str(e)}")
+        log.error(f"Comprehensive vector cleanup API failed: {type(e).__name__}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
@@ -2777,7 +2781,7 @@ async def api_cleanup_old_collections(
             "note": "Deleted collections can be recreated on-demand when accessed",
         }
     except Exception as e:
-        log.error(f"Old collections cleanup API failed: {str(e)}")
+        log.error(f"Old collections cleanup API failed: {type(e).__name__}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
@@ -2816,7 +2820,7 @@ def api_vector_db_health(user=Depends(get_admin_user)):
         return health_status
 
     except Exception as e:
-        log.error(f"Vector DB health check failed: {str(e)}")
+        log.error(f"Vector DB health check failed: {type(e).__name__}")
 
         health_status = {
             "status": "unhealthy",
@@ -2867,7 +2871,7 @@ def extract_file_ids_from_chat_data(chat):
         return file_ids
 
     except Exception as e:
-        log.error(f"Error extracting file IDs from chat {chat.id}: {e}")
+        log.error(f"Error extracting file IDs from chat {chat.id}: {type(e).__name__}")
         return set()
 
 
@@ -2936,7 +2940,7 @@ def get_all_file_references_from_chats(exclude_chat_ids=None):
 
                     except Exception as e:
                         log.error(
-                            f"Error extracting file IDs from chat {chat_data.id}: {e}"
+                            f"Error extracting file IDs from chat {chat_data.id}: {type(e).__name__}"
                         )
 
                 total_chats_scanned += len(chat_batch)
@@ -2957,7 +2961,7 @@ def get_all_file_references_from_chats(exclude_chat_ids=None):
         return file_ref_counts
 
     except Exception as e:
-        log.error(f"Error getting file references from chats: {e}")
+        log.error(f"Error getting file references from chats: {type(e).__name__}")
         return {}
 
 
@@ -2985,7 +2989,7 @@ def get_knowledge_base_file_ids() -> set:
                     kb_file_ids.update(file_ids)
         log.debug(f"Retrieved {len(kb_file_ids)} file IDs from knowledge bases")
     except Exception as e:
-        log.error(f"Error getting knowledge base file IDs: {e}")
+        log.error(f"Error getting knowledge base file IDs: {type(e).__name__}")
 
     return kb_file_ids
 
@@ -3019,7 +3023,7 @@ def get_chat_batch_for_cleanup(
             offset=0,  # Always 0 since we delete as we go
         )
     except Exception as e:
-        log.error(f"Error retrieving chat batch: {e}")
+        log.error(f"Error retrieving chat batch: {type(e).__name__}")
         return []
 
 
@@ -3077,7 +3081,7 @@ async def cleanup_orphaned_files(
                         except Exception as e:
                             storage_delete_succeeded = False
                             log.warning(
-                                f"Could not delete physical file {file.path}: {e}"
+                                f"Could not delete physical file {file.path}: {type(e).__name__}"
                             )
 
                     if not storage_delete_succeeded:
@@ -3143,7 +3147,7 @@ async def delete_chats_with_retry(
             if retry < max_retries - 1:
                 wait_time = 2**retry  # Exponential backoff: 1s, 2s, 4s
                 log.warning(
-                    f"Chat deletion attempt {retry + 1} failed, retrying in {wait_time}s: {e}"
+                    f"Chat deletion attempt {retry + 1} failed, retrying in {wait_time}s: {type(e).__name__}"
                 )
                 await asyncio.sleep(wait_time)
             else:
@@ -3184,7 +3188,7 @@ async def emit_chat_deletion_notification(
         )
         log.debug(f"Emitted chat deletion notification for {deleted_count} chats")
     except Exception as e:
-        log.warning(f"Failed to emit chat deletion notification: {e}")
+        log.warning(f"Failed to emit chat deletion notification: {type(e).__name__}")
 
 
 async def cleanup_orphaned_files_by_reference():
@@ -3223,7 +3227,7 @@ async def cleanup_orphaned_files_by_reference():
                 f"Found {len(kb_referenced_files)} files in knowledge bases to preserve"
             )
         except Exception as e:
-            log.error(f"Error getting knowledge base files: {e}")
+            log.error(f"Error getting knowledge base files: {type(e).__name__}")
             kb_referenced_files = set()
 
         # Get all files from the database
@@ -3324,7 +3328,7 @@ async def cleanup_old_chat_collections(max_age_days: int = 1) -> dict:
                     "error": "Vector DB client does not support list_collections method"
                 }
         except Exception as e:
-            log.error(f"Failed to get collections: {e}")
+            log.error(f"Failed to get collections: {type(e).__name__}")
             return {"error": f"Failed to get collections: {e}"}
 
         # Get knowledge base files to preserve their collections
@@ -3338,7 +3342,7 @@ async def cleanup_old_chat_collections(max_age_days: int = 1) -> dict:
                         kb_file_ids.update(file_ids)
             log.info(f"Found {len(kb_file_ids)} knowledge base files to preserve")
         except Exception as e:
-            log.error(f"Error getting knowledge base files: {e}")
+            log.error(f"Error getting knowledge base files: {type(e).__name__}")
             kb_file_ids = set()
 
         cutoff_time = datetime.now() - timedelta(days=max_age_days)
@@ -3390,7 +3394,9 @@ async def cleanup_old_chat_collections(max_age_days: int = 1) -> dict:
                             # File doesn't exist in database, collection is orphaned
                             is_old_collection = True
                     except Exception as e:
-                        log.debug(f"Could not check file {file_id} age: {e}")
+                        log.debug(
+                            f"Could not check file {file_id} age: {type(e).__name__}"
+                        )
                         # If we can't check the file, assume collection is old for cleanup
                         is_old_collection = True
 
@@ -3465,7 +3471,7 @@ async def reindex_file_on_demand(file_id: str, request: Request, user=None) -> b
                 file_content = file_content_bytes.decode("utf-8", errors="ignore")
                 log.info(f"Loaded file content from storage for {file_id}")
         except Exception as e:
-            log.error(f"Error loading file content for {file_id}: {e}")
+            log.error(f"Error loading file content for {file_id}: {type(e).__name__}")
             return False
 
         # Process the file content and create vectors
@@ -3496,11 +3502,13 @@ async def reindex_file_on_demand(file_id: str, request: Request, user=None) -> b
                 return False
 
         except Exception as e:
-            log.error(f"Error re-indexing file {file_id}: {e}")
+            log.error(f"Error re-indexing file {file_id}: {type(e).__name__}")
             return False
 
     except Exception as e:
-        log.error(f"Error in on-demand re-indexing for file {file_id}: {e}")
+        log.error(
+            f"Error in on-demand re-indexing for file {file_id}: {type(e).__name__}"
+        )
         return False
 
 
@@ -3546,7 +3554,7 @@ async def cleanup_orphaned_chat_files() -> dict:
             existing_kb_ids = {kb.id for kb in existing_knowledge_bases}
             log.info(f"Found {len(existing_kb_ids)} knowledge bases to preserve")
         except Exception as e:
-            log.warning(f"Could not get knowledge bases: {e}")
+            log.warning(f"Could not get knowledge bases: {type(e).__name__}")
             existing_kb_ids = set()
 
         # No longer checking chat references - we delete all chat files except KB files
@@ -3567,7 +3575,7 @@ async def cleanup_orphaned_chat_files() -> dict:
                 f"Found {len(kb_referenced_files)} files referenced in knowledge bases (will be preserved)"
             )
         except Exception as e:
-            log.error(f"Error getting knowledge base files: {e}")
+            log.error(f"Error getting knowledge base files: {type(e).__name__}")
             kb_referenced_files = set()
 
         # Process file collections
@@ -3618,7 +3626,9 @@ async def cleanup_orphaned_chat_files() -> dict:
                 try:
                     Storage.delete_file(file.path)
                 except Exception as e:
-                    log.warning(f"Could not delete physical file {file.path}: {e}")
+                    log.warning(
+                        f"Could not delete physical file {file.path}: {type(e).__name__}"
+                    )
 
                 # Delete from database
                 Files.delete_file_by_id(file_id)
@@ -3635,7 +3645,7 @@ async def cleanup_orphaned_chat_files() -> dict:
         return cleanup_summary
 
     except Exception as e:
-        log.error(f"Error during orphaned chat files cleanup: {e}")
+        log.error(f"Error during orphaned chat files cleanup: {type(e).__name__}")
         return {"error": str(e), "collections_cleaned": 0, "files_deleted": 0}
 
 
@@ -3655,7 +3665,7 @@ async def api_cleanup_orphaned_chat_files(user=Depends(get_admin_user)):
             "cleanup_result": result,
         }
     except Exception as e:
-        log.error(f"Orphaned chat files cleanup API failed: {str(e)}")
+        log.error(f"Orphaned chat files cleanup API failed: {type(e).__name__}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
@@ -3746,7 +3756,7 @@ async def cleanup_expired_chats(
                 elif isinstance(chat, dict):
                     log.debug(f"Chat {i}: dict_keys={list(chat.keys())}")
             except Exception as e:
-                log.debug(f"Chat {i}: error accessing attributes: {e}")
+                log.debug(f"Chat {i}: error accessing attributes: {type(e).__name__}")
 
         cleanup_summary["chats_checked"] = len(expired_chats)
         cleanup_summary["expired_chats_found"] = len(expired_chats)
@@ -3854,7 +3864,7 @@ async def cleanup_expired_chats(
                 f"Found {len(kb_referenced_files)} files in knowledge bases to preserve"
             )
         except Exception as e:
-            log.error(f"Error getting knowledge base files: {e}")
+            log.error(f"Error getting knowledge base files: {type(e).__name__}")
             kb_referenced_files = set()
 
         # Process files in batches to manage memory
@@ -3898,7 +3908,7 @@ async def cleanup_expired_chats(
                                     log.debug(f"Deleted physical file: {file.path}")
                                 except Exception as e:
                                     log.warning(
-                                        f"Could not delete physical file {file.path}: {e}"
+                                        f"Could not delete physical file {file.path}: {type(e).__name__}"
                                     )
 
                             # Delete from database
@@ -3949,14 +3959,16 @@ async def cleanup_expired_chats(
                         f"Emitted chat deletion notification for {deletion_result['deleted_count']} chats"
                     )
                 except Exception as e:
-                    log.warning(f"Failed to emit chat deletion notification: {e}")
+                    log.warning(
+                        f"Failed to emit chat deletion notification: {type(e).__name__}"
+                    )
                     # Don't fail the cleanup if WebSocket emission fails
 
         log.info(f"Expired chat cleanup completed: {cleanup_summary}")
         return cleanup_summary
 
     except Exception as e:
-        log.error(f"Error during expired chat cleanup: {e}")
+        log.error(f"Error during expired chat cleanup: {type(e).__name__}")
         return {
             "error": str(e),
             "chats_checked": 0,
@@ -4235,7 +4247,7 @@ async def cleanup_expired_chats_streaming(
         return cleanup_summary
 
     except Exception as e:
-        log.error(f"Error during streaming chat cleanup: {e}")
+        log.error(f"Error during streaming chat cleanup: {type(e).__name__}")
         return {
             "error": str(e),
             "chats_checked": cleanup_summary.get("chats_checked", 0),
@@ -4347,7 +4359,7 @@ async def api_cleanup_expired_chats(
     except HTTPException:
         raise
     except Exception as e:
-        log.error(f"Expired chats cleanup API failed: {str(e)}")
+        log.error(f"Expired chats cleanup API failed: {type(e).__name__}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
@@ -4388,7 +4400,7 @@ async def get_wikipedia_grounding_queue_status(user=Depends(get_admin_user)):
             "queue_status": status,
         }
     except Exception as e:
-        log.error(f"Wikipedia grounding queue status check failed: {str(e)}")
+        log.error(f"Wikipedia grounding queue status check failed: {type(e).__name__}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={

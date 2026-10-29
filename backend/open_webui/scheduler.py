@@ -153,7 +153,7 @@ async def automated_chat_cleanup():
         log.info(f"Automated chat cleanup completed: {result}")
 
     except Exception as e:
-        log.error(f"Automated chat cleanup failed: {str(e)}", exc_info=True)
+        log.error(f"Automated chat cleanup failed: {type(e).__name__}", exc_info=True)
     finally:
         # Cancel lock renewal task
         if lock_renewal_task:
@@ -213,7 +213,7 @@ def update_cleanup_schedule():
             log.info("Chat lifetime disabled - no automated cleanup scheduled")
 
     except Exception as e:
-        log.error(f"Failed to update cleanup schedule: {str(e)}")
+        log.error(f"Failed to update cleanup schedule: {type(e).__name__}")
 
 
 ####################################
@@ -241,7 +241,7 @@ async def automated_refresh_session_cleanup():
             deleted_sessions,
         )
     except Exception as e:
-        log.error(f"Refresh session cleanup failed: {e}", exc_info=True)
+        log.error(f"Refresh session cleanup failed: {type(e).__name__}", exc_info=True)
 
 
 def schedule_refresh_session_cleanup():
@@ -283,7 +283,9 @@ def schedule_refresh_session_cleanup():
             REFRESH_SESSION_CLEANUP_SCHEDULE_TIMEZONE,
         )
     except Exception as e:
-        log.error(f"Failed to update refresh session cleanup schedule: {str(e)}")
+        log.error(
+            f"Failed to update refresh session cleanup schedule: {type(e).__name__}"
+        )
 
 
 ####################################
@@ -362,7 +364,7 @@ async def automated_redis_pool_cleanup():
         log.info(f"Scheduled Redis pool cleanup completed: {stats}")
 
     except Exception as e:
-        log.error(f"Redis pool cleanup failed: {e}", exc_info=True)
+        log.error(f"Redis pool cleanup failed: {type(e).__name__}", exc_info=True)
     finally:
         if lock_renewal_task:
             lock_renewal_task.cancel()
@@ -424,7 +426,7 @@ def schedule_redis_pool_cleanup():
         )
 
     except Exception as e:
-        log.error(f"Failed to update Redis pool cleanup schedule: {str(e)}")
+        log.error(f"Failed to update Redis pool cleanup schedule: {type(e).__name__}")
 
 
 def start_scheduler():
@@ -444,7 +446,7 @@ def start_scheduler():
         schedule_redis_pool_cleanup()  # Set up Redis pool cleanup schedule
         log.info("Scheduler initialization complete")
     except Exception as e:
-        log.error(f"Failed to start scheduler: {str(e)}")
+        log.error(f"Failed to start scheduler: {type(e).__name__}")
 
 
 def stop_scheduler():
@@ -459,7 +461,7 @@ def stop_scheduler():
             scheduler = None
             log.info("Scheduler stopped")
         except Exception as e:
-            log.error(f"Error stopping scheduler: {str(e)}")
+            log.error(f"Error stopping scheduler: {type(e).__name__}")
 
 
 def get_schedule_info():

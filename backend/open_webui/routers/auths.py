@@ -336,7 +336,7 @@ async def ldap_auth(request: Request, response: Response, form_data: LdapForm):
             ciphers=LDAP_CIPHERS,
         )
     except Exception as e:
-        log.error(f"An error occurred on TLS: {str(e)}")
+        log.error(f"An error occurred on TLS: {type(e).__name__}")
         raise HTTPException(400, detail=str(e))
 
     try:

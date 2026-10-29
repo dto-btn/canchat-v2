@@ -170,7 +170,7 @@ class ModelsTable:
                 else:
                     return None
         except Exception as e:
-            print(e)
+            log.error("insert_new_model failed: %s", type(e).__name__)
             return None
 
     def get_all_models(self) -> list[ModelModel]:
@@ -250,7 +250,7 @@ class ModelsTable:
                 db.refresh(model)
                 return ModelModel.model_validate(model)
         except Exception as e:
-            print(e)
+            log.error("update_model_by_id failed: %s", type(e).__name__)
 
             return None
 

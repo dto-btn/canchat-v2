@@ -24,6 +24,7 @@ et ce projet adhère au [Versionnage sémantique](https://semver.org/lang/fr/spe
 ### Sécurité
 
 - **🔒 Paramètres SQL dans les journaux (OBS-15)** : Les moteurs de base de données masquent les paramètres SQL liés; les valeurs des requêtes n'apparaissent plus dans les journaux SQL ni dans les messages d'erreur de la base de données.
+- **🔒 Texte des exceptions dans les journaux (OBS-18)** : Les erreurs et traces d'appels journalisées conservent le type d'exception et l'emplacement dans le code, mais n'incluent plus les messages d'exception, qui pouvaient répéter des requêtes, des corps de requête, des arguments d'outils ou des identifiants. Les chaînes de requête des URL, les valeurs `Authorization`/`Bearer`, les chaînes au format JWT, les clés d'API et les valeurs secrètes configurées sont masquées dans toutes les entrées de journal envoyées sur la sortie standard et par OTLP, et les échecs de journalisation n'impriment plus l'entrée sur la sortie d'erreur. Les mises à jour de configuration ne journalisent plus la nouvelle valeur.
 
 ### Corrigé
 

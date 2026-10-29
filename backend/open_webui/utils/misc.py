@@ -6,6 +6,9 @@ import uuid
 from datetime import timedelta
 from pathlib import Path
 from typing import Any, Optional
+import logging
+
+log = logging.getLogger(__name__)
 
 
 def get_message_list(messages, message_id):
@@ -489,7 +492,7 @@ def parse_ollama_modelfile(model_text):
                 elif param_type is bool:
                     value = value.lower() == "true"
             except Exception as e:
-                print(e)
+                log.error("parse_ollama_modelfile failed: %s", type(e).__name__)
                 continue
 
             data["params"][param] = value

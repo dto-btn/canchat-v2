@@ -25,6 +25,10 @@ from open_webui.env import (
 from open_webui.internal.db import get_db
 from open_webui.metrics.service import MetricsDefinition
 from open_webui.models.base import Base
+from open_webui.observability.redaction import (
+    invalidate_secrets,
+    register_secret_source,
+)
 
 ####################################
 # Config helpers
@@ -244,6 +248,12 @@ def get_config_value(config_path: str):
 
 PERSISTENT_CONFIG_REGISTRY = []
 
+# Secret settings (API keys, client secrets) can be changed at runtime, so
+# the log redaction reads their current values instead of a startup copy.
+register_secret_source(
+    lambda: [(item.env_name, item.value) for item in PERSISTENT_CONFIG_REGISTRY]
+)
+
 
 def save_config(config):
     global CONFIG_DATA
@@ -294,11 +304,17 @@ class PersistentConfig(Generic[T]):
             )
         return super().__getattribute__(item)
 
+    def __setattr__(self, name, value):
+        super().__setattr__(name, value)
+        if name == "value":
+            # Mask a new or rotated secret value in logs right away.
+            invalidate_secrets()
+
     def update(self):
         new_value = get_config_value(self.config_path)
         if new_value is not None:
             self.value = new_value
-            log.info(f"Updated {self.env_name} to new value {self.value}")
+            log.info(f"Updated {self.env_name} from the database")
 
     def save(self):
         log.info(f"Saving '{self.env_name}' to the database")
@@ -672,7 +688,7 @@ if frontend_favicon.exists():
     try:
         shutil.copyfile(frontend_favicon, STATIC_DIR / "favicon.png")
     except Exception as e:
-        logging.error(f"An error occurred: {e}")
+        logging.error(f"An error occurred: {type(e).__name__}")
 else:
     logging.warning(f"Frontend favicon not found at {frontend_favicon}")
 
@@ -682,7 +698,7 @@ if frontend_splash.exists():
     try:
         shutil.copyfile(frontend_splash, STATIC_DIR / "splash.png")
     except Exception as e:
-        logging.error(f"An error occurred: {e}")
+        logging.error(f"An error occurred: {type(e).__name__}")
 else:
     logging.warning(f"Frontend splash not found at {frontend_splash}")
 
@@ -1340,7 +1356,7 @@ try:
     banners = json.loads(os.environ.get("WEBUI_BANNERS", "[]"))
     banners = [BannerModel(**banner) for banner in banners]
 except Exception as e:
-    print(f"Error loading WEBUI_BANNERS: {e}")
+    print(f"Error loading WEBUI_BANNERS: {type(e).__name__}")
     banners = []
 
 WEBUI_BANNERS = PersistentConfig("WEBUI_BANNERS", "ui.banners", banners)

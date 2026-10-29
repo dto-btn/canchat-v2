@@ -231,7 +231,7 @@ class FastMCPManager:
                     return False
 
         except Exception as e:
-            log.exception(f"Failed to start server {name}: {e}")
+            log.exception(f"Failed to start server {name}: {type(e).__name__}")
             return False
 
     async def stop_server(self, name: str) -> bool:
@@ -251,7 +251,7 @@ class FastMCPManager:
                     if hasattr(self.clients[name], "close"):
                         await self.clients[name].close()
                 except Exception as e:
-                    log.warning(f"Error closing client for {name}: {e}")
+                    log.warning(f"Error closing client for {name}: {type(e).__name__}")
                 finally:
                     del self.clients[name]
 
@@ -274,7 +274,7 @@ class FastMCPManager:
             return True
 
         except Exception as e:
-            log.exception(f"Failed to stop server {name}: {e}")
+            log.exception(f"Failed to stop server {name}: {type(e).__name__}")
             return False
 
     async def restart_server(self, name: str) -> bool:
@@ -433,7 +433,9 @@ class FastMCPManager:
                         )
 
             except Exception as e:
-                log.exception(f"Error getting tools from server {server_name}: {e}")
+                log.exception(
+                    f"Error getting tools from server {server_name}: {type(e).__name__}"
+                )
                 log.error(
                     f"Server {server_name} will appear as running but with no tools"
                 )
@@ -490,7 +492,7 @@ class FastMCPManager:
 
         except Exception as e:
             log.exception(
-                f"Error calling tool {tool_name} on server {server_name}: {e}"
+                f"Error calling tool {tool_name} on server {server_name}: {type(e).__name__}"
             )
             raise
 
@@ -660,11 +662,13 @@ class FastMCPManager:
 
                 except Exception as e:
                     log.exception(
-                        f"Error initializing external server {server.name}: {e}"
+                        f"Error initializing external server {server.name}: {type(e).__name__}"
                     )
 
         except Exception as e:
-            log.exception(f"Error loading external servers from database: {e}")
+            log.exception(
+                f"Error loading external servers from database: {type(e).__name__}"
+            )
 
     async def initialize_all_servers(self):
         """Initialize both built-in and external servers"""
@@ -746,7 +750,9 @@ class FastMCPManager:
                         return tool_list
 
         except Exception as e:
-            log.exception(f"Error getting tools from server {server_name}: {e}")
+            log.exception(
+                f"Error getting tools from server {server_name}: {type(e).__name__}"
+            )
 
         return []
 
