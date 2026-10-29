@@ -1762,7 +1762,5 @@ Only if OBS-05 confirms full capture is required: implement `observability/conte
 - Lifecycle tests with controlled clocks (chat updated on day 20 extends expiry).
 - Access control tests.
 
-**Definition of done**
-
-- Common DoD.
+**Definition of done**- Common DoD.
 - Security/IM sign-off before enabling in any environment.

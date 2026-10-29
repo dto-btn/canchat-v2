@@ -153,10 +153,10 @@ class WikiSearchGrounder:
                 # Create a new lock for this query
                 query_lock = asyncio.Lock()
                 cls._query_locks[query_hash] = query_lock
-                log.debug(f"🔐 Created new query lock (hash: {query_hash[:8]})")
+                log.debug("🔐 Created new query lock")
             else:
                 query_lock = cls._query_locks[query_hash]
-                log.debug(f"🔐 Reusing existing query lock (hash: {query_hash[:8]})")
+                log.debug("🔐 Reusing existing query lock")
 
             return query_lock
 
@@ -168,9 +168,7 @@ class WikiSearchGrounder:
         query_hash = hashlib.md5(query.encode("utf-8")).hexdigest()
 
         # Log attempt to acquire query lock
-        log.debug(
-            f"🚦 [{operation_name}] Requesting query lock (hash: {query_hash[:8]})"
-        )
+        log.debug(f"🚦 [{operation_name}] Requesting query lock")
 
         start_time = time.time()
         await query_lock.acquire()
@@ -178,12 +176,10 @@ class WikiSearchGrounder:
         wait_time = time.time() - start_time
         if wait_time > 0.1:  # Log if we waited more than 100ms
             log.info(
-                f"🔐 [{operation_name}] Acquired query lock after {wait_time:.2f}s wait (hash: {query_hash[:8]})"
+                f"🔐 [{operation_name}] Acquired query lock after {wait_time:.2f}s wait"
             )
         else:
-            log.debug(
-                f"🔐 [{operation_name}] Acquired query lock immediately (hash: {query_hash[:8]})"
-            )
+            log.debug(f"🔐 [{operation_name}] Acquired query lock immediately")
 
         return query_lock, query_hash, start_time
 
@@ -198,9 +194,7 @@ class WikiSearchGrounder:
         """Release query-specific lock and log timing information"""
         total_time = time.time() - start_time
         query_lock.release()
-        log.debug(
-            f"🔐 [{operation_name}] Released query lock after {total_time:.2f}s (hash: {query_hash[:8]})"
-        )
+        log.debug(f"🔐 [{operation_name}] Released query lock after {total_time:.2f}s")
 
     @classmethod
     async def get_queue_status(cls) -> dict:
@@ -605,7 +599,7 @@ class WikiSearchGrounder:
                         log.info(
                             f"🕒 Applying temporal relevance boost for {current_year}"
                         )
-                        for result in formatted:
+                        for position, result in enumerate(formatted, start=1):
                             title = result.get("title", "")
                             if current_year in title:
                                 original_score = result["score"]
@@ -618,7 +612,7 @@ class WikiSearchGrounder:
                                     result["score"] - original_score
                                 )
                                 log.info(
-                                    f"🕒 Boosted '{title}' from {original_score:.3f} to {result['score']:.3f}"
+                                    f"🕒 Boosted result #{position} from {original_score:.3f} to {result['score']:.3f}"
                                 )
                             else:
                                 result["temporal_boost_applied"] = False
@@ -628,7 +622,7 @@ class WikiSearchGrounder:
                         formatted.sort(key=lambda x: x["score"], reverse=True)
 
                     log.info(
-                        f"🎯 Intelligent reranking completed: {enhanced_count} results improved, top result: {formatted[0]['title']} (score: {formatted[0].get('score', 'N/A')})"
+                        f"🎯 Intelligent reranking completed: {enhanced_count} results improved, top score: {formatted[0].get('score', 'N/A')}"
                     )
 
                 except Exception as e:
@@ -644,7 +638,7 @@ class WikiSearchGrounder:
                     log.info(
                         f"🕒 Applying temporal relevance boost for {current_year} (no reranking)"
                     )
-                    for result in formatted:
+                    for position, result in enumerate(formatted, start=1):
                         title = result.get("title", "")
                         if current_year in title:
                             original_score = result["score"]
@@ -657,7 +651,7 @@ class WikiSearchGrounder:
                                 result["score"] - original_score
                             )
                             log.info(
-                                f"🕒 Boosted '{title}' from {original_score:.3f} to {result['score']:.3f}"
+                                f"🕒 Boosted result #{position} from {original_score:.3f} to {result['score']:.3f}"
                             )
                         else:
                             result["temporal_boost_applied"] = False
