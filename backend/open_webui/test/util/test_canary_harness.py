@@ -8,6 +8,7 @@ from urllib.parse import quote_plus
 import pytest
 from opentelemetry import trace
 
+from open_webui.observability.providers import initialize_providers
 from open_webui.test.util.canary_harness import (
     CanaryHarness,
     CanaryLeakError,
@@ -15,9 +16,11 @@ from open_webui.test.util.canary_harness import (
 )
 
 leaky = logging.getLogger("open_webui.test.leaky")
+_ORIGINAL_CALL_HANDLERS = logging.Logger.callHandlers
 
 
 def _leaks(harness):
+    harness.expect_leaks()
     with pytest.raises(CanaryLeakError) as error:
         harness.assert_no_canaries(require_records=False)
     return {(leak.canary, leak.sink) for leak in error.value.leaks}
@@ -140,6 +143,41 @@ def test_non_propagating_logger_is_captured(capfd):
             assert ("api key", "log records") in _leaks(harness)
     finally:
         isolated.propagate = True
+
+
+def test_logger_made_non_propagating_after_start_is_captured(capfd):
+    with CanaryHarness(capfd) as harness:
+        late = logging.getLogger(f"open_webui.test.leaky.late.{harness.canaries.tag}")
+        late.propagate = False
+        late.addHandler(logging.NullHandler())
+        try:
+            late.error("prompt=%s", harness.canaries.prompt)
+            assert ("prompt", "log records") in _leaks(harness)
+        finally:
+            late.handlers.clear()
+            late.propagate = True
+    assert logging.Logger.callHandlers is _ORIGINAL_CALL_HANDLERS
+
+
+def test_disabled_private_otlp_provider_is_rejected(capfd, monkeypatch):
+    initialize_providers()
+    monkeypatch.setenv("OTEL_SDK_DISABLED", "true")
+    root_handlers = list(logging.getLogger().handlers)
+    with pytest.raises(RuntimeError, match="OTEL_SDK_DISABLED"):
+        with CanaryHarness(capfd):
+            pass
+    assert logging.getLogger().handlers == root_handlers
+
+
+def test_final_check_catches_output_after_explicit_check(capfd):
+    with CanaryHarness(capfd) as harness:
+        leaky.info("request completed")
+        harness.assert_no_canaries()
+        print(harness.canaries.prompt)
+        with pytest.raises(CanaryLeakError):
+            harness.final_check()
+        harness.expect_leaks()
+        harness.final_check()
 
 
 def test_audit_loggers_are_not_operational_sinks(canary_harness):
