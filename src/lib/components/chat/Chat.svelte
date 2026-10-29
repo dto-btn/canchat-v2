@@ -191,8 +191,6 @@
 				loaded = true;
 
 				window.setTimeout(() => scrollToBottom(), 0);
-				const chatInput = document.getElementById('chat-input');
-				chatInput?.focus();
 			} else {
 				await goto('/');
 			}
@@ -538,9 +536,6 @@
 			}
 		});
 
-		const chatInput = document.getElementById('chat-input');
-		chatInput?.focus();
-
 		chats.subscribe(() => {});
 	});
 
@@ -826,8 +821,6 @@
 		} else {
 			settings.set(JSON.parse(localStorage.getItem('settings') ?? '{}'));
 		}
-		const chatInput = document.getElementById('chat-input');
-		setTimeout(() => chatInput?.focus(), 0);
 	};
 
 	const loadChat = async () => {
@@ -918,6 +911,7 @@
 				...(m.sources ? { sources: m.sources } : {})
 			})),
 			chat_id: chatId,
+			id: responseMessageId,
 			session_id: $socket?.id ?? ''
 		}).catch((error) => {
 			toast.error(`${error}`);

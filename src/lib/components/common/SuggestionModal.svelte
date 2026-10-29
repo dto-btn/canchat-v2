@@ -16,6 +16,7 @@
 	let files: FileList | null = null;
 	let loading = false;
 	let error = '';
+	let fileError = '';
 	const MAX_FILES = 3;
 
 	let mounted = false; // Add mounted variable
@@ -28,12 +29,13 @@
 		description = '';
 		files = null;
 		error = '';
+		fileError = '';
 	};
 
 	const handleFileChange = (event: Event) => {
 		const input = event.target as HTMLInputElement;
 		if (input.files && input.files.length > MAX_FILES) {
-			error = $i18n.t('You can only upload up to {{maxCount}} files', {
+			fileError = $i18n.t('You can only upload up to {{maxCount}} files', {
 				maxCount: MAX_FILES
 			});
 			input.value = ''; // Clear the selection
@@ -47,14 +49,14 @@
 				(file) => !file.type.startsWith('image/')
 			);
 			if (invalidFiles.length > 0) {
-				error = $i18n.t('Only image files are allowed.');
+				fileError = $i18n.t('Only image files are allowed.');
 				input.value = '';
 				files = null;
 				return;
 			}
 		}
 
-		error = '';
+		fileError = '';
 		files = input.files;
 	};
 
@@ -134,10 +136,16 @@
 			</p>
 			<form on:submit|preventDefault={submit} class="space-y-4">
 				{#if error}
-					<div class="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
+					<div
+						role="alert"
+						class="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded-lg"
+					>
 						<p>{error}</p>
 					</div>
 				{/if}
+				<p class="text-sm text-gray-600 dark:text-gray-300">
+					{$i18n.t('Fields marked with an asterisk (*) are required.')}
+				</p>
 				<div>
 					<label for="description" class="text-sm mb-2 block text-gray-900 dark:text-gray-100"
 						>{$i18n.t('Suggestion')} *</label
@@ -148,18 +156,20 @@
 						rows="4"
 						required
 						placeholder={$i18n.t('Please describe your suggestion in detail')}
-						class="w-full resize-none rounded-lg py-2 px-4 text-sm bg-gray-100 dark:text-gray-300 dark:bg-gray-850 border border-gray-200 dark:border-gray-700 outline-none focus:ring-1 focus:ring-gray-300 dark:focus:ring-gray-700"
+						class="w-full resize-none rounded-lg py-2 px-4 text-sm bg-gray-100 dark:text-gray-300 dark:bg-gray-850 border border-gray-200 dark:border-gray-700 outline-none"
 					></textarea>
 				</div>
 				<div>
-					<label for="files" class="text-sm mb-2 block text-gray-900 dark:text-gray-100">
+					<label for="suggestion-files" class="text-sm mb-2 block text-gray-900 dark:text-gray-100">
 						{$i18n.t('Attach images')} ({$i18n.t('max')}
 						{MAX_FILES})
 					</label>
 					<div class="relative mt-1">
 						<input
 							type="file"
-							id="files"
+							id="suggestion-files"
+							aria-invalid={fileError ? 'true' : undefined}
+							aria-describedby={fileError ? 'suggestion-files-error' : undefined}
 							on:change={handleFileChange}
 							multiple
 							accept="image/*"
@@ -177,6 +187,15 @@
 							</span>
 						</div>
 					</div>
+					{#if fileError}
+						<p
+							id="suggestion-files-error"
+							role="alert"
+							class="mt-2 text-sm text-red-700 dark:text-red-400"
+						>
+							{fileError}
+						</p>
+					{/if}
 				</div>
 
 				<div class="flex justify-end space-x-3 pt-4">
