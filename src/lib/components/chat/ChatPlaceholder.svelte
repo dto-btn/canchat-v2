@@ -58,7 +58,9 @@
 										? `/doge.png`
 										: `${WEBUI_BASE_URL}/static/favicon.png`)}
 								class=" size-[2.7rem] rounded-full border-[1px] border-gray-200 dark:border-none"
-								alt="logo"
+								alt={$i18n.t('Select {{model}}', {
+									model: model?.name || modelIds[modelIdx]
+								})}
 								draggable="false"
 							/>
 						</Tooltip>

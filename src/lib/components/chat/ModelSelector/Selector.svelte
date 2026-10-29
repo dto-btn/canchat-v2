@@ -265,7 +265,7 @@
 		})}
 	>
 		<div
-			class="flex w-full text-left px-0.5 outline-none bg-white dark:bg-gray-900 truncate {triggerClassName} justify-between font-medium text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md focus:outline-none"
+			class="flex w-full text-left px-0.5 outline-none bg-white dark:bg-gray-900 truncate {triggerClassName} justify-between font-medium text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md"
 		>
 			<span class="truncate text-gray-900 dark:text-white">
 				{#if selectedModel}
@@ -358,7 +358,7 @@
 											>
 												<img
 													src={item.model?.info?.meta?.profile_image_url ?? '/static/favicon.png'}
-													alt="Model"
+													alt=""
 													class="rounded-full size-5 flex items-center mr-2"
 												/>
 												{item.label}

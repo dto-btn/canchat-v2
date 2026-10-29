@@ -1,5 +1,8 @@
 <script lang="ts">
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
+	import { getI18n } from '$lib/utils/context';
+
+	const i18n = getI18n();
 
 	let selected = '';
 </script>
@@ -12,19 +15,15 @@
 			</div>
 		{/if}
 
-		<Tooltip content="Home" placement="right">
+		<Tooltip content={$i18n.t('Home')} placement="right">
 			<button
 				class=" cursor-pointer {selected === 'home' ? 'rounded-2xl' : 'rounded-full'}"
+				aria-label={$i18n.t('Home')}
 				on:click={() => {
 					selected = 'home';
 				}}
 			>
-				<img
-					src="/static/splash.png"
-					class="size-11 dark:invert p-0.5"
-					alt="logo"
-					draggable="false"
-				/>
+				<img src="/static/splash.png" class="size-11 dark:invert p-0.5" alt="" draggable="false" />
 			</button>
 		</Tooltip>
 	</div>
@@ -39,6 +38,7 @@
 		{/if}
 		<button
 			class=" cursor-pointer bg-transparent"
+			aria-label={$i18n.t('Chat')}
 			on:click={() => {
 				selected = '';
 			}}
@@ -46,7 +46,7 @@
 			<img
 				src="/static/favicon.png"
 				class="size-10 {selected === '' ? 'rounded-2xl' : 'rounded-full'}"
-				alt="logo"
+				alt=""
 				draggable="false"
 			/>
 		</button>

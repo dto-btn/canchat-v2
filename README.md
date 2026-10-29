@@ -109,6 +109,10 @@ cp -RPp .env.example .env
 **Customize `.env`:**  
 Open the `.env` file in your code editor (e.g., VS Code). For local development, the default settings in `.env.example` should suffice, but you can customize them if needed.
 
+#### EKH Grounding (Optional)
+
+To use the Enterprise Knowledge Hub (EKH) for knowledge grounding, set `WIKIPEDIA_GROUNDING_PROVIDER=ekh` and configure `EKH_BASE_URL` with the EKH service URL. `EKH_KNOWLEDGE_SOURCE` selects the initial source: `wikipedia` or `tbs-policies`. Set `EKH_API_KEY` if the EKH service requires authentication; `EKH_TIMEOUT_SECONDS` controls the request timeout (default: `5`). Administrators can switch between the indexed sources in **Admin Panel > Settings > Grounding**. Invalid provider/source values fall back to `txtai`/`wikipedia`, and invalid timeouts fall back to `5` seconds.
+
 > **Important:** If you plan to contribute to the repository, **do not commit sensitive information to your `.env` file**. Always review your environment variables before pushing changes to ensure no secrets, credentials, or private data are exposed.
 
 ---
@@ -148,6 +152,25 @@ npm run dev
 - You should see a message indicating that the frontend is running and is waiting for the backend to be available.
 
 Keep this terminal running; it's serving your frontend!
+
+#### 2.4 Frontend Accessibility Tests
+
+Run the frontend unit and server-rendered component tests:
+
+```bash
+npm run test:frontend -- --run
+```
+
+Run the standalone accessibility browser tests (no backend or signed-in session required):
+
+```bash
+npx playwright install chromium
+npx playwright test playwright/tests/e2e/accessibility --project=chromium-en --no-deps --reporter=list
+```
+
+The frontend CI workflow runs both suites. Browser coverage includes rendered navigation
+structure, image alternatives, shared text/placeholder contrast, keyboard focus indicators,
+and border styling. These focused checks do not replace a full-page accessibility audit.
 
 ---
 

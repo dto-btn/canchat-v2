@@ -427,7 +427,7 @@
 								<div class="flex-shrink-0">
 									<img
 										src={model?.info?.meta?.profile_image_url ?? '/favicon.png'}
-										alt={model.name}
+										alt=""
 										class="size-5 rounded-full object-cover shrink-0"
 									/>
 								</div>

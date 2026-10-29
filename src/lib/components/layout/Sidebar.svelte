@@ -2,7 +2,10 @@
 	import { getI18n } from '$lib/utils/context';
 
 	import { toast } from 'svelte-sonner';
+	import fileSaver from 'file-saver';
+	import { DropdownMenu } from 'bits-ui';
 	import { v4 as uuidv4 } from 'uuid';
+	const { saveAs } = fileSaver;
 
 	import { goto } from '$app/navigation';
 	import { getRequestToken } from '$lib/services/auth';
@@ -42,6 +45,9 @@
 		deleteMultipleChats
 	} from '$lib/apis/chats';
 	import { createNewFolder, getFolders, updateFolderParentIdById } from '$lib/apis/folders';
+	import { downloadChatAsPDF } from '$lib/apis/utils';
+	import { createMessagesList } from '$lib/utils';
+	import { flyAndScale } from '$lib/utils/transitions';
 	import { WEBUI_BASE_URL } from '$lib/constants';
 
 	import ArchivedChatsModal from './Sidebar/ArchivedChatsModal.svelte';
@@ -58,6 +64,7 @@
 	import ChannelModal from './Sidebar/ChannelModal.svelte';
 	import ChannelItem from './Sidebar/ChannelItem.svelte';
 	import PencilSquare from '../icons/PencilSquare.svelte';
+	import Download from '../icons/Download.svelte';
 	import Modal from '../common/Modal.svelte';
 
 	const BREAKPOINT = 768;
@@ -327,6 +334,69 @@
 		}
 
 		showDeleteConfirm = true;
+	};
+
+	const downloadSelectedChats = async (format: 'txt' | 'pdf') => {
+		if (selectedChatIds.length === 0) {
+			toast.error($i18n.t('No chats selected'));
+			return;
+		}
+
+		const selectedChatTitles = new Map(($chats || []).map((chat: any) => [chat.id, chat.title]));
+		const chatResults: PromiseSettledResult<any>[] = await Promise.allSettled(
+			selectedChatIds.map((id) => getChatById(getRequestToken(), id))
+		);
+		const failedChatTitles: string[] = [];
+		let downloadedCount = 0;
+
+		for (const [index, result] of chatResults.entries()) {
+			const chatId = selectedChatIds[index];
+			const chat = result.status === 'fulfilled' ? result.value : null;
+			const chatTitle = chat?.chat?.title || selectedChatTitles.get(chatId) || chatId;
+
+			if (result.status === 'rejected' || !chat?.chat?.history) {
+				failedChatTitles.push(chatTitle);
+				continue;
+			}
+
+			try {
+				const history = chat.chat.history;
+				const messages = createMessagesList(history, history.currentId);
+				const filename = `chat-${chat.chat.title}-${chat.id}.${format}`;
+
+				if (format === 'txt') {
+					const chatText = messages
+						.map((message: any) => `### ${message.role.toUpperCase()}\n${message.content}`)
+						.join('\n\n');
+					saveAs(new Blob([chatText], { type: 'text/plain' }), filename);
+				} else {
+					const blob = await downloadChatAsPDF(chat.chat.title, messages);
+					saveAs(blob, filename);
+				}
+				downloadedCount++;
+			} catch {
+				failedChatTitles.push(chatTitle);
+			}
+		}
+
+		if (failedChatTitles.length > 0) {
+			const summary = $i18n.t(
+				'Downloaded {{downloadedCount}} of {{totalCount}} selected chats. Failed: {{failedChats}}',
+				{
+					downloadedCount,
+					totalCount: selectedChatIds.length,
+					failedChats: failedChatTitles.join(', ')
+				}
+			);
+			if (downloadedCount > 0) {
+				toast.warning(summary);
+			} else {
+				toast.error(summary);
+			}
+			return;
+		}
+
+		toast.success($i18n.t('Downloaded {{count}} selected chats', { count: downloadedCount }));
 	};
 
 	const processDeletion = async (fn: () => Promise<any>) => {
@@ -660,7 +730,7 @@
 							crossorigin="anonymous"
 							src="{WEBUI_BASE_URL}/static/favicon.png"
 							class=" size-5 -translate-x-1.5 rounded-full"
-							alt="logo"
+							alt={$i18n.t('CANChat logo')}
 						/>
 					</div>
 					<div class=" self-center font-medium text-sm text-gray-850 dark:text-white font-primary">
@@ -753,6 +823,44 @@
 						>
 							{$i18n.t('Clear')}
 						</button>
+						<DropdownMenu.Root
+							closeFocus={false}
+							onOpenChange={async (open) => {
+								if (!open) {
+									await tick();
+									setTimeout(() => document.getElementById('bulk-download-trigger')?.focus(), 10);
+								}
+							}}
+						>
+							<DropdownMenu.Trigger
+								aria-label={$i18n.t('Download')}
+								id="bulk-download-trigger"
+								class="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-300 rounded font-medium flex items-center gap-1"
+							>
+								<Download className="size-3" />
+								<span>{$i18n.t('Download')}</span>
+							</DropdownMenu.Trigger>
+							<DropdownMenu.Content
+								class="w-full max-w-[200px] rounded-xl px-1 py-1.5 z-50 bg-white dark:bg-gray-850 dark:text-white shadow-lg"
+								sideOffset={8}
+								side="bottom"
+								align="start"
+								transition={flyAndScale}
+							>
+								<DropdownMenu.Item
+									class="flex gap-2 items-center px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md"
+									on:click={() => downloadSelectedChats('txt')}
+								>
+									{$i18n.t('Plain text (.txt)')}
+								</DropdownMenu.Item>
+								<DropdownMenu.Item
+									class="flex gap-2 items-center px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md"
+									on:click={() => downloadSelectedChats('pdf')}
+								>
+									{$i18n.t('PDF document (.pdf)')}
+								</DropdownMenu.Item>
+							</DropdownMenu.Content>
+						</DropdownMenu.Root>
 
 						<!-- Delete Selected Button -->
 						<button
@@ -1081,7 +1189,7 @@
 							<img
 								src={$user?.profile_image_url}
 								class=" max-w-[30px] object-cover rounded-full self-center mr-3"
-								alt="User profile"
+								alt=""
 							/>
 							{$user?.name}
 						</UserMenu>

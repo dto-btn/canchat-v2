@@ -96,7 +96,7 @@
 	export let autoScroll = false;
 
 	export let atSelectedModel: Model | undefined = undefined;
-	export let selectedModels: [''];
+	export let selectedModels: string[];
 
 	let selectedModelIds: any[] = [];
 	$: selectedModelIds = atSelectedModel !== undefined ? [atSelectedModel.id] : selectedModels;
@@ -549,7 +549,7 @@
 											</span>
 										</div>
 										<Tooltip
-											content={$i18n.t('Wikipedia context-aware enhancement enabled')}
+											content={$i18n.t('Knowledge Grounding enabled')}
 											placement="right"
 											tippyOptions={{
 												placement: 'right',
@@ -566,7 +566,7 @@
 											}}
 										>
 											<div class=" ">
-												{$i18n.t('Wiki Grounding')}
+												{$i18n.t('Knowledge Grounding')}
 											</div>
 										</Tooltip>
 									</div>
@@ -578,9 +578,9 @@
 									<div class="pl-[1px] flex items-center gap-2 text-sm dark:text-gray-500">
 										<img
 											crossorigin="anonymous"
-											alt="model profile"
+											alt=""
 											class="size-3.5 max-w-[28px] object-cover rounded-full"
-											src={$models.find((model) => model.id === atSelectedModel.id)?.info?.meta
+											src={$models.find((model) => model.id === atSelectedModel?.id)?.info?.meta
 												?.profile_image_url ??
 												($i18n.language === 'dg-DG'
 													? `/doge.png`
@@ -841,7 +841,7 @@
 												bind:this={chatInputElement}
 												bind:value={prompt}
 												id="chat-input"
-												aria-label={$i18n.t('Type your message here')}
+												ariaLabel={$i18n.t('Type your message here')}
 												title={$i18n.t('Type your message here')}
 												messageInput={true}
 												shiftEnter={!$mobile ||
@@ -978,12 +978,12 @@
 																const blob = item.getAsFile();
 																const reader = new FileReader();
 
-																reader.onload = function (e) {
+																reader.onload = function () {
 																	files = [
 																		...files,
 																		{
 																			type: 'image',
-																			url: `${e.target.result}`
+																			url: `${reader.result}`
 																		}
 																	];
 																};
@@ -1295,8 +1295,6 @@
 																		const tracks = stream.getTracks();
 																		tracks.forEach((track) => track.stop());
 																	}
-
-																	stream = null;
 
 																	showCallOverlay.set(true);
 																	showControls.set(true);
