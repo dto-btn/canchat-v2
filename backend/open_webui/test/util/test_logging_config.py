@@ -1,5 +1,6 @@
 """OBS-15: central logging configuration, log record contract and logger policy."""
 
+import copy
 import importlib
 import io
 import json
@@ -37,7 +38,7 @@ from open_webui.observability.logging_config import (
     load_log_settings,
     parse_rate_limit,
 )
-from open_webui.observability.redaction import RedactionFilter
+from open_webui.observability.redaction import MESSAGE_OMITTED, RedactionFilter
 
 BACKEND_DIR = Path(__file__).resolve().parents[3]
 RESOURCE = {
@@ -311,7 +312,8 @@ class _Clock:
 def summaries():
     records = []
     handler = logging.Handler()
-    handler.emit = records.append
+    # Snapshot: root handlers further down may redact the shared record in place.
+    handler.emit = lambda record: records.append(copy.copy(record))
     summary_logger = logging.getLogger(logging_config.SUMMARY_LOGGER_NAME)
     summary_logger.addHandler(handler)
     yield records
@@ -546,6 +548,33 @@ def test_existing_entrypoint_configuration_is_kept(isolated_logging):
     assert not any(logging_config._is_owned(h) for h in handlers)
     # The audit policy still applies.
     assert logging.getLogger("open_webui.audit").propagate is False
+
+
+def test_preconfigured_root_handler_gets_redaction(isolated_logging):
+    stream = io.StringIO()
+    script_handler = logging.StreamHandler(stream)
+    script_handler.setFormatter(logging.Formatter("%(levelname)s|%(message)s"))
+    for handler in list(isolated_logging.handlers):
+        if not logging_config._is_owned(handler):
+            isolated_logging.removeHandler(handler)
+    isolated_logging.addHandler(script_handler)
+    try:
+        configure_logging("INFO", SOURCE_LEVELS, {"LOG_FORMAT": "json"})
+        # Reconfiguring does not stack filters.
+        configure_logging("INFO", SOURCE_LEVELS, {"LOG_FORMAT": "json"})
+        try:
+            raise ValueError("prompt text from provider error")
+        except ValueError as error:
+            logging.getLogger("open_webui.preconfigured").exception(error)
+    finally:
+        isolated_logging.removeHandler(script_handler)
+
+    output = stream.getvalue()
+    assert "prompt text" not in output
+    assert output.startswith("ERROR|ValueError\n")
+    assert f"ValueError: {MESSAGE_OMITTED}" in output
+    assert not logging_config._is_owned(script_handler)
+    assert sum(isinstance(f, RedactionFilter) for f in script_handler.filters) == 1
 
 
 # ── OTLP handler ─────────────────────────────────────────────────────────────

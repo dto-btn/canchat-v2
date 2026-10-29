@@ -77,6 +77,26 @@ def test_redact_text_masks_credential_shapes(text, secret):
 
 
 @pytest.mark.parametrize(
+    "text, expected",
+    [
+        (
+            'connect password="correct horse battery" ok',
+            f'connect password="{REDACTED}" ok',
+        ),
+        ("token='two words' next", f"token='{REDACTED}' next"),
+        (
+            '{"client_secret": "has \\"escaped\\" quotes and spaces", "x": 1}',
+            f'{{"client_secret": "{REDACTED}", "x": 1}}',
+        ),
+        ("{'password': 'a b c'}", f"{{'password': '{REDACTED}'}}"),
+        ('password="unterminated value', f'password="{REDACTED} value'),
+    ],
+)
+def test_quoted_credentials_with_spaces_are_masked_whole(text, expected):
+    assert redact_text(text) == expected
+
+
+@pytest.mark.parametrize(
     "text",
     [
         "status_code=500 error code: 42 provider=openai",
@@ -126,6 +146,50 @@ def test_configured_secret_values_are_cached_and_refreshed():
     settings["OPENAI_API_KEYS"] = ["third-provider-key"]
     registry.invalidate()
     assert registry.pattern().sub(REDACTED, "third-provider-key") == REDACTED
+
+
+def test_invalidation_during_refresh_is_not_lost():
+    clock = _Clock()
+    registry = SecretRegistry(refresh_interval=5.0, clock=clock)
+    settings = {"OPENAI_API_KEYS": "old-provider-key"}
+    reads = []
+
+    def source():
+        reads.append(1)
+        snapshot = list(settings.items())
+        if len(reads) == 1:
+            # A config change lands while this refresh is collecting values.
+            settings["OPENAI_API_KEYS"] = "rotated-provider-key"
+            registry.invalidate()
+        return snapshot
+
+    registry.add_source(source)
+    pattern = registry.pattern()
+    # The stale refresh is discarded and retried, so the rotated key is masked
+    # immediately rather than after the refresh interval.
+    assert len(reads) == 2
+    assert pattern.sub(REDACTED, "rotated-provider-key") == REDACTED
+    assert registry.pattern() is pattern
+    assert len(reads) == 2
+
+
+def test_refresh_invalidated_on_every_attempt_stays_expired():
+    clock = _Clock()
+    registry = SecretRegistry(refresh_interval=5.0, clock=clock)
+    reads = []
+
+    def source():
+        reads.append(1)
+        registry.invalidate()
+        return [("OPENAI_API_KEYS", f"provider-key-{len(reads):04d}")]
+
+    registry.add_source(source)
+    pattern = registry.pattern()
+    assert pattern.sub(REDACTED, "provider-key-0003") == REDACTED
+    attempts = len(reads)
+    registry.pattern()
+    # Nothing was cached, so the next lookup re-reads the sources.
+    assert len(reads) > attempts
 
 
 def test_environment_secret_is_masked(monkeypatch):
@@ -228,6 +292,19 @@ def test_exception_groups_and_notes_are_rendered_without_text():
     text = format_exception_safe(error)
     assert "secret" not in text
     assert "ExceptionGroup" in text and "ValueError" in text
+
+
+def test_traceback_omits_source_lines_with_literal_messages():
+    try:
+        raise ValueError("literal prompt text in raise statement")
+    except ValueError as error:
+        text = format_exception_safe(error)
+
+    assert "literal prompt text" not in text
+    assert "raise ValueError" not in text
+    assert f'File "{__file__}", line ' in text
+    assert ", in test_traceback_omits_source_lines_with_literal_messages" in text
+    assert f"ValueError: {MESSAGE_OMITTED}" in text
 
 
 def test_qualified_type_for_library_exceptions():

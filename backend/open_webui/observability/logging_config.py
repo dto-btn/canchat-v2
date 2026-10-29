@@ -420,7 +420,8 @@ def configure_logging(
     """Install the process-wide logging configuration.
 
     Returns ``False`` when the entrypoint already configured the root logger;
-    its handlers are kept and only the logger policy is applied.
+    its handlers are kept (with their formatting and ownership), but each one
+    gets the redaction filter, and the logger policy is applied.
     """
     global _atexit_registered
 
@@ -433,6 +434,11 @@ def configure_logging(
         _state.environ = values
         _state.owns_root = all(_is_owned(h) for h in root.handlers)
         if not _state.owns_root:
+            for handler in root.handlers:
+                if not _is_owned(handler) and not any(
+                    isinstance(f, RedactionFilter) for f in handler.filters
+                ):
+                    handler.addFilter(RedactionFilter())
             apply_logger_policy()
             return False
 
