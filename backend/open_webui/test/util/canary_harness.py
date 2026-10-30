@@ -24,8 +24,9 @@ What is captured while the harness is active:
     MCP subprocess stderr). Tests that use the harness must not also request
     ``capsys``.
 ``log records``
-    Every record that reaches the root logger, and any non-propagating logger
-    that exists when the harness starts. Records are checked in full: message,
+    Every record handled by any logger, whether or not it propagates and even
+    if the logger is created or reconfigured while the harness is active
+    (``logging.Logger.callHandlers`` is wrapped for the duration). Records are checked in full: message,
     format arguments, extra fields, the whole exception chain and stack info.
     This is deliberately stricter than the current formatters, because any
     handler or later formatter change could emit those fields. The restricted
@@ -63,8 +64,13 @@ covers URL-encoded and JSON-escaped forms. Add test-specific values with
 
 Guard against tests that pass without checking anything:
 :meth:`CanaryHarness.assert_no_canaries` fails if no log record was captured,
-unless ``require_records=False``. If a test never calls it, the fixture runs
-it at teardown.
+unless ``require_records=False``. The fixture always runs a final check at
+teardown, after dependent fixtures have finished, so output emitted after an
+explicit ``assert_no_canaries()`` is still checked. Self-tests that leak on
+purpose opt out with :meth:`CanaryHarness.expect_leaks`.
+
+The harness refuses to start if ``OTEL_SDK_DISABLED`` is set, because a
+disabled provider would leave the OTLP and span sinks silently empty.
 """
 
 from __future__ import annotations
@@ -247,8 +253,8 @@ class _RecordCaptureHandler(logging.Handler):
         self._seen: set[int] = set()
 
     def emit(self, record: logging.LogRecord) -> None:
-        # A record can reach this handler from both a non-propagating logger
-        # and the root; keep one copy.
+        # The same record can be dispatched more than once (for example when a
+        # handler re-handles it through another logger); keep one copy.
         if id(record) in self._seen:
             return
         self._seen.add(id(record))
@@ -356,6 +362,8 @@ class CanaryHarness:
         self._saved_disable = logging.NOTSET
         self._span_forwarder: _ForwardingSpanProcessor | None = None
         self._log_forwarder: _ForwardingLogProcessor | None = None
+        self._original_call_handlers = None
+        self._final_check = True
         self.checked = False
 
     # ── lifecycle ──────────────────────────────────────────────────────────
@@ -370,6 +378,9 @@ class CanaryHarness:
 
     def __exit__(self, *exc_info) -> None:
         self._read_fds()
+        if self._original_call_handlers is not None:
+            logging.Logger.callHandlers = self._original_call_handlers
+            self._original_call_handlers = None
         for logger, handler in self._installed:
             logger.removeHandler(handler)
         self._installed.clear()
@@ -391,6 +402,18 @@ class CanaryHarness:
         tracer_provider = _sdk_provider(
             trace.get_tracer_provider(), TracerProvider, "spans"
         )
+        logger_provider = _sdk_provider(get_logger_provider(), LoggerProvider, "logs")
+        # A private provider, so the harness never sends records to a real
+        # OTLP endpoint even if export is enabled in the test environment.
+        # It reads OTEL_SDK_DISABLED on creation, so it is validated too;
+        # this happens before anything is attached to the global providers.
+        self._otlp_provider = _sdk_provider(
+            LoggerProvider(resource=logger_provider.resource, shutdown_on_exit=False),
+            LoggerProvider,
+            "logs",
+        )
+        self._otlp_provider.add_log_record_processor(self._log_target)
+
         self._span_forwarder = _forwarder(
             tracer_provider,
             _ForwardingSpanProcessor,
@@ -398,20 +421,12 @@ class CanaryHarness:
         )
         self._span_forwarder.attach(self._span_target)
 
-        logger_provider = _sdk_provider(get_logger_provider(), LoggerProvider, "logs")
         self._log_forwarder = _forwarder(
             logger_provider,
             _ForwardingLogProcessor,
             logger_provider.add_log_record_processor,
         )
         self._log_forwarder.attach(self._log_target)
-
-        # A private provider, so the harness never sends records to a real
-        # OTLP endpoint even if export is enabled in the test environment.
-        self._otlp_provider = LoggerProvider(
-            resource=logger_provider.resource, shutdown_on_exit=False
-        )
-        self._otlp_provider.add_log_record_processor(self._log_target)
 
     def _raise_levels(self) -> None:
         self._saved_disable = logging.root.manager.disable
@@ -448,16 +463,24 @@ class CanaryHarness:
 
         root = logging.getLogger()
         # First in line, so they see each record before any handler that the
-        # process logging configuration installed earlier.
-        for index, handler in enumerate((self._records, json_handler, otlp_handler)):
+        # process logging configuration installed earlier (and that may redact
+        # the record in place).
+        for index, handler in enumerate((json_handler, otlp_handler)):
             self._add_handler(root, handler, index=index)
-        for name, logger in list(logging.root.manager.loggerDict.items()):
-            if (
-                isinstance(logger, logging.Logger)
-                and not logger.propagate
-                and not _is_audit_logger(name)
-            ):
-                self._add_handler(logger, self._records)
+
+        # Hooking dispatch instead of attaching handlers also catches loggers
+        # created, or switched to propagate=False, after the harness starts.
+        # The records sink runs before every handler of every logger.
+        records = self._records
+        original = logging.Logger.callHandlers
+
+        def call_handlers(logger: logging.Logger, record: logging.LogRecord) -> None:
+            if not _is_audit_logger(record.name):
+                records.handle(record)
+            original(logger, record)
+
+        self._original_call_handlers = original
+        logging.Logger.callHandlers = call_handlers
 
     def _add_handler(
         self,
@@ -534,6 +557,15 @@ class CanaryHarness:
                 "The canary harness captured no log records; the test is not "
                 "exercising the code path, or logging is disabled."
             )
+
+    def expect_leaks(self) -> None:
+        """Skip the fixture's final check; for self-tests that leak on purpose."""
+        self._final_check = False
+
+    def final_check(self) -> None:
+        """Teardown check; catches output emitted after an explicit check."""
+        if self._final_check:
+            self.assert_no_canaries(require_records=not self.checked)
 
 
 def _is_audit_logger(name: str) -> bool:

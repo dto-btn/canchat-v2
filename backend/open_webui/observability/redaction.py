@@ -3,8 +3,9 @@
 Exception text often repeats sensitive input: provider errors echo the prompt,
 HTTP client errors include the full URL, MCP tool errors include arguments.
 Regexes cannot recognize arbitrary prompt text, so exception messages are never
-logged. Tracebacks keep their frames (file, line, function) and exception
-types, but every message in the chain is replaced by ``[message omitted]``.
+logged. Tracebacks keep their frame metadata (file, line, function) and
+exception types, but omit source lines, and every message in the chain is
+replaced by ``[message omitted]``.
 
 On top of that, :func:`redact_text` masks values that have a recognizable
 shape: URL query strings, URL credentials, ``Authorization``/``Bearer`` values,
@@ -35,6 +36,7 @@ EXCEPTION_TYPE_ATTR = "_canchat_exception_type"
 _REDACTED_MARK = "_canchat_redacted"
 _MAX_CHAIN = 16
 _MIN_SECRET_LENGTH = 8
+_MAX_REFRESH_ATTEMPTS = 3
 
 # Absolute URLs, and path-like tokens followed by a query. A path only starts
 # at the beginning of a token, and runs are bounded, so slash-heavy text such
@@ -67,9 +69,12 @@ _SECRET_KEY_NAMES = (
     r"|auth[_-]?token|token|secret|client[_-]?secret|password|passwd|pwd"
     r"|private[_-]?key|sig|signature|cookie|set-cookie"
 )
+# Quoted values are matched whole (including escaped quotes), so a credential
+# containing spaces is not masked only up to its first word.
 _KEY_VALUE = re.compile(
-    rf"(?P<key>[\"']?\b(?:{_SECRET_KEY_NAMES})\b[\"']?\s*(?:=|:)\s*[\"']?)"
-    r"(?P<value>[^\s\"'&,;}\]]+)",
+    rf"(?P<key>[\"']?\b(?:{_SECRET_KEY_NAMES})\b[\"']?\s*(?:=|:)\s*)"
+    r"(?:\"(?:[^\"\\\n]|\\.){0,4096}\"|'(?:[^'\\\n]|\\.){0,4096}'"
+    r"|(?P<open>[\"']?)[^\s\"'&,;}\]]+)",
     re.IGNORECASE,
 )
 
@@ -137,26 +142,35 @@ class SecretRegistry:
         self._refresh_interval = refresh_interval
         self._clock = clock
         self._expires_at: float | None = None
+        # Bumped on every invalidation, so a refresh that collected values
+        # before an invalidation cannot publish them as current.
+        self._generation = 0
 
     def add_source(self, source: SecretSource) -> None:
         with self._lock:
             if source not in self._sources:
                 self._sources.append(source)
-            self._expires_at = None
+            self._invalidate_locked()
 
     def remove_source(self, source: SecretSource) -> None:
         with self._lock:
             if source in self._sources:
                 self._sources.remove(source)
-            self._expires_at = None
+            self._invalidate_locked()
 
     def invalidate(self) -> None:
         """Re-read every source on the next lookup."""
+        with self._lock:
+            self._invalidate_locked()
+
+    def _invalidate_locked(self) -> None:
+        self._generation += 1
         self._expires_at = None
 
-    def _collect(self) -> frozenset[str]:
+    @staticmethod
+    def _collect(sources: Iterable[SecretSource]) -> frozenset[str]:
         values: set[str] = set()
-        for source in list(self._sources):
+        for source in sources:
             try:
                 for name, value in source():
                     if is_secret_setting(name):
@@ -165,24 +179,38 @@ class SecretRegistry:
                 continue
         return frozenset(values)
 
+    def _publish_locked(self, values: frozenset[str]) -> None:
+        if values != self._values:
+            self._values = values
+            self._pattern = (
+                re.compile(
+                    "|".join(
+                        re.escape(v) for v in sorted(values, key=len, reverse=True)
+                    )
+                )
+                if values
+                else None
+            )
+
     def pattern(self) -> re.Pattern[str] | None:
         expires_at = self._expires_at
         if expires_at is not None and self._clock() < expires_at:
             return self._pattern
-        values = self._collect()
+        values: frozenset[str] = frozenset()
+        for _ in range(_MAX_REFRESH_ATTEMPTS):
+            with self._lock:
+                generation = self._generation
+                sources = list(self._sources)
+            values = self._collect(sources)
+            with self._lock:
+                if generation == self._generation:
+                    self._publish_locked(values)
+                    self._expires_at = self._clock() + self._refresh_interval
+                    return self._pattern
+        # Invalidated during every attempt: publish the newest values, but keep
+        # the cache expired so the next lookup re-reads the sources.
         with self._lock:
-            if values != self._values:
-                self._values = values
-                self._pattern = (
-                    re.compile(
-                        "|".join(
-                            re.escape(v) for v in sorted(values, key=len, reverse=True)
-                        )
-                    )
-                    if values
-                    else None
-                )
-            self._expires_at = self._clock() + self._refresh_interval
+            self._publish_locked(self._values | values)
             return self._pattern
 
 
@@ -212,6 +240,15 @@ def _mask_auth_header(match: re.Match[str]) -> str:
     return f"{match.group('name')}{scheme + ' ' if scheme else ''}{REDACTED}"
 
 
+def _mask_key_value(match: re.Match[str]) -> str:
+    key = match.group("key")
+    opening = match.group("open")
+    if opening is not None:
+        return f"{key}{opening}{REDACTED}"
+    quote = match.group(0)[len(key)]
+    return f"{key}{quote}{REDACTED}{quote}"
+
+
 def redact_text(text: str) -> str:
     """Mask credential-shaped values. Does not detect arbitrary prompt text."""
     if not text:
@@ -225,7 +262,7 @@ def redact_text(text: str) -> str:
     text = _BEARER.sub(lambda m: f"{m.group('scheme')} {REDACTED}", text)
     text = _JWT.sub(REDACTED, text)
     text = _KNOWN_KEY_SHAPES.sub(REDACTED, text)
-    text = _KEY_VALUE.sub(lambda m: f"{m.group('key')}{REDACTED}", text)
+    text = _KEY_VALUE.sub(_mask_key_value, text)
     return text
 
 
@@ -259,10 +296,15 @@ def _render(exc: BaseException, out: list[str], seen: set[int], depth: int) -> N
             )
     if exc.__traceback__ is not None:
         out.append("Traceback (most recent call last):\n")
+        # Frame metadata only: source lines can repeat a literal exception
+        # message (``raise ValueError("...")``).
         out.extend(
-            traceback.StackSummary.extract(
-                traceback.walk_tb(exc.__traceback__), capture_locals=False
-            ).format()
+            f'  File "{frame.filename}", line {frame.lineno}, in {frame.name}\n'
+            for frame in traceback.StackSummary.extract(
+                traceback.walk_tb(exc.__traceback__),
+                lookup_lines=False,
+                capture_locals=False,
+            )
         )
     name = exception_type_name(exc)
     out.append(f"{name}: {MESSAGE_OMITTED}\n" if _has_message(exc) else f"{name}\n")
