@@ -8,6 +8,11 @@ Usage examples:
   python backend/scripts/generate_test_chats.py --user-id <user_id> --count 500
   python backend/scripts/generate_test_chats.py --list-users
   python backend/scripts/generate_test_chats.py --user-email admin@canchat.ca --count 50
+
+Developer-only (OBS-19): this script intentionally prints user email and name
+to stdout so the operator can pick a target account. Run it only against a
+local development database; never in shared, staging or production
+environments, where its output could be captured by log collection.
 """
 
 from __future__ import annotations

@@ -23,6 +23,46 @@ from urllib.parse import quote
 logger = logging.getLogger("sharepoint_oauth")
 
 
+def _safe_error_summary(status: int, body: str, headers=None) -> str:
+    """Summarize an Entra ID / Graph error response for logging without the raw body.
+
+    Graph error messages can contain item paths or names, so only the status,
+    error code and request/correlation IDs are kept.
+    """
+    code = None
+    request_id = None
+    correlation_id = None
+    try:
+        payload = json.loads(body) if body else {}
+    except (TypeError, ValueError):
+        payload = {}
+    if isinstance(payload, dict):
+        error = payload.get("error")
+        if isinstance(error, dict):
+            # Graph: {"error": {"code": ..., "innerError": {"request-id": ..., "client-request-id": ...}}}
+            code = error.get("code")
+            inner = error.get("innerError") or error.get("innererror") or {}
+            if isinstance(inner, dict):
+                request_id = inner.get("request-id")
+                correlation_id = inner.get("client-request-id")
+        elif isinstance(error, str):
+            # Entra token endpoint: {"error": "invalid_grant", "trace_id": ..., "correlation_id": ...}
+            code = error
+            request_id = payload.get("trace_id")
+            correlation_id = payload.get("correlation_id")
+    if headers is not None:
+        request_id = headers.get("request-id") or request_id
+        correlation_id = headers.get("client-request-id") or correlation_id
+
+    def _safe(value) -> Optional[str]:
+        return str(value)[:128] if isinstance(value, (str, int)) else None
+
+    return (
+        f"status={status} code={_safe(code)} "
+        f"request_id={_safe(request_id)} correlation_id={_safe(correlation_id)}"
+    )
+
+
 class SharePointOAuthClient:
     """OAuth2 client for SharePoint with On-Behalf-Of flow support"""
 
@@ -123,7 +163,10 @@ class SharePointOAuthClient:
                     else:
                         error_text = await response.text()
                         logger.error(
-                            f"OBO token request failed: {response.status} - {error_text}"
+                            "OBO token request failed: "
+                            + _safe_error_summary(
+                                response.status, error_text, response.headers
+                            )
                         )
                         return None
 
@@ -163,7 +206,10 @@ class SharePointOAuthClient:
                     else:
                         error_text = await response.text()
                         logger.error(
-                            f"Token request failed: {response.status} - {error_text}"
+                            "Token request failed: "
+                            + _safe_error_summary(
+                                response.status, error_text, response.headers
+                            )
                         )
                         return None
 
@@ -261,14 +307,15 @@ class SharePointOAuthClient:
                             result = await response.json()
                         except:
                             result = {"status": "success"}
-                        logger.debug(
-                            f"Graph API request successful: {method} {endpoint}"
-                        )
+                        logger.debug(f"Graph API request successful: {method}")
                         return True, result
                     else:
                         error_text = await response.text()
                         logger.error(
-                            f"Graph API request failed: {response.status} - {error_text}"
+                            "Graph API request failed: "
+                            + _safe_error_summary(
+                                response.status, error_text, response.headers
+                            )
                         )
                         return False, {
                             "error": error_text,
@@ -489,7 +536,10 @@ class SharePointOAuthClient:
                     else:
                         error_text = await response.text()
                         logger.error(
-                            f"Search API error: {response.status} - {error_text}"
+                            "Search API error: "
+                            + _safe_error_summary(
+                                response.status, error_text, response.headers
+                            )
                         )
 
                         # Check for permission/authorization errors
@@ -538,7 +588,10 @@ class SharePointOAuthClient:
                         # Parse the webUrl to construct a Graph API path
                         error_text = await response.text()
                         logger.warning(
-                            f"Direct item access failed: {response.status} - {error_text}"
+                            "Direct item access failed: "
+                            + _safe_error_summary(
+                                response.status, error_text, response.headers
+                            )
                         )
                         logger.info(
                             f"Attempting alternative method using item ID directly"
@@ -561,7 +614,12 @@ class SharePointOAuthClient:
                             if share_response.status != 200:
                                 share_error = await share_response.text()
                                 logger.error(
-                                    f"Share access also failed: {share_response.status} - {share_error}"
+                                    "Share access also failed: "
+                                    + _safe_error_summary(
+                                        share_response.status,
+                                        share_error,
+                                        share_response.headers,
+                                    )
                                 )
                                 return False, {
                                     "error": share_error,
@@ -606,7 +664,12 @@ class SharePointOAuthClient:
                         else:
                             error_text = await content_response.text()
                             logger.error(
-                                f"Content download error: {content_response.status} - {error_text}"
+                                "Content download error: "
+                                + _safe_error_summary(
+                                    content_response.status,
+                                    error_text,
+                                    content_response.headers,
+                                )
                             )
                             return False, {
                                 "error": error_text,
