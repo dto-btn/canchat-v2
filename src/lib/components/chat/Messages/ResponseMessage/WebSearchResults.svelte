@@ -65,7 +65,7 @@
 					</span>
 				</div>
 				<div
-					class="absolute right-4 top-1/2 hidden -translate-y-1/2 items-center gap-1 transition group-hover/query:flex group-focus-within/query:flex"
+					class="absolute right-4 top-1/2 flex opacity-0 -translate-y-1/2 items-center gap-1 transition group-hover/query:opacity-100 group-focus-within/query:opacity-100"
 				>
 					<Tooltip content={copyTooltipContent} tippyOptions={{ hideOnClick: false }}>
 						<button

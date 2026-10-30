@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
-	import { DropdownMenu } from 'bits-ui';
+	import { Popover } from 'bits-ui';
 	import { marked } from 'marked';
 	import Fuse from 'fuse.js';
 
 	import { flyAndScale } from '$lib/utils/transitions';
-	import { createEventDispatcher, onMount } from 'svelte';
+	import { createEventDispatcher, onMount, tick } from 'svelte';
 
 	import ChevronDown from '$lib/components/icons/ChevronDown.svelte';
 	import Check from '$lib/components/icons/Check.svelte';
@@ -53,6 +53,11 @@
 	export let triggerClassName = 'text-lg';
 
 	let show = false;
+	const closeSelector = async () => {
+		show = false;
+		await tick();
+		document.getElementById(`model-selector-${id}-button`)?.focus();
+	};
 
 	let selectedModel: (typeof items)[number] | null = null;
 	$: selectedModel = items.find((item) => item.value === value) ?? null;
@@ -246,19 +251,19 @@
 	}
 </script>
 
-<DropdownMenu.Root
+<Popover.Root
 	bind:open={show}
-	onOpenChange={async () => {
+	onOpenChange={(open) => {
 		searchValue = '';
 		selectedModelIdx = 0;
-		window.setTimeout(() => document.getElementById('model-search-input')?.focus(), 0);
+		if (open && searchEnabled) {
+			window.setTimeout(() => document.getElementById(`model-search-input-${id}`)?.focus(), 0);
+		}
 	}}
-	closeFocus={false}
 >
-	<DropdownMenu.Trigger
+	<Popover.Trigger
 		class="relative w-full font-primary"
 		id="model-selector-{id}-button"
-		aria-haspopup="listbox"
 		aria-expanded={show}
 		aria-label={$i18n.t('Select a model, currently "{{model}}"', {
 			model: selectedModel?.label ?? $i18n.t('None')
@@ -276,14 +281,15 @@
 			</span>
 			<ChevronDown className="self-center ml-2 size-3" strokeWidth="2.5" />
 		</div>
-	</DropdownMenu.Trigger>
+	</Popover.Trigger>
 
-	<DropdownMenu.Content
+	<Popover.Content
 		class=" z-40 {$mobile
 			? `w-full`
 			: `${className}`} max-w-[calc(100vw-1rem)] justify-start rounded-xl  bg-white dark:bg-gray-850 dark:text-white shadow-lg  outline-none"
 		transition={flyAndScale}
-		side={$mobile ? 'bottom' : 'bottom-start'}
+		side="bottom"
+		align="start"
 		sideOffset={3}
 	>
 		<slot>
@@ -292,18 +298,27 @@
 					<Search className="size-4" strokeWidth="2.5" />
 
 					<input
-						id="model-search-input"
+						id="model-search-input-{id}"
+						aria-label={$i18n.t('Search a model')}
 						bind:value={searchValue}
 						class="w-full text-sm bg-transparent outline-none"
 						placeholder={$i18n.t('Search a model')}
 						autocomplete="off"
 						on:keydown={(e) => {
+							if (!['Enter', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
+								return;
+							}
+							e.preventDefault();
+							e.stopPropagation();
 							if (e.code === 'Enter' && filteredItems.length > 0) {
-								value = filteredItems[selectedModelIdx].value;
-								show = false;
+								value = filteredItems[Math.min(selectedModelIdx, filteredItems.length - 1)].value;
+								closeSelector();
 								return; // dont need to scroll on selection
 							} else if (e.code === 'ArrowDown') {
-								selectedModelIdx = Math.min(selectedModelIdx + 1, filteredItems.length - 1);
+								selectedModelIdx = Math.max(
+									0,
+									Math.min(selectedModelIdx + 1, filteredItems.length - 1)
+								);
 							} else if (e.code === 'ArrowUp') {
 								selectedModelIdx = Math.max(selectedModelIdx - 1, 0);
 							} else {
@@ -323,7 +338,7 @@
 			<div class="px-3 my-2 max-h-64 overflow-y-auto scrollbar-hidden group">
 				{#each filteredItems as item, index}
 					<button
-						aria-label={getModelDesc(item.model)}
+						aria-label={item.label}
 						class="flex w-full text-left font-medium line-clamp-1 select-none items-center rounded-button py-2 pl-3 pr-1.5 text-sm text-gray-700 dark:text-gray-100 outline-none transition-all duration-75 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg cursor-pointer data-[highlighted]:bg-muted {index ===
 						selectedModelIdx
 							? 'bg-gray-100 dark:bg-gray-800 group-hover:bg-transparent'
@@ -333,7 +348,7 @@
 							value = item.value;
 							selectedModelIdx = index;
 
-							show = false;
+							closeSelector();
 						}}
 					>
 						<div class="flex flex-col">
@@ -598,7 +613,7 @@
 								history.replaceState(null, '', location.pathname);
 							}
 
-							show = false;
+							closeSelector();
 						}}
 					>
 						<div class="flex gap-2.5 items-center">
@@ -630,5 +645,5 @@
 			<div class="hidden w-[42rem]" />
 			<div class="hidden w-[32rem]" />
 		</slot>
-	</DropdownMenu.Content>
-</DropdownMenu.Root>
+	</Popover.Content>
+</Popover.Root>

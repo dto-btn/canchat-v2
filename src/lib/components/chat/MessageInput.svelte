@@ -726,8 +726,9 @@
 													</div>
 													<div class=" absolute -top-1 -right-1">
 														<button
-															class=" bg-gray-400 text-white border border-white rounded-full group-hover:visible invisible transition"
+															class=" bg-gray-400 text-white border border-white rounded-full group-hover:opacity-100 focus:opacity-100 opacity-0 transition"
 															type="button"
+															aria-label={$i18n.t('Remove')}
 															on:click={() => {
 																files.splice(fileIdx, 1);
 																files = files;

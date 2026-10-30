@@ -237,6 +237,14 @@ html
 	outline-offset: 2px;
 }
 
+.keyboard-message:focus-within .invisible {
+	visibility: visible;
+}
+
+.keyboard-message:focus-within [data-message-actions] {
+	overflow: visible;
+}
+
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
 	/* display: none; <- Crashes Chrome on hover */

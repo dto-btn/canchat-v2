@@ -232,6 +232,7 @@
 					</div>
 
 					<div
+						data-message-actions
 						class=" flex {($settings?.chatBubble ?? true)
 							? 'justify-end'
 							: ''}  text-gray-600 dark:text-gray-500"
