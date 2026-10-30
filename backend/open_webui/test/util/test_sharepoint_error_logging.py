@@ -174,3 +174,42 @@ def test_token_error_logs_code_not_body(canary_harness, canary_path, monkeypatch
         for m in messages
     )
     canary_harness.assert_no_canaries()
+
+
+def test_content_download_error_logs_code_not_body(
+    canary_harness, canary_path, monkeypatch
+):
+    headers = {"client-request-id": CLIENT_REQUEST_ID}
+    error_body = _graph_error_body(canary_path)
+    responses = iter(
+        [
+            _FakeResponse(
+                200,
+                json.dumps({"name": "doc.docx", "parentReference": {"driveId": "d-1"}}),
+                headers,
+            ),
+            _FakeResponse(404, error_body, headers),
+        ]
+    )
+    monkeypatch.setattr(
+        sp.aiohttp,
+        "ClientSession",
+        lambda *a, **k: _FakeSession(lambda: next(responses)),
+    )
+
+    ok, result = asyncio.run(
+        _client().get_document_content_by_url(
+            "token", "https://example.sharepoint.com/doc.docx", "item-1"
+        )
+    )
+
+    assert ok is False
+    assert result == {"error": error_body, "status_code": 404}
+    messages = _messages(canary_harness)
+    assert any(
+        m.startswith("Content download error: ")
+        and "status=404" in m
+        and f"code={GRAPH_CODE}" in m
+        for m in messages
+    )
+    canary_harness.assert_no_canaries()
