@@ -10,9 +10,21 @@ and cover:
   • GET /api/v1/metrics/mcp-processes  — endpoint returns the logged tool list
   • GET /api/v1/metrics/tokens         — mcp_tool query-param filters correctly
   • GET /api/v1/metrics/daily/tokens   — mcp_tool filter respected
+
+and the Model Analysis model list:
+  • MessageMetrics.get_prompt_models     — direct prompts only (no tool use); prefix filter
+  • GET /api/v1/metrics/models           — active = in the chat model dropdown (id or
+                                           name, any case); archived = every other
+                                           stored name, one entry each
+  • GET /api/v1/metrics/models/prompts   — active counts case variants; archived counts
+                                           exactly that stored name
+  • GET /api/v1/metrics/range/users      — growth counts the same names in both periods
+  • _match_live_name / _model_key / _is_hidden — unit tests, no database
 """
 
 from types import SimpleNamespace
+
+import pytest
 
 from sqlalchemy import text
 
@@ -30,6 +42,22 @@ _USAGE_300 = {"prompt_tokens": 180, "completion_tokens": 120, "total_tokens": 30
 def _make_user(user_id="test-user-1", domain="gc.ca"):
     """Return a SimpleNamespace user accepted by insert_new_metrics."""
     return SimpleNamespace(id=user_id, domain=domain)
+
+
+# Live (chat dropdown) models used by the Model Analysis tests. Prod-like: the
+# chat dropdown lists LiteLLM names ("GPT 4o"), while metrics often store the
+# provider's name ("gpt-4o-2024-11-20").
+_LIVE_MODELS = {
+    "GPT 4o": {"id": "GPT 4o", "name": "GPT 4o"},
+    "Gemini Flash 2.5": {"id": "Gemini Flash 2.5", "name": "Gemini Flash 2.5"},
+    "custom-hr": {"id": "custom-hr", "name": "HR Assistant"},  # custom display name
+    "hidden-model": {
+        "id": "hidden-model",
+        "name": "Hidden",
+        "info": {"meta": {"hidden": True}},
+    },
+    "arena-model": {"id": "arena-model", "name": "Arena", "arena": True},
+}
 
 
 class TestMcpTokenMetrics(AbstractPostgresTest):
@@ -329,3 +357,201 @@ class TestMcpTokenMetrics(AbstractPostgresTest):
             )
         assert response.status_code == 200
         assert response.json()["total_daily_tokens"] <= 200
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # Model Analysis — model list, per-model prompt counts, range growth
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    def _insert_model(self, model, mcp_tool=None):
+        self.metrics.insert_new_metrics(
+            user=_make_user(),
+            model=model,
+            usage=_USAGE_100,
+            chat_id="chat-abc",
+            mcp_tool=mcp_tool,
+        )
+
+    def test_get_prompt_models_excludes_tool_use(self):
+        """Model analytics covers direct prompts only; CrewAI rows are left out."""
+        self._insert_model("gpt-4o-2024-08-06")
+        self._insert_model("command-r-plus")
+        self._insert_model("azure/gpt-4o", mcp_tool="news_server")
+        self._insert_model("azure/gpt-4o")  # CrewAI without an MCP process
+        self._insert_model("crewai")
+
+        assert sorted(self.metrics.get_prompt_models()) == [
+            "command-r-plus",
+            "gpt-4o-2024-08-06",
+        ]
+
+    def test_get_prompt_models_prefixes_narrow_and_match_literally(self):
+        """prefixes return only names starting with one of them; "_" is not a wildcard."""
+        self._insert_model("gpt-4o-2024-08-06")
+        self._insert_model("gpt-4o-mini")
+        self._insert_model("gpt-4.1")
+        self._insert_model("my_model-0613")
+        self._insert_model(
+            "myxmodel-0613"
+        )  # would match "my_model" if "_" were a wildcard
+        self._insert_model("azure/gpt-4o", mcp_tool="news_server")
+
+        assert sorted(self.metrics.get_prompt_models(prefixes=["gpt-4o"])) == [
+            "gpt-4o-2024-08-06",
+            "gpt-4o-mini",
+        ]
+        assert self.metrics.get_prompt_models(prefixes=["my_model"]) == [
+            "my_model-0613"
+        ]
+        # Case is ignored, and several prefixes are combined
+        assert sorted(self.metrics.get_prompt_models(prefixes=["GPT-4.1", "my_"])) == [
+            "gpt-4.1",
+            "my_model-0613",
+        ]
+
+    def _set_live_models(self, models):
+        """Swap app.state.MODELS for a test; returns the previous value."""
+        app = self.fast_api_client.app
+        previous = app.state.MODELS
+        app.state.MODELS = models
+        return previous
+
+    def _get(self, path, query_params=None):
+        """GET a metrics endpoint as admin, with the test live models."""
+        previous = self._set_live_models(_LIVE_MODELS)
+        try:
+            with mock_webui_user(**_ADMIN_KWARGS):
+                response = self.fast_api_client.get(
+                    self.create_url(path, query_params=query_params)
+                )
+        finally:
+            self.fast_api_client.app.state.MODELS = previous
+        assert response.status_code == 200
+        return response.json()
+
+    def test_endpoint_models_active_if_in_chat_dropdown_else_archived(self):
+        """Active = matches a chat model; every other stored name is its own archived entry."""
+        self._insert_model("GPT 4o")
+        self._insert_model("gpt 4o")  # same chat model, different case
+        self._insert_model("HR Assistant")  # matches a display name
+        self._insert_model("gpt-4o-2024-08-06")  # provider names: not merged
+        self._insert_model("gpt-4o-2024-11-20")
+        self._insert_model("hidden-model")  # hidden in chat: archived
+        self._insert_model("azure/gpt-4o", mcp_tool="news_server")  # tool use: left out
+
+        data = self._get("/models")
+
+        assert data["active_models"] == [
+            {"id": "GPT 4o", "name": "GPT 4o"},
+            {"id": "custom-hr", "name": "HR Assistant"},
+        ]
+        assert data["archived_models"] == [
+            {"id": "gpt-4o-2024-08-06", "name": "gpt-4o-2024-08-06"},
+            {"id": "gpt-4o-2024-11-20", "name": "gpt-4o-2024-11-20"},
+            {"id": "hidden-model", "name": "hidden-model"},
+        ]
+        assert "azure/gpt-4o" not in data["models"]
+
+    def test_endpoint_model_prompts_active_counts_case_variants(self):
+        """An active model counts rows stored under its id or name in any case."""
+        self._insert_model("GPT 4o")
+        self._insert_model("gpt 4o")
+        self._insert_model("GPT 4o mini")  # longer name: a different model
+        self._insert_model("gpt-4o-2024-11-20")  # provider name: archived
+        self._insert_model("azure/gpt-4o", mcp_tool="news_server")
+
+        assert self._get("/models/prompts", {"model": "GPT 4o"})["total_prompts"] == 2
+
+    def test_endpoint_model_prompts_archived_counts_that_name_only(self):
+        """An archived entry counts exactly its stored name, nothing merged."""
+        self._insert_model("gpt-4o-2024-08-06")
+        self._insert_model("gpt-4o-2024-08-06")
+        self._insert_model("gpt-4o-2024-11-20")
+
+        data = self._get("/models/prompts", {"model": "gpt-4o-2024-08-06"})
+        assert data["total_prompts"] == 2
+
+    def test_endpoint_range_growth_uses_same_names_in_both_periods(self):
+        """Prompt growth counts the same stored names (all case variants) in both periods."""
+        from datetime import datetime
+
+        from open_webui.internal.db import Session
+
+        today = datetime.now().strftime("%Y-%m-%d")
+        # Same conversion the endpoint uses for start_date
+        start_ts = int(datetime.strptime(today, "%Y-%m-%d").timestamp())
+
+        # Previous period (yesterday): one prompt, stored in lower case
+        self._insert_model("gpt 4o")
+        Session.execute(
+            text("UPDATE message_metrics SET created_at = :ts"),
+            {"ts": start_ts - 3600},
+        )
+        Session.commit()
+
+        # Current period (today): two prompts
+        self._insert_model("GPT 4o")
+        self._insert_model("gpt 4o")
+        # Tool use is never counted under a model
+        self._insert_model("azure/gpt-4o", mcp_tool="news_server")
+
+        data = self._get(
+            "/range/users",
+            {"start_date": today, "end_date": today, "model": "GPT 4o"},
+        )
+        assert data["metrics"]["total_prompts"] == 2
+        assert data["growth"]["prompt_growth_percent"] == 100.0
+
+
+# ── Model list matching (no database needed) ──────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    "name,expected",
+    [
+        ("GPT 4o", "GPT 4o"),
+        ("gpt 4o", "GPT 4o"),  # case is ignored
+        ("custom-hr", "custom-hr"),  # matches the id
+        ("HR Assistant", "custom-hr"),  # matches the display name
+        ("GPT 4o mini", None),  # longer name: a different model
+        ("gpt-4o-2024-11-20", None),  # provider name: not in the chat dropdown
+    ],
+)
+def test_match_live_name(name, expected):
+    from open_webui.routers.metrics import _match_live_name
+
+    assert _match_live_name(name, _LIVE_MODELS) == expected
+
+
+@pytest.mark.parametrize(
+    "name,expected",
+    [
+        # In the chat dropdown: active, under the chat model id
+        ("GPT 4o", "GPT 4o"),
+        ("gpt 4o", "GPT 4o"),
+        ("HR Assistant", "custom-hr"),
+        # Not in the chat dropdown: archived as the stored name, nothing merged
+        ("gpt-4o-2024-08-06", "gpt-4o-2024-08-06"),
+        ("gpt-4o-2024-11-20", "gpt-4o-2024-11-20"),
+        ("command-4", "command-4"),
+    ],
+)
+def test_model_key(name, expected):
+    from open_webui.routers.metrics import _model_key
+
+    assert _model_key(name, _LIVE_MODELS) == expected
+
+
+@pytest.mark.parametrize(
+    "model,expected",
+    [
+        ({}, False),
+        ({"info": None}, False),
+        ({"info": {"meta": None}}, False),
+        ({"info": {"meta": {"hidden": False}}}, False),
+        ({"info": {"meta": {"hidden": True}}}, True),
+    ],
+)
+def test_is_hidden(model, expected):
+    from open_webui.routers.metrics import _is_hidden
+
+    assert _is_hidden(model) == expected
