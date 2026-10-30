@@ -1,6 +1,6 @@
 # OBS-02: Unit of work for same-transaction audit writes
 
-Status: **Proposed**, waiting for tech lead approval | Unblocks: OBS-40, OBS-41, OBS-44, OBS-45, OBS-46 | Ref: [Logging Architecture v2 §5](Canchat-v2-Logging%20Architecture-v2.md#5-audit-events-emit_audit_event-metadata-only), Gate 6
+Status: **Decided**. The decision is recorded on the OBS-02 Jira ticket, together with OBS-01 (option a). Formal sign-off follows implementation completion | Unblocks: OBS-40, OBS-41, OBS-44, OBS-45, OBS-46 | Ref: [Logging Architecture v2 §5](Canchat-v2-Logging%20Architecture-v2.md#5-audit-events-emit_audit_event-metadata-only), Gate 6
 
 Proof of concept: [test_unit_of_work_poc.py](../../backend/open_webui/test/util/test_unit_of_work_poc.py), 9 tests passing on SQLite. Postgres is still to be checked in OBS-40.
 

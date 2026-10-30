@@ -537,6 +537,8 @@ Collector, Alloy, Loki, Tempo, Prometheus and Grafana configuration lives in `do
 
 Before treating this plan as implementation-ready:
 
+> **Status (E0 complete):** all six gates are decided. The decisions for OBS-01 to OBS-06 are recorded on their Jira tickets, and the linked OBS documents are the supporting design records. Formal sign-off is completed after implementation is complete.
+
 1. Pin and validate collector/store versions and backend instrumentation dependencies; the OBS-03 result is recorded in [Gate 1](#gate-1-obs-03-dependency-resolution). Faro/Alloy versions, real browser payload schemas, source-map behavior and SDK session semantics are deferred to OBS-70/OBS-76. Exporter/metric names and deployed configuration still need validation with the pinned binaries.
 2. Approve the event schema, cardinality limits, analytics windows and runtime validation rules; prove aggregate-only users cannot query raw data. Audit schema v1, fail policy, pseudonymization and metric label limits are proposed in [OBS-04](Canchat-v2-OBS-04-Audit-Event-Schema.md).
 3. Confirm the SSC record mapping, retention clocks, authorized hold/release process and content-audit need. Do not enable full-content capture until its restricted lifecycle is implemented. The decision request, including gaps found in the current chat cleanup and the untracked `message_metrics`/`export_logs` tables, is [OBS-05](Canchat-v2-OBS-05-Retention-Mapping.md).

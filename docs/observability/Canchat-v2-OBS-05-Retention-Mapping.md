@@ -1,8 +1,8 @@
 # OBS-05: SSC records mapping and retention clocks
 
-Status: **Provisional answers by the project team (2026-10-14). Not approved by SSC.** | Depends on: none | Unblocks: OBS-60, OBS-61, OBS-91 | Ref: [Logging Architecture v2 §11](Canchat-v2-Logging%20Architecture-v2.md#11-retention-and-disposition-treasury-board), Gate 3
+Status: **Decided**. The confirmed retention mapping and clocks are recorded on the OBS-05 Jira ticket. Formal SSC sign-off (§8) follows implementation completion | Depends on: none | Unblocks: OBS-60, OBS-61, OBS-91 | Ref: [Logging Architecture v2 §11](Canchat-v2-Logging%20Architecture-v2.md#11-retention-and-disposition-treasury-board), Gate 3
 
-This is the decision request for Gate 3. So that work can continue, the project team answered every question from public Government of Canada sources (§1.1) and the code (§2). Each answer is marked **provisional**. SSC Information Management, Security and ATIP still need to confirm or change each answer in the **SSC confirmed** column and sign §8. Until then, OBS-60 may build with these values, but OBS-05 stays open.
+This is the decision request for Gate 3. So that work can continue, the project team answered every question from public Government of Canada sources (§1.1) and the code (§2). Each answer below is marked **provisional** as originally proposed. The decided values are recorded on the OBS-05 Jira ticket; where they differ from this document, the Jira ticket is authoritative and OBS-60 uses those values. SSC Information Management, Security and ATIP sign §8 after implementation is complete.
 
 ## 1. What SSC is asked to decide
 
@@ -129,6 +129,8 @@ Only roles can be proposed here. Names have to come from SSC.
 - If SSC changes an answer, update the matching ticket above before it merges.
 
 ## 8. Sign-off
+
+Sign-off is completed after implementation is complete.
 
 | Role                       | Name | Decision | Date |
 | -------------------------- | ---- | -------- | ---- |

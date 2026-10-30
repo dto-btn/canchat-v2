@@ -1,6 +1,6 @@
 # OBS-04: Audit event schema v1, cardinality limits and audit fail policy
 
-Status: **Proposed**. Open questions 1, 2, 3 and 5 decided on 2026-10-13 (§10). Waiting for the SIEM interface answer and SSC Security and tech lead sign-off | Depends on: OBS-01 (option a, as assumed in [OBS-02](Canchat-v2-OBS-02-Unit-of-Work.md)) | Unblocks: OBS-41, OBS-42, OBS-43, OBS-44, OBS-45, OBS-46 | Ref: [Logging Architecture v2 §5](Canchat-v2-Logging%20Architecture-v2.md#5-audit-events-emit_audit_event-metadata-only), Gates 2 and 4
+Status: **Decided**. Open questions 1 to 5 are answered in §10; the SIEM interface decision is recorded on the OBS-04 Jira ticket. SSC Security and tech lead sign-off follows implementation completion | Depends on: OBS-01 (option a, recorded on the OBS-01 Jira ticket) | Unblocks: OBS-41, OBS-42, OBS-43, OBS-44, OBS-45, OBS-46 | Ref: [Logging Architecture v2 §5](Canchat-v2-Logging%20Architecture-v2.md#5-audit-events-emit_audit_event-metadata-only), Gates 2 and 4
 
 Artifacts:
 
@@ -239,7 +239,9 @@ Decided 2026-10-13:
 | 4   | Remove duplicate deliveries on `event_id`?                   | **No**, duplicates are kept and counted by distinct `event_id` (§8). May change later |
 | 5   | Circuit breaker for chat under `block_all`?                  | **Not yet**; `message` never blocks (§5). May change later                            |
 
-Still open: **SSC SIEM interface.** Which adapter and protocol give an application-level durable acknowledgement (§8)?
+**SSC SIEM interface** (which adapter and protocol give an application-level durable acknowledgement, §8): decided and recorded on the OBS-04 Jira ticket.
+
+Sign-off is completed after implementation is complete.
 
 | Role         | Name | Decision | Date |
 | ------------ | ---- | -------- | ---- |

@@ -1,6 +1,6 @@
 # OBS-06: Production capacity, availability and ownership for the observability stack
 
-Status: **Proposed (2026-10-14).** | Depends on: OBS-03 (done: [Gate 1](Canchat-v2-Logging%20Architecture-v2.md#gate-1-obs-03-dependency-resolution)) | Unblocks: OBS-58 | Ref: [Logging Architecture v2 §9](Canchat-v2-Logging%20Architecture-v2.md#9-infrastructure), Gate 5
+Status: **Decided**. The decision is recorded on the OBS-06 Jira ticket. Formal sign-off follows implementation completion | Depends on: OBS-03 (done: [Gate 1](Canchat-v2-Logging%20Architecture-v2.md#gate-1-obs-03-dependency-resolution)) | Unblocks: OBS-58 | Ref: [Logging Architecture v2 §9](Canchat-v2-Logging%20Architecture-v2.md#9-infrastructure), Gate 5
 
 Compose shows local integration only. This document defines what production needs: size, replicas, backups and restore, credentials, network flows, egress, ownership and which parts SSC runs. OBS-58 implements it as Kubernetes manifests.
 

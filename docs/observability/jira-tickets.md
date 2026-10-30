@@ -48,6 +48,8 @@ Source plan: [Canchat-v2-Logging Architecture-v2.md](Canchat-v2-Logging%20Archit
 
 **Done when:** every gate in the plan's _Implementation gates_ section has an approved, recorded answer linked from the tickets it unblocks.
 
+**Status:** Complete. Decisions for OBS-01 to OBS-06 are recorded on their Jira tickets. Formal sign-off from SSC Security, IM, ATIP, infrastructure owners and the tech lead is completed after implementation is complete.
+
 ### OBS-01: Decide whether `message_metrics` is the single chat-metadata write point
 
 **Type:** Decision / Spike | **Depends on:** none | **Ref:** §5, Gate 6
@@ -157,7 +159,7 @@ Define and get approval for the versioned audit event schema (`event_id`, schema
 
 ### OBS-05: Confirm SSC records mapping and retention clocks
 
-**Type:** Decision (external) | **Depends on:** none | **Ref:** §11, Gate 3 | **Decision request:** [Canchat-v2-OBS-05-Retention-Mapping.md](Canchat-v2-OBS-05-Retention-Mapping.md) (provisional answers recorded 2026-10-14; waiting for SSC confirmation)
+**Type:** Decision (external) | **Depends on:** none | **Ref:** §11, Gate 3 | **Decision request:** [Canchat-v2-OBS-05-Retention-Mapping.md](Canchat-v2-OBS-05-Retention-Mapping.md) (decided; decision recorded on the Jira ticket, sign-off after implementation completion)
 
 **Description**
 SSC Information Management, Security and ATIP must confirm the proposed retention mapping table in §11 (Loki `app`/`frontend`/`audit`, SIEM/evidence, chat DB, Tempo, Prometheus), including disposal authority and clock triggers.
