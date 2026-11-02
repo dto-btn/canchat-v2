@@ -5,6 +5,7 @@
 	import ChevronDown from '$lib/components/icons/ChevronDown.svelte';
 	import ChevronRight from '$lib/components/icons/ChevronRight.svelte';
 	import ArchiveBox from '$lib/components/icons/ArchiveBox.svelte';
+	import Check from '$lib/components/icons/Check.svelte';
 	import { OTHER_FAMILY, getModelFamily, groupModelsByFamily } from '$lib/utils/metricsModels';
 
 	const i18n = getI18n();
@@ -179,13 +180,19 @@
 								type="button"
 								aria-pressed={model.id === value}
 								title={model.id}
-								class="block w-full truncate pl-9 pr-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus-visible:bg-gray-100 dark:focus-visible:bg-gray-700 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-purple-600 dark:focus-visible:ring-purple-300 {model.id ===
+								class="flex w-full items-center gap-2 pl-9 pr-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus-visible:bg-gray-100 dark:focus-visible:bg-gray-700 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-purple-600 dark:focus-visible:ring-purple-300 {model.id ===
 								value
-									? 'bg-blue-50 text-blue-700 dark:bg-gray-700 dark:text-blue-300'
+									? 'bg-blue-50 font-semibold text-blue-700 dark:bg-gray-700 dark:text-blue-300'
 									: 'text-gray-700 dark:text-gray-300'}"
 								on:click={() => select(model)}
 							>
-								{model.name}
+								<span class="min-w-0 flex-1 truncate">{model.name}</span>
+								{#if model.id === value}
+									<!-- Check.svelte ignores className, so size its svg from here -->
+									<span class="shrink-0 [&>svg]:size-4" aria-hidden="true"
+										><Check strokeWidth="2.5" /></span
+									>
+								{/if}
 							</button>
 						{/each}
 					{/if}
@@ -235,13 +242,18 @@
 											type="button"
 											aria-pressed={model.id === value}
 											title={model.id}
-											class="block w-full truncate pl-12 pr-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus-visible:bg-gray-100 dark:focus-visible:bg-gray-700 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-purple-600 dark:focus-visible:ring-purple-300 {model.id ===
+											class="flex w-full items-center gap-2 pl-12 pr-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus-visible:bg-gray-100 dark:focus-visible:bg-gray-700 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-purple-600 dark:focus-visible:ring-purple-300 {model.id ===
 											value
-												? 'bg-blue-50 text-blue-700 dark:bg-gray-700 dark:text-blue-300'
+												? 'bg-blue-50 font-semibold text-blue-700 dark:bg-gray-700 dark:text-blue-300'
 												: 'text-gray-600 dark:text-gray-300'}"
 											on:click={() => select(model)}
 										>
-											{model.name}
+											<span class="min-w-0 flex-1 truncate">{model.name}</span>
+											{#if model.id === value}
+												<span class="shrink-0 [&>svg]:size-4" aria-hidden="true"
+													><Check strokeWidth="2.5" /></span
+												>
+											{/if}
 										</button>
 									{/each}
 								{/if}
