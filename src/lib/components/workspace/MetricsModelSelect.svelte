@@ -171,7 +171,10 @@
 						<ChevronRight className="w-3.5 h-3.5" />
 					{/if}
 					<span class="flex-1 text-left">{groupLabel(group.name)}</span>
-					<span class="text-xs text-gray-600 dark:text-gray-300">{group.models.length}</span>
+					<span class="text-xs text-gray-600 dark:text-gray-300" aria-hidden="true"
+						>{group.models.length}</span
+					>
+					<span class="sr-only">{$i18n.t('{{count}} models', { count: group.models.length })}</span>
 				</button>
 				<div id="{id}-group-{i}">
 					{#if expanded[group.name]}
@@ -216,7 +219,12 @@
 					{/if}
 					<ArchiveBox className="w-3.5 h-3.5" strokeWidth="2" />
 					<span class="flex-1 text-left">{$i18n.t('Archived')}</span>
-					<span class="text-xs text-gray-600 dark:text-gray-300">{archivedModels.length}</span>
+					<span class="text-xs text-gray-600 dark:text-gray-300" aria-hidden="true"
+						>{archivedModels.length}</span
+					>
+					<span class="sr-only"
+						>{$i18n.t('{{count}} models', { count: archivedModels.length })}</span
+					>
 				</button>
 				<div id="{id}-archived">
 					{#if archiveExpanded}
@@ -234,7 +242,12 @@
 									<ChevronRight className="w-3.5 h-3.5" />
 								{/if}
 								<span class="flex-1 text-left">{groupLabel(group.name)}</span>
-								<span class="text-xs text-gray-600 dark:text-gray-300">{group.models.length}</span>
+								<span class="text-xs text-gray-600 dark:text-gray-300" aria-hidden="true"
+									>{group.models.length}</span
+								>
+								<span class="sr-only"
+									>{$i18n.t('{{count}} models', { count: group.models.length })}</span
+								>
 							</button>
 							<div id="{id}-archived-group-{i}">
 								{#if archivedExpanded[group.name]}

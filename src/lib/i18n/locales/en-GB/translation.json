@@ -12,6 +12,8 @@
 	"(Users whose last recorded activity was during the selected period)": "",
 	"{{ models }}": "",
 	"{{COUNT}} days": "",
+	"{{count}} models_one": "{{count}} model",
+	"{{count}} models_other": "{{count}} models",
 	"{{COUNT}} Replies": "",
 	"{{user}}'s Chat": "",
 	"{{user}}'s Chats": "",
