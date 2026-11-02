@@ -48,7 +48,7 @@
 			expanded[getModelFamily(selectedModel)] = true;
 		}
 		await tick();
-		const current = panel?.querySelector<HTMLElement>('[aria-pressed="true"]');
+		const current = panel?.querySelector<HTMLElement>('[aria-current="true"]');
 		(current ?? getItems()[0])?.focus();
 	}
 
@@ -178,7 +178,7 @@
 						{#each group.models as model (model.id)}
 							<button
 								type="button"
-								aria-pressed={model.id === value}
+								aria-current={model.id === value ? 'true' : undefined}
 								title={model.id}
 								class="flex w-full items-center gap-2 pl-9 pr-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus-visible:bg-gray-100 dark:focus-visible:bg-gray-700 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-purple-600 dark:focus-visible:ring-purple-300 {model.id ===
 								value
@@ -188,6 +188,7 @@
 							>
 								<span class="min-w-0 flex-1 truncate">{model.name}</span>
 								{#if model.id === value}
+									<span class="sr-only">({$i18n.t('Selected')})</span>
 									<!-- Check.svelte ignores className, so size its svg from here -->
 									<span class="shrink-0 [&>svg]:size-4" aria-hidden="true"
 										><Check strokeWidth="2.5" /></span
@@ -240,7 +241,7 @@
 									{#each group.models as model (model.id)}
 										<button
 											type="button"
-											aria-pressed={model.id === value}
+											aria-current={model.id === value ? 'true' : undefined}
 											title={model.id}
 											class="flex w-full items-center gap-2 pl-12 pr-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus-visible:bg-gray-100 dark:focus-visible:bg-gray-700 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-purple-600 dark:focus-visible:ring-purple-300 {model.id ===
 											value
@@ -250,6 +251,7 @@
 										>
 											<span class="min-w-0 flex-1 truncate">{model.name}</span>
 											{#if model.id === value}
+												<span class="sr-only">({$i18n.t('Selected')})</span>
 												<span class="shrink-0 [&>svg]:size-4" aria-hidden="true"
 													><Check strokeWidth="2.5" /></span
 												>

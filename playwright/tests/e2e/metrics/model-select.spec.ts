@@ -22,8 +22,7 @@ const MODELS = {
 // because the Metrics page reformats digits in visible text ("2024" → "2,024").
 const groupToggle = (panel: Locator, name: string) =>
 	panel.locator('button[aria-expanded]', { hasText: name }).first();
-const modelRow = (panel: Locator, id: string) =>
-	panel.locator(`button[aria-pressed][title="${id}"]`);
+const modelRow = (panel: Locator, id: string) => panel.locator(`button[title="${id}"]`);
 
 async function openModelAnalysis(adminPage: AdminPage) {
 	const page: Page = adminPage.page;
@@ -82,7 +81,7 @@ test.describe('Metrics: Model Analysis model dropdown', () => {
 		await page.keyboard.press('ArrowDown');
 		await expect(panel).toBeVisible();
 		await expect(modelRow(panel, 'GPT 4o')).toBeFocused();
-		await expect(modelRow(panel, 'GPT 4o')).toHaveAttribute('aria-pressed', 'true');
+		await expect(modelRow(panel, 'GPT 4o')).toHaveAttribute('aria-current', 'true');
 
 		// Rows: GPT toggle, GPT 4o, Cohere toggle, Gemini toggle, Archived toggle
 		await page.keyboard.press('ArrowDown');

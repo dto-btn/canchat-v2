@@ -1160,6 +1160,7 @@
 	"Select only one model to call": "Sélectionnez seulement un modèle pour appeler",
 	"Select your timezone for accurate date and time information in chats": "Sélectionnez votre fuseau horaire pour des informations de date et d'heure précises dans les conversations",
 	"selected": "sélectionné(s)",
+	"Selected": "Sélectionné",
 	"selected chat(s)": "chat(s) sélectionné(s)",
 	"Selected Domains": "Domaines sélectionnés",
 	"Selected model(s) do not support image inputs": "Les modèle(s) sélectionné(s) ne prennent pas en charge les entrées d'images",
