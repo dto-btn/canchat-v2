@@ -158,7 +158,7 @@
 				<button
 					type="button"
 					aria-controls="{id}-group-{i}"
-					class="flex w-full items-center gap-1.5 px-3 py-1.5 font-medium text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus-visible:bg-gray-100 dark:focus-visible:bg-gray-700"
+					class="flex w-full items-center gap-1.5 px-3 py-1.5 font-medium text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus-visible:bg-gray-100 dark:focus-visible:bg-gray-700 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-purple-600 dark:focus-visible:ring-purple-300"
 					aria-expanded={!!expanded[group.name]}
 					on:click={() => (expanded[group.name] = !expanded[group.name])}
 				>
@@ -177,7 +177,7 @@
 								type="button"
 								aria-pressed={model.id === value}
 								title={model.id}
-								class="block w-full truncate pl-9 pr-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus-visible:bg-gray-100 dark:focus-visible:bg-gray-700 {model.id ===
+								class="block w-full truncate pl-9 pr-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus-visible:bg-gray-100 dark:focus-visible:bg-gray-700 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-purple-600 dark:focus-visible:ring-purple-300 {model.id ===
 								value
 									? 'bg-blue-50 text-blue-700 dark:bg-gray-700 dark:text-blue-300'
 									: 'text-gray-700 dark:text-gray-300'}"
@@ -195,7 +195,7 @@
 				<button
 					type="button"
 					aria-controls="{id}-archived"
-					class="flex w-full items-center gap-1.5 px-3 py-1.5 font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus-visible:bg-gray-100 dark:focus-visible:bg-gray-700"
+					class="flex w-full items-center gap-1.5 px-3 py-1.5 font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus-visible:bg-gray-100 dark:focus-visible:bg-gray-700 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-purple-600 dark:focus-visible:ring-purple-300"
 					aria-expanded={archiveExpanded}
 					on:click={() => (archiveExpanded = !archiveExpanded)}
 				>
@@ -214,7 +214,7 @@
 							<button
 								type="button"
 								aria-controls="{id}-archived-group-{i}"
-								class="flex w-full items-center gap-1.5 pl-6 pr-3 py-1.5 font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus-visible:bg-gray-100 dark:focus-visible:bg-gray-700"
+								class="flex w-full items-center gap-1.5 pl-6 pr-3 py-1.5 font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus-visible:bg-gray-100 dark:focus-visible:bg-gray-700 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-purple-600 dark:focus-visible:ring-purple-300"
 								aria-expanded={!!archivedExpanded[group.name]}
 								on:click={() => (archivedExpanded[group.name] = !archivedExpanded[group.name])}
 							>
@@ -233,7 +233,7 @@
 											type="button"
 											aria-pressed={model.id === value}
 											title={model.id}
-											class="block w-full truncate pl-12 pr-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus-visible:bg-gray-100 dark:focus-visible:bg-gray-700 {model.id ===
+											class="block w-full truncate pl-12 pr-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus-visible:bg-gray-100 dark:focus-visible:bg-gray-700 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-purple-600 dark:focus-visible:ring-purple-300 {model.id ===
 											value
 												? 'bg-blue-50 text-blue-700 dark:bg-gray-700 dark:text-blue-300'
 												: 'text-gray-500 dark:text-gray-400'}"
