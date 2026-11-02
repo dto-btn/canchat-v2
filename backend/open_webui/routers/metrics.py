@@ -494,8 +494,8 @@ async def get_historical_daily_users(
 # Date Range Metrics
 ############################
 
-# NOTE: unused. The frontend fetched this but never showed it, so the call was
-# removed (CANCHAT-5). Kept for a possible date-range summary panel.
+# NOTE: unused until CANCHAT-215 (date-range summary panel). The frontend call was
+# removed in CANCHAT-5 because the result was never shown.
 
 
 @router.get("/range/users")

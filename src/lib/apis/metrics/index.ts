@@ -569,8 +569,8 @@ export const getModelHistoricalPrompts = async (
 
 // New functions for enhanced metrics
 
-// NOTE: unused. Metrics.svelte fetched this but never showed it, so the call was
-// removed (CANCHAT-5). Kept for a possible date-range summary panel.
+// NOTE: unused until CANCHAT-215 (date-range summary panel). Metrics.svelte's call
+// was removed in CANCHAT-5 because the result was never shown.
 export const getRangeMetrics = async (
 	token: string,
 	startDate: string,
