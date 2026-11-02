@@ -128,7 +128,7 @@
 		<span class="truncate" title={value ?? ''}>
 			{selectedLabel || $i18n.t('Select Model:')}
 			{#if selectedIsArchived}
-				<span class="text-xs text-gray-500">({$i18n.t('Archived')})</span>
+				<span class="text-xs text-gray-600 dark:text-gray-400">({$i18n.t('Archived')})</span>
 			{/if}
 		</span>
 		<ChevronDown className="w-4 h-4 shrink-0" />
@@ -145,11 +145,13 @@
 			class="absolute z-30 mt-1 w-72 max-h-96 overflow-y-auto rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg py-1 text-sm"
 		>
 			{#if groups.length === 0 && archivedModels.length === 0}
-				<div class="px-3 py-2 text-gray-500">{$i18n.t('No models found')}</div>
+				<div class="px-3 py-2 text-gray-600 dark:text-gray-400">{$i18n.t('No models found')}</div>
 			{/if}
 
 			{#if groups.length > 0}
-				<div class="px-3 pt-1 pb-1 text-xs font-semibold uppercase text-gray-500">
+				<div
+					class="px-3 pt-1 pb-1 text-xs font-semibold uppercase text-gray-600 dark:text-gray-400"
+				>
 					{$i18n.t('Active')}
 				</div>
 			{/if}
@@ -168,7 +170,7 @@
 						<ChevronRight className="w-3.5 h-3.5" />
 					{/if}
 					<span class="flex-1 text-left">{groupLabel(group.name)}</span>
-					<span class="text-xs text-gray-500">{group.models.length}</span>
+					<span class="text-xs text-gray-600 dark:text-gray-300">{group.models.length}</span>
 				</button>
 				<div id="{id}-group-{i}">
 					{#if expanded[group.name]}
@@ -206,7 +208,7 @@
 					{/if}
 					<ArchiveBox className="w-3.5 h-3.5" strokeWidth="2" />
 					<span class="flex-1 text-left">{$i18n.t('Archived')}</span>
-					<span class="text-xs text-gray-500">{archivedModels.length}</span>
+					<span class="text-xs text-gray-600 dark:text-gray-300">{archivedModels.length}</span>
 				</button>
 				<div id="{id}-archived">
 					{#if archiveExpanded}
@@ -224,7 +226,7 @@
 									<ChevronRight className="w-3.5 h-3.5" />
 								{/if}
 								<span class="flex-1 text-left">{groupLabel(group.name)}</span>
-								<span class="text-xs text-gray-500">{group.models.length}</span>
+								<span class="text-xs text-gray-600 dark:text-gray-300">{group.models.length}</span>
 							</button>
 							<div id="{id}-archived-group-{i}">
 								{#if archivedExpanded[group.name]}
@@ -236,7 +238,7 @@
 											class="block w-full truncate pl-12 pr-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus-visible:bg-gray-100 dark:focus-visible:bg-gray-700 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-purple-600 dark:focus-visible:ring-purple-300 {model.id ===
 											value
 												? 'bg-blue-50 text-blue-700 dark:bg-gray-700 dark:text-blue-300'
-												: 'text-gray-500 dark:text-gray-400'}"
+												: 'text-gray-600 dark:text-gray-300'}"
 											on:click={() => select(model)}
 										>
 											{model.name}
