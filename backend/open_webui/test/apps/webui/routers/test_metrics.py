@@ -76,10 +76,8 @@ class TestMcpTokenMetrics(AbstractPostgresTest):
 
     def setup_method(self):
         super().setup_method()
-        import open_webui.routers.metrics as metrics_router
-
         # The stored model list is cached for a minute; start each test empty
-        metrics_router._prompt_models_expires_at = 0.0
+        self.fast_api_client.app.state.METRICS_PROMPT_MODELS_EXPIRES_AT = 0.0
 
     def teardown_method(self):
         """Extend parent teardown to also clear the message_metrics table."""
@@ -452,15 +450,13 @@ class TestMcpTokenMetrics(AbstractPostgresTest):
 
     def test_endpoint_models_reuses_stored_names_until_cache_expires(self):
         """The stored model list is cached, so a new name appears once it expires."""
-        import open_webui.routers.metrics as metrics_router
-
         self._insert_model("gpt-4o-2024-08-06")
         assert self._get("/models")["models"] == ["gpt-4o-2024-08-06"]
 
         self._insert_model("command-4")
         assert self._get("/models")["models"] == ["gpt-4o-2024-08-06"]
 
-        metrics_router._prompt_models_expires_at = 0.0
+        self.fast_api_client.app.state.METRICS_PROMPT_MODELS_EXPIRES_AT = 0.0
         assert sorted(self._get("/models")["models"]) == [
             "command-4",
             "gpt-4o-2024-08-06",
@@ -551,3 +547,32 @@ def test_is_hidden(model, expected):
     from open_webui.routers.metrics import _is_hidden
 
     assert _is_hidden(model) == expected
+
+
+def test_get_live_models_retries_once_a_minute_and_warns(monkeypatch, caplog):
+    """An empty model list is reloaded at most once per window, with one warning."""
+    import asyncio
+    import logging
+
+    import open_webui.routers.metrics as metrics_router
+    import open_webui.utils.models as models_utils
+
+    load_calls = []
+
+    async def fake_get_all_models(request):
+        load_calls.append(request)
+
+    monkeypatch.setattr(models_utils, "get_all_models", fake_get_all_models)
+    request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(MODELS={})))
+
+    with caplog.at_level(logging.WARNING, logger=metrics_router.log.name):
+        assert asyncio.run(metrics_router._get_live_models(request)) == {}
+        assert asyncio.run(metrics_router._get_live_models(request)) == {}
+
+    assert len(load_calls) == 1
+    assert caplog.text.count("shows every model as archived") == 1
+
+    # Once the window passes, the next request loads again
+    request.app.state.METRICS_MODELS_RETRY_AT = 0.0
+    asyncio.run(metrics_router._get_live_models(request))
+    assert len(load_calls) == 2
