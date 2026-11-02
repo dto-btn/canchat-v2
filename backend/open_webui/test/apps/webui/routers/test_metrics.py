@@ -12,7 +12,7 @@ and cover:
   • GET /api/v1/metrics/daily/tokens   — mcp_tool filter respected
 
 and the Model Analysis model list:
-  • MessageMetrics.get_prompt_models     — direct prompts only (no tool use); prefix filter
+  • MessageMetrics.get_prompt_models     — direct prompts only (no tool use)
   • GET /api/v1/metrics/models           — active = in the chat model dropdown (id or
                                            name, any case); archived = every other
                                            stored name, one entry each
@@ -76,6 +76,10 @@ class TestMcpTokenMetrics(AbstractPostgresTest):
 
     def setup_method(self):
         super().setup_method()
+        import open_webui.routers.metrics as metrics_router
+
+        # The stored model list is cached for a minute; start each test empty
+        metrics_router._prompt_models_expires_at = 0.0
 
     def teardown_method(self):
         """Extend parent teardown to also clear the message_metrics table."""
@@ -384,30 +388,6 @@ class TestMcpTokenMetrics(AbstractPostgresTest):
             "gpt-4o-2024-08-06",
         ]
 
-    def test_get_prompt_models_prefixes_narrow_and_match_literally(self):
-        """prefixes return only names starting with one of them; "_" is not a wildcard."""
-        self._insert_model("gpt-4o-2024-08-06")
-        self._insert_model("gpt-4o-mini")
-        self._insert_model("gpt-4.1")
-        self._insert_model("my_model-0613")
-        self._insert_model(
-            "myxmodel-0613"
-        )  # would match "my_model" if "_" were a wildcard
-        self._insert_model("azure/gpt-4o", mcp_tool="news_server")
-
-        assert sorted(self.metrics.get_prompt_models(prefixes=["gpt-4o"])) == [
-            "gpt-4o-2024-08-06",
-            "gpt-4o-mini",
-        ]
-        assert self.metrics.get_prompt_models(prefixes=["my_model"]) == [
-            "my_model-0613"
-        ]
-        # Case is ignored, and several prefixes are combined
-        assert sorted(self.metrics.get_prompt_models(prefixes=["GPT-4.1", "my_"])) == [
-            "gpt-4.1",
-            "my_model-0613",
-        ]
-
     def _set_live_models(self, models):
         """Swap app.state.MODELS for a test; returns the previous value."""
         app = self.fast_api_client.app
@@ -469,6 +449,22 @@ class TestMcpTokenMetrics(AbstractPostgresTest):
 
         data = self._get("/models/prompts", {"model": "gpt-4o-2024-08-06"})
         assert data["total_prompts"] == 2
+
+    def test_endpoint_models_reuses_stored_names_until_cache_expires(self):
+        """The stored model list is cached, so a new name appears once it expires."""
+        import open_webui.routers.metrics as metrics_router
+
+        self._insert_model("gpt-4o-2024-08-06")
+        assert self._get("/models")["models"] == ["gpt-4o-2024-08-06"]
+
+        self._insert_model("command-4")
+        assert self._get("/models")["models"] == ["gpt-4o-2024-08-06"]
+
+        metrics_router._prompt_models_expires_at = 0.0
+        assert sorted(self._get("/models")["models"]) == [
+            "command-4",
+            "gpt-4o-2024-08-06",
+        ]
 
     def test_endpoint_range_growth_uses_same_names_in_both_periods(self):
         """Prompt growth counts the same stored names (all case variants) in both periods."""

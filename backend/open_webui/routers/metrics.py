@@ -303,6 +303,27 @@ async def _get_live_models(request: Request) -> dict:
     }
 
 
+# Listing stored names scans all of message_metrics, so reuse the list for a minute
+_PROMPT_MODELS_TTL_SECONDS = 60
+_prompt_models_cache: list[str] = []
+_prompt_models_expires_at = 0.0
+
+
+def _get_prompt_models_cached() -> list[str]:
+    """Stored model names (no tool use), read from the database at most once a minute."""
+    global _prompt_models_cache, _prompt_models_expires_at
+
+    now = time.monotonic()
+    if now < _prompt_models_expires_at:
+        return _prompt_models_cache
+    names = MessageMetrics.get_prompt_models() or []
+    # An empty list may mean the query failed, so it isn't kept
+    if names:
+        _prompt_models_cache = names
+        _prompt_models_expires_at = now + _PROMPT_MODELS_TTL_SECONDS
+    return names
+
+
 async def _resolve_model_filter(
     request: Request, model: Optional[str]
 ) -> Optional[list[str]]:
@@ -316,13 +337,10 @@ async def _resolve_model_filter(
     live = await _get_live_models(request)
     if model not in live:
         return [model]
-    # Narrow in SQL by prefix, then keep exact matches only (drops "GPT 4o mini")
-    prefixes = [model]
-    if live[model].get("name"):
-        prefixes.append(live[model]["name"])
+    # Exact matches only, so "GPT 4o mini" isn't counted under "GPT 4o"
     names = [
         name
-        for name in MessageMetrics.get_prompt_models(prefixes=prefixes)
+        for name in _get_prompt_models_cached()
         if _match_live_name(name, live) == model
     ]
     return names or [model]
@@ -338,7 +356,7 @@ async def get_models(request: Request, user=Depends(get_metrics_user)):
     NOTE: `models` (every stored name, kept for older callers) no longer includes
     tool-use names like "azure/gpt-4o" or "crewai" (CANCHAT-5).
     """
-    used_models = MessageMetrics.get_prompt_models() or []
+    used_models = _get_prompt_models_cached()
     live = await _get_live_models(request)
 
     keys = sorted({_model_key(name, live) for name in used_models})

@@ -96,27 +96,13 @@ class MessageMetricsTable:
     def _tool_use_filter(self):
         return or_(MessageMetric.model.like("azure/%"), MessageMetric.model == "crewai")
 
-    def get_prompt_models(self, prefixes: Optional[list[str]] = None) -> list[str]:
-        """Distinct models users prompted with directly (no tools).
-
-        prefixes narrows the scan to names starting with any of them, ignoring
-        case, e.g. "gpt-4o" for "gpt-4o-2024-08-06". "%" and "_" in a prefix
-        are matched literally.
-        """
+    def get_prompt_models(self) -> list[str]:
+        """Distinct models users prompted with directly (no tools)."""
         try:
             with get_db() as db:
                 query = db.query(MessageMetric.model).filter(
                     not_(self._tool_use_filter())
                 )
-                if prefixes:
-                    query = query.filter(
-                        or_(
-                            *[
-                                MessageMetric.model.istartswith(p, autoescape=True)
-                                for p in prefixes
-                            ]
-                        )
-                    )
                 models = query.distinct().all()
                 return [model[0] for model in models if model[0]]
         except Exception as e:
