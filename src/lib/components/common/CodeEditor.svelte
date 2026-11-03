@@ -43,7 +43,7 @@
 	export let id = '';
 	export let lang = '';
 
-	let codeEditor;
+	let codeEditor: any;
 
 	let isDarkMode = false;
 	let editorTheme = new Compartment();
@@ -70,8 +70,9 @@
 				return null;
 			});
 
-			if (res && res.code) {
-				const formattedCode = res.code;
+			const formattedResponse = res as { code?: string } | null;
+			if (formattedResponse?.code) {
+				const formattedCode = formattedResponse.code;
 				codeEditor.dispatch({
 					changes: [{ from: 0, to: codeEditor.state.doc.length, insert: formattedCode }]
 				});
@@ -127,12 +128,17 @@
 		isDarkMode = document.documentElement.classList.contains('dark');
 
 		// python code editor, highlight python code
+		const parentElement = document.getElementById(`code-textarea-${id}`);
+		if (!parentElement) {
+			return;
+		}
+
 		codeEditor = new EditorView({
 			state: EditorState.create({
 				doc: _value,
 				extensions: extensions
 			}),
-			parent: document.getElementById(`code-textarea-${id}`)
+			parent: parentElement
 		});
 
 		if (isDarkMode) {
@@ -155,7 +161,7 @@
 							});
 						} else {
 							codeEditor.dispatch({
-								effects: editorTheme.reconfigure()
+								effects: editorTheme.reconfigure([])
 							});
 						}
 					}
@@ -168,7 +174,7 @@
 			attributeFilter: ['class']
 		});
 
-		const keydownHandler = async (e) => {
+		const keydownHandler = async (e: any) => {
 			if ((e.ctrlKey || e.metaKey) && e.key === 's') {
 				e.preventDefault();
 				dispatch('save');

@@ -142,8 +142,8 @@ export const createPicker = () => {
 							// Construct download URL based on MIME type
 							const mimeType = doc[google.picker.Document.MIME_TYPE];
 
-							let downloadUrl;
-							let exportFormat;
+							let downloadUrl: any;
+							let exportFormat: any;
 
 							if (mimeType.includes('google-apps')) {
 								// Handle Google Workspace files
@@ -191,7 +191,7 @@ export const createPicker = () => {
 								}
 							};
 							resolve(result);
-						} catch (error) {
+						} catch (error: any) {
 							reject(error);
 						}
 					} else if (data[google.picker.Response.ACTION] === google.picker.Action.CANCEL) {
@@ -200,7 +200,7 @@ export const createPicker = () => {
 				})
 				.build();
 			picker.setVisible(true);
-		} catch (error) {
+		} catch (error: any) {
 			console.error('Google Drive Picker error:', error);
 			reject(error);
 		}

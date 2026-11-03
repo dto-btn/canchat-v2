@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 
 	const dispatch = createEventDispatcher();
@@ -15,10 +15,10 @@
 	import { getRequestToken } from '$lib/services/auth';
 
 	export let prompt = '';
-	export let files = [];
+	export let files: any[] = [];
 
 	let loading = false;
-	let commandElement = null;
+	let commandElement: any = null;
 
 	export const selectUp = () => {
 		commandElement?.selectUp();

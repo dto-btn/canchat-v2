@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { config, showArchivedChats, user } from '$lib/stores';
-	import { getContext } from 'svelte';
+	import { getI18n } from '$lib/utils/context';
 	import ShortcutsModal from '$lib/components/chat/ShortcutsModal.svelte';
 	import QuestionMarkCircle from '$lib/components/icons/QuestionMarkCircle.svelte';
 	import HelpMenu from '$lib/components/layout/Help/HelpMenu.svelte';
@@ -11,7 +11,7 @@
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import { goto } from '$app/navigation';
 
-	const i18n = getContext('i18n');
+	const i18n = getI18n();
 
 	// Modals
 	let showShortcuts = false;
@@ -64,6 +64,7 @@
 			>
 				<UserMenu
 					role={$user.role}
+					ariaLabel={$i18n.t('User Menu')}
 					on:show={(e) => {
 						if (e.detail === 'archived-chat') {
 							showArchivedChats.set(true);
@@ -73,7 +74,7 @@
 					<img
 						src={$user.profile_image_url}
 						class="size-5 object-cover rounded-full"
-						alt="User profile"
+						alt=""
 						draggable="false"
 					/>
 				</UserMenu>

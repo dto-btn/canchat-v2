@@ -53,6 +53,8 @@
 				{#if $user !== undefined}
 					<UserMenu
 						className="max-w-[200px]"
+						buttonClass="select-none flex rounded-xl p-1.5 w-full hover:bg-gray-50 dark:hover:bg-gray-850 transition self-center"
+						ariaLabel={$i18n.t('User Menu')}
 						role={$user.role}
 						on:show={(e) => {
 							if (e.detail === 'archived-chat') {
@@ -60,17 +62,12 @@
 							}
 						}}
 					>
-						<button
-							class="select-none flex rounded-xl p-1.5 w-full hover:bg-gray-50 dark:hover:bg-gray-850 transition self-center"
-							aria-label="User Menu"
-						>
-							<img
-								src={$user.profile_image_url}
-								class="size-6 object-cover rounded-full"
-								alt="User profile"
-								draggable="false"
-							/>
-						</button>
+						<img
+							src={$user.profile_image_url}
+							class="size-6 object-cover rounded-full"
+							alt=""
+							draggable="false"
+						/>
 					</UserMenu>
 				{/if}
 			</div>

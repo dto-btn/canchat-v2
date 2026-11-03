@@ -13,6 +13,7 @@
 	import { getRequestToken } from '$lib/services/auth';
 
 	const i18n = getI18n();
+	const getFileInput = (event: Event) => event.currentTarget as HTMLInputElement;
 
 	export let saveHandler: Function;
 
@@ -44,20 +45,22 @@
 				type="file"
 				accept=".json"
 				on:change={(e) => {
-					const file = e.target.files[0];
+					const input = getFileInput(e);
+					const file = input.files?.[0];
+					if (!file) return;
 					const reader = new FileReader();
 
-					reader.onload = async (e) => {
-						const res = await importConfig(getRequestToken(), JSON.parse(e.target.result)).catch(
-							(error) => {
-								toast.error(`${error}`);
-							}
-						);
+					reader.onload = async (event) => {
+						const result = event.target?.result;
+						if (typeof result !== 'string') return;
+						const res = await importConfig(getRequestToken(), JSON.parse(result)).catch((error) => {
+							toast.error(`${error}`);
+						});
 
 						if (res) {
 							toast.success('Config imported successfully');
 						}
-						e.target.value = null;
+						input.value = '';
 					};
 
 					reader.readAsText(file);

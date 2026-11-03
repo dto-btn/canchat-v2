@@ -102,7 +102,7 @@
 		loading = false;
 	};
 
-	const documentClickHandler = (e) => {
+	const documentClickHandler = (e: any) => {
 		const searchContainer = document.getElementById('search-container');
 		const chatSearch = document.getElementById('chat-search');
 
@@ -115,7 +115,7 @@
 	};
 
 	// Handle storage events for locale changes
-	const handleStorageChange = (event) => {
+	const handleStorageChange = (event: any) => {
 		if (event?.detail?.locale || (event?.key === 'locale' && event?.newValue)) {
 			// Force options and tagPrefixes to update by triggering reactivity
 			options = [

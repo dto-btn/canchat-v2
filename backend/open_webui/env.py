@@ -3,8 +3,10 @@ import json
 import logging
 import os
 import pkgutil
+import socket
 import sys
 import shutil
+import uuid
 import redis
 from pathlib import Path
 
@@ -93,6 +95,7 @@ log_sources = [
     "OPENAI",
     "RAG",
     "SCHEDULER",
+    "TASK",
     "WEBHOOK",
     "SOCKET",
     "JIRA",
@@ -109,6 +112,7 @@ for source in log_sources:
     log.info(f"{log_env_var}: {SRC_LOG_LEVELS[source]}")
 
 log.setLevel(SRC_LOG_LEVELS["CONFIG"])
+logging.getLogger("open_webui.tasks").setLevel(SRC_LOG_LEVELS["TASK"])
 
 
 WEBUI_NAME = os.environ.get("WEBUI_NAME", "Open WebUI")
@@ -403,6 +407,37 @@ ENABLE_WEBSOCKET_SUPPORT = (
 WEBSOCKET_MANAGER = os.environ.get("WEBSOCKET_MANAGER", "")
 
 WEBSOCKET_REDIS_URL = os.environ.get("WEBSOCKET_REDIS_URL", REDIS_URL)
+
+
+def _default_stream_instance_id() -> str:
+    hostname = os.environ.get("HOSTNAME")
+    if not hostname:
+        try:
+            hostname = socket.gethostname()
+        except OSError:
+            hostname = "local"
+
+    return f"{hostname}:{os.getpid()}:{uuid.uuid4().hex[:8]}"
+
+
+TASK_COORDINATION_BACKEND = os.environ.get("TASK_COORDINATION_BACKEND", "local").lower()
+TASK_COORDINATION_URL = os.environ.get("TASK_COORDINATION_URL", "")
+
+try:
+    TASK_COORDINATION_REDIS_CONNECT_TIMEOUT: float = float(
+        os.environ.get("TASK_COORDINATION_REDIS_CONNECT_TIMEOUT", "2")
+    )
+except (ValueError, TypeError):
+    TASK_COORDINATION_REDIS_CONNECT_TIMEOUT = 2.0
+
+try:
+    TASK_COORDINATION_REDIS_HEALTH_CHECK_INTERVAL: int = int(
+        os.environ.get("TASK_COORDINATION_REDIS_HEALTH_CHECK_INTERVAL", "30")
+    )
+except (ValueError, TypeError):
+    TASK_COORDINATION_REDIS_HEALTH_CHECK_INTERVAL = 30
+
+STREAM_INSTANCE_ID = os.environ.get("STREAM_INSTANCE_ID", _default_stream_instance_id())
 
 AIOHTTP_CLIENT_TIMEOUT = os.environ.get("AIOHTTP_CLIENT_TIMEOUT", "")
 

@@ -7,9 +7,9 @@
 
 	let mounted = false;
 
-	let previewElement = null;
+	let previewElement: any = null;
 
-	const downloadImage = (url, filename, prefixName = '') => {
+	const downloadImage = (url: any, filename: any, prefixName = '') => {
 		fetch(url)
 			.then((response) => response.blob())
 			.then((blob) => {

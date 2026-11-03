@@ -14,8 +14,8 @@
 	import PromptEditor from '$lib/components/workspace/Prompts/PromptEditor.svelte';
 	import { getRequestToken } from '$lib/services/auth';
 
-	let prompt = null;
-	const onSubmit = async (_prompt) => {
+	let prompt: any = null;
+	const onSubmit = async (_prompt: any) => {
 		const prompt = await updatePromptByCommand(getRequestToken(), _prompt).catch((error) => {
 			toast.error(`${error}`);
 			return null;
@@ -34,7 +34,7 @@
 			// Ensure proper command format before sending to the API
 			const sanitizedCommand = command.replace(/\//g, '');
 
-			const _prompt = await getPromptByCommand(getRequestToken(), sanitizedCommand).catch(
+			const _prompt: any = await getPromptByCommand(getRequestToken(), sanitizedCommand).catch(
 				(error) => {
 					toast.error(`${error}`);
 					return null;

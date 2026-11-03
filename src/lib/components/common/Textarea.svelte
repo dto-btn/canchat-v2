@@ -8,7 +8,7 @@
 
 	export let onKeydown: Function = () => {};
 
-	let textareaElement;
+	let textareaElement: any;
 
 	$: if (textareaElement) {
 		if (textareaElement.innerText !== value && value !== '') {
@@ -59,7 +59,7 @@
 		/* absolute */
 		position: absolute;
 		content: attr(data-placeholder);
-		color: #adb5bd;
+		color: var(--placeholder-color);
 		overflow: hidden;
 		display: -webkit-box;
 		-webkit-box-orient: vertical;

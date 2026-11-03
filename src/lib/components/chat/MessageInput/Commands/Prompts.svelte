@@ -16,23 +16,24 @@
 
 	const i18n = getI18n();
 
-	export let files;
+	export let files: any;
 
 	export let prompt = '';
 	export let command = '';
 
 	let selectedPromptIdx = 0;
-	let filteredPrompts = [];
-	let loadedPrompts = [];
+	let filteredPrompts: any[] = [];
+	let loadedPrompts: any[] = [];
 	let currentPage = 1;
 	let isLoading = false;
 	let hasMorePrompts = true;
 	const pageSize = 20;
 
 	// Debounced search for dynamic loading
-	let searchTimeout;
+	let searchTimeout: any;
 	let lastCommand = '';
 	let currentSearch = '';
+	const getScrollContainer = (event: Event) => event.currentTarget as HTMLDivElement;
 	let isInitialized = false;
 
 	// Load prompts dynamically based on search
@@ -61,7 +62,7 @@
 			}
 
 			hasMorePrompts = newPrompts.length === pageSize;
-		} catch (error) {
+		} catch (error: any) {
 			console.error('Error loading prompts:', error);
 			// Fallback to global store on error
 			loadedPrompts = $prompts.filter(
@@ -126,7 +127,7 @@
 		selectedPromptIdx = Math.min(selectedPromptIdx + 1, filteredPrompts.length - 1);
 	};
 
-	const confirmPrompt = async (command) => {
+	const confirmPrompt = async (command: any) => {
 		let text = command.content;
 
 		if (command.content.includes('{{CLIPBOARD}}')) {
@@ -137,7 +138,7 @@
 
 			const clipboardItems = await navigator.clipboard.read();
 
-			let imageUrl = null;
+			let imageUrl: any = null;
 			for (const item of clipboardItems) {
 				// Check for known image types
 				for (const type of item.types) {
@@ -233,7 +234,7 @@
 				<div
 					class="m-1 overflow-y-auto p-1 space-y-0.5 scrollbar-hidden"
 					on:scroll={(e) => {
-						const target = e.target;
+						const target = getScrollContainer(e);
 						if (target) {
 							const scrollPercentage =
 								(target.scrollTop + target.clientHeight) / target.scrollHeight;

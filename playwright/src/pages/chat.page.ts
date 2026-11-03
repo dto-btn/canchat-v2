@@ -965,6 +965,7 @@ export class ChatPage extends BasePage {
 		const tag = this.searchTagItems.nth(index);
 		await tag.waitFor({ state: 'visible' });
 		await tag.click();
+		await this.searchInput.press('Escape').catch(() => {});
 	}
 
 	/**
@@ -974,6 +975,7 @@ export class ChatPage extends BasePage {
 		const option = this.searchOptionItems.nth(index);
 		await option.waitFor({ state: 'visible' });
 		await option.click();
+		await this.searchInput.press('Escape').catch(() => {});
 	}
 
 	/**

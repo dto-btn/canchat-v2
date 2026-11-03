@@ -8,6 +8,9 @@
 	dayjs.extend(isToday);
 	dayjs.extend(isYesterday);
 
+	import type { Writable } from 'svelte/store';
+	import type { i18n as i18nType } from 'i18next';
+
 	import { getContext } from 'svelte';
 	const i18n = getContext<Writable<i18nType>>('i18n');
 
@@ -32,11 +35,11 @@
 	import ChevronRight from '$lib/components/icons/ChevronRight.svelte';
 	import { formatDate } from '$lib/utils';
 
-	export let message;
+	export let message: any;
 	export let showUserProfile = true;
 	export let thread = false;
 
-	export let onDelete: Function = () => {};
+	export let onDelete: () => void = () => {};
 	export let onEdit: Function = () => {};
 	export let onThread: Function = () => {};
 	export let onReaction: Function = () => {};
@@ -44,8 +47,21 @@
 	let showButtons = false;
 
 	let edit = false;
-	let editedContent = null;
+	let editedContent: any = null;
 	let showDeleteConfirmDialog = false;
+
+	const handleEditedContentKeydown = (e: any) => {
+		if (e.key === 'Escape') {
+			document.getElementById('close-edit-message-button')?.click();
+		}
+
+		const isCmdOrCtrlPressed = e.metaKey || e.ctrlKey;
+		const isEnterPressed = e.key === 'Enter';
+
+		if (isCmdOrCtrlPressed && isEnterPressed) {
+			document.getElementById('confirm-edit-message-button')?.click();
+		}
+	};
 </script>
 
 <ConfirmDialog
@@ -204,18 +220,7 @@
 						<Textarea
 							className=" bg-transparent outline-none w-full resize-none"
 							bind:value={editedContent}
-							onKeydown={(e) => {
-								if (e.key === 'Escape') {
-									document.getElementById('close-edit-message-button')?.click();
-								}
-
-								const isCmdOrCtrlPressed = e.metaKey || e.ctrlKey;
-								const isEnterPressed = e.key === 'Enter';
-
-								if (isCmdOrCtrlPressed && isEnterPressed) {
-									document.getElementById('confirm-edit-message-button')?.click();
-								}
-							}}
+							onKeydown={handleEditedContentKeydown}
 						/>
 						<div class=" mt-2 mb-1 flex justify-end text-sm font-medium">
 							<div class="flex space-x-1.5">

@@ -8,16 +8,23 @@
 	import Cog6 from '$lib/components/icons/Cog6.svelte';
 	import AddConnectionModal from './AddConnectionModal.svelte';
 
-	export let onDelete = () => {};
-	export let onSubmit = () => {};
+	export let onDelete: () => void = () => {};
+	export let onSubmit: (connection: unknown) => void = () => {};
 
 	export let pipeline = false;
 
 	export let url = '';
 	export let key = '';
-	export let config = {};
+	export let config: Record<string, any> = {};
 
 	let showConfigModal = false;
+
+	const handleConnectionSubmit = (connection: any) => {
+		url = connection.url;
+		key = connection.key;
+		config = connection.config;
+		onSubmit(connection);
+	};
 </script>
 
 <AddConnectionModal
@@ -29,12 +36,7 @@
 		config
 	}}
 	{onDelete}
-	onSubmit={(connection) => {
-		url = connection.url;
-		key = connection.key;
-		config = connection.config;
-		onSubmit(connection);
-	}}
+	onSubmit={handleConnectionSubmit}
 />
 
 <div class="flex w-full gap-2 items-center">

@@ -15,7 +15,7 @@
 
 	const i18n = getI18n();
 
-	export let func;
+	export let func: any;
 
 	export let editHandler: Function;
 	export let shareHandler: Function;

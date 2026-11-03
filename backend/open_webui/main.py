@@ -214,6 +214,7 @@ from open_webui.config import (
     ENABLE_WIKIPEDIA_GROUNDING,
     ENABLE_WIKIPEDIA_GROUNDING_RERANKER,
     WIKIPEDIA_GROUNDING_MAX_CONCURRENT,
+    EKH_KNOWLEDGE_SOURCE,
     BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL,
     ENABLE_GOOGLE_DRIVE_INTEGRATION,
     WEBUI_AUTH,
@@ -325,7 +326,7 @@ from open_webui.utils.auth import (
 from open_webui.utils.oauth import oauth_manager
 from open_webui.utils.security_headers import SecurityHeadersMiddleware
 
-from open_webui.tasks import stop_task, list_tasks  # Import from tasks.py
+from open_webui.tasks.streams import create_stream_manager
 
 if SAFE_MODE:
     print("SAFE MODE ENABLED")
@@ -395,6 +396,15 @@ async def lifespan(app: FastAPI):
             f"Continuing without Redis (single-instance / local dev mode). Error: {e}"
         )
         app.state.redis_lock_manager = None
+
+    try:
+        app.state.stream_task_manager = create_stream_manager()
+        await app.state.stream_task_manager.start()
+    except Exception as e:
+        log.warning(
+            f"Shared stream task cancellation listener unavailable."
+            f"Cross-instance chat stop will fall back to local-only behavior. Error: {e}"
+        )
 
     if RESET_CONFIG_ON_START:
         reset_config()
@@ -549,6 +559,13 @@ async def lifespan(app: FastAPI):
                 log.info("Redis lock manager cleanup completed")
             except Exception as e:
                 log.error(f"Error during Redis lock manager cleanup: {e}")
+
+        if hasattr(app.state, "stream_task_manager") and app.state.stream_task_manager:
+            try:
+                await app.state.stream_task_manager.close()
+                log.info("Shared task manager cleanup completed")
+            except Exception as e:
+                log.error(f"Error during shared task manager cleanup: {e}")
 
 
 app = FastAPI(
@@ -725,6 +742,7 @@ app.state.config.YOUTUBE_LOADER_PROXY_URL = YOUTUBE_LOADER_PROXY_URL
 
 app.state.config.ENABLE_RAG_WEB_SEARCH = ENABLE_RAG_WEB_SEARCH
 app.state.config.ENABLE_WIKIPEDIA_GROUNDING = ENABLE_WIKIPEDIA_GROUNDING
+app.state.config.EKH_KNOWLEDGE_SOURCE = EKH_KNOWLEDGE_SOURCE
 app.state.config.ENABLE_WIKIPEDIA_GROUNDING_RERANKER = (
     ENABLE_WIKIPEDIA_GROUNDING_RERANKER
 )
@@ -1293,17 +1311,32 @@ async def chat_action(
 
 
 @app.post("/api/tasks/stop/{task_id}")
-async def stop_task_endpoint(task_id: str, user=Depends(get_verified_user)):
+async def stop_task_endpoint(
+    request: Request,
+    task_id: str,
+    user=Depends(get_verified_user),
+):
     try:
-        result = await stop_task(task_id)  # Use the function from tasks.py
+        result = await request.app.state.stream_task_manager.stop(
+            task_id,
+            requester_user_id=user.id,
+            requester_is_admin=user.role == "admin",
+        )
         return result
+    except PermissionError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
 @app.get("/api/tasks")
-async def list_tasks_endpoint(user=Depends(get_verified_user)):
-    return {"tasks": list_tasks()}  # Use the function from tasks.py
+async def list_tasks_endpoint(request: Request, user=Depends(get_verified_user)):
+    return {
+        "tasks": await request.app.state.stream_task_manager.list(
+            requester_user_id=user.id,
+            requester_is_admin=user.role == "admin",
+        )
+    }
 
 
 ##################################

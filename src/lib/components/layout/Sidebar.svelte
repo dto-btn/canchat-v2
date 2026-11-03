@@ -2,7 +2,10 @@
 	import { getI18n } from '$lib/utils/context';
 
 	import { toast } from 'svelte-sonner';
+	import fileSaver from 'file-saver';
+	import { DropdownMenu } from 'bits-ui';
 	import { v4 as uuidv4 } from 'uuid';
+	const { saveAs } = fileSaver;
 
 	import { goto } from '$app/navigation';
 	import { getRequestToken } from '$lib/services/auth';
@@ -42,6 +45,9 @@
 		deleteMultipleChats
 	} from '$lib/apis/chats';
 	import { createNewFolder, getFolders, updateFolderParentIdById } from '$lib/apis/folders';
+	import { downloadChatAsPDF } from '$lib/apis/utils';
+	import { createMessagesList } from '$lib/utils';
+	import { flyAndScale } from '$lib/utils/transitions';
 	import { WEBUI_BASE_URL } from '$lib/constants';
 
 	import ArchivedChatsModal from './Sidebar/ArchivedChatsModal.svelte';
@@ -58,11 +64,12 @@
 	import ChannelModal from './Sidebar/ChannelModal.svelte';
 	import ChannelItem from './Sidebar/ChannelItem.svelte';
 	import PencilSquare from '../icons/PencilSquare.svelte';
+	import Download from '../icons/Download.svelte';
 	import Modal from '../common/Modal.svelte';
 
 	const BREAKPOINT = 768;
 
-	let navElement;
+	let navElement: any;
 	let search = '';
 
 	let shiftKey = false;
@@ -86,7 +93,7 @@
 	let chatListLoading = false;
 	let allChatsLoaded = false;
 
-	let folders = {};
+	let folders: Record<string, any> = {};
 
 	const initFolders = async () => {
 		const folderList = await getFolders(getRequestToken()).catch((error) => {
@@ -116,7 +123,7 @@
 					: [folder.id];
 
 				// Sort the children by updated_at field
-				folders[folder.parent_id].childrenIds.sort((a, b) => {
+				folders[folder.parent_id].childrenIds.sort((a: any, b: any) => {
 					return folders[b].updated_at - folders[a].updated_at;
 				});
 			}
@@ -192,7 +199,7 @@
 
 		currentChatPage.set($currentChatPage + 1);
 
-		let newChatList = [];
+		let newChatList: any[] = [];
 
 		if (search) {
 			newChatList = await getChatListBySearchText(getRequestToken(), search, $currentChatPage);
@@ -207,7 +214,9 @@
 		chatListLoading = false;
 	};
 
-	let searchDebounceTimeout;
+	const getSidebarChat = async (id: string) => getChatById(getRequestToken(), id) as Promise<any>;
+
+	let searchDebounceTimeout: any;
 
 	const searchDebounceHandler = async () => {
 		chats.set(null);
@@ -247,7 +256,7 @@
 		}
 	};
 
-	const importChatHandler = async (items, pinned = false, folderId = null) => {
+	const importChatHandler = async (items: any, pinned = false, folderId = null) => {
 		for (const item of items) {
 			if (item.chat) {
 				await importChat(getRequestToken(), item.chat, item?.meta ?? {}, pinned, folderId);
@@ -257,7 +266,7 @@
 		initChatList();
 	};
 
-	const inputFilesHandler = async (files) => {
+	const inputFilesHandler = async (files: any) => {
 		for (const file of files) {
 			const reader = new FileReader();
 			reader.onload = async (e) => {
@@ -275,7 +284,7 @@
 		}
 	};
 
-	const tagEventHandler = async (type, tagName, chatId) => {
+	const tagEventHandler = async (type: any, tagName: any, chatId: any) => {
 		if (type === 'delete') {
 			initChatList();
 		} else if (type === 'add') {
@@ -283,7 +292,7 @@
 		}
 	};
 
-	const toggleChatSelection = (chatId) => {
+	const toggleChatSelection = (chatId: any) => {
 		const index = selectedChatIds.indexOf(chatId);
 		if (index >= 0) {
 			// Remove from selection
@@ -300,7 +309,7 @@
 
 	const selectAllChats = () => {
 		const folderChatIds = Object.values(folders).flatMap((folder) =>
-			(folder.items?.chats ?? []).map((chat) => chat.id)
+			(folder.items?.chats ?? []).map((chat: any) => chat.id)
 		);
 		const allChatIds = [
 			...new Set([
@@ -325,6 +334,69 @@
 		}
 
 		showDeleteConfirm = true;
+	};
+
+	const downloadSelectedChats = async (format: 'txt' | 'pdf') => {
+		if (selectedChatIds.length === 0) {
+			toast.error($i18n.t('No chats selected'));
+			return;
+		}
+
+		const selectedChatTitles = new Map(($chats || []).map((chat: any) => [chat.id, chat.title]));
+		const chatResults: PromiseSettledResult<any>[] = await Promise.allSettled(
+			selectedChatIds.map((id) => getChatById(getRequestToken(), id))
+		);
+		const failedChatTitles: string[] = [];
+		let downloadedCount = 0;
+
+		for (const [index, result] of chatResults.entries()) {
+			const chatId = selectedChatIds[index];
+			const chat = result.status === 'fulfilled' ? result.value : null;
+			const chatTitle = chat?.chat?.title || selectedChatTitles.get(chatId) || chatId;
+
+			if (result.status === 'rejected' || !chat?.chat?.history) {
+				failedChatTitles.push(chatTitle);
+				continue;
+			}
+
+			try {
+				const history = chat.chat.history;
+				const messages = createMessagesList(history, history.currentId);
+				const filename = `chat-${chat.chat.title}-${chat.id}.${format}`;
+
+				if (format === 'txt') {
+					const chatText = messages
+						.map((message: any) => `### ${message.role.toUpperCase()}\n${message.content}`)
+						.join('\n\n');
+					saveAs(new Blob([chatText], { type: 'text/plain' }), filename);
+				} else {
+					const blob = await downloadChatAsPDF(chat.chat.title, messages);
+					saveAs(blob, filename);
+				}
+				downloadedCount++;
+			} catch {
+				failedChatTitles.push(chatTitle);
+			}
+		}
+
+		if (failedChatTitles.length > 0) {
+			const summary = $i18n.t(
+				'Downloaded {{downloadedCount}} of {{totalCount}} selected chats. Failed: {{failedChats}}',
+				{
+					downloadedCount,
+					totalCount: selectedChatIds.length,
+					failedChats: failedChatTitles.join(', ')
+				}
+			);
+			if (downloadedCount > 0) {
+				toast.warning(summary);
+			} else {
+				toast.error(summary);
+			}
+			return;
+		}
+
+		toast.success($i18n.t('Downloaded {{count}} selected chats', { count: downloadedCount }));
 	};
 
 	const processDeletion = async (fn: () => Promise<any>) => {
@@ -377,14 +449,14 @@
 			if (result.deleted_count > 0) {
 				clearSelection();
 			}
-		} catch (error) {
+		} catch (error: any) {
 			toast.error($i18n.t('Error deleting chats: {{error}}', { error: error }));
 		}
 	};
 
 	let draggedOver = false;
 
-	const onDragOver = (e) => {
+	const onDragOver = (e: any) => {
 		e.preventDefault();
 
 		// Check if a file is being draggedOver.
@@ -399,7 +471,7 @@
 		draggedOver = false;
 	};
 
-	const onDrop = async (e) => {
+	const onDrop = async (e: any) => {
 		e.preventDefault();
 		// Perform file drop check and handle it accordingly
 		if (e.dataTransfer?.files) {
@@ -413,8 +485,8 @@
 		draggedOver = false; // Reset draggedOver status after drop
 	};
 
-	let touchstart;
-	let touchend;
+	let touchstart: any;
+	let touchend: any;
 
 	function checkDirection() {
 		const screenWidth = window.innerWidth;
@@ -429,22 +501,22 @@
 		}
 	}
 
-	const onTouchStart = (e) => {
+	const onTouchStart = (e: any) => {
 		touchstart = e.changedTouches[0];
 	};
 
-	const onTouchEnd = (e) => {
+	const onTouchEnd = (e: any) => {
 		touchend = e.changedTouches[0];
 		checkDirection();
 	};
 
-	const onKeyDown = (e) => {
+	const onKeyDown = (e: any) => {
 		if (e.key === 'Shift') {
 			shiftKey = true;
 		}
 	};
 
-	const onKeyUp = (e) => {
+	const onKeyUp = (e: any) => {
 		if (e.key === 'Shift') {
 			shiftKey = false;
 		}
@@ -457,7 +529,7 @@
 		clearSelection();
 	};
 
-	const changeFocus = async (elementId) => {
+	const changeFocus = async (elementId: any) => {
 		requestAnimationFrame(() => {
 			const element = document.getElementById(elementId);
 			if (element) {
@@ -477,7 +549,7 @@
 			if ($showSidebar && !value) {
 				const navElement = document.getElementsByTagName('nav')[0];
 				if (navElement) {
-					navElement.style['-webkit-app-region'] = 'drag';
+					navElement.style.setProperty('-webkit-app-region', 'drag');
 				}
 			}
 
@@ -496,12 +568,12 @@
 			if (navElement) {
 				if ($mobile) {
 					if (!value) {
-						navElement.style['-webkit-app-region'] = 'drag';
+						navElement.style.setProperty('-webkit-app-region', 'drag');
 					} else {
-						navElement.style['-webkit-app-region'] = 'no-drag';
+						navElement.style.setProperty('-webkit-app-region', 'no-drag');
 					}
 				} else {
-					navElement.style['-webkit-app-region'] = 'drag';
+					navElement.style.setProperty('-webkit-app-region', 'drag');
 				}
 			}
 		});
@@ -606,7 +678,7 @@
 					class=" cursor-pointer p-[7px] flex rounded-xl hover:bg-gray-100 dark:hover:bg-gray-900 transition"
 					on:click={async () => {
 						showSidebar.set(!$showSidebar);
-						toast.announce($i18n.t('Sidebar collapsed.'));
+						toast.info($i18n.t('Sidebar collapsed.'));
 						await changeFocus('sidebar-toggle-button');
 					}}
 					id="hide-sidebar-button"
@@ -658,7 +730,7 @@
 							crossorigin="anonymous"
 							src="{WEBUI_BASE_URL}/static/favicon.png"
 							class=" size-5 -translate-x-1.5 rounded-full"
-							alt="logo"
+							alt=""
 						/>
 					</div>
 					<div class=" self-center font-medium text-sm text-gray-850 dark:text-white font-primary">
@@ -751,6 +823,44 @@
 						>
 							{$i18n.t('Clear')}
 						</button>
+						<DropdownMenu.Root
+							closeFocus={false}
+							onOpenChange={async (open) => {
+								if (!open) {
+									await tick();
+									setTimeout(() => document.getElementById('bulk-download-trigger')?.focus(), 10);
+								}
+							}}
+						>
+							<DropdownMenu.Trigger
+								aria-label={$i18n.t('Download')}
+								id="bulk-download-trigger"
+								class="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-300 rounded font-medium flex items-center gap-1"
+							>
+								<Download className="size-3" />
+								<span>{$i18n.t('Download')}</span>
+							</DropdownMenu.Trigger>
+							<DropdownMenu.Content
+								class="w-full max-w-[200px] rounded-xl px-1 py-1.5 z-50 bg-white dark:bg-gray-850 dark:text-white shadow-lg"
+								sideOffset={8}
+								side="bottom"
+								align="start"
+								transition={flyAndScale}
+							>
+								<DropdownMenu.Item
+									class="flex gap-2 items-center px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md"
+									on:click={() => downloadSelectedChats('txt')}
+								>
+									{$i18n.t('Plain text (.txt)')}
+								</DropdownMenu.Item>
+								<DropdownMenu.Item
+									class="flex gap-2 items-center px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md"
+									on:click={() => downloadSelectedChats('pdf')}
+								>
+									{$i18n.t('PDF document (.pdf)')}
+								</DropdownMenu.Item>
+							</DropdownMenu.Content>
+						</DropdownMenu.Root>
 
 						<!-- Delete Selected Button -->
 						<button
@@ -812,7 +922,7 @@
 					const { type, id, item } = e.detail;
 
 					if (type === 'chat') {
-						let chat = await getChatById(getRequestToken(), id).catch((error) => {
+						let chat = await getSidebarChat(id).catch((error) => {
 							return null;
 						});
 						if (!chat && item) {
@@ -872,7 +982,7 @@
 								const { type, id, item } = e.detail;
 
 								if (type === 'chat') {
-									let chat = await getChatById(getRequestToken(), id).catch((error) => {
+									let chat = await getSidebarChat(id).catch((error) => {
 										return null;
 									});
 									if (!chat && item) {
@@ -1079,7 +1189,7 @@
 							<img
 								src={$user?.profile_image_url}
 								class=" max-w-[30px] object-cover rounded-full self-center mr-3"
-								alt="User profile"
+								alt=""
 							/>
 							{$user?.name}
 						</UserMenu>

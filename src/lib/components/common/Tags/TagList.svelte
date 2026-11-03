@@ -4,7 +4,7 @@
 	import XMark from '$lib/components/icons/XMark.svelte';
 	const dispatch = createEventDispatcher();
 
-	export let tags = [];
+	export let tags: any[] = [];
 </script>
 
 {#each tags as tag}

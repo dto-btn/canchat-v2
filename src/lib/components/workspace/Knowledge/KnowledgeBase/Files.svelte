@@ -4,8 +4,8 @@
 
 	import FileItem from '$lib/components/common/FileItem.svelte';
 
-	export let selectedFileId = null;
-	export let files = [];
+	export let selectedFileId: any = null;
+	export let files: any[] = [];
 
 	export let small = false;
 </script>

@@ -1,8 +1,9 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	import { createEventDispatcher, onMount } from 'svelte';
 	const i18n = getI18n();
+	const getFileInput = (event: Event) => event.currentTarget as HTMLInputElement;
 	const dispatch = createEventDispatcher();
 
 	import Modal from '$lib/components/common/Modal.svelte';
@@ -16,7 +17,7 @@
 	export let show = false;
 	export let edit = false;
 
-	export let model = null;
+	export let model: any = null;
 
 	let name = '';
 	let id = '';
@@ -39,12 +40,12 @@
 	let description = '';
 
 	let selectedModelId = '';
-	let modelIds = [];
+	let modelIds: any[] = [];
 	let filterMode = 'include';
 
-	let accessControl = {};
+	let accessControl: Record<string, any> = {};
 
-	let imageInputElement;
+	let imageInputElement: any;
 	let loading = false;
 
 	const addModelHandler = () => {
@@ -162,7 +163,8 @@
 								hidden
 								accept="image/*"
 								on:change={(e) => {
-									const files = e.target.files ?? [];
+									const input = getFileInput(e);
+									const files = input.files ?? [];
 									let reader = new FileReader();
 									reader.onload = (event) => {
 										let originalImageUrl = `${event.target.result}`;
@@ -204,7 +206,7 @@
 											// Display the compressed image
 											profileImageUrl = compressedSrc;
 
-											e.target.files = null;
+											input.value = '';
 										};
 									};
 
@@ -222,6 +224,7 @@
 							<button
 								class="relative rounded-full w-fit h-fit shrink-0"
 								type="button"
+								aria-label={$i18n.t('Change profile image')}
 								on:click={() => {
 									imageInputElement.click();
 								}}
@@ -229,7 +232,7 @@
 								<img
 									src={profileImageUrl}
 									class="size-16 rounded-full object-cover shrink-0"
-									alt="Profile"
+									alt=""
 								/>
 
 								<div

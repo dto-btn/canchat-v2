@@ -4,8 +4,8 @@
 	import Selector from './Knowledge/Selector.svelte';
 	import FileItem from '$lib/components/common/FileItem.svelte';
 
-	export let selectedKnowledge = [];
-	export let collections = [];
+	export let selectedKnowledge: any[] = [];
+	export let collections: any[] = [];
 
 	const i18n = getI18n();
 </script>

@@ -28,6 +28,10 @@
 	$: filteredItems = searchValue
 		? items.filter((item) => item.value.toLowerCase().includes(searchValue.toLowerCase()))
 		: items;
+
+	function handleSelectedChange(selectedItem: (typeof items)[number]) {
+		value = selectedItem.value;
+	}
 </script>
 
 <Select.Root
@@ -36,13 +40,11 @@
 		searchValue = '';
 	}}
 	selected={items.find((item) => item.value === value)}
-	onSelectedChange={(selectedItem) => {
-		value = selectedItem.value;
-	}}
+	onSelectedChange={handleSelectedChange}
 >
 	<Select.Trigger class="relative w-full" aria-label={placeholder}>
 		<Select.Value
-			class="inline-flex h-input px-0.5 w-full outline-none bg-transparent truncate text-lg font-semibold placeholder-gray-400  focus:outline-none"
+			class="inline-flex h-input px-0.5 w-full outline-none bg-transparent truncate text-lg font-semibold placeholder-gray-400"
 			{placeholder}
 		/>
 		<ChevronDown className="absolute end-2 top-1/2 -translate-y-[45%] size-3.5" strokeWidth="2.5" />

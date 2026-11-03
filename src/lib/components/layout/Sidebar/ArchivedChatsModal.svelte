@@ -22,17 +22,17 @@
 
 	export let show = false;
 
-	let chats = [];
+	let chats: any[] = [];
 
 	let searchValue = '';
 	let showUnarchiveAllConfirmDialog = false;
 	let showDeleteConfirm = false;
-	let deleteChatId = null;
+	let deleteChatId: any = null;
 	let deleteChatTitle = '';
 
-	let filteredChatList = [];
+	let filteredChatList: any[] = [];
 
-	const unarchiveChatHandler = async (chatId) => {
+	const unarchiveChatHandler = async (chatId: any) => {
 		const res = await archiveChatById(getRequestToken(), chatId).catch((error) => {
 			toast.error(`${error}`);
 		});
@@ -44,7 +44,7 @@
 		dispatch('change');
 	};
 
-	const deleteChatHandler = async (chatId) => {
+	const deleteChatHandler = async (chatId: any) => {
 		const res = await deleteChatById(getRequestToken(), chatId).catch((error) => {
 			toast.error(`${error}`);
 		});
@@ -55,14 +55,14 @@
 		chats = await getArchivedChatList(getRequestToken());
 	};
 
-	const confirmDeleteChat = (chat) => {
+	const confirmDeleteChat = (chat: any) => {
 		deleteChatId = chat.id;
 		deleteChatTitle = chat.title;
 		showDeleteConfirm = true;
 	};
 
 	const unarchiveAllHandler = async () => {
-		let res = null;
+		let res: any = null;
 		for (const chat of chats) {
 			res = await archiveChatById(getRequestToken(), chat.id).catch((error) => {
 				toast.error(`${error}`);

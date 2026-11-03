@@ -8,13 +8,13 @@
 
 	const i18n = getI18n();
 
-	let dbDomains = [];
+	let dbDomains: any[] = [];
 	let newDomainInput = '';
 	let newDepartmentInput = '';
 	let showAddDomainForm = false;
 	let loading = true;
-	let showDeleteConfirm = null;
-	let showEditForm = null;
+	let showDeleteConfirm: any = null;
+	let showEditForm: any = null;
 	let editDomainInput = '';
 	let editDepartmentInput = '';
 
@@ -28,7 +28,7 @@
 		try {
 			// Load database domains (already sorted by department name on backend)
 			dbDomains = (await getDomains(getRequestToken())) || [];
-		} catch (error) {
+		} catch (error: any) {
 			console.error('Failed to load domains:', error);
 			toast.error($i18n.t('Failed to load available domains'));
 		}
@@ -36,7 +36,7 @@
 	};
 
 	// Get domain info from database
-	const getDomainInfo = (domain) => {
+	const getDomainInfo = (domain: any) => {
 		return dbDomains.find((d) => d.domain === domain);
 	};
 
@@ -88,14 +88,14 @@
 					departmentName
 				})
 			);
-		} catch (error) {
+		} catch (error: any) {
 			console.error('Failed to add domain:', error);
 			toast.error(error || $i18n.t('Failed to add domain'));
 		}
 	};
 
 	// Delete a domain from database
-	const deleteDomain = async (domain) => {
+	const deleteDomain = async (domain: any) => {
 		const domainInfo = getDomainInfo(domain);
 		if (!domainInfo) return;
 
@@ -106,7 +106,7 @@
 			await loadDomains();
 
 			toast.success($i18n.t('Domain "{{domain}}" deleted successfully', { domain }));
-		} catch (error) {
+		} catch (error: any) {
 			console.error('Failed to delete domain:', error);
 			toast.error(error || $i18n.t('Failed to delete domain'));
 		}
@@ -114,7 +114,7 @@
 	};
 
 	// Start editing a domain
-	const startEditDomain = (domain) => {
+	const startEditDomain = (domain: any) => {
 		const domainInfo = getDomainInfo(domain);
 		if (!domainInfo) return;
 
@@ -174,7 +174,7 @@
 			cancelEdit();
 
 			toast.success($i18n.t('Domain updated successfully'));
-		} catch (error) {
+		} catch (error: any) {
 			console.error('Failed to update domain:', error);
 			toast.error(error || $i18n.t('Failed to update domain'));
 		}

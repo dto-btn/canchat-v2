@@ -23,14 +23,15 @@ env:
 jobs:
   tests:
     name: 'Playwright E2E Tests'
-    runs-on: arc-ssc-dsai-tko
+    runs-on:
+      group: tko-canchat
     permissions:
       contents: read
       packages: read
       attestations: read
       id-token: write
 
-    timeout-minutes: 60
+    timeout-minutes: 120
     services:
       qdrant:
         image: qdrant/qdrant:latest
@@ -70,16 +71,18 @@ jobs:
       - name: Force local Docker image update
         run: |
           docker images --format '{{.Repository}}:{{.Tag}}' | xargs -I {} bash -c 'docker inspect --format="{{index .RepoDigests 0}}" {} && docker pull {};';
-          docker rmi $(docker images -f "dangling=true" -q)
+          docker image prune -f
         continue-on-error: true
 
       - name:  Start CANChat Environment
         run: |
             docker run -d -p 8080:8080 \
             --add-host=host.docker.internal:host-gateway \
-            -d \
+            --shm-size=2g \
             --name canchat \
-            --rm ${{ env.REGISTRY }}/${{ github.repository_owner }}/canchat-v2:${{ steps.ref_name.outputs.ref_name }} \
+            --rm \
+            -e UVICORN_WORKERS=1 \
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/canchat-v2:${{ steps.ref_name.outputs.ref_name }} \
             /bin/bash -c 'echo "${{ secrets.E2E_ENV_FILE }}" | base64 --decode > ../.env && \
               echo "0DK/YlAjXSrYKdoH" > ../.webui_secret_key && \
               unset OPENAI_API_KEY && \
@@ -117,7 +120,7 @@ jobs:
         env:
           REUSE_EXISTING_SERVER: true
         run: |
-          bash -c 'env $(grep -v "^#" "${ENV_FILE:-.env}"| xargs) PLAYWRIGHT_BLOB_OUTPUT_DIR=./blob-report-parallel npx playwright test --grep-invert @serial --reporter=blob'
+          bash -c 'env $(grep -v "^#" "${ENV_FILE:-.env}"| xargs) PLAYWRIGHT_BLOB_OUTPUT_DIR=./blob-report-parallel npx playwright test --grep-invert @serial --reporter=list,blob --workers=6 --trace=retain-on-failure'
 
       - name: Start Playwright Tests (Serial)
         if: always()
@@ -151,3 +154,21 @@ jobs:
           name: playwright-report-${{ steps.timestamps.outputs.timestamp }}
           path: ./playwright-report/
           retention-days: 30
+      
+      - name: Create results summary
+        uses: daun/playwright-report-summary@v4
+        if: ${{ !cancelled() }}
+        id: playwright_summary
+        with:
+          report-file: ./playwright-report/results.json
+          create-comment: false
+ 
+      - name: Output test summary to action
+        if: ${{ !cancelled() }}
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# Playwright Report" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.playwright_summary.outputs.summary }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "[Download Playwright Report](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/${{ steps.upload_report.outputs.artifact-id }})"  >> $GITHUB_STEP_SUMMARY

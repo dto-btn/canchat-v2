@@ -19,17 +19,17 @@
 	export let id = '';
 
 	let scrollEnd = true;
-	let messagesContainerElement = null;
+	let messagesContainerElement: any = null;
 
 	let top = false;
 
-	let channel = null;
-	let messages = null;
+	let channel: any = null;
+	let messages: any = null;
 
-	let threadId = null;
+	let threadId: any = null;
 
-	let typingUsers = [];
-	let typingUsersTimeout = {};
+	let typingUsers: any[] = [];
+	let typingUsersTimeout: Record<string, any> = {};
 
 	$: if (id) {
 		initHandler();
@@ -69,7 +69,7 @@
 		}
 	};
 
-	const channelEventHandler = async (event) => {
+	const channelEventHandler = async (event: any) => {
 		if (event.channel_id === id) {
 			const type = event?.data?.type ?? null;
 			const data = event?.data?.data ?? null;
@@ -88,21 +88,21 @@
 					}
 				}
 			} else if (type === 'message:update') {
-				const idx = messages.findIndex((message) => message.id === data.id);
+				const idx = messages.findIndex((message: any) => message.id === data.id);
 
 				if (idx !== -1) {
 					messages[idx] = data;
 				}
 			} else if (type === 'message:delete') {
-				messages = messages.filter((message) => message.id !== data.id);
+				messages = messages.filter((message: any) => message.id !== data.id);
 			} else if (type === 'message:reply') {
-				const idx = messages.findIndex((message) => message.id === data.id);
+				const idx = messages.findIndex((message: any) => message.id === data.id);
 
 				if (idx !== -1) {
 					messages[idx] = data;
 				}
 			} else if (type.includes('message:reaction')) {
-				const idx = messages.findIndex((message) => message.id === data.id);
+				const idx = messages.findIndex((message: any) => message.id === data.id);
 				if (idx !== -1) {
 					messages[idx] = data;
 				}
@@ -136,7 +136,7 @@
 		}
 	};
 
-	const submitHandler = async ({ content, data }) => {
+	const submitHandler = async ({ content, data }: any) => {
 		if (!content && (data?.files ?? []).length === 0) {
 			return;
 		}
@@ -166,7 +166,11 @@
 		});
 	};
 
-	let mediaQuery;
+	const handleThreadOpen = (nextThreadId: any) => {
+		threadId = nextThreadId;
+	};
+
+	let mediaQuery: any;
 	let largeScreen = false;
 
 	onMount(() => {
@@ -178,7 +182,7 @@
 
 		mediaQuery = window.matchMedia('(min-width: 1024px)');
 
-		const handleMediaQuery = async (e) => {
+		const handleMediaQuery = async (e: any) => {
 			if (e.matches) {
 				largeScreen = true;
 			} else {
@@ -224,9 +228,7 @@
 								{channel}
 								{messages}
 								{top}
-								onThread={(id) => {
-									threadId = id;
-								}}
+								onThread={handleThreadOpen}
 								onLoad={async () => {
 									const newMessages = await getChannelMessages(
 										getRequestToken(),

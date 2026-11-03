@@ -44,14 +44,14 @@
 
 	export let className = '';
 
-	export let id;
-	export let title;
+	export let id: any;
+	export let title: any;
 
 	export let selected = false;
 	export let isCurrentChat = false;
 	export let inSelectionMode = false;
 
-	let chat = null;
+	let chat: any = null;
 
 	let mouseOver = false;
 	let draggable = false;
@@ -75,7 +75,7 @@
 
 	let chatTitle = title;
 
-	const editChatTitle = async (id, title) => {
+	const editChatTitle = async (id: any, title: any) => {
 		if (title === '') {
 			toast.error($i18n.t('Title cannot be an empty string.'));
 			return;
@@ -94,8 +94,8 @@
 		await pinnedChats.set(await getPinnedChatList(getRequestToken()));
 	};
 
-	const cloneChatHandler = async (id) => {
-		const res = await cloneChatById(
+	const cloneChatHandler = async (id: any) => {
+		const res: any = await cloneChatById(
 			getRequestToken(),
 			id,
 			$i18n.t('Clone of {{TITLE}}', {
@@ -116,7 +116,7 @@
 		}
 	};
 
-	const deleteChatHandler = async (id) => {
+	const deleteChatHandler = async (id: any) => {
 		const res = await deleteChatById(getRequestToken(), id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
@@ -143,7 +143,7 @@
 		}
 	};
 
-	const archiveChatHandler = async (id) => {
+	const archiveChatHandler = async (id: any) => {
 		await archiveChatById(getRequestToken(), id);
 		dispatch('change', { buttonID: null });
 		toast.success($i18n.t('Chat archived successfully'));
@@ -152,8 +152,9 @@
 	const focusEdit = async (node: HTMLInputElement) => {
 		node.focus();
 	};
+	const getElementTarget = (event: Event) => event.target as HTMLElement;
 
-	let itemElement;
+	let itemElement: any;
 
 	let dragged = false;
 	let x = 0;
@@ -163,7 +164,7 @@
 	dragImage.src =
 		'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 
-	const onDragStart = (event) => {
+	const onDragStart = (event: any) => {
 		event.stopPropagation();
 
 		event.dataTransfer.setDragImage(dragImage, 0, 0);
@@ -182,18 +183,22 @@
 		itemElement.style.opacity = '0.5'; // Optional: Visual cue to show it's being dragged
 	};
 
-	const onDrag = (event) => {
+	const onDrag = (event: any) => {
 		event.stopPropagation();
 
 		x = event.clientX;
 		y = event.clientY;
 	};
 
-	const onDragEnd = (event) => {
+	const onDragEnd = (event: any) => {
 		event.stopPropagation();
 
 		itemElement.style.opacity = '1'; // Reset visual cue after drag
 		dragged = false;
+	};
+
+	const getTooltipOffset = (args: any) => {
+		return [args.reference.width / 2, 4];
 	};
 
 	onMount(() => {
@@ -278,7 +283,7 @@
 					{
 						name: 'offset',
 						options: {
-							offset: ({ reference }) => [reference.width / 2, 4]
+							offset: getTooltipOffset
 						}
 					}
 				]
@@ -295,10 +300,10 @@
 				on:click={(e) => {
 					// Check if the click was on the checkbox area, bulk actions, or chat menu
 					const target = e.target;
-					const clickedCheckbox = target && target.closest && target.closest('.checkbox-area');
-					const clickedBulkAction = target && target.closest && target.closest('button[title]');
-					const clickedDropdown =
-						target && target.closest && target.closest('[data-dropdown-trigger]');
+					const elementTarget = getElementTarget(e);
+					const clickedCheckbox = elementTarget.closest('.checkbox-area');
+					const clickedBulkAction = elementTarget.closest('button[title]');
+					const clickedDropdown = elementTarget.closest('[data-dropdown-trigger]');
 
 					if (clickedDropdown) {
 						// Dropdown/menu clicked - do nothing, let it handle its own logic

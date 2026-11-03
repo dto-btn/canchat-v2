@@ -23,7 +23,7 @@
 
 	let STTEngine = '';
 
-	let voices = [];
+	let voices: any[] = [];
 	let voice = '';
 	let configTTSEngine = '';
 	let configTTSVoice = '';

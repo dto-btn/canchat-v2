@@ -7,7 +7,7 @@
 
 	const i18n = getI18n();
 
-	const helpText = {
+	const helpText: Record<string, string> = {
 		vision: $i18n.t('Model accepts image inputs'),
 		usage: $i18n.t(
 			'Sends `stream_options: { include_usage: true }` in the request.\nSupported providers will return token usage information in the response when set.'
@@ -15,11 +15,7 @@
 		citations: $i18n.t('Displays citations in the response')
 	};
 
-	export let capabilities: {
-		vision?: boolean;
-		usage?: boolean;
-		citations?: boolean;
-	} = {};
+	export let capabilities: Record<string, boolean | undefined> = {};
 </script>
 
 <div>

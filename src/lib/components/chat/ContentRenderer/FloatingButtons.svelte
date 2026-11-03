@@ -15,9 +15,13 @@
 	import { getRequestToken } from '$lib/services/auth';
 
 	export let id = '';
-	export let model = null;
-	export let messages = [];
-	export let onAdd = () => {};
+	export let model: any = null;
+	export let messages: any[] = [];
+	export let onAdd: (payload: {
+		modelId: string;
+		parentId: string;
+		messages: any[];
+	}) => void = () => {};
 
 	let floatingInput = false;
 
@@ -25,7 +29,7 @@
 	let floatingInputValue = '';
 
 	let prompt = '';
-	let responseContent = null;
+	let responseContent: any = null;
 	let responseDone = false;
 
 	const autoScroll = async () => {
@@ -100,7 +104,7 @@
 
 										autoScroll();
 									}
-								} catch (e) {
+								} catch (e: any) {
 									console.error(e);
 								}
 							}
@@ -176,7 +180,7 @@
 
 										autoScroll();
 									}
-								} catch (e) {
+								} catch (e: any) {
 									console.error(e);
 								}
 							}

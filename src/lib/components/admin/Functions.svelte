@@ -40,28 +40,28 @@
 	let shiftKey = false;
 
 	let functionsImportInputElement: HTMLInputElement;
-	let importFiles;
+	let importFiles: any;
 
 	let showConfirm = false;
 	let query = '';
 
 	let showManifestModal = false;
 	let showValvesModal = false;
-	let selectedFunction = null;
+	let selectedFunction: any = null;
 
 	let showDeleteConfirm = false;
 
-	let filteredItems = [];
+	let filteredItems: any[] = [];
 	$: filteredItems = $functions
 		.filter(
-			(f) =>
+			(f: any) =>
 				query === '' ||
 				f.name.toLowerCase().includes(query.toLowerCase()) ||
 				f.id.toLowerCase().includes(query.toLowerCase())
 		)
-		.sort((a, b) => a.type.localeCompare(b.type) || a.name.localeCompare(b.name));
+		.sort((a: any, b: any) => a.type.localeCompare(b.type) || a.name.localeCompare(b.name));
 
-	const shareHandler = async (func) => {
+	const shareHandler = async (func: any) => {
 		const item = await getFunctionById(getRequestToken(), func.id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
@@ -74,7 +74,7 @@
 		const tab = await window.open(`${url}/functions/create`, '_blank');
 
 		// Define the event handler function
-		const messageHandler = (event) => {
+		const messageHandler = (event: any) => {
 			if (event.origin !== url) return;
 			if (event.data === 'loaded') {
 				tab.postMessage(JSON.stringify(item), '*');
@@ -87,7 +87,7 @@
 		window.addEventListener('message', messageHandler, false);
 	};
 
-	const cloneHandler = async (func) => {
+	const cloneHandler = async (func: any) => {
 		const _function = await getFunctionById(getRequestToken(), func.id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
@@ -103,7 +103,7 @@
 		}
 	};
 
-	const exportHandler = async (func) => {
+	const exportHandler = async (func: any) => {
 		const _function = await getFunctionById(getRequestToken(), func.id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
@@ -117,7 +117,7 @@
 		}
 	};
 
-	const deleteHandler = async (func) => {
+	const deleteHandler = async (func: any) => {
 		const res = await deleteFunctionById(getRequestToken(), func.id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
@@ -131,7 +131,7 @@
 		}
 	};
 
-	const toggleGlobalHandler = async (func) => {
+	const toggleGlobalHandler = async (func: any) => {
 		const res = await toggleGlobalById(getRequestToken(), func.id).catch((error) => {
 			toast.error(`${error}`);
 		});
@@ -153,13 +153,13 @@
 	};
 
 	onMount(() => {
-		const onKeyDown = (event) => {
+		const onKeyDown = (event: any) => {
 			if (event.key === 'Shift') {
 				shiftKey = true;
 			}
 		};
 
-		const onKeyUp = (event) => {
+		const onKeyUp = (event: any) => {
 			if (event.key === 'Shift') {
 				shiftKey = false;
 			}

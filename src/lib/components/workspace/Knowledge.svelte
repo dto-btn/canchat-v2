@@ -33,13 +33,13 @@
 	let loaded = false;
 
 	let query = '';
-	let selectedItem = null;
+	let selectedItem: any = null;
 	let showDeleteConfirm = false;
 
-	let fuse = null;
+	let fuse: any = null;
 
-	let knowledgeBases = [];
-	let filteredItems = [];
+	let knowledgeBases: any[] = [];
+	let filteredItems: any[] = [];
 
 	$: if (knowledgeBases) {
 		fuse = new Fuse(knowledgeBases, {
@@ -49,13 +49,13 @@
 
 	$: if (fuse) {
 		filteredItems = query
-			? fuse.search(query).map((e) => {
+			? fuse.search(query).map((e: any) => {
 					return e.item;
 				})
 			: knowledgeBases;
 	}
 
-	const deleteHandler = async (item) => {
+	const deleteHandler = async (item: any) => {
 		const res = await deleteKnowledgeById(getRequestToken(), item.id).catch((e) => {
 			toast.error(e);
 		});

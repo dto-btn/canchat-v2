@@ -20,7 +20,7 @@
 	let confirmed = false;
 
 	let durationSeconds = 0;
-	let durationCounter = null;
+	let durationCounter: any = null;
 
 	let transcription = '';
 
@@ -41,18 +41,18 @@
 		stopRecording();
 	}
 
-	const formatSeconds = (seconds) => {
+	const formatSeconds = (seconds: any) => {
 		const minutes = Math.floor(seconds / 60);
 		const remainingSeconds = seconds % 60;
 		const formattedSeconds = remainingSeconds < 10 ? `0${remainingSeconds}` : remainingSeconds;
 		return `${minutes}:${formattedSeconds}`;
 	};
 
-	let stream;
-	let speechRecognition;
+	let stream: any;
+	let speechRecognition: any;
 
-	let mediaRecorder;
-	let audioChunks = [];
+	let mediaRecorder: any;
+	let audioChunks: any[] = [];
 
 	const MIN_DECIBELS = -45;
 	let VISUALIZER_BUFFER_LENGTH = 300;
@@ -69,7 +69,7 @@
 		return Math.sqrt(sumSquares / data.length);
 	};
 
-	const normalizeRMS = (rms) => {
+	const normalizeRMS = (rms: any) => {
 		rms = rms * 10;
 		const exp = 1.5; // Adjust exponent value; values greater than 1 expand larger numbers more and compress smaller numbers more
 		const scaledRMS = Math.pow(rms, exp);
@@ -78,7 +78,7 @@
 		return Math.min(1.0, Math.max(0.01, scaledRMS));
 	};
 
-	const analyseAudio = (stream) => {
+	const analyseAudio = (stream: any) => {
 		const audioContext = new AudioContext();
 		const audioStreamSource = audioContext.createMediaStreamSource(stream);
 
@@ -133,7 +133,7 @@
 		detectSound();
 	};
 
-	const transcribeHandler = async (audioBlob) => {
+	const transcribeHandler = async (audioBlob: any) => {
 		// Create a blob from the audio chunks
 
 		await tick();
@@ -149,7 +149,7 @@
 		}
 	};
 
-	const saveRecording = (blob) => {
+	const saveRecording = (blob: any) => {
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
 		document.body.appendChild(a);
@@ -175,7 +175,7 @@
 			audioChunks = [];
 			analyseAudio(stream);
 		};
-		mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
+		mediaRecorder.ondataavailable = (event: any) => audioChunks.push(event.data);
 		mediaRecorder.onstop = async () => {
 			if (
 				($config?.audio?.stt?.engine ?? '') === 'web' ||
@@ -210,12 +210,12 @@
 				// Set the timeout for turning off the recognition after inactivity (in milliseconds)
 				const inactivityTimeout = 2000; // 3 seconds
 
-				let timeoutId;
+				let timeoutId: any;
 				// Start recognition
 				speechRecognition.start();
 
 				// Event triggered when speech is recognized
-				speechRecognition.onresult = async (event) => {
+				speechRecognition.onresult = async (event: any) => {
 					// Clear the inactivity timeout
 					clearTimeout(timeoutId);
 
@@ -243,7 +243,7 @@
 				};
 
 				// Event triggered when an error occurs
-				speechRecognition.onerror = function (event) {
+				speechRecognition.onerror = function (event: any) {
 					toast.error($i18n.t(`Speech recognition error: {{error}}`, { error: event.error }));
 					dispatch('cancel');
 
@@ -267,7 +267,7 @@
 
 		if (stream) {
 			const tracks = stream.getTracks();
-			tracks.forEach((track) => track.stop());
+			tracks.forEach((track: any) => track.stop());
 		}
 
 		stream = null;
@@ -285,14 +285,14 @@
 
 		if (stream) {
 			const tracks = stream.getTracks();
-			tracks.forEach((track) => track.stop());
+			tracks.forEach((track: any) => track.stop());
 		}
 
 		stream = null;
 	};
 
-	let resizeObserver;
-	let containerWidth;
+	let resizeObserver: any;
+	let containerWidth: any;
 
 	let maxVisibleItems = 300;
 	$: maxVisibleItems = Math.floor(containerWidth / 5); // 2px width + 0.5px gap

@@ -8,17 +8,18 @@
 	import PromptViewer from '$lib/components/workspace/Prompts/PromptViewer.svelte';
 	import { getRequestToken } from '$lib/services/auth';
 
-	let prompt = null;
+	let prompt: any = null;
 
 	onMount(async () => {
 		const command = $page.url.searchParams.get('command');
 		if (command) {
-			const _prompt = await getPromptByCommand(getRequestToken(), command.replace(/\//g, '')).catch(
-				(error) => {
-					toast.error(`${error}`);
-					return null;
-				}
-			);
+			const _prompt: any = await getPromptByCommand(
+				getRequestToken(),
+				command.replace(/\//g, '')
+			).catch((error) => {
+				toast.error(`${error}`);
+				return null;
+			});
 
 			if (_prompt) {
 				prompt = {

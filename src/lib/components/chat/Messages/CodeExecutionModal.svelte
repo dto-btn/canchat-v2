@@ -8,7 +8,7 @@
 	const i18n = getI18n();
 
 	export let show = false;
-	export let codeExecution = null;
+	export let codeExecution: any = null;
 </script>
 
 <Modal size="lg" bind:show>

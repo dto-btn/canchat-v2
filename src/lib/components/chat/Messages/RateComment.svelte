@@ -11,7 +11,7 @@
 
 	const dispatch = createEventDispatcher();
 
-	export let message;
+	export let message: any;
 	export let show = false;
 	export let disabled = false;
 
@@ -35,14 +35,14 @@
 		'other'
 	];
 
-	let tags = [];
+	let tags: any[] = [];
 
-	let reasons = [];
-	let selectedReason = null;
+	let reasons: any[] = [];
+	let selectedReason: any = null;
 	let comment = '';
 
-	let detailedRating = null;
-	let selectedModel = null;
+	let detailedRating: any = null;
+	let selectedModel: any = null;
 
 	$: if (message?.annotation?.rating === 1) {
 		reasons = LIKE_REASONS;
@@ -63,7 +63,7 @@
 			comment = message?.annotation?.comment ?? '';
 		}
 
-		tags = (message?.annotation?.tags ?? []).map((tag) => ({
+		tags = (message?.annotation?.tags ?? []).map((tag: any) => ({
 			name: tag
 		}));
 
@@ -92,15 +92,15 @@
 		comment !== null &&
 		comment.trim() !== '';
 
-	function handleDetailedRatingClick(rating) {
+	function handleDetailedRatingClick(rating: any) {
 		detailedRating = rating;
 	}
 
-	function handleReasonSelect(reason) {
+	function handleReasonSelect(reason: any) {
 		selectedReason = reason;
 	}
 
-	function handleCommentInput(event) {
+	function handleCommentInput(event: any) {
 		comment = event.target.value;
 	}
 
@@ -196,15 +196,25 @@
 		</div>
 	</div>
 
+	<p id="rate-required-{message.id}" class="text-xs text-gray-500 dark:text-gray-400">
+		{$i18n.t('Fields marked with an asterisk (*) are required.')}
+	</p>
+
 	<div>
 		{#if reasons.length > 0}
-			<div class="text-sm mt-1.5 font-medium">
+			<div id="rate-reason-label-{message.id}" class="text-sm mt-1.5 font-medium">
 				{$i18n.t('Why?')} <span class="text-red-500">*</span>
 			</div>
 
-			<div class="flex flex-wrap gap-1.5 text-sm mt-1.5">
+			<div
+				role="group"
+				aria-labelledby="rate-reason-label-{message.id}"
+				aria-describedby="rate-required-{message.id}"
+				class="flex flex-wrap gap-1.5 text-sm mt-1.5"
+			>
 				{#each reasons as reason}
 					<button
+						aria-pressed={selectedReason === reason}
 						class="px-3 py-0.5 border border-gray-50 dark:border-gray-850 hover:bg-gray-50 dark:hover:bg-gray-850 {selectedReason ===
 						reason
 							? 'bg-gray-100 dark:bg-gray-800'
@@ -249,10 +259,13 @@
 	</div>
 
 	<div class="mt-2">
-		<div class="text-sm mb-1 font-medium">
+		<label for="rate-comment-{message.id}" class="text-sm mb-1 font-medium block">
 			{$i18n.t('Comment')} <span class="text-red-500">*</span>
-		</div>
+		</label>
 		<textarea
+			id="rate-comment-{message.id}"
+			required
+			aria-describedby="rate-required-{message.id}"
 			bind:value={comment}
 			on:input={handleCommentInput}
 			class="w-full text-sm px-1 py-2 bg-transparent outline-none resize-none rounded-xl border border-gray-100 dark:border-gray-800"

@@ -14,8 +14,8 @@
 	import ArrowLeft from '../icons/ArrowLeft.svelte';
 
 	export let overlay = false;
-	export let history;
-	let messages = [];
+	export let history: any;
+	let messages: any[] = [];
 
 	let contents: Array<{ type: string; content: string }> = [];
 	let selectedContentIdx = 0;
@@ -36,10 +36,10 @@
 		messages.forEach((message) => {
 			if (message?.role !== 'user' && message?.content) {
 				const codeBlockContents = message.content.match(/```[\s\S]*?```/g);
-				let codeBlocks = [];
+				let codeBlocks: any[] = [];
 
 				if (codeBlockContents) {
-					codeBlockContents.forEach((block) => {
+					codeBlockContents.forEach((block: any) => {
 						const lang = block.split('\n')[0].replace('```', '').trim().toLowerCase();
 						const code = block.replace(/```[\s\S]*?\n/, '').replace(/```$/, '');
 						codeBlocks.push({ lang, code });
@@ -67,19 +67,19 @@
 				const inlineJs = message.content.match(/<script>[\s\S]*?<\/script>/gi);
 
 				if (inlineHtml) {
-					inlineHtml.forEach((block) => {
+					inlineHtml.forEach((block: any) => {
 						const content = block.replace(/<\/?html>/gi, ''); // Remove <html> tags
 						htmlContent += content + '\n';
 					});
 				}
 				if (inlineCss) {
-					inlineCss.forEach((block) => {
+					inlineCss.forEach((block: any) => {
 						const content = block.replace(/<\/?style>/gi, ''); // Remove <style> tags
 						cssContent += content + '\n';
 					});
 				}
 				if (inlineJs) {
-					inlineJs.forEach((block) => {
+					inlineJs.forEach((block: any) => {
 						const content = block.replace(/<\/?script>/gi, ''); // Remove <script> tags
 						jsContent += content + '\n';
 					});
@@ -140,7 +140,7 @@
 		iframeElement.contentWindow.addEventListener(
 			'click',
 			function (e) {
-				const target = e.target.closest('a');
+				const target = (e.target as HTMLElement).closest('a');
 				if (target && target.href) {
 					e.preventDefault();
 					const url = new URL(target.href, iframeElement.baseURI);
@@ -170,10 +170,14 @@
 	const showFullScreen = () => {
 		if (iframeElement.requestFullscreen) {
 			iframeElement.requestFullscreen();
-		} else if (iframeElement.webkitRequestFullscreen) {
-			iframeElement.webkitRequestFullscreen();
-		} else if (iframeElement.msRequestFullscreen) {
-			iframeElement.msRequestFullscreen();
+		} else if ('webkitRequestFullscreen' in iframeElement) {
+			(
+				iframeElement as HTMLIFrameElement & { webkitRequestFullscreen: () => void }
+			).webkitRequestFullscreen();
+		} else if ('msRequestFullscreen' in iframeElement) {
+			(
+				iframeElement as HTMLIFrameElement & { msRequestFullscreen: () => void }
+			).msRequestFullscreen();
 		}
 	};
 

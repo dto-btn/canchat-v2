@@ -13,7 +13,7 @@
 
 	export let saveHandler: Function;
 
-	let webConfig = null;
+	let webConfig: any = null;
 	let webSearchEngines = [
 		'searxng',
 		'google_pse',
@@ -31,7 +31,7 @@
 	];
 
 	let youtubeLanguage = 'en';
-	let youtubeTranslation = null;
+	let youtubeTranslation: any = null;
 	let youtubeProxyUrl = '';
 
 	const submitHandler = async () => {

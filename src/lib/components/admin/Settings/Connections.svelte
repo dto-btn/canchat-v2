@@ -31,16 +31,16 @@
 
 	// External
 	let OLLAMA_BASE_URLS = [''];
-	let OLLAMA_API_CONFIGS = {};
+	let OLLAMA_API_CONFIGS: Record<string, any> = {};
 
 	let OPENAI_API_KEYS = [''];
 	let OPENAI_API_BASE_URLS = [''];
-	let OPENAI_API_CONFIGS = {};
+	let OPENAI_API_CONFIGS: Record<string, any> = {};
 
 	let ENABLE_OPENAI_API: null | boolean = null;
 	let ENABLE_OLLAMA_API: null | boolean = null;
 
-	let pipelineUrls = {};
+	let pipelineUrls: Record<string, any> = {};
 	let showAddOpenAIConnectionModal = false;
 	let showAddOllamaConnectionModal = false;
 
@@ -101,7 +101,7 @@
 		}
 	};
 
-	const addOpenAIConnectionHandler = async (connection) => {
+	const addOpenAIConnectionHandler = async (connection: any) => {
 		OPENAI_API_BASE_URLS = [...OPENAI_API_BASE_URLS, connection.url];
 		OPENAI_API_KEYS = [...OPENAI_API_KEYS, connection.key];
 		OPENAI_API_CONFIGS[OPENAI_API_BASE_URLS.length] = connection.config;
@@ -109,7 +109,7 @@
 		await updateOpenAIHandler();
 	};
 
-	const addOllamaConnectionHandler = async (connection) => {
+	const addOllamaConnectionHandler = async (connection: any) => {
 		OLLAMA_BASE_URLS = [...OLLAMA_BASE_URLS, connection.url];
 		OLLAMA_API_CONFIGS[OLLAMA_BASE_URLS.length] = connection.config;
 
@@ -118,8 +118,8 @@
 
 	onMount(async () => {
 		if ($user.role === 'admin') {
-			let ollamaConfig = {};
-			let openaiConfig = {};
+			let ollamaConfig: Record<string, any> = {};
+			let openaiConfig: Record<string, any> = {};
 
 			await Promise.all([
 				(async () => {

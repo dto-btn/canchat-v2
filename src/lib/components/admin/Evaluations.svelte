@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	import { onMount } from 'svelte';
@@ -14,7 +14,7 @@
 	let selectedTab = 'leaderboard';
 
 	let loaded = false;
-	let feedbacks = [];
+	let feedbacks: any[] = [];
 	let totalFeedbackCount = 0;
 	let feedbacksPage = 1;
 	const feedbacksPerPage = 10;
@@ -26,7 +26,7 @@
 				limit: feedbacksPerPage,
 				search: search?.trim() || undefined
 			});
-		} catch (error) {
+		} catch (error: any) {
 			console.error('Error loading feedbacks:', error);
 			toast.error('Failed to load feedbacks');
 		}
@@ -36,7 +36,7 @@
 		try {
 			const result = await getFeedbacksCount(getRequestToken(), search?.trim() || undefined);
 			totalFeedbackCount = result.count;
-		} catch (error) {
+		} catch (error: any) {
 			console.error('Error loading feedbacks count:', error);
 		}
 	};

@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	import { createEventDispatcher, tick } from 'svelte';
@@ -15,7 +15,7 @@
 
 	const dispatch = createEventDispatcher();
 
-	let formElement = null;
+	let formElement: any = null;
 	let loading = false;
 
 	let showConfirm = false;
@@ -30,7 +30,7 @@
 		description: ''
 	};
 	export let content = '';
-	export let accessControl = null;
+	export let accessControl: any = null;
 
 	let _content = '';
 
@@ -46,7 +46,7 @@
 		id = name.replace(/\s+/g, '_').toLowerCase();
 	}
 
-	let codeEditor;
+	let codeEditor: any;
 	let boilerplate = `import os
 import requests
 from datetime import datetime

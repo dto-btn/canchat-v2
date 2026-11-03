@@ -47,68 +47,73 @@
 	import SuggestionModal from '$lib/components/common/SuggestionModal.svelte';
 	import { getRequestToken } from '$lib/services/auth';
 
+	type MessageAnnotation = {
+		type?: string;
+		rating?: number;
+		tags?: string[];
+		reason?: string;
+		comment?: string;
+		details?: Record<string, unknown>;
+		[key: string]: unknown;
+	};
+
+	type StatusEntry = {
+		done: boolean;
+		action: string;
+		description: string;
+		urls?: string[];
+		query?: string;
+		sources?: {
+			title: string;
+			content?: string;
+			url: string;
+			score: number;
+			language?: string;
+			source?: string;
+			fallback_reason?: string;
+		}[];
+		count?: number;
+		hidden?: boolean;
+	};
+
+	type AudioTTSSettings = {
+		voice?: string;
+		defaultVoice?: string;
+		playbackRate?: number;
+	};
+
+	type AudioConfig = {
+		tts?: {
+			engine?: string;
+			split_on?: string;
+			voice?: string;
+		};
+	};
+
+	type UserPermissions = {
+		chat?: { edit?: boolean };
+		features?: { image_generation?: boolean };
+	};
+
+	type ModelAction = { id: string; name: string; icon_url?: string };
+
 	interface MessageType {
 		id: string;
 		model: string;
 		content: string;
-		files?: { type: string; url: string }[];
+		files?: { type: string; url: string; name?: string; size?: number }[];
 		timestamp: number;
 		role: string;
-		statusHistory?: {
-			done: boolean;
-			action: string;
-			description: string;
-			urls?: string[];
-			query?: string;
-			sources?: Array<{
-				title: string;
-				content?: string;
-				url: string;
-				score: number;
-				language?: string;
-				fallback_reason?: string;
-			}>;
-			count?: number;
-			hidden?: boolean;
-		}[];
-		status?:
-			| {
-					done: boolean;
-					action: string;
-					description: string;
-					urls?: string[];
-					query?: string;
-					sources?: Array<{
-						title: string;
-						content?: string;
-						url: string;
-						score: number;
-						language?: string;
-						fallback_reason?: string;
-					}>;
-					count?: number;
-					hidden?: boolean;
-			  }
-			| Array<{
-					done: boolean;
-					action: string;
-					description: string;
-					urls?: string[];
-					query?: string;
-					sources?: Array<{
-						title: string;
-						content?: string;
-						url: string;
-						score: number;
-						language?: string;
-						fallback_reason?: string;
-					}>;
-					count?: number;
-					hidden?: boolean;
-			  }>;
+		statusHistory?: StatusEntry[];
+		status?: StatusEntry | StatusEntry[];
 		done: boolean;
 		error?: boolean | { content: string };
 		sources?: string[];
+		childrenIds?: string[];
+		user?: string;
+		originalContent?: string;
+		models?: string[];
+		merged?: Record<string, unknown>;
 		code_executions?: {
 			uuid: string;
 			name: string;
@@ -133,22 +138,37 @@
 			load_duration?: number;
 			usage?: unknown;
 		};
-		annotation?: { type: string; rating: number };
+		feedbackId?: string;
+		crewAI?: boolean;
+		arena?: boolean;
+		selectedModelId?: string;
+		parentId?: string;
+		citations?: string[];
+		usage?: unknown;
+		annotation?: MessageAnnotation;
 	}
 
 	export let chatId = '';
-	export let history;
-	export let messageId;
+	export let history: any;
+	export let messageId: any;
 	export let selectedToolIds: string[] = [];
 
-	let message: MessageType = JSON.parse(JSON.stringify(history.messages[messageId]));
-	$: if (history.messages) {
-		if (JSON.stringify(message) !== JSON.stringify(history.messages[messageId])) {
-			message = JSON.parse(JSON.stringify(history.messages[messageId]));
+	let message: MessageType = {
+		id: messageId,
+		model: '',
+		content: '',
+		timestamp: Date.now() / 1000,
+		role: 'assistant',
+		done: false
+	};
+	$: if (history.messages && history.messages[messageId]) {
+		const nextMessage = JSON.parse(JSON.stringify(history.messages[messageId])) as MessageType;
+		if (JSON.stringify(message) !== JSON.stringify(nextMessage)) {
+			message = nextMessage;
 		}
 	}
 
-	export let siblings;
+	export let siblings: any;
 
 	export let showPreviousMessage: Function;
 	export let showNextMessage: Function;
@@ -168,7 +188,7 @@
 	export let isLastMessage = true;
 	export let readOnly = false;
 
-	let model = null;
+	let model: any = null;
 	$: model = $models.find((m) => m.id === message.model);
 
 	// Capture Wikipedia sources from status events
@@ -184,15 +204,73 @@
 	let loadingSpeech = false;
 	let generatingImage = false;
 
+	const getStatusHistory = (
+		statusHistory?: StatusEntry[],
+		status?: StatusEntry | StatusEntry[]
+	): StatusEntry[] => statusHistory ?? (Array.isArray(status) ? status : status ? [status] : []);
+
 	let showRateComment = false;
 	let showIssueModal = false;
 	let showSuggestionModal = false;
+	$: userRole = $user?.role;
+	$: userPermissions = $user?.permissions as UserPermissions | undefined;
+	$: featureConfig = $config?.features as NonNullable<typeof $config>['features'] & {
+		enable_message_rating?: boolean;
+	};
+	$: modelActions = ((model as { actions?: ModelAction[] } | null)?.actions ?? []) as ModelAction[];
 
-	const copyToClipboard = async (text) => {
+	const getWebSearchStatus = (status?: StatusEntry) => ({
+		urls: status?.urls ?? [],
+		query: status?.query ?? ''
+	});
+	const groundingSources = (sources?: StatusEntry['sources']) =>
+		(sources ?? []).map((source) => ({ ...source, content: source.content ?? '' }));
+	const handleSourceClick = (sourceId: string) => {
+		const sourceButton = document.getElementById(`source-${sourceId}`);
+		if (sourceButton) sourceButton.click();
+	};
+	const handleAddMessages = (payload: { modelId: string; parentId: string; messages: unknown[] }) =>
+		addMessages(payload);
+
+	const getErrorContent = (error: MessageType['error'], fallback: string) =>
+		error && typeof error === 'object' ? error.content : fallback;
+	const hasCitations = (modelValue: typeof model) =>
+		(modelValue?.info?.meta?.capabilities as { citations?: boolean } | undefined)?.citations ??
+		true;
+
+	const copyToClipboard = async (text: string) => {
 		const res = await _copyToClipboard(text);
 		if (res) {
 			toast.success($i18n.t('Copying to clipboard was successful!'));
 		}
+	};
+
+	const handleContentUpdate = (detail: any) => {
+		const { raw, oldContent, newContent } = detail;
+
+		history.messages[message.id].content = history.messages[message.id].content.replace(
+			raw,
+			raw.replace(oldContent, newContent)
+		);
+
+		updateChat();
+	};
+
+	const regenerateMessage = () => {
+		showRateComment = false;
+		regenerateResponse(message);
+
+		(model?.actions ?? []).forEach((action: any) => {
+			dispatch('action', {
+				id: action.id,
+				event: {
+					id: 'regenerate-response',
+					data: {
+						messageId: message.id
+					}
+				}
+			});
+		});
 	};
 
 	const playAudio = (idx: number) => {
@@ -240,12 +318,17 @@
 
 		speaking = true;
 
-		if (($config?.audio?.tts?.engine ?? '') !== '') {
+		const audioConfig = ($config as typeof $config & { audio?: AudioConfig }).audio;
+		const audioSettings = $settings?.audio as typeof $settings.audio & {
+			tts?: AudioTTSSettings;
+		};
+
+		if ((audioConfig?.tts?.engine ?? '') !== '') {
 			loadingSpeech = true;
 
 			const messageContentParts: string[] = getMessageContentParts(
 				message.content,
-				$config?.audio?.tts?.split_on ?? 'punctuation'
+				audioConfig?.tts?.split_on ?? 'punctuation'
 			);
 
 			if (!messageContentParts.length) {
@@ -271,9 +354,9 @@
 			for (const [idx, sentence] of messageContentParts.entries()) {
 				const res = await synthesizeOpenAISpeech(
 					getRequestToken(),
-					$settings?.audio?.tts?.defaultVoice === ($config?.audio?.tts?.voice ?? '')
-						? ($settings?.audio?.tts?.voice ?? $config?.audio?.tts?.voice)
-						: $config?.audio?.tts?.voice,
+					audioSettings?.tts?.defaultVoice === (audioConfig?.tts?.voice ?? '')
+						? (audioSettings?.tts?.voice ?? audioConfig?.tts?.voice)
+						: audioConfig?.tts?.voice,
 					sentence
 				).catch((error) => {
 					console.error(error);
@@ -287,7 +370,7 @@
 					const blob = await res.blob();
 					const blobUrl = URL.createObjectURL(blob);
 					const audio = new Audio(blobUrl);
-					audio.playbackRate = $settings.audio?.tts?.playbackRate ?? 1;
+					audio.playbackRate = audioSettings?.tts?.playbackRate ?? 1;
 
 					audioParts[idx] = audio;
 					loadingSpeech = false;
@@ -295,7 +378,7 @@
 				}
 			}
 		} else {
-			let voices = [];
+			let voices: any[] = [];
 			const getVoicesLoop = setInterval(() => {
 				voices = speechSynthesis.getVoices();
 				if (voices.length > 0) {
@@ -303,13 +386,11 @@
 
 					const voice =
 						voices
-							?.filter(
-								(v) => v.voiceURI === ($settings?.audio?.tts?.voice ?? $config?.audio?.tts?.voice)
-							)
+							?.filter((v) => v.voiceURI === (audioSettings?.tts?.voice ?? audioConfig?.tts?.voice))
 							?.at(0) ?? undefined;
 
 					const speak = new SpeechSynthesisUtterance(message.content);
-					speak.rate = $settings.audio?.tts?.playbackRate ?? 1;
+					speak.rate = audioSettings?.tts?.playbackRate ?? 1;
 
 					speak.onend = () => {
 						speaking = false;
@@ -372,7 +453,7 @@
 		});
 
 		if (res) {
-			const files = res.map((image) => ({
+			const files = res.map((image: { url: string }) => ({
 				type: 'image',
 				url: `${image.url}`
 			}));
@@ -409,20 +490,22 @@
 		}
 
 		const messages = createMessagesList(history, message.id);
+		const parentMessage = message.parentId ? history.messages[message.parentId] : undefined;
+		const siblingIds: string[] = parentMessage?.childrenIds ?? [];
 
 		let feedbackItem = {
 			type: 'rating',
 			data: {
 				...(updatedMessage?.annotation ? updatedMessage.annotation : {}),
 				model_id: message?.crewAI ? 'azure/o3-mini' : (message?.selectedModelId ?? message.model),
-				...(history.messages[message.parentId].childrenIds.length > 1
+				...(siblingIds.length > 1
 					? {
-							sibling_model_ids: history.messages[message.parentId].childrenIds
-								.filter((id) => id !== message.id)
-								.map((id) =>
+							sibling_model_ids: siblingIds
+								.filter((id) => id !== message.id && history.messages[id])
+								.map((id: string) =>
 									history.messages[id]?.crewAI
 										? 'azure/o3-mini'
-										: (history.messages[id]?.selectedModelId ?? history.messages[id].model)
+										: (history.messages[id]?.selectedModelId ?? history.messages[id]?.model)
 								)
 						}
 					: {})
@@ -432,7 +515,8 @@
 				model_id: message?.crewAI ? 'azure/o3-mini' : message.model,
 				message_id: message.id,
 				message_index: messages.length,
-				chat_id: chatId
+				chat_id: chatId,
+				base_models: {}
 			},
 			snapshot: {
 				chat: chat
@@ -467,7 +551,7 @@
 			}
 		}
 
-		let feedback = null;
+		let feedback: any = null;
 		if (message?.feedbackId) {
 			feedback = await updateFeedbackById(
 				getRequestToken(),
@@ -508,13 +592,15 @@
 					feedbackItem.data.tags = tags;
 
 					saveMessage(message.id, updatedMessage);
-					await updateFeedbackById(
-						getRequestToken(),
-						updatedMessage.feedbackId,
-						feedbackItem
-					).catch((error) => {
-						toast.error(`${error}`);
-					});
+					if (updatedMessage.feedbackId) {
+						await updateFeedbackById(
+							getRequestToken(),
+							updatedMessage.feedbackId,
+							feedbackItem
+						).catch((error) => {
+							toast.error(`${error}`);
+						});
+					}
 				}
 				tagGenerationInProgress = false;
 			}
@@ -541,7 +627,7 @@
 					};
 					saveMessage(message.id, updatedMessage);
 				}
-			} catch (error) {
+			} catch (error: any) {
 				console.warn('Failed to fetch feedback data:', error);
 			}
 		}
@@ -601,10 +687,8 @@
 
 				<div class="chat-{message.role} w-full min-w-full markdown-prose">
 					<div>
-						{#if (message?.statusHistory ?? [...(message?.status ? [message?.status] : [])]).length > 0}
-							{@const statusHistory = message?.statusHistory ?? [
-								...(message?.status ? [message?.status] : [])
-							]}
+						{#if (message?.statusHistory ?? (Array.isArray(message?.status) ? message.status : message?.status ? [message.status] : [])).length > 0}
+							{@const statusHistory = getStatusHistory(message?.statusHistory, message?.status)}
 							{@const status = statusHistory.at(-1)}
 							{@const hasRagContextTruncatedStatus = statusHistory.some(
 								(entry) => entry?.action === 'rag_context_truncated'
@@ -629,7 +713,7 @@
 										{@const webSearchStatus = shouldRenderRagFallbackWebSearchStatus
 											? latestWebSearchStatus
 											: status}
-										<WebSearchResults status={webSearchStatus}>
+										<WebSearchResults status={getWebSearchStatus(webSearchStatus)}>
 											<div class="flex flex-col justify-center -space-y-0.5">
 												<div
 													class="{webSearchStatus?.done === false
@@ -644,12 +728,12 @@
 													<!-- $i18n.t('Searched {{count}} sites for "{{searchQuery}}"') -->
 													{#if webSearchStatus?.description.includes('{{count}}') && webSearchStatus?.description.includes('{{searchQuery}}')}
 														{$i18n.t(webSearchStatus?.description, {
-															count: webSearchStatus?.urls.length,
+															count: webSearchStatus?.urls?.length ?? 0,
 															searchQuery: webSearchStatus?.query
 														})}
 													{:else if webSearchStatus?.description.includes('{{count}}')}
 														{$i18n.t(webSearchStatus?.description, {
-															count: webSearchStatus?.urls.length
+															count: webSearchStatus?.urls?.length ?? 0
 														})}
 													{:else if webSearchStatus?.description === 'No search query generated'}
 														{$i18n.t('No search query generated')}
@@ -690,7 +774,7 @@
 										</div>
 									{:else if status?.action === 'wiki_grounding'}
 										{#if status?.sources && status?.sources.length > 0}
-											<WikipediaGroundingSources sources={status.sources}>
+											<WikipediaGroundingSources sources={groundingSources(status.sources)}>
 												<div class="flex flex-col justify-center -space-y-0.5">
 													<div
 														class="{status?.done === false
@@ -761,9 +845,9 @@
 									bind:this={editTextAreaElement}
 									class=" bg-transparent outline-none w-full resize-none"
 									bind:value={editedContent}
-									on:input={(e) => {
-										e.target.style.height = '';
-										e.target.style.height = `${e.target.scrollHeight}px`;
+									on:input={() => {
+										editTextAreaElement.style.height = '';
+										editTextAreaElement.style.height = `${editTextAreaElement.scrollHeight}px`;
 									}}
 									on:keydown={(e) => {
 										if (e.key === 'Escape') {
@@ -831,24 +915,10 @@
 										floatingButtons={message?.done}
 										save={!readOnly}
 										{model}
-										onSourceClick={(e) => {
-											const sourceButton = document.getElementById(`source-${e}`);
-
-											if (sourceButton) {
-												sourceButton.click();
-											}
-										}}
-										onAddMessages={({ modelId, parentId, messages }) => {
-											addMessages({ modelId, parentId, messages });
-										}}
+										onSourceClick={handleSourceClick}
+										onAddMessages={handleAddMessages}
 										on:update={(e) => {
-											const { raw, oldContent, newContent } = e.detail;
-
-											history.messages[message.id].content = history.messages[
-												message.id
-											].content.replace(raw, raw.replace(oldContent, newContent));
-
-											updateChat();
+											handleContentUpdate(e.detail);
 										}}
 										on:select={(e) => {
 											const { type, content } = e.detail;
@@ -867,10 +937,10 @@
 								{/if}
 
 								{#if message?.error}
-									<Error content={message?.error?.content ?? message.content} />
+									<Error content={getErrorContent(message?.error, message.content)} />
 								{/if}
 
-								{#if (message?.sources || message?.citations) && (model?.info?.meta?.capabilities?.citations ?? true)}
+								{#if (message?.sources || message?.citations) && hasCitations(model)}
 									<Citations sources={message?.sources ?? message?.citations} {selectedToolIds} />
 								{/if}
 
@@ -948,7 +1018,7 @@
 
 							{#if message.done}
 								{#if !readOnly}
-									{#if $user.role === 'user' ? ($user?.permissions?.chat?.edit ?? true) : true}
+									{#if userRole === 'user' ? (userPermissions?.chat?.edit ?? true) : true}
 										<Tooltip content={$i18n.t('Edit')} placement="bottom">
 											<button
 												aria-label={$i18n.t('Edit')}
@@ -1084,7 +1154,7 @@
 									</button>
 								</Tooltip>
 
-								{#if $config?.features.enable_image_generation && ($user.role === 'admin' || $user?.permissions?.features?.image_generation) && !readOnly}
+								{#if $config?.features.enable_image_generation && (userRole === 'admin' || userPermissions?.features?.image_generation) && !readOnly}
 									<Tooltip content={$i18n.t('Generate Image')} placement="bottom">
 										<button
 											aria-label={$i18n.t('Generate Image')}
@@ -1189,7 +1259,7 @@
 								{/if}
 
 								{#if !readOnly}
-									{#if $config?.features.enable_message_rating ?? true}
+									{#if featureConfig?.enable_message_rating ?? true}
 										<Tooltip content={$i18n.t('Good Response')} placement="bottom">
 											<button
 												aria-label={$i18n.t('Good Response')}
@@ -1312,7 +1382,7 @@
 												showRateComment = false;
 												regenerateResponse(message);
 
-												(model?.actions ?? []).forEach((action) => {
+												modelActions.forEach((action) => {
 													dispatch('action', {
 														id: action.id,
 														event: {
@@ -1343,7 +1413,7 @@
 									</Tooltip>
 
 									{#if isLastMessage}
-										{#each model?.actions ?? [] as action}
+										{#each modelActions as action}
 											<Tooltip content={action.name} placement="bottom">
 												<button
 													type="button"
