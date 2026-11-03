@@ -3,6 +3,60 @@
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 cd "$SCRIPT_DIR" || exit
 
+python - <<'PY'
+import os
+import shutil
+from pathlib import Path
+
+try:
+    from dotenv import find_dotenv, load_dotenv
+
+    base_dir = Path.cwd().parent
+    load_dotenv(find_dotenv(str(base_dir / ".env")))
+except ImportError:
+    pass
+
+data_dir = Path(os.environ.get("DATA_DIR", Path.cwd() / "data"))
+cache_dir = data_dir / "cache"
+
+
+def migrate_cache(source, destination):
+    if not source.is_dir() or source.resolve() == destination.resolve():
+        return
+
+    destination.mkdir(parents=True, exist_ok=True)
+    for item in source.iterdir():
+        target = destination / item.name
+        if item.is_dir() and target.is_dir():
+            migrate_cache(item, target)
+            try:
+                item.rmdir()
+            except OSError:
+                pass
+        elif not target.exists():
+            shutil.move(str(item), str(target))
+
+    try:
+        source.rmdir()
+    except OSError:
+        pass
+
+
+for legacy_path, destination in (
+    (cache_dir / "txtai", Path(os.environ.get("HF_HOME", cache_dir / "huggingface"))),
+    (cache_dir / "transformers", Path(os.environ.get("HF_HOME", cache_dir / "huggingface"))),
+    (
+        cache_dir / "embedding" / "models",
+        Path(os.environ.get("SENTENCE_TRANSFORMERS_HOME", cache_dir / "embedding")),
+    ),
+    (
+        cache_dir / "whisper" / "models",
+        Path(os.environ.get("WHISPER_MODEL_DIR", cache_dir / "whisper")),
+    ),
+):
+    migrate_cache(legacy_path, destination)
+PY
+
 KEY_FILE=.webui_secret_key
 
 PORT="${PORT:-8080}"
