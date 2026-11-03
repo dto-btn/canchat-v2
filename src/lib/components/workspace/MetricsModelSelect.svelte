@@ -6,7 +6,12 @@
 	import ChevronRight from '$lib/components/icons/ChevronRight.svelte';
 	import ArchiveBox from '$lib/components/icons/ArchiveBox.svelte';
 	import Check from '$lib/components/icons/Check.svelte';
-	import { OTHER_FAMILY, getModelFamily, groupModelsByFamily } from '$lib/utils/metricsModels';
+	import {
+		OTHER_FAMILY,
+		findModel,
+		getModelFamily,
+		groupModelsByFamily
+	} from '$lib/utils/metricsModels';
 
 	const i18n = getI18n();
 	const dispatch = createEventDispatcher<{ change: string }>();
@@ -34,7 +39,7 @@
 	// Family names are brands; only "Other" is translated (literal key for i18n:parse)
 	$: groupLabel = (name: string): string => (name === OTHER_FAMILY ? $i18n.t('Other') : name);
 
-	$: selectedModel = [...activeModels, ...archivedModels].find((m) => m.id === value);
+	$: selectedModel = findModel([...activeModels, ...archivedModels], value);
 	$: selectedLabel = selectedModel?.name ?? value ?? '';
 	$: selectedIsArchived = archivedModels.some((m) => m.id === value);
 

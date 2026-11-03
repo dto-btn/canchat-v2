@@ -25,7 +25,7 @@
 	} from '$lib/apis/metrics';
 	import type { MetricsModelOption } from '$lib/apis/metrics';
 	import MetricsModelSelect from './MetricsModelSelect.svelte';
-	import { groupModelsByFamily } from '$lib/utils/metricsModels';
+	import { findModel, getDefaultModel } from '$lib/utils/metricsModels';
 	import { getUserByDomain } from '$lib/apis/users';
 	import { Chart, registerables } from 'chart.js';
 	import { user } from '$lib/stores';
@@ -130,9 +130,7 @@
 
 	// Shown in the chart title
 	$: selectedModelLabel =
-		[...activeModels, ...archivedModels].find((m) => m.id === selectedModel)?.name ??
-		selectedModel ??
-		'';
+		findModel([...activeModels, ...archivedModels], selectedModel)?.name ?? selectedModel ?? '';
 	let mcpProcesses: string[] = [];
 	let totalUsers: number = 0,
 		totalPrompts: number = 0,
@@ -1005,10 +1003,7 @@
 					domains = await getDomains(getRequestToken());
 					({ active: activeModels, archived: archivedModels } =
 						await getModelsGrouped(getRequestToken()));
-					// Default to the first model in the dropdown: Active first, then Archived
-					const firstModel =
-						groupModelsByFamily(activeModels)[0]?.models[0] ??
-						groupModelsByFamily(archivedModels)[0]?.models[0];
+					const firstModel = getDefaultModel(activeModels, archivedModels);
 					if (firstModel) {
 						selectedModel = firstModel.id;
 					}

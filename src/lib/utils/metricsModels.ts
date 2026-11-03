@@ -45,3 +45,15 @@ export const groupModelsByFamily = (models: MetricsModelOption[]): ModelFamilyGr
 		models: map.get(name)!
 	}));
 };
+
+export const findModel = (
+	models: MetricsModelOption[],
+	id: string | null | undefined
+): MetricsModelOption | undefined => models.find((m) => m.id === id);
+
+// The first model shown in the dropdown: Active first, then Archived
+export const getDefaultModel = (
+	active: MetricsModelOption[],
+	archived: MetricsModelOption[]
+): MetricsModelOption | undefined =>
+	groupModelsByFamily(active)[0]?.models[0] ?? groupModelsByFamily(archived)[0]?.models[0];

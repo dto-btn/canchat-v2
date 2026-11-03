@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { OTHER_FAMILY, getModelFamily, groupModelsByFamily } from './metricsModels';
+import {
+	OTHER_FAMILY,
+	findModel,
+	getDefaultModel,
+	getModelFamily,
+	groupModelsByFamily
+} from './metricsModels';
 
 const model = (id: string, name = id) => ({ id, name });
 const family = (id: string, name = id) => getModelFamily(model(id, name));
@@ -75,5 +81,41 @@ describe('groupModelsByFamily', () => {
 
 	it('returns no groups for no models', () => {
 		expect(groupModelsByFamily([])).toEqual([]);
+	});
+});
+
+describe('findModel', () => {
+	const models = [model('GPT 4o'), model('custom-hr', 'HR Assistant')];
+
+	it('finds a model by id', () => {
+		expect(findModel(models, 'custom-hr')?.name).toBe('HR Assistant');
+	});
+
+	it('does not match the display name', () => {
+		expect(findModel(models, 'HR Assistant')).toBeUndefined();
+	});
+
+	it('returns undefined for a missing, null or undefined id', () => {
+		expect(findModel(models, 'gpt-4o-2024-11-20')).toBeUndefined();
+		expect(findModel(models, null)).toBeUndefined();
+		expect(findModel(models, undefined)).toBeUndefined();
+	});
+});
+
+describe('getDefaultModel', () => {
+	it('picks the first model of the first Active family, not the first in the list', () => {
+		const active = [model('hr-qa'), model('command-4'), model('GPT 4o')];
+
+		expect(getDefaultModel(active, [model('gpt-4o-2024-11-20')])?.id).toBe('GPT 4o');
+	});
+
+	it('falls back to the first Archived model when there are no Active models', () => {
+		const archived = [model('poseidon'), model('gpt-4o-2024-11-20')];
+
+		expect(getDefaultModel([], archived)?.id).toBe('gpt-4o-2024-11-20');
+	});
+
+	it('returns undefined when there are no models', () => {
+		expect(getDefaultModel([], [])).toBeUndefined();
 	});
 });
