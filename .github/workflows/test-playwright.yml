@@ -75,7 +75,6 @@ jobs:
         continue-on-error: true
 
       - name:  Start CANChat Environment
-        # TODO: remove the TXTAI_CACHE_DIR override once the image is rebuilt with the new Dockerfile
         run: |
             docker run -d -p 8080:8080 \
             --add-host=host.docker.internal:host-gateway \
