@@ -7,6 +7,53 @@ KEY_FILE=.webui_secret_key
 
 PORT="${PORT:-8080}"
 HOST="${HOST:-0.0.0.0}"
+UVICORN_WORKERS="${UVICORN_WORKERS:-1}"
+
+if ! [[ "$UVICORN_WORKERS" =~ ^[1-9][0-9]*$ ]]; then
+  echo "UVICORN_WORKERS must be a positive integer, got '$UVICORN_WORKERS'" >&2
+  exit 1
+fi
+
+if (( UVICORN_WORKERS > 1 )); then
+  if ! python - <<'PY'
+import os
+import sys
+from pathlib import Path
+
+try:
+    from dotenv import find_dotenv, load_dotenv
+
+    base_dir = Path.cwd().parent
+    load_dotenv(find_dotenv(str(base_dir / ".env")))
+except ImportError:
+    pass
+
+websocket_manager = os.environ.get("WEBSOCKET_MANAGER", "")
+websocket_redis_url = os.environ.get(
+    "WEBSOCKET_REDIS_URL",
+    os.environ.get("REDIS_URL", "redis://localhost:6379/0"),
+)
+task_coordination_backend = os.environ.get("TASK_COORDINATION_BACKEND", "local").lower()
+task_coordination_url = os.environ.get("TASK_COORDINATION_URL", "")
+
+if (
+    websocket_manager != "redis"
+    or not websocket_redis_url
+    or task_coordination_backend != "redis"
+    or not task_coordination_url
+):
+    print(
+        "UVICORN_WORKERS > 1 requires Redis-backed WebSocket and task coordination "
+        "with their URLs configured.",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+PY
+  then
+    exit 1
+  fi
+fi
+
 if test "$WEBUI_SECRET_KEY $WEBUI_JWT_SECRET_KEY" = " "; then
   echo "Loading WEBUI_SECRET_KEY from file, not provided as an environment variable."
 
@@ -54,4 +101,4 @@ if [ -n "$SPACE_ID" ]; then
   export WEBUI_URL=${SPACE_HOST}
 fi
 
-WEBUI_SECRET_KEY="$WEBUI_SECRET_KEY" exec uvicorn open_webui.main:app --host "$HOST" --port "$PORT" --forwarded-allow-ips '*'
+WEBUI_SECRET_KEY="$WEBUI_SECRET_KEY" exec uvicorn open_webui.main:app --host "$HOST" --port "$PORT" --forwarded-allow-ips '*' --workers "$UVICORN_WORKERS"
