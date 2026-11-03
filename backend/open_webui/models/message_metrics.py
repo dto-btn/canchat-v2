@@ -15,9 +15,16 @@ ModelFilter = Optional[Union[str, list[str]]]
 
 
 def _model_condition(model: Union[str, list[str]]):
-    if isinstance(model, (list, tuple)):
+    if isinstance(model, list):
         return MessageMetric.model.in_(model)
     return MessageMetric.model == model
+
+
+# CrewAI (prompts with tools selected) logs the model as "azure/<deployment>"
+# or "crewai". Model analytics leaves these rows out.
+# TODO: use a tool-use column once one exists.
+def _tool_use_filter():
+    return or_(MessageMetric.model.like("azure/%"), MessageMetric.model == "crewai")
 
 
 class MessageMetric(Base):
@@ -90,19 +97,11 @@ class MessageMetricsTable:
             db.commit()
             db.refresh(result)
 
-    # CrewAI (prompts with tools selected) logs the model as "azure/<deployment>"
-    # or "crewai". Model analytics leaves these rows out.
-    # TODO: use a tool-use column once one exists.
-    def _tool_use_filter(self):
-        return or_(MessageMetric.model.like("azure/%"), MessageMetric.model == "crewai")
-
     def get_prompt_models(self) -> list[str]:
         """Distinct models users prompted with directly (no tools)."""
         try:
             with get_db() as db:
-                query = db.query(MessageMetric.model).filter(
-                    not_(self._tool_use_filter())
-                )
+                query = db.query(MessageMetric.model).filter(not_(_tool_use_filter()))
                 models = query.distinct().all()
                 return [model[0] for model in models if model[0]]
         except Exception as e:
