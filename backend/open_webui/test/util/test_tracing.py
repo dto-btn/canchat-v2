@@ -1035,10 +1035,27 @@ def test_url_origin(value, expected):
             "SELECT col1, t2.c3 FROM t2 WHERE n = $1",
         ),
         ("SELECT 'unterminated", "SELECT ?"),
+        (f"SELECT 'it\\'s {SECRET}', 'x'", "SELECT ?, ?"),
+        (f"SELECT E'a\\'{SECRET}'", "SELECT E?"),
+        (f"SELECT $${SECRET}$$, $tag${SECRET}$tag$", "SELECT ?, ?"),
+        (f"DO $$ {SECRET}", "DO ?"),
+        ("SELECT 0x1F, x'DEADBEEF'", "SELECT ?, x?"),
+        ("SELECT 'multi\nline'", "SELECT ?"),
     ],
 )
 def test_sanitize_sql(statement, expected):
     assert tracing.sanitize_sql(statement) == expected
+
+
+def test_unremovable_trace_headers_are_reported(caplog):
+    carrier = (
+        ("traceparent", "00-" + IN_RATIO_TRACE_ID + "-" + PARENT_SPAN_ID + "-01"),
+    )
+
+    with caplog.at_level(logging.WARNING, logger=tracing.__name__):
+        tracing._remove_fields(carrier, {"traceparent"})
+
+    assert "Could not remove trace headers from tuple" in caplog.text
 
 
 def test_sanitize_sql_bounds_length():

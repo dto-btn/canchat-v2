@@ -1,5 +1,6 @@
 """Pure ASGI request context and completion access logging middleware."""
 
+import contextlib
 import logging
 import re
 import time
@@ -98,14 +99,17 @@ class RequestContextMiddleware:
                     if route is not None:
                         extra["http.route"] = route
                     span_context = state.get(SERVER_SPAN_CONTEXT_STATE_KEY)
-                    if isinstance(span_context, SpanContext) and span_context.is_valid:
-                        # The server span has ended by now; re-activate its
-                        # context so both log sinks record trace_id/span_id.
-                        with trace.use_span(
+                    # The server span has ended by now; re-activate its
+                    # context so both log sinks record trace_id/span_id.
+                    active_span = (
+                        trace.use_span(
                             NonRecordingSpan(span_context), end_on_exit=False
-                        ):
-                            log.info("HTTP request completed", extra=extra)
-                    else:
+                        )
+                        if isinstance(span_context, SpanContext)
+                        and span_context.is_valid
+                        else contextlib.nullcontext()
+                    )
+                    with active_span:
                         log.info("HTTP request completed", extra=extra)
             finally:
                 user_id_var.reset(user_token)

@@ -31,7 +31,15 @@ import re
 import sys
 import threading
 from contextvars import ContextVar
-from typing import Any, Mapping, MutableMapping, Sequence
+from typing import (
+    TYPE_CHECKING,
+    AbstractSet,
+    Any,
+    Callable,
+    Mapping,
+    MutableMapping,
+    Sequence,
+)
 from urllib.parse import urlsplit
 
 from opentelemetry import propagate, trace
@@ -65,6 +73,9 @@ from opentelemetry.trace.propagation.tracecontext import (
     TraceContextTextMapPropagator,
 )
 from opentelemetry.util.types import Attributes
+
+if TYPE_CHECKING:
+    import aiohttp
 
 from open_webui.observability.context import (
     SERVER_SPAN_CONTEXT_STATE_KEY,
@@ -120,14 +131,18 @@ ALLOWED_SPAN_ATTRIBUTES = frozenset(
     }
 )
 ALLOWED_SPAN_ATTRIBUTE_PREFIXES = ("canchat.",)
-# Exception events keep the type only. Messages and stack traces can repeat
+# Exception events keep the type and whether it escaped the span. Messages and stack traces can repeat
 # prompts, URLs or credentials (see OBS-18).
 ALLOWED_EVENT_ATTRIBUTES = frozenset({"exception.type", "exception.escaped"})
 
 _URL_ATTRIBUTES = frozenset({"url.full", "http.url"})
 _SQL_ATTRIBUTES = frozenset({"db.statement", "db.query.text"})
 _MAX_STATEMENT_LENGTH = 2048
-_SQL_STRING_LITERAL = re.compile(r"'(?:[^']|'')*(?:'|$)")
+# Backslash escapes are treated as escapes even where the dialect would not;
+# over-redacting a statement is the safe failure.
+_SQL_STRING_LITERAL = re.compile(r"'(?:[^'\\]|\\.|'')*(?:'|$)", re.DOTALL)
+_SQL_DOLLAR_LITERAL = re.compile(r"\$(\w*)\$.*?(?:\$\1\$|$)", re.DOTALL)
+_SQL_HEX_LITERAL = re.compile(r"\b0x[0-9a-fA-F]+\b")
 _SQL_NUMERIC_LITERAL = re.compile(r"(?<![\w$.:])\d+(?:\.\d+)?(?:[eE][-+]?\d+)?\b")
 
 # ``excluded_urls`` regexes are matched against ``scheme://host/path`` (no
@@ -202,7 +217,9 @@ class _RootSampler(Sampler):
 
 
 def _remote_sampling_draw() -> float:
-    return random.random()
+    # Sampling only: the client must not choose the outcome, which does not
+    # need cryptographic strength.
+    return random.random()  # nosec B311
 
 
 class _RemoteParentSampler(Sampler):
@@ -358,13 +375,16 @@ class TraceContextAllowListPropagator(TextMapPropagator):
         return self._delegate.fields
 
 
-def _remove_fields(carrier: Any, fields: set[str]) -> None:
+def _remove_fields(carrier: Any, fields: AbstractSet[str]) -> None:
     try:
         keys = [key for key in carrier.keys() if str(key).lower() in fields]
         for key in keys:
             del carrier[key]
     except (AttributeError, KeyError, TypeError):
-        log.debug("Could not remove trace headers from %s", type(carrier).__name__)
+        log.warning(
+            "Could not remove trace headers from %s; redirected requests may keep them",
+            type(carrier).__name__,
+        )
 
 
 def configure_propagation(allowed_hosts: Sequence[str]) -> None:
@@ -399,7 +419,12 @@ async def _httpx_async_hook(span: trace.Span, request_info: Any) -> None:
 _TRACE_HEADERS = frozenset({"traceparent", "tracestate"})
 
 
-def _requests_rebuild_auth(wrapped, _instance, args, kwargs):
+def _requests_rebuild_auth(
+    wrapped: Callable[..., Any],
+    _instance: Any,
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+) -> Any:
     result = wrapped(*args, **kwargs)
     prepared_request = args[0] if args else kwargs.get("prepared_request")
     if prepared_request is not None:
@@ -407,10 +432,14 @@ def _requests_rebuild_auth(wrapped, _instance, args, kwargs):
     return result
 
 
-def _aiohttp_redirect_trace_config():
+def _aiohttp_redirect_trace_config() -> aiohttp.TraceConfig:
     import aiohttp
 
-    async def on_request_redirect(_session, _ctx, params) -> None:
+    async def on_request_redirect(
+        _session: aiohttp.ClientSession,
+        _ctx: Any,
+        params: aiohttp.TraceRequestRedirectParams,
+    ) -> None:
         _remove_fields(params.headers, _TRACE_HEADERS)
 
     trace_config = aiohttp.TraceConfig()
@@ -455,7 +484,9 @@ def url_origin(value: Any) -> str | None:
 
 def sanitize_sql(statement: Any) -> str:
     """Replace SQL string and numeric literals with ``?`` and bound the length."""
-    sanitized = _SQL_STRING_LITERAL.sub("?", str(statement))
+    sanitized = _SQL_DOLLAR_LITERAL.sub("?", str(statement))
+    sanitized = _SQL_STRING_LITERAL.sub("?", sanitized)
+    sanitized = _SQL_HEX_LITERAL.sub("?", sanitized)
     sanitized = _SQL_NUMERIC_LITERAL.sub("?", sanitized)
     if len(sanitized) > _MAX_STATEMENT_LENGTH:
         sanitized = sanitized[: _MAX_STATEMENT_LENGTH - 3] + "..."
@@ -570,7 +601,7 @@ def _server_request_hook(span: trace.Span, scope: Mapping[str, Any]) -> None:
         span.set_attribute(REQUEST_ID_ATTRIBUTE, request_id)
 
 
-def _instruments():
+def _instruments() -> tuple[tuple[Any, dict[str, Any]], ...]:
     from opentelemetry.instrumentation.aiohttp_client import (
         AioHttpClientInstrumentor,
     )
