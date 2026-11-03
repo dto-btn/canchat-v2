@@ -41,10 +41,20 @@ export const getModels = async (token: string = '', base: boolean = false): Prom
 	return (res?.data ?? []) as Model[];
 };
 
+type ChatMessage = {
+	id: string;
+	role: string;
+	content: unknown;
+	info?: unknown;
+	timestamp: number;
+	sources?: unknown;
+};
+
 type ChatCompletedForm = {
 	model: string;
-	messages: string[];
+	messages: ChatMessage[];
 	chat_id: string;
+	id: string;
 	session_id: string;
 };
 
@@ -58,14 +68,7 @@ export const chatCompleted = async (token: string, body: ChatCompletedForm) => {
 
 type ChatActionForm = {
 	model: string;
-	messages: {
-		id: string;
-		role: string;
-		content: unknown;
-		info?: unknown;
-		timestamp: number;
-		sources?: unknown;
-	}[];
+	messages: ChatMessage[];
 	chat_id: string;
 	id: string;
 	session_id: string;

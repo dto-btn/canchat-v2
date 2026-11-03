@@ -170,7 +170,8 @@ npx playwright test playwright/tests/e2e/accessibility --project=chromium-en --n
 
 The frontend CI workflow runs both suites. Browser coverage includes rendered navigation
 structure, image alternatives, shared text/placeholder contrast, keyboard focus indicators,
-and border styling. These focused checks do not replace a full-page accessibility audit.
+border styling, upload error associations in both locales, and required rating feedback.
+These focused checks do not replace a full-page accessibility audit.
 
 ---
 

@@ -212,7 +212,6 @@ html.dark {
 	--focus-outline-color: #80c7ff;
 }
 
-:where(html:not(.dark)) .text-gray-300,
 :where(html:not(.dark)) .text-gray-400,
 :where(html:not(.dark)) .text-gray-500 {
 	color: var(--text-muted-color);
@@ -225,7 +224,15 @@ textarea::placeholder {
 	opacity: 1;
 }
 
-html :focus-visible:not(:where([class*='focus:ring-'], [class*='focus-visible:ring-'])) {
+html
+	:focus-visible:not(
+		[class~='focus:ring-2'],
+		[class~='focus-visible:ring-2'],
+		[class~='focus:ring-4'],
+		[class~='focus-visible:ring-4'],
+		[class~='focus:ring-8'],
+		[class~='focus-visible:ring-8']
+	) {
 	outline: 2px solid var(--focus-outline-color);
 	outline-offset: 2px;
 }
