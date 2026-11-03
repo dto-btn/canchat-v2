@@ -884,19 +884,9 @@ def _load_metric_definitions():
     return definitions
 
 
+# HTTP request counts and durations come from the OpenTelemetry FastAPI
+# instrumentation (``http.server.request.duration``, OBS-20).
 DEFAULT_METRIC_DEFINITIONS = [
-    {
-        "name": "http_requests_total",
-        "type": "counter",
-        "description": "Total HTTP requests",
-        "unit": "",
-    },
-    {
-        "name": "http_request_duration_ms",
-        "type": "histogram",
-        "description": "Duration of HTTP requests in milliseconds",
-        "unit": "ms",
-    },
     {
         "name": "task_queue_size",
         "type": "gauge",

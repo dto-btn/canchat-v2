@@ -1,6 +1,14 @@
 """OpenTelemetry providers initialized before application instruments."""
 
-from open_webui.observability.providers import initialize_providers, shutdown_providers
+from open_webui.observability.tracing import apply_semconv_opt_in
+
+# Must run before any OpenTelemetry instrumentor reads the semconv opt-in.
+apply_semconv_opt_in()
+
+from open_webui.observability.providers import (  # noqa: E402
+    initialize_providers,
+    shutdown_providers,
+)
 
 _providers = initialize_providers()
 

@@ -33,6 +33,11 @@ from open_webui.env import (
 # Needs to be imported before fastapi to ensure instrumentation is set up correctly
 from open_webui.instrumentation import meter
 from open_webui.observability import shutdown_providers
+from open_webui.observability.tracing import instrument_app, instrument_libraries
+
+# SQLAlchemy engines are only traced if created after this call, so it must
+# run before open_webui.internal.db is imported.
+instrument_libraries()
 from open_webui.observability.logging_config import (
     apply_logger_policy,
     shutdown_logging,
@@ -576,6 +581,7 @@ app = FastAPI(
     redoc_url=None,
     lifespan=lifespan,
 )
+instrument_app(app)
 
 app.state.config = AppConfig()
 

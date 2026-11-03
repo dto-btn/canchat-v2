@@ -6,7 +6,13 @@ import time
 import uuid
 from typing import Any
 
-from open_webui.observability.context import request_id_var, user_id_var
+from open_webui.observability.context import (
+    SERVER_SPAN_CONTEXT_STATE_KEY,
+    request_id_var,
+    user_id_var,
+)
+from opentelemetry import trace
+from opentelemetry.trace import NonRecordingSpan, SpanContext
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 log = logging.getLogger("open_webui.access")
@@ -91,7 +97,16 @@ class RequestContextMiddleware:
                     route = self._route(scope)
                     if route is not None:
                         extra["http.route"] = route
-                    log.info("HTTP request completed", extra=extra)
+                    span_context = state.get(SERVER_SPAN_CONTEXT_STATE_KEY)
+                    if isinstance(span_context, SpanContext) and span_context.is_valid:
+                        # The server span has ended by now; re-activate its
+                        # context so both log sinks record trace_id/span_id.
+                        with trace.use_span(
+                            NonRecordingSpan(span_context), end_on_exit=False
+                        ):
+                            log.info("HTTP request completed", extra=extra)
+                    else:
+                        log.info("HTTP request completed", extra=extra)
             finally:
                 user_id_var.reset(user_token)
                 request_id_var.reset(request_token)

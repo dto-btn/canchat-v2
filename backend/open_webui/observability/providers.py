@@ -4,6 +4,7 @@ import atexit
 import importlib.metadata
 import ipaddress
 import json
+import math
 import os
 import re
 import threading
@@ -27,12 +28,24 @@ from opentelemetry.sdk.metrics.export import (
 )
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.trace.export import (
+    BatchSpanProcessor,
+    SimpleSpanProcessor,
+    SpanExporter,
+)
+
+from open_webui.observability.tracing import (
+    SanitizingSpanExporter,
+    build_sampler,
+    configure_propagation,
+)
 
 DEFAULT_ENDPOINT = "http://otel-collector:4318"
 DEFAULT_SERVICE_NAME = "canchat-backend"
 DEFAULT_METER_NAME = "canchat-meter"
 DEFAULT_METRIC_EXPORT_INTERVAL_MS = 15000
+DEFAULT_TRACES_SAMPLER_RATIO = 0.1
+DEFAULT_DEV_TRACES_SAMPLER_RATIO = 1.0
 _LEGACY_METRIC_PATH = "/v1/metrics"
 _SHUTDOWN_TIMEOUT_MS = 5000
 
@@ -46,6 +59,9 @@ class OTelSettings:
     endpoint: str
     meter_name: str
     metric_export_interval_ms: int
+    traces_sampler_ratio: float = DEFAULT_DEV_TRACES_SAMPLER_RATIO
+    traces_healthchecks: bool = False
+    propagation_allowed_hosts: tuple[str, ...] = ()
 
 
 @dataclass
@@ -56,6 +72,7 @@ class ProviderBundle:
     meter: Meter
     tracer: trace.Tracer
     export_enabled: bool = False
+    settings: OTelSettings | None = None
 
     def shutdown(self) -> None:
         errors: list[Exception] = []
@@ -171,16 +188,46 @@ def _validate_endpoint(endpoint: str) -> None:
         raise ValueError("OTEL_EXPORTER_OTLP_ENDPOINT must be a valid HTTP(S) base URL")
 
 
+def _parse_sampler_ratio(value: str) -> float:
+    try:
+        ratio = float(value)
+    except ValueError:
+        ratio = math.nan
+    if not math.isfinite(ratio) or not 0.0 <= ratio <= 1.0:
+        raise ValueError(
+            "OTEL_TRACES_SAMPLER_RATIO must be a number between 0.0 and 1.0"
+        )
+    return ratio
+
+
+def _parse_propagation_hosts(value: str) -> tuple[str, ...]:
+    hosts = []
+    for entry in value.split(","):
+        host = entry.strip().lower().rstrip(".")
+        if not host:
+            continue
+        if host.startswith("*."):
+            valid = _is_valid_hostname(host[2:]) and "." in host[2:]
+        else:
+            valid = _is_valid_hostname(host)
+        if not valid:
+            raise ValueError(
+                "OTEL_PROPAGATION_ALLOWED_HOSTS must be a comma-separated list of "
+                "hostnames, IP addresses or '*.<domain>' wildcards"
+            )
+        hosts.append(host)
+    return tuple(dict.fromkeys(hosts))
+
+
 def load_settings(environ: Mapping[str, str] | None = None) -> OTelSettings:
     """Resolve OTEL settings, preferring current names over legacy aliases."""
     values = os.environ if environ is None else environ
     environment = values.get("ENV", "dev")
-    default_enabled = (
-        "true"
-        if values.get("DOCKER", "false").strip().lower() == "true"
+    container_defaults = (
+        values.get("DOCKER", "false").strip().lower() == "true"
         or environment.strip().lower() != "dev"
-        else "false"
     )
+    default_enabled = "true" if container_defaults else "false"
     enabled_value = _resolve_setting(values, "OTEL_ENABLED", None, default_enabled)
     enabled_text = enabled_value.strip().lower()
     if enabled_text not in {"true", "false"}:
@@ -222,6 +269,21 @@ def load_settings(environ: Mapping[str, str] | None = None) -> OTelSettings:
     if not service_name:
         raise ValueError("OTEL_SERVICE_NAME must not be empty")
 
+    traces_sampler_ratio = _parse_sampler_ratio(
+        values.get(
+            "OTEL_TRACES_SAMPLER_RATIO",
+            str(
+                DEFAULT_TRACES_SAMPLER_RATIO
+                if container_defaults
+                else DEFAULT_DEV_TRACES_SAMPLER_RATIO
+            ),
+        ).strip()
+    )
+
+    healthchecks_text = values.get("OTEL_TRACES_HEALTHCHECKS", "false").strip().lower()
+    if healthchecks_text not in {"true", "false"}:
+        raise ValueError("OTEL_TRACES_HEALTHCHECKS must be either 'true' or 'false'")
+
     return OTelSettings(
         enabled=enabled_text == "true",
         service_name=service_name,
@@ -230,6 +292,11 @@ def load_settings(environ: Mapping[str, str] | None = None) -> OTelSettings:
         endpoint=endpoint,
         meter_name=values.get("INSTRUMENTATION_METER_NAME", DEFAULT_METER_NAME),
         metric_export_interval_ms=metric_export_interval_ms,
+        traces_sampler_ratio=traces_sampler_ratio,
+        traces_healthchecks=healthchecks_text == "true",
+        propagation_allowed_hosts=_parse_propagation_hosts(
+            values.get("OTEL_PROPAGATION_ALLOWED_HOSTS", "")
+        ),
     )
 
 
@@ -240,8 +307,13 @@ def _signal_endpoint(base_endpoint: str, signal: str) -> str:
 def create_providers(
     settings: OTelSettings,
     metric_readers: Sequence[MetricReader] = (),
+    span_exporters: Sequence[SpanExporter] = (),
 ) -> ProviderBundle:
-    """Build a provider bundle; optional readers support in-memory metric tests."""
+    """Build a provider bundle; optional readers/exporters support in-memory tests.
+
+    Every span exporter, including test exporters, receives spans only after
+    the attribute allow-list in ``tracing.SanitizingSpanExporter`` is applied.
+    """
     resource = Resource.create(
         {
             "service.name": settings.service_name,
@@ -251,8 +323,16 @@ def create_providers(
     )
     configured_readers = list(metric_readers)
     # The lifecycle owner shuts providers down once; SDK atexit hooks would repeat it.
-    tracer_provider = TracerProvider(resource=resource, shutdown_on_exit=False)
+    tracer_provider = TracerProvider(
+        resource=resource,
+        sampler=build_sampler(settings.traces_sampler_ratio),
+        shutdown_on_exit=False,
+    )
     logger_provider = LoggerProvider(resource=resource, shutdown_on_exit=False)
+    for exporter in span_exporters:
+        tracer_provider.add_span_processor(
+            SimpleSpanProcessor(SanitizingSpanExporter(exporter))
+        )
 
     if settings.enabled:
         configured_readers.append(
@@ -265,7 +345,11 @@ def create_providers(
         )
         tracer_provider.add_span_processor(
             BatchSpanProcessor(
-                OTLPSpanExporter(endpoint=_signal_endpoint(settings.endpoint, "traces"))
+                SanitizingSpanExporter(
+                    OTLPSpanExporter(
+                        endpoint=_signal_endpoint(settings.endpoint, "traces")
+                    )
+                )
             )
         )
         logger_provider.add_log_record_processor(
@@ -286,6 +370,7 @@ def create_providers(
         meter=meter_provider.get_meter(settings.meter_name),
         tracer=tracer_provider.get_tracer(settings.meter_name),
         export_enabled=settings.enabled,
+        settings=settings,
     )
 
 
@@ -300,10 +385,12 @@ def initialize_providers() -> ProviderBundle:
 
     with _provider_lock:
         if _providers is None:
-            providers = create_providers(load_settings())
+            settings = load_settings()
+            providers = create_providers(settings)
             metrics.set_meter_provider(providers.meter_provider)
             trace.set_tracer_provider(providers.tracer_provider)
             set_logger_provider(providers.logger_provider)
+            configure_propagation(settings.propagation_allowed_hosts)
             _providers = providers
             # Covers processes that never run the FastAPI lifespan, such as scripts.
             atexit.register(shutdown_providers)

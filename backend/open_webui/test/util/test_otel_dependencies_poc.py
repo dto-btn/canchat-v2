@@ -7,6 +7,7 @@ from threading import Thread
 
 import pytest
 
+from opentelemetry import propagate
 from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
 from opentelemetry.proto.collector.logs.v1.logs_service_pb2 import (
     ExportLogsServiceRequest,
@@ -18,6 +19,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import SpanKind
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
 
 @pytest.mark.parametrize("bridge", ["sdk", "instrumentation"])
@@ -101,6 +103,10 @@ def test_httpx_instrumentor_covers_sync_and_async_clients(monkeypatch, is_async)
     import httpx
 
     monkeypatch.delenv("OTEL_SDK_DISABLED", raising=False)
+    # Checks the instrumentor's own injection, independent of the OBS-20
+    # destination allow-list installed when the observability package loads.
+    previous_textmap = propagate.get_global_textmap()
+    propagate.set_global_textmap(TraceContextTextMapPropagator())
     exporter = InMemorySpanExporter()
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(exporter))
@@ -142,3 +148,4 @@ def test_httpx_instrumentor_covers_sync_and_async_clients(monkeypatch, is_async)
         )
     finally:
         provider.shutdown()
+        propagate.set_global_textmap(previous_textmap)
