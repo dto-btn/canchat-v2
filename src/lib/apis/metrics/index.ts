@@ -382,7 +382,16 @@ function generateFallbackDates(days: number = 7): Array<{ date: string; count: n
 	});
 }
 
-export const getModels = async (token: string): Promise<string[]> => {
+// Active: a chat model (id + display name). Archived: one stored model name.
+export type MetricsModelOption = { id: string; name: string };
+
+export type MetricsModelList = {
+	active: MetricsModelOption[];
+	archived: MetricsModelOption[];
+};
+
+// Models for the Metrics dropdown: active (in the chat dropdown) and archived
+export const getModelsGrouped = async (token: string): Promise<MetricsModelList> => {
 	try {
 		const res = await fetch(`${WEBUI_API_BASE_URL}/metrics/models`, {
 			method: 'GET',
@@ -397,7 +406,10 @@ export const getModels = async (token: string): Promise<string[]> => {
 			throw new Error(`Error ${res.status}: ${error.detail || 'Failed to get models'}`);
 		}
 		const data = await res.json();
-		return data.models;
+		// Fall back to treating every used model as active on older backends
+		const active: MetricsModelOption[] =
+			data.active_models ?? (data.models ?? []).map((id: string) => ({ id, name: id }));
+		return { active, archived: data.archived_models ?? [] };
 	} catch (err: any) {
 		throw new Error(err.message || 'An unexpected error occurred');
 	}
@@ -556,6 +568,9 @@ export const getModelHistoricalPrompts = async (
 };
 
 // New functions for enhanced metrics
+
+// NOTE: unused until CANCHAT-215 (date-range summary panel). Metrics.svelte's call
+// was removed in CANCHAT-5 because the result was never shown.
 export const getRangeMetrics = async (
 	token: string,
 	startDate: string,
