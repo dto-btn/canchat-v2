@@ -52,19 +52,24 @@ test.describe('Metrics: Model Analysis model dropdown', () => {
 
 		await trigger.click();
 		await expect(panel).toBeVisible();
-		await expect(panel).toContainText(adminPage.getTranslation('Active'));
+		await expect(panel).toContainText(adminPage.getTranslation('Active models'));
 
 		// Active families, in family order
 		const activeToggles = panel.locator('button[aria-expanded]');
-		await expect(activeToggles).toHaveText([/GPT/, /Cohere/, /Gemini/, /Archived|Archivés/]);
-
-		// Archived opens to its own family groups
-		await groupToggle(panel, adminPage.getTranslation('Archived')).click();
 		await expect(activeToggles).toHaveText([
 			/GPT/,
 			/Cohere/,
 			/Gemini/,
-			/Archived|Archivés/,
+			/Archived models|Modèles archivés/
+		]);
+
+		// Archived opens to its own family groups
+		await groupToggle(panel, adminPage.getTranslation('Archived models')).click();
+		await expect(activeToggles).toHaveText([
+			/GPT/,
+			/Cohere/,
+			/Gemini/,
+			/Archived models|Modèles archivés/,
 			/GPT/,
 			/Cohere/,
 			/Other|Autre/
@@ -91,13 +96,13 @@ test.describe('Metrics: Model Analysis model dropdown', () => {
 		await expect(groupToggle(panel, 'GPT')).toBeFocused();
 
 		await page.keyboard.press('End');
-		await expect(groupToggle(panel, adminPage.getTranslation('Archived'))).toBeFocused();
+		await expect(groupToggle(panel, adminPage.getTranslation('Archived models'))).toBeFocused();
 
 		// Wraps around at both ends
 		await page.keyboard.press('ArrowDown');
 		await expect(groupToggle(panel, 'GPT')).toBeFocused();
 		await page.keyboard.press('ArrowUp');
-		await expect(groupToggle(panel, adminPage.getTranslation('Archived'))).toBeFocused();
+		await expect(groupToggle(panel, adminPage.getTranslation('Archived models'))).toBeFocused();
 	});
 
 	test('METRICS-MODEL-TC003: Escape closes the panel and returns focus to the trigger', async ({
@@ -142,7 +147,8 @@ test.describe('Metrics: Model Analysis model dropdown', () => {
 		adminPage
 	}) => {
 		const { page, trigger, panel } = await openModelAnalysis(adminPage);
-		const archived = adminPage.getTranslation('Archived');
+		const archivedSection = adminPage.getTranslation('Archived models');
+		const archivedTag = adminPage.getTranslation('Archived model');
 
 		// Archived → GPT → gpt-4o-2024-11-20, all by keyboard
 		await trigger.focus();
@@ -150,7 +156,7 @@ test.describe('Metrics: Model Analysis model dropdown', () => {
 		await page.keyboard.press('End');
 		await page.keyboard.press('Enter');
 		await page.keyboard.press('ArrowDown');
-		await expect(panel.locator('button[aria-expanded]').nth(4)).toBeFocused();
+		await expect(groupToggle(panel.locator('#model-select-archived'), 'GPT')).toBeFocused();
 		await page.keyboard.press('Enter');
 		await page.keyboard.press('ArrowDown');
 		await expect(modelRow(panel, 'gpt-4o-2024-11-20')).toBeFocused();
@@ -158,12 +164,12 @@ test.describe('Metrics: Model Analysis model dropdown', () => {
 
 		await expect(panel).toBeHidden();
 		await expect(trigger.locator('[title="gpt-4o-2024-11-20"]')).toBeVisible();
-		await expect(trigger).toContainText(archived);
+		await expect(trigger).toContainText(archivedTag);
 
 		// Reopening expands Archived and its GPT group, and focuses the selection
 		await page.keyboard.press('ArrowDown');
 		await expect(modelRow(panel, 'gpt-4o-2024-11-20')).toBeFocused();
-		await expect(groupToggle(panel, archived)).toHaveAttribute('aria-expanded', 'true');
+		await expect(groupToggle(panel, archivedSection)).toHaveAttribute('aria-expanded', 'true');
 	});
 
 	test('METRICS-MODEL-TC006: the panel closes when focus or a click leaves it', async ({

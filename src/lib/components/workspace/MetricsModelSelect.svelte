@@ -134,7 +134,7 @@
 		<span class="truncate" title={value ?? ''}>
 			{selectedLabel || $i18n.t('Select Model:')}
 			{#if selectedIsArchived}
-				<span class="text-xs text-gray-600 dark:text-gray-400">({$i18n.t('Archived')})</span>
+				<span class="text-xs text-gray-600 dark:text-gray-400">({$i18n.t('Archived model')})</span>
 			{/if}
 		</span>
 		<ChevronDown className="w-4 h-4 shrink-0" />
@@ -158,7 +158,7 @@
 				<div
 					class="px-3 pt-1 pb-1 text-xs font-semibold uppercase text-gray-600 dark:text-gray-400"
 				>
-					{$i18n.t('Active')}
+					{$i18n.t('Active models')}
 				</div>
 			{/if}
 
@@ -223,7 +223,7 @@
 						<ChevronRight className="w-3.5 h-3.5" />
 					{/if}
 					<ArchiveBox className="w-3.5 h-3.5" strokeWidth="2" />
-					<span class="flex-1 text-left">{$i18n.t('Archived')}</span>
+					<span class="flex-1 text-left">{$i18n.t('Archived models')}</span>
 					<span class="text-xs text-gray-600 dark:text-gray-300" aria-hidden="true"
 						>{archivedModels.length}</span
 					>
