@@ -70,6 +70,15 @@ from open_webui.utils.plugin import load_function_module_by_id
 
 from open_webui.tasks import create_task
 
+from open_webui.observability.chat import (
+    OUTCOME_CANCELLED,
+    OUTCOME_ERROR,
+    chat_span,
+    count_items,
+    mark_span_error,
+    noop_operation,
+)
+
 from open_webui.config import (
     DEFAULT_TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE,
     RAG_CONTEXT_FALLBACK_MAX_TOKENS,
@@ -1402,26 +1411,30 @@ async def process_chat_payload(request, form_data, metadata, user, model):
 
     if features:
         if "web_search" in features and features["web_search"]:
-            form_data = await chat_web_search_handler(
-                request, form_data, extra_params, user
-            )
+            with chat_span("chat.web_search"):
+                form_data = await chat_web_search_handler(
+                    request, form_data, extra_params, user
+                )
 
         if "wiki_grounding" in features and features["wiki_grounding"]:
             # Pass temporal context to wiki grounding for current information prioritization
             extra_params["temporal_context"] = temporal_context
-            form_data = await chat_wiki_grounding_handler(
-                request, form_data, extra_params, user
-            )
+            with chat_span("chat.wiki_grounding"):
+                form_data = await chat_wiki_grounding_handler(
+                    request, form_data, extra_params, user
+                )
 
         if "image_generation" in features and features["image_generation"]:
-            form_data = await chat_image_generation_handler(
-                request, form_data, extra_params, user
-            )
+            with chat_span("chat.image_generation"):
+                form_data = await chat_image_generation_handler(
+                    request, form_data, extra_params, user
+                )
 
     try:
-        form_data, flags = await chat_completion_filter_functions_handler(
-            request, form_data, model, extra_params
-        )
+        with chat_span("chat.filters"):
+            form_data, flags = await chat_completion_filter_functions_handler(
+                request, form_data, model, extra_params
+            )
     except Exception as e:
         raise Exception(f"Error: {e}")
 
@@ -1438,19 +1451,31 @@ async def process_chat_payload(request, form_data, metadata, user, model):
     }
     form_data["metadata"] = metadata
 
-    try:
-        form_data, flags = await chat_completion_tools_handler(
-            request, form_data, user, models, extra_params
-        )
-        sources.extend(flags.get("sources", []))
-    except Exception as e:
-        log.exception("Chat tools handler failed: %s", type(e).__name__)
+    with chat_span(
+        "chat.tools", {"canchat.tool_ids.count": count_items(tool_ids)}
+    ) as span:
+        try:
+            form_data, flags = await chat_completion_tools_handler(
+                request, form_data, user, models, extra_params
+            )
+            tool_sources = flags.get("sources", [])
+            sources.extend(tool_sources)
+            span.set_attribute("canchat.sources.count", count_items(tool_sources))
+        except Exception as e:
+            mark_span_error(span, e)
+            log.exception("Chat tools handler failed: %s", type(e).__name__)
 
-    try:
-        form_data, flags = await chat_completion_files_handler(request, form_data, user)
-        sources.extend(flags.get("sources", []))
-    except Exception as e:
-        log.exception("Chat files handler failed: %s", type(e).__name__)
+    with chat_span("chat.files", {"canchat.files.count": count_items(files)}) as span:
+        try:
+            form_data, flags = await chat_completion_files_handler(
+                request, form_data, user
+            )
+            file_sources = flags.get("sources", [])
+            sources.extend(file_sources)
+            span.set_attribute("canchat.sources.count", count_items(file_sources))
+        except Exception as e:
+            mark_span_error(span, e)
+            log.exception("Chat files handler failed: %s", type(e).__name__)
 
     # If context is not empty, insert it into the messages
     if len(sources) > 0:
@@ -1590,8 +1615,12 @@ async def process_chat_payload(request, form_data, metadata, user, model):
 
 
 async def process_chat_response(
-    request, response, form_data, user, events, metadata, tasks
+    request, response, form_data, user, events, metadata, tasks, operation=None
 ):
+    # The chat operation ends once the response is delivered; title and tag
+    # generation below run afterwards as their own spans (OBS-22).
+    operation = operation or noop_operation()
+
     async def background_tasks_handler():
         message_map = Chats.get_messages_by_chat_id(metadata["chat_id"])
         message = message_map.get(metadata["message_id"]) if message_map else None
@@ -1602,15 +1631,20 @@ async def process_chat_response(
             if tasks:
                 if TASKS.TITLE_GENERATION in tasks:
                     if tasks[TASKS.TITLE_GENERATION]:
-                        res = await generate_title(
-                            request,
-                            {
-                                "model": message["model"],
-                                "messages": messages,
-                                "chat_id": metadata["chat_id"],
-                            },
-                            user,
-                        )
+                        with chat_span(
+                            "chat.generate_title",
+                            {"canchat.operation": str(TASKS.TITLE_GENERATION)},
+                            follows=operation.span,
+                        ):
+                            res = await generate_title(
+                                request,
+                                {
+                                    "model": message["model"],
+                                    "messages": messages,
+                                    "chat_id": metadata["chat_id"],
+                                },
+                                user,
+                            )
 
                         if res and isinstance(res, dict):
                             title = extract_title_from_response(res)
@@ -1643,15 +1677,20 @@ async def process_chat_response(
                         )
 
                 if TASKS.TAGS_GENERATION in tasks and tasks[TASKS.TAGS_GENERATION]:
-                    res = await generate_chat_tags(
-                        request,
-                        {
-                            "model": message["model"],
-                            "messages": messages,
-                            "chat_id": metadata["chat_id"],
-                        },
-                        user,
-                    )
+                    with chat_span(
+                        "chat.generate_tags",
+                        {"canchat.operation": str(TASKS.TAGS_GENERATION)},
+                        follows=operation.span,
+                    ):
+                        res = await generate_chat_tags(
+                            request,
+                            {
+                                "model": message["model"],
+                                "messages": messages,
+                                "chat_id": metadata["chat_id"],
+                            },
+                            user,
+                        )
 
                     if res and isinstance(res, dict):
                         if len(res.get("choices", [])) == 1:
@@ -1694,6 +1733,7 @@ async def process_chat_response(
         event_emitter = get_event_emitter(metadata)
 
     if not isinstance(response, StreamingResponse):
+        operation.set_response_mode("json")
         if event_emitter:
             if "selected_model_id" in response:
                 Chats.upsert_message_to_chat_by_id_and_message_id(
@@ -1776,6 +1816,7 @@ async def process_chat_response(
                             },
                         )
 
+                operation.finish()
                 await background_tasks_handler()
 
             # Record metrics for non-streaming response
@@ -1804,18 +1845,23 @@ async def process_chat_response(
                 metadata.get("chat_id"),
             )
 
+            operation.finish()
             return response
         else:
+            operation.finish()
             return response
 
     if not any(
         content_type in response.headers["Content-Type"]
         for content_type in ["text/event-stream", "application/x-ndjson"]
     ):
+        operation.set_response_mode("passthrough")
+        operation.finish()
         return response
 
     if event_emitter:
         task_id = str(uuid4())  # Create a unique task ID.
+        operation.set_response_mode("background")
 
         # Handle as a background task
         async def post_response_handler(response, events):
@@ -2120,8 +2166,10 @@ async def process_chat_response(
                         metadata.get("chat_id"),
                     )
 
+                operation.finish()
                 await background_tasks_handler()
             except asyncio.CancelledError:
+                operation.finish(OUTCOME_CANCELLED)
                 print("Task was cancelled!")
                 await event_emitter({"type": "task-cancelled"})
 
@@ -2134,44 +2182,70 @@ async def process_chat_response(
                             "content": content,
                         },
                     )
+            except Exception as e:
+                operation.finish(OUTCOME_ERROR, e)
+                raise
 
             if response.background is not None:
                 await response.background()
 
+        def finish_unstarted_operation(task):
+            # Covers a task that ended before reaching a finish point; a no-op
+            # otherwise. Retrieving the exception also avoids asyncio's
+            # "exception was never retrieved" warning.
+            if task.cancelled():
+                operation.finish(OUTCOME_CANCELLED)
+            else:
+                operation.finish(OUTCOME_ERROR, task.exception())
+
         # background_tasks.add_task(post_response_handler, response, events)
-        task_id, _ = create_task(post_response_handler(response, events))
+        task_id, task = create_task(post_response_handler(response, events))
+        task.add_done_callback(finish_unstarted_operation)
         return {"status": True, "task_id": task_id}
 
     else:
+        operation.set_response_mode("stream")
+
         # Fallback to the original response
         async def stream_wrapper(original_generator, events):
             def wrap_item(item):
                 return f"data: {item}\n\n"
 
-            # Separate sources events from other events
-            sources_events = []
-            other_events = []
+            try:
+                # Separate sources events from other events
+                sources_events = []
+                other_events = []
 
-            for event in events:
-                if "sources" in event:
-                    sources_events.append(event)
-                else:
-                    other_events.append(event)
+                for event in events:
+                    if "sources" in event:
+                        sources_events.append(event)
+                    else:
+                        other_events.append(event)
 
-            # Send non-sources events first
-            for event in other_events:
-                yield wrap_item(json.dumps(event))
+                # Send non-sources events first
+                for event in other_events:
+                    yield wrap_item(json.dumps(event))
 
-            # Stream the original response
-            async for data in original_generator:
-                yield data
+                # Stream the original response
+                async for data in original_generator:
+                    yield data
 
-            # Send sources events after completion
-            for event in sources_events:
-                yield wrap_item(json.dumps(event))
+                # Send sources events after completion
+                for event in sources_events:
+                    yield wrap_item(json.dumps(event))
+            except (asyncio.CancelledError, GeneratorExit):
+                operation.finish(OUTCOME_CANCELLED)
+                raise
+            except Exception as e:
+                operation.finish(OUTCOME_ERROR, e)
+                raise
+            else:
+                operation.finish()
 
+        body = stream_wrapper(response.body_iterator, events)
+        operation.finish_when_collected(body)
         return StreamingResponse(
-            stream_wrapper(response.body_iterator, events),
+            body,
             headers=dict(response.headers),
             background=response.background,
         )

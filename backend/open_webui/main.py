@@ -324,6 +324,14 @@ from open_webui.utils.chat import (
     chat_action as chat_action_handler,
 )
 from open_webui.utils.middleware import process_chat_payload, process_chat_response
+from open_webui.observability.chat import (
+    ChatOperation,
+    chat_span,
+    count_items,
+    feature_attributes,
+    known_model_id,
+    safe_chat_id,
+)
 from open_webui.utils.access_control import has_access
 
 from open_webui.utils.auth import (
@@ -1245,11 +1253,19 @@ async def chat_completion(
         await get_all_models(request)
 
     tasks = form_data.pop("background_tasks", None)
+    operation = ChatOperation.start(request, form_data)
+    # Finished by whichever path delivers the response (process_chat_response).
+    with operation.activate():
+        return await _run_chat_operation(request, form_data, user, tasks, operation)
+
+
+async def _run_chat_operation(request, form_data, user, tasks, operation):
     try:
         model_id = form_data.get("model", None)
         if model_id not in request.app.state.MODELS:
             raise Exception("Model not found")
         model = request.app.state.MODELS[model_id]
+        operation.set_model(known_model_id(request, model_id))
 
         # Check if user has access to the model
         if not BYPASS_MODEL_ACCESS_CONTROL and user.role == "user":
@@ -1269,10 +1285,21 @@ async def chat_completion(
         }
         form_data["metadata"] = metadata
 
-        form_data, events = await process_chat_payload(
-            request, form_data, metadata, user, model
-        )
+        with chat_span(
+            "chat.process_payload",
+            {
+                "canchat.model": known_model_id(request, model_id),
+                "canchat.chat.id": safe_chat_id(metadata["chat_id"]),
+                "canchat.files.count": count_items(metadata["files"]),
+                "canchat.tool_ids.count": count_items(metadata["tool_ids"]),
+                **feature_attributes(metadata["features"]),
+            },
+        ):
+            form_data, events = await process_chat_payload(
+                request, form_data, metadata, user, model
+            )
     except Exception as e:
+        operation.finish("error", e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
@@ -1281,9 +1308,17 @@ async def chat_completion(
     try:
         response = await chat_completion_handler(request, form_data, user)
         return await process_chat_response(
-            request, response, form_data, user, events, metadata, tasks
+            request,
+            response,
+            form_data,
+            user,
+            events,
+            metadata,
+            tasks,
+            operation=operation,
         )
     except Exception as e:
+        operation.finish("error", e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
