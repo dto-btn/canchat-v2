@@ -2,3 +2,6 @@ Generic single-database configuration.
 
 Create new migrations with
 DATABASE_URL=<replace with actual url> alembic --config open_webui/alembic.ini revision --autogenerate -m "a description"
+
+Revision b75e2a610f34 copies saved Gemini Flash 2.5 configuration and permissions to Gemini Flash 3.5.
+Existing 3.5 records are preserved; databases without a 2.5 record are unchanged.
