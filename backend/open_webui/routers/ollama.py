@@ -3,6 +3,7 @@
 # least connections, or least response time for better resource utilization and performance optimization.
 
 import asyncio
+from contextlib import nullcontext
 import json
 import logging
 import os
@@ -31,6 +32,12 @@ from starlette.background import BackgroundTask
 
 
 from open_webui.models.models import Models
+from open_webui.observability.chat import OUTCOME_CANCELLED
+from open_webui.observability.llm import (
+    FORMAT_NDJSON,
+    PROVIDER_OLLAMA,
+    LLMOperation,
+)
 from open_webui.utils.misc import (
     calculate_sha256,
     validate_path,
@@ -128,22 +135,26 @@ async def send_post_request(
     stream: bool = True,
     key: Optional[str] = None,
     content_type: Optional[str] = None,
+    llm: Optional[LLMOperation] = None,
 ):
+    """POST to Ollama. With ``llm``, the provider operation is finished here
+    for JSON responses and by the stream reader for streaming ones."""
     r = None
     try:
         session = aiohttp.ClientSession(
             trust_env=True, timeout=aiohttp.ClientTimeout(total=AIOHTTP_CLIENT_TIMEOUT)
         )
 
-        r = await session.post(
-            url,
-            data=payload,
-            headers={
-                "Content-Type": "application/json",
-                **({"Authorization": f"Bearer {key}"} if key else {}),
-            },
-        )
-        r.raise_for_status()
+        with llm.attempt() if llm else nullcontext():
+            r = await session.post(
+                url,
+                data=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    **({"Authorization": f"Bearer {key}"} if key else {}),
+                },
+            )
+            r.raise_for_status()
 
         if stream:
             response_headers = dict(r.headers)
@@ -152,7 +163,7 @@ async def send_post_request(
                 response_headers["Content-Type"] = content_type
 
             return StreamingResponse(
-                r.content,
+                llm.wrap_stream(r.content, FORMAT_NDJSON) if llm else r.content,
                 status_code=r.status,
                 headers=response_headers,
                 background=BackgroundTask(
@@ -162,9 +173,18 @@ async def send_post_request(
         else:
             res = await r.json()
             await cleanup_response(r, session)
+            if llm:
+                llm.observe_response(res)
+                llm.finish()
             return res
 
+    except asyncio.CancelledError:
+        if llm:
+            llm.finish(OUTCOME_CANCELLED)
+        raise
     except Exception as e:
+        if llm:
+            llm.finish("error", e)
         detail = None
 
         if r is not None:
@@ -1022,6 +1042,7 @@ async def generate_chat_completion(
     if BYPASS_MODEL_ACCESS_CONTROL:
         bypass_filter = True
 
+    metadata = form_data.get("metadata") if isinstance(form_data, dict) else None
     try:
         form_data = GenerateChatCompletionForm(**form_data)
     except Exception as e:
@@ -1081,16 +1102,33 @@ async def generate_chat_completion(
         request.app.state.config.OLLAMA_API_CONFIGS.get(url, {}),  # Legacy support
     )
 
+    # Only a configured model ID may become a metric label.
+    model_label = (
+        payload["model"]
+        if payload["model"] in (getattr(request.app.state, "OLLAMA_MODELS", None) or {})
+        else None
+    )
+
     prefix_id = api_config.get("prefix_id", None)
     if prefix_id:
         payload["model"] = payload["model"].replace(f"{prefix_id}.", "")
 
+    key = get_api_key(url_idx, url, request.app.state.config.OLLAMA_API_CONFIGS)
+    payload = json.dumps(payload)
+    llm = LLMOperation.start(
+        request,
+        provider=PROVIDER_OLLAMA,
+        model=model_label,
+        stream=bool(form_data.stream),
+        metadata=metadata,
+    )
     return await send_post_request(
         url=f"{url}/api/chat",
-        payload=json.dumps(payload),
+        payload=payload,
         stream=form_data.stream,
-        key=get_api_key(url_idx, url, request.app.state.config.OLLAMA_API_CONFIGS),
+        key=key,
         content_type="application/x-ndjson",
+        llm=llm,
     )
 
 

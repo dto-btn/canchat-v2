@@ -5,9 +5,15 @@ Values set here are added to every log record emitted in the same context
 email addresses, names, prompts or credentials.
 """
 
+import threading
+import time
+import uuid
 from contextlib import contextmanager
 from contextvars import ContextVar
-from typing import Iterator
+from dataclasses import dataclass, field
+from typing import Any, Iterator
+
+from opentelemetry.trace import Span
 
 request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
 operation_id_var: ContextVar[str | None] = ContextVar("operation_id", default=None)
@@ -30,6 +36,46 @@ LOG_CONTEXT_VARS: dict[str, ContextVar[str | None]] = {
     "model": model_var,
     "provider": provider_var,
 }
+
+
+# The chat operation (``observability.chat.ChatOperation``) whose response is
+# being produced, so provider operations started below it can be finished with
+# it if their stream is abandoned.
+current_chat_operation_var: ContextVar[Any] = ContextVar(
+    "current_chat_operation", default=None
+)
+
+
+@dataclass
+class OperationContext:
+    """State of an operation whose end is decided by whoever consumes it.
+
+    The span, monotonic start and IDs travel with the response object, so the
+    path that finishes it (an HTTP stream, a background task or the JSON
+    handler) does not depend on the context it runs in. ``claim_finish``
+    returns ``True`` exactly once.
+    """
+
+    span: Span
+    started: float = field(default_factory=time.monotonic)
+    operation_id: str = field(default_factory=lambda: uuid.uuid4().hex)
+    chat_id: str | None = None
+    message_id: str | None = None
+    _finished: bool = field(default=False, init=False, repr=False)
+    _lock: threading.Lock = field(
+        default_factory=threading.Lock, init=False, repr=False
+    )
+
+    @property
+    def finished(self) -> bool:
+        return self._finished
+
+    def claim_finish(self) -> bool:
+        with self._lock:
+            if self._finished:
+                return False
+            self._finished = True
+            return True
 
 
 @contextmanager
