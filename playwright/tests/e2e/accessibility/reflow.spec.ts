@@ -1,0 +1,183 @@
+import { test, expect, type Locator, type Page } from '@playwright/test';
+import { createServer, type ViteDevServer } from 'vite';
+import { svelte, vitePreprocess } from '@sveltejs/vite-plugin-svelte';
+import { resolve } from 'node:path';
+
+let server: ViteDevServer;
+let baseURL: string;
+
+test.beforeAll(async () => {
+	server = await createServer({
+		configFile: false,
+		optimizeDeps: {
+			include: ['lowlight', 'highlight.js/lib/core', 'turndown', 'dayjs', 'file-saver']
+		},
+		define: { APP_VERSION: '"test"', APP_BUILD_HASH: '"test"' },
+		resolve: { alias: { $lib: resolve('src/lib') } },
+		server: { host: '127.0.0.1', port: 0, watch: null, hmr: false },
+		plugins: [
+			svelte({ configFile: false, preprocess: vitePreprocess() }),
+			{
+				name: 'reflow-fixture',
+				resolveId(id) {
+					if (id === '$app/environment') return '\0reflow-environment';
+				},
+				load(id) {
+					if (id === '\0reflow-environment')
+						return 'export const browser = true; export const dev = false;';
+				},
+				configureServer(server) {
+					server.middlewares.use('/__reflow', async (_request, response, next) => {
+						try {
+							response.setHeader('Content-Type', 'text/html');
+							response.end(
+								await server.transformIndexHtml(
+									'/__reflow',
+									`<!doctype html><html lang="en"><head>
+									<meta name="viewport" content="width=device-width, initial-scale=1" />
+									</head><body><div id="fixture"></div><script type="module">
+										import Fixture from '/playwright/fixtures/Reflow.svelte';
+										import '/src/tailwind.css?import';
+										import '/src/app.css?import';
+										new Fixture({ target: document.getElementById('fixture') });
+									</script></body></html>`
+								)
+							);
+						} catch (error) {
+							next(error);
+						}
+					});
+				}
+			}
+		]
+	});
+	await server.listen();
+	const address = server.httpServer?.address();
+	if (!address || typeof address === 'string') throw new Error('Expected a TCP fixture server');
+	baseURL = `http://127.0.0.1:${address.port}`;
+}, 60_000);
+
+test.afterAll(async () => {
+	server?.httpServer?.closeAllConnections();
+	await server?.close();
+});
+
+async function expectNoHorizontalScroll(page: Page) {
+	const dimensions = await page.evaluate(() => ({
+		viewportWidth: window.innerWidth,
+		width: document.documentElement.clientWidth,
+		scrollWidth: document.documentElement.scrollWidth
+	}));
+	expect(dimensions.viewportWidth).toBe(page.viewportSize()?.width);
+	expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.width);
+}
+
+async function expectControlsFit(container: Locator) {
+	const overflow = await container.evaluate((element) => {
+		const bounds = element.getBoundingClientRect();
+		return {
+			scrollWidth: element.scrollWidth,
+			width: element.clientWidth,
+			clipped: Array.from(element.querySelectorAll('button')).flatMap((button) => {
+				const rect = button.getBoundingClientRect();
+				return rect.left < bounds.left - 1 || rect.right > bounds.right + 1
+					? [button.getAttribute('aria-label') || button.textContent || button.id]
+					: [];
+			})
+		};
+	});
+	expect(overflow.clipped).toEqual([]);
+	expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.width + 1);
+}
+
+for (const locale of ['en-GB', 'fr-CA']) {
+	for (const width of [320, 1280]) {
+		test(`message actions reflow at ${width}px in ${locale}`, async ({ page }) => {
+			await page.setViewportSize({ width, height: 800 });
+			await page.goto(`${baseURL}/__reflow?locale=${locale}`);
+			const actions = page.locator('#message-response .buttons');
+			await expect(actions.locator('button')).toHaveCount(14, { timeout: 30_000 });
+			await expectControlsFit(actions);
+			await expectNoHorizontalScroll(page);
+			const height = await actions.evaluate((element) => element.clientHeight);
+			if (width === 320) expect(height).toBeGreaterThan(28);
+			else expect(height).toBe(28);
+			const regenerate = actions.getByRole('button', {
+				name: locale === 'fr-CA' ? 'Regénérer' : 'Regenerate',
+				exact: true
+			});
+			await regenerate.click();
+			await expect(page.getByRole('status', { name: 'Regenerations' })).toHaveText('1');
+			expect(await page.evaluate(() => window.scrollX)).toBe(0);
+		});
+
+		for (const bubbles of [true, false]) {
+			test(`message edit controls fit at ${width}px in ${locale} with bubbles ${bubbles}`, async ({
+				page
+			}) => {
+				await page.setViewportSize({ width, height: 800 });
+				await page.goto(`${baseURL}/__reflow?locale=${locale}${bubbles ? '' : '&no-bubbles'}`);
+				const response = page.locator('#message-response');
+				await response
+					.getByRole('button', { name: locale === 'fr-CA' ? 'Modifier' : 'Edit', exact: true })
+					.click();
+				await expect(response.locator('textarea')).toBeVisible();
+				await expectControlsFit(response.locator('textarea').locator('..'));
+				await expectNoHorizontalScroll(page);
+				await response.locator('#close-edit-message-button').click();
+				const prompt = page.locator('#message-prompt');
+				await prompt.hover();
+				await prompt
+					.getByRole('button', { name: locale === 'fr-CA' ? 'Modifier' : 'Edit', exact: true })
+					.click();
+				await expect(prompt.locator('textarea')).toBeVisible();
+				await expectControlsFit(prompt.locator('textarea').locator('../..'));
+				await expectNoHorizontalScroll(page);
+			});
+		}
+	}
+
+	test(`multiple model responses stack without horizontal scrolling at 320px in ${locale}`, async ({
+		page
+	}) => {
+		await page.setViewportSize({ width: 320, height: 800 });
+		await page.goto(`${baseURL}/__reflow?locale=${locale}&multi`);
+		const responses = page.locator('[id^="responses-container-"]');
+		await expect(responses.locator('.buttons')).toHaveCount(2, { timeout: 30_000 });
+		expect(await responses.evaluate((element) => element.scrollWidth)).toBeLessThanOrEqual(
+			await responses.evaluate((element) => element.clientWidth)
+		);
+		for (const actions of await responses.locator('.buttons').all())
+			await expectControlsFit(actions);
+		const first = await page.locator('#message-response').boundingBox();
+		const second = await page.locator('#message-alternative').boundingBox();
+		if (!first || !second) throw new Error('Expected both model responses to have a layout');
+		expect(second.y).toBeGreaterThanOrEqual(first.y + first.height);
+		await expectNoHorizontalScroll(page);
+		await page
+			.locator('#message-response')
+			.getByRole('button', {
+				name: locale === 'fr-CA' ? 'Modifier' : 'Edit',
+				exact: true
+			})
+			.click();
+		const editor = page.locator('#message-response textarea');
+		await expect(editor).toBeVisible();
+		await expectControlsFit(editor.locator('..'));
+		await expectNoHorizontalScroll(page);
+	});
+
+	test(`multiple model responses remain side by side on desktop in ${locale}`, async ({ page }) => {
+		await page.setViewportSize({ width: 1280, height: 800 });
+		await page.goto(`${baseURL}/__reflow?locale=${locale}&multi`);
+		await expect(page.locator('[id^="responses-container-"] .buttons')).toHaveCount(2, {
+			timeout: 30_000
+		});
+		const first = await page.locator('#message-response').boundingBox();
+		const second = await page.locator('#message-alternative').boundingBox();
+		if (!first || !second) throw new Error('Expected both model responses to have a layout');
+		expect(second.x).toBeGreaterThan(first.x);
+		expect(second.y).toBe(first.y);
+		await expectNoHorizontalScroll(page);
+	});
+}
