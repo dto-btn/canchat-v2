@@ -198,6 +198,33 @@ def test_enabled_otel_uses_signal_endpoints(monkeypatch):
     assert resource["service.name"] == "test-service"
     assert resource["service.version"] == "test"
     assert resource["deployment.environment"] == "test"
+    assert resource["service.instance.id"]
+
+
+def test_service_instance_id_resolution(monkeypatch):
+    base = {"ENV": "dev"}
+    assert (
+        load_settings(
+            {**base, "OTEL_SERVICE_INSTANCE_ID": "explicit", "HOSTNAME": "pod-a"}
+        ).service_instance_id
+        == "explicit"
+    )
+    assert load_settings({**base, "HOSTNAME": "pod-a"}).service_instance_id == "pod-a"
+    monkeypatch.setattr(providers_module.socket, "gethostname", lambda: "")
+    assert load_settings(base).service_instance_id
+
+    bundle = create_providers(
+        OTelSettings(
+            **{**_settings(enabled=False).__dict__, "service_instance_id": "pod-b"}
+        )
+    )
+    try:
+        assert (
+            bundle.meter_provider._sdk_config.resource.attributes["service.instance.id"]
+            == "pod-b"
+        )
+    finally:
+        bundle.shutdown()
 
 
 def test_web_search_metrics_are_recorded_with_in_memory_reader(monkeypatch):
