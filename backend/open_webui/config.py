@@ -900,6 +900,14 @@ DEFAULT_METRIC_DEFINITIONS = [
         "unit": "{task}",
     },
     {
+        # One value per provider generation (``llm.chat``), however many
+        # network attempts it takes. Prometheus: ``canchat_llm_requests_total``.
+        "name": "canchat.llm.requests",
+        "type": "counter",
+        "description": "LLM provider generations by model, provider and outcome",
+        "unit": "{request}",
+    },
+    {
         "name": "canchat.llm.request.duration",
         "type": "histogram",
         "description": "LLM provider request duration, invocation to final chunk",

@@ -16,6 +16,8 @@ from pydantic import BaseModel
 from starlette.background import BackgroundTask
 
 from open_webui.models.models import Models
+from open_webui.observability.chat import OUTCOME_CANCELLED
+from open_webui.observability.llm import FORMAT_SSE, PROVIDER_OPENAI, LLMOperation
 from open_webui.config import (
     CACHE_DIR,
     MODEL_CONTEXT_LENGTHS,
@@ -684,45 +686,53 @@ async def generate_chat_completion(
     session = None
     streaming = False
     response = None
+    llm = LLMOperation.start(
+        request,
+        provider=PROVIDER_OPENAI,
+        model=model_id,
+        stream=bool(form_data.get("stream", False)),
+        metadata=form_data.get("metadata"),
+    )
 
     try:
         session = aiohttp.ClientSession(
             trust_env=True, timeout=aiohttp.ClientTimeout(total=AIOHTTP_CLIENT_TIMEOUT)
         )
 
-        r = await session.request(
-            method="POST",
-            url=f"{url}/chat/completions",
-            data=payload,
-            headers={
-                "Authorization": f"Bearer {key}",
-                "Content-Type": "application/json",
-                **(
-                    {
-                        "HTTP-Referer": "https://openwebui.com/",
-                        "X-Title": "Open WebUI",
-                    }
-                    if "openrouter.ai" in url
-                    else {}
-                ),
-                **(
-                    {
-                        "X-OpenWebUI-User-Name": user.name,
-                        "X-OpenWebUI-User-Id": user.id,
-                        "X-OpenWebUI-User-Email": user.email,
-                        "X-OpenWebUI-User-Role": user.role,
-                    }
-                    if ENABLE_FORWARD_USER_INFO_HEADERS
-                    else {}
-                ),
-            },
-        )
+        with llm.attempt():
+            r = await session.request(
+                method="POST",
+                url=f"{url}/chat/completions",
+                data=payload,
+                headers={
+                    "Authorization": f"Bearer {key}",
+                    "Content-Type": "application/json",
+                    **(
+                        {
+                            "HTTP-Referer": "https://openwebui.com/",
+                            "X-Title": "Open WebUI",
+                        }
+                        if "openrouter.ai" in url
+                        else {}
+                    ),
+                    **(
+                        {
+                            "X-OpenWebUI-User-Name": user.name,
+                            "X-OpenWebUI-User-Id": user.id,
+                            "X-OpenWebUI-User-Email": user.email,
+                            "X-OpenWebUI-User-Role": user.role,
+                        }
+                        if ENABLE_FORWARD_USER_INFO_HEADERS
+                        else {}
+                    ),
+                },
+            )
 
         # Check if response is SSE
         if "text/event-stream" in r.headers.get("Content-Type", ""):
             streaming = True
             return StreamingResponse(
-                r.content,
+                llm.wrap_stream(r.content, FORMAT_SSE),
                 status_code=r.status,
                 headers=dict(r.headers),
                 background=BackgroundTask(
@@ -737,8 +747,14 @@ async def generate_chat_completion(
                 response = await r.text()
 
             r.raise_for_status()
+            llm.observe_response(response)
+            llm.finish()
             return response
+    except asyncio.CancelledError:
+        llm.finish(OUTCOME_CANCELLED)
+        raise
     except Exception as e:
+        llm.finish("error", e)
         log.exception(e)
 
         detail = None
