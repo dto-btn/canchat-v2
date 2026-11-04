@@ -27,6 +27,8 @@ from opentelemetry import context as otel_context
 from opentelemetry import trace
 from opentelemetry.trace import Link, Span, StatusCode
 
+from open_webui.observability.context import current_chat_operation_var
+
 log = logging.getLogger(__name__)
 
 TRACER_NAME = "open_webui.chat"
@@ -160,6 +162,8 @@ class ChatOperation:
         self._model: str | None = None
         self._started = time.monotonic() if started is None else started
         self._finished = False
+        # Provider operations still consuming a response for this chat.
+        self._children: list[Any] = []
 
     @classmethod
     def start(cls, request: Any, form_data: Mapping[str, Any]) -> "ChatOperation":
@@ -195,6 +199,23 @@ class ChatOperation:
     def set_response_mode(self, mode: str) -> None:
         self.span.set_attribute("canchat.response.mode", mode)
 
+    def attach(self, child: Any) -> bool:
+        """Finish ``child`` with this operation if it is still open by then.
+
+        Covers a provider stream that is never read to the end, e.g. a body
+        the client abandons. Returns ``False`` once this operation has ended.
+        """
+        if self._finished:
+            return False
+        self._children.append(child)
+        return True
+
+    def detach(self, child: Any) -> None:
+        try:
+            self._children.remove(child)
+        except ValueError:
+            pass
+
     def finish_when_collected(self, obj: Any) -> None:
         """Finish as ``cancelled`` when ``obj`` is garbage collected.
 
@@ -212,20 +233,24 @@ class ChatOperation:
         Anything that escapes the block finishes the operation; a normal exit
         leaves it open for the delivery path to finish.
         """
-        with trace.use_span(
-            self.span,
-            end_on_exit=False,
-            record_exception=False,
-            set_status_on_exception=False,
-        ):
-            try:
-                yield self
-            except asyncio.CancelledError:
-                self.finish(OUTCOME_CANCELLED)
-                raise
-            except BaseException as e:
-                self.finish(OUTCOME_ERROR, e)
-                raise
+        token = current_chat_operation_var.set(self)
+        try:
+            with trace.use_span(
+                self.span,
+                end_on_exit=False,
+                record_exception=False,
+                set_status_on_exception=False,
+            ):
+                try:
+                    yield self
+                except asyncio.CancelledError:
+                    self.finish(OUTCOME_CANCELLED)
+                    raise
+                except BaseException as e:
+                    self.finish(OUTCOME_ERROR, e)
+                    raise
+        finally:
+            current_chat_operation_var.reset(token)
 
     def finish(
         self, outcome: str = OUTCOME_SUCCESS, error: BaseException | None = None
@@ -234,6 +259,15 @@ class ChatOperation:
             return
         self._finished = True
         duration = time.monotonic() - self._started
+        # Children end first so they never end after their parent span.
+        for child in list(self._children):
+            try:
+                child.finish(outcome, error)
+            except Exception as e:
+                if getattr(self._metrics, "strict", False):
+                    raise
+                log.warning("Failed to finish child operation: %s", type(e).__name__)
+        self._children.clear()
         try:
             self.span.set_attribute("canchat.outcome", outcome)
             if error is not None:
