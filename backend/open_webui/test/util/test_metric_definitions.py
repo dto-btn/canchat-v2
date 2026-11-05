@@ -17,6 +17,7 @@ def test_unset_uses_builtin_defaults(monkeypatch):
     by_name = {d["name"]: d for d in definitions}
     assert "task_queue_size" not in by_name
     assert by_name["canchat.tasks.active"]["type"] == "observable_updowncounter"
+    assert by_name["canchat.llm.requests"]["type"] == "counter"
     for name in (
         "canchat.llm.request.duration",
         "canchat.llm.time_to_first_token",
