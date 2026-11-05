@@ -16,7 +16,7 @@ from pydantic import BaseModel
 from starlette.background import BackgroundTask
 
 from open_webui.models.models import Models
-from open_webui.observability.chat import OUTCOME_CANCELLED
+from open_webui.observability.chat import OUTCOME_CANCELLED, OUTCOME_ERROR
 from open_webui.observability.llm import FORMAT_SSE, PROVIDER_OPENAI, LLMOperation
 from open_webui.config import (
     CACHE_DIR,
@@ -731,6 +731,7 @@ async def generate_chat_completion(
         # Check if response is SSE
         if "text/event-stream" in r.headers.get("Content-Type", ""):
             streaming = True
+            llm.record_http_status(r.status)
             return StreamingResponse(
                 llm.wrap_stream(r.content, FORMAT_SSE),
                 status_code=r.status,
@@ -754,7 +755,7 @@ async def generate_chat_completion(
         llm.finish(OUTCOME_CANCELLED)
         raise
     except Exception as e:
-        llm.finish("error", e)
+        llm.finish(OUTCOME_ERROR, e)
         log.exception(e)
 
         detail = None
