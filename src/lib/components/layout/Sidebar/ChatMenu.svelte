@@ -148,10 +148,11 @@
 	bind:show={showTags}
 	size="sm"
 	title={$i18n.t('Tags')}
+	labelledBy={`chat-tags-title-${chatId}`}
 	returnFocusSelector={buttonID ? `#${buttonID}` : ''}
 >
 	<div class="p-5 space-y-4">
-		<h2 class="text-lg font-semibold">{$i18n.t('Tags')}</h2>
+		<h2 id={`chat-tags-title-${chatId}`} class="text-lg font-semibold">{$i18n.t('Tags')}</h2>
 		<Tags
 			{chatId}
 			on:add={(e) => dispatch('tag', { type: 'add', name: e.detail.name })}

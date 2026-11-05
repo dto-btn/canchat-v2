@@ -1,3 +1,16 @@
+export const isJumpToMessagesShortcut = (event: KeyboardEvent) =>
+	event.key === 'ArrowUp' && event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey;
+
+export function focusActiveMessage(): boolean {
+	const messages = document.querySelectorAll<HTMLElement>('[data-keyboard-message]');
+	const target =
+		document.querySelector<HTMLElement>('[data-keyboard-message][tabindex="0"]') ??
+		messages[messages.length - 1];
+	if (!target) return false;
+	target.focus();
+	return true;
+}
+
 export function messageNavigation(node: HTMLElement) {
 	let lastFocused: HTMLElement | null = null;
 	const controls = () =>
@@ -90,31 +103,15 @@ export function messageNavigation(node: HTMLElement) {
 		}
 	};
 
-	const composerKeydown = (event: KeyboardEvent) => {
-		if (
-			event.key === 'Tab' &&
-			event.shiftKey &&
-			node.tabIndex === 0 &&
-			event.target instanceof HTMLElement &&
-			event.target.closest('#chat-input')
-		) {
-			event.preventDefault();
-			event.stopPropagation();
-			node.focus();
-		}
-	};
-
 	node.addEventListener('keydown', keydown);
 	node.addEventListener('focusin', focusin);
 	node.addEventListener('focusout', focusout);
-	document.addEventListener('keydown', composerKeydown, true);
 	return {
 		destroy() {
 			observer.disconnect();
 			node.removeEventListener('keydown', keydown);
 			node.removeEventListener('focusin', focusin);
 			node.removeEventListener('focusout', focusout);
-			document.removeEventListener('keydown', composerKeydown, true);
 		}
 	};
 }

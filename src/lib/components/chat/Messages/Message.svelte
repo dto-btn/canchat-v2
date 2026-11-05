@@ -51,16 +51,18 @@
 		number: idx + 1,
 		name: history.messages[messageId]?.role === 'user' ? $i18n.t('You') : $i18n.t('Assistant')
 	})}
-	aria-describedby="message-keyboard-help-{messageId}"
+	aria-describedby="message-keyboard-help-{chatId}"
 	class="flex flex-col justify-between px-5 mb-3 w-full {($settings?.widescreenMode ?? null)
 		? 'max-w-full'
 		: 'max-w-5xl'} mx-auto rounded-lg group keyboard-message"
 >
-	<span id="message-keyboard-help-{messageId}" class="sr-only">
-		{$i18n.t(
-			'Use Up and Down to navigate messages, Enter for actions, Left and Right to navigate actions, and Escape to return to the message.'
-		)}
-	</span>
+	{#if idx === 0}
+		<span id="message-keyboard-help-{chatId}" hidden>
+			{$i18n.t(
+				'Use Up and Down to navigate messages, Enter for actions, Left and Right to navigate actions, and Escape to return to the message.'
+			)}
+		</span>
+	{/if}
 	{#if history.messages[messageId]}
 		{#if history.messages[messageId].role === 'user'}
 			<UserMessage

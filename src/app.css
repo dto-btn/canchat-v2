@@ -237,12 +237,19 @@ html
 	outline-offset: 2px;
 }
 
-.keyboard-message:focus-within .invisible {
+.keyboard-message:focus-within [data-reveal-on-focus],
+.keyboard-message:focus-within [data-message-actions] button {
 	visibility: visible;
 }
 
-.keyboard-message:focus-within [data-message-actions] {
-	overflow: visible;
+[data-message-actions] {
+	padding: 4px;
+}
+
+@media (hover: none) {
+	[data-message-actions] button {
+		visibility: visible;
+	}
 }
 
 input::-webkit-outer-spin-button,

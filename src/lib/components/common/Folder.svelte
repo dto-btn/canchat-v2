@@ -150,11 +150,11 @@
 
 				{#if onAdd}
 					<div
-						class="absolute z-10 right-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 self-center flex items-center text-gray-700 dark:text-gray-300"
+						class="absolute z-10 right-2 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto [@media(hover:none)]:opacity-100 [@media(hover:none)]:pointer-events-auto self-center flex items-center text-gray-700 dark:text-gray-300"
 					>
 						<Tooltip content={onAddLabel}>
 							<button
-								class="absolute z-10 right-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 self-center flex items-center text-gray-700 dark:text-gray-300"
+								class="absolute z-10 right-2 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto [@media(hover:none)]:opacity-100 [@media(hover:none)]:pointer-events-auto self-center flex items-center text-gray-700 dark:text-gray-300"
 								on:pointerup={(e) => {
 									e.stopPropagation();
 								}}

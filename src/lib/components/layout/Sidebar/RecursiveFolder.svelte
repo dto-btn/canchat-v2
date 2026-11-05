@@ -404,7 +404,8 @@
 				on:keydown={(e) => {
 					if (e.target === e.currentTarget && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
 						e.preventDefault();
-						open = e.key === 'ArrowRight';
+						const wantOpen = e.key === 'ArrowRight';
+						if (open !== wantOpen) toggle();
 					}
 				}}
 				id="folder-{folderId}-button"
@@ -453,7 +454,7 @@
 				</h3>
 			</button>
 			<div
-				class="absolute top-1/2 -translate-y-1/2 z-10 right-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 self-center flex items-center dark:text-gray-300"
+				class="absolute top-1/2 -translate-y-1/2 z-10 right-2 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto [@media(hover:none)]:opacity-100 [@media(hover:none)]:pointer-events-auto self-center flex items-center dark:text-gray-300"
 			>
 				<Tooltip content={$i18n.t('Folder Menu')}>
 					<FolderMenu

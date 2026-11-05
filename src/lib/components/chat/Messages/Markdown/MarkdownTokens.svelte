@@ -156,7 +156,7 @@
 			</div>
 
 			<div
-				class=" absolute top-1 right-1.5 z-20 opacity-0 group-hover:opacity-100 focus-within:opacity-100"
+				class=" absolute top-1 right-1.5 z-20 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto [@media(hover:none)]:opacity-100 [@media(hover:none)]:pointer-events-auto"
 			>
 				<Tooltip content={$i18n.t('Export to CSV')}>
 					<button

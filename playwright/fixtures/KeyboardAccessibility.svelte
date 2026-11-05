@@ -4,7 +4,7 @@
 	import { createInstance } from 'i18next';
 	import en from '$lib/i18n/locales/en-GB/translation.json';
 	import fr from '$lib/i18n/locales/fr-CA/translation.json';
-	import { config, models, user, showControls } from '$lib/stores';
+	import { config, models, user, showControls, ariaMessage, settings } from '$lib/stores';
 	import { Pane, PaneGroup } from 'paneforge';
 	import Message from '$lib/components/chat/Messages/Message.svelte';
 	import Selector from '$lib/components/chat/ModelSelector/Selector.svelte';
@@ -13,9 +13,16 @@
 	import ChatItem from '$lib/components/layout/Sidebar/ChatItem.svelte';
 	import Collapsible from '$lib/components/common/Collapsible.svelte';
 	import ChatControls from '$lib/components/chat/ChatControls.svelte';
+	import { focusActiveMessage, isJumpToMessagesShortcut } from '$lib/utils/message-navigation';
+	import Folder from '$lib/components/common/Folder.svelte';
+	import Markdown from '$lib/components/chat/Messages/Markdown.svelte';
+	import WebSearchResults from '$lib/components/chat/Messages/ResponseMessage/WebSearchResults.svelte';
+	import MessageInput from '$lib/components/chat/MessageInput.svelte';
+	import { Toaster } from 'svelte-sonner';
 
 	const locale = new URLSearchParams(location.search).get('locale') || 'en-GB';
 	const controlsOnly = new URLSearchParams(location.search).has('controls');
+	const touchControls = new URLSearchParams(location.search).has('touch-controls');
 	const i18n = createInstance();
 	i18n.init({
 		lng: locale,
@@ -26,6 +33,7 @@
 	setContext('i18n', writable(i18n));
 	user.set({ id: 'test', name: 'Alex', role: 'user', permissions: { chat: { controls: true } } });
 	config.set({ features: {} });
+	if (touchControls) settings.set({ richTextInput: false });
 	const model = { id: 'test-model', name: 'Test model', owned_by: 'openai', external: false };
 	models.set([model]);
 
@@ -66,6 +74,8 @@
 	let changed = 0;
 </script>
 
+<Toaster />
+
 {#if controlsOnly}
 	<div id="chat-container" class="h-[600px]">
 		<button id="open-controls" on:click={() => showControls.set(true)}>Open controls</button>
@@ -84,6 +94,19 @@
 			/>
 		</PaneGroup>
 		<button id="after-controls">After controls</button>
+	</div>
+{:else if touchControls}
+	<div id="touch-controls" class="p-8 space-y-8">
+		<Folder id="test-folder" name="Test folder" onAddLabel="Add item" onAdd={noop} />
+		<Markdown id="touch-table" content={'| First | Second |\n| --- | --- |\n| A | B |'} />
+		<WebSearchResults status={{ query: 'Test search', urls: [] }}>Search results</WebSearchResults>
+		<MessageInput
+			{history}
+			selectedModels={['test-model']}
+			createMessagePair={noop}
+			stopResponse={noop}
+			files={[{ type: 'image', url: '/static/favicon.png' }]}
+		/>
 	</div>
 {:else}
 	<button id="before">Before</button>
@@ -112,7 +135,14 @@
 			/>
 		{/each}
 	</div>
-	<textarea id="chat-input" aria-label="Composer"></textarea>
+	<button id="remove-attachment">Remove</button>
+	<textarea
+		id="chat-input"
+		aria-label="Composer"
+		on:keydown={(e) => {
+			if (isJumpToMessagesShortcut(e) && focusActiveMessage()) e.preventDefault();
+		}}
+	></textarea>
 	<Selector
 		id="test"
 		value="test-model"
@@ -139,6 +169,7 @@
 		Chat Menu
 	</ChatMenu>
 	<output aria-label="Changes">{changed}</output>
+	<output aria-label="Announcement">{$ariaMessage}</output>
 	<ChatItem id="keyboard-chat" title="Keyboard chat" />
 	<Collapsible title="Advanced Params">
 		<div slot="content">
