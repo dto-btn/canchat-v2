@@ -39,6 +39,7 @@ EXPECTED_DURATION = EXPECTED_TTFT + 1.0
 ALLOWED_LLM_ATTRIBUTES = {
     "canchat.operation",
     "canchat.llm.provider",
+    "canchat.llm.task",
     "canchat.model",
     "canchat.stream",
     "canchat.chat.id",
@@ -97,6 +98,7 @@ class Provider:
         self.calls = 0
         self.body = list(STREAM)
         self.json = None
+        self.status = 200
         self.fail_before_headers = False
         self.fail_at = None
         self.block = None
@@ -129,7 +131,7 @@ class Provider:
 class Response:
     def __init__(self, provider):
         self._provider = provider
-        self.status = 200
+        self.status = provider.status
         content_type = (
             "application/json" if provider.json is not None else "text/event-stream"
         )
@@ -237,16 +239,24 @@ def metric_points(telemetry, name):
     return []
 
 
-def assert_recorded_once(telemetry, outcome, *, stream, ttft=None):
+def assert_recorded_once(
+    telemetry,
+    outcome,
+    *,
+    stream,
+    ttft=None,
+    task="generation",
+    provider="openai",
+    model=MODEL_ID,
+):
     """One request, one duration and (streams only) one TTFT value."""
-    labels = {"model": MODEL_ID, "provider": "openai"}
+    labels = {"model": model, "provider": provider}
+    outcome_labels = {**labels, "task": task, "outcome": outcome}
     requests = metric_points(telemetry, llm_obs.LLM_REQUESTS)
-    assert [(dict(p.attributes), p.value) for p in requests] == [
-        ({**labels, "outcome": outcome}, 1)
-    ]
+    assert [(dict(p.attributes), p.value) for p in requests] == [(outcome_labels, 1)]
     durations = metric_points(telemetry, llm_obs.LLM_REQUEST_DURATION)
     assert [(dict(p.attributes), p.count) for p in durations] == [
-        ({**labels, "outcome": outcome, "stream": stream}, 1)
+        ({**outcome_labels, "stream": stream}, 1)
     ]
     ttfts = metric_points(telemetry, llm_obs.LLM_TIME_TO_FIRST_TOKEN)
     if ttft is None:
@@ -291,6 +301,7 @@ async def test_background_stream(telemetry, chat, caplog):
     assert dict(llm.attributes) == {
         "canchat.operation": "llm.chat",
         "canchat.llm.provider": "openai",
+        "canchat.llm.task": "generation",
         "canchat.model": MODEL_ID,
         "canchat.stream": True,
         "canchat.chat.id": CHAT_ID,
@@ -546,3 +557,193 @@ async def test_ollama_ndjson_stream(telemetry, monkeypatch):
         {"model": MODEL_ID, "provider": "ollama"}
     ]
     assert ttfts[0].sum == pytest.approx(HEADER_DELAY + 2.5)
+
+
+def fake_request(metrics, **state):
+    request = type("R", (), {})()
+    request.app = type("A", (), {})()
+    request.app.state = type("S", (), {"metrics_service": metrics, **state})()
+    return request
+
+
+@pytest.mark.parametrize(
+    "metadata, expected",
+    [
+        (None, "generation"),
+        ({"task": "title_generation"}, "title_generation"),
+        ({"task": "function_calling"}, "function_calling"),
+        ({"task": "user-supplied value"}, "other"),
+    ],
+)
+def test_task_model_calls_are_labelled(telemetry, metadata, expected):
+    operation = llm_obs.LLMOperation.start(
+        fake_request(telemetry.metrics),
+        provider="openai",
+        model=MODEL_ID,
+        stream=False,
+        metadata=metadata,
+    )
+    operation.finish()
+
+    assert only_span(telemetry, "llm.chat").attributes["canchat.llm.task"] == expected
+    assert_recorded_once(telemetry, "success", stream=False, task=expected)
+
+
+@pytest.mark.anyio
+async def test_observation_failure_never_breaks_the_stream(
+    telemetry, chat, monkeypatch
+):
+    def broken(self, chunk, fmt):
+        raise RuntimeError("telemetry bug")
+
+    monkeypatch.setattr(llm_obs.LLMOperation, "_observe_chunk", broken)
+
+    response = await chat.complete(chat.form(stream=True))
+    received = [chunk async for chunk in response.body_iterator]
+
+    # Every provider line still reaches the client (the middleware's own
+    # ``sources`` event is a str).
+    provider_lines = [item for item in STREAM if isinstance(item, bytes)]
+    assert [c for c in received if isinstance(c, bytes)] == provider_lines
+    assert only_span(telemetry, "llm.chat").attributes["canchat.outcome"] == ("success")
+    assert_recorded_once(telemetry, "success", stream=True)
+
+
+@pytest.mark.anyio
+async def test_start_failure_is_fail_open(telemetry, chat, monkeypatch):
+    def broken_tracer():
+        raise RuntimeError("tracer unavailable")
+
+    monkeypatch.setattr(llm_obs, "_tracer", broken_tracer)
+    chat.provider.json = {
+        "model": MODEL_ID,
+        "choices": [{"message": {"role": "assistant", "content": "answer"}}],
+    }
+
+    result = await chat.complete(chat.form())
+
+    assert result["choices"][0]["message"]["content"] == "answer"
+    assert chat.provider.calls == 1
+    assert spans_named(telemetry, "llm.chat") == []
+    assert metric_points(telemetry, llm_obs.LLM_REQUESTS) == []
+
+
+@pytest.mark.anyio
+async def test_error_status_stream_is_an_error(telemetry, chat):
+    chat.provider.status = 429
+    chat.provider.body = [sse({"error": {"message": "rate limited"}})]
+
+    response = await chat.complete(chat.form(stream=True))
+    received = [chunk async for chunk in response.body_iterator]
+
+    # The response itself is unchanged: still streamed to the client.
+    assert [c for c in received if isinstance(c, bytes)] == chat.provider.body
+    llm = only_span(telemetry, "llm.chat")
+    assert llm.status.status_code == StatusCode.ERROR
+    assert llm.attributes["error.type"] == "429"
+    assert_recorded_once(telemetry, "error", stream=True)
+
+
+@pytest.mark.anyio
+async def test_in_band_provider_error_is_an_error(telemetry, chat):
+    chat.provider.body = [
+        2.5,
+        delta(content="Hel"),
+        sse({"error": {"message": "upstream overloaded"}}),
+        b"data: [DONE]\n",
+    ]
+
+    response = await chat.complete(chat.form(stream=True))
+    [_ async for _ in response.body_iterator]
+
+    llm = only_span(telemetry, "llm.chat")
+    assert llm.status.status_code == StatusCode.ERROR
+    assert llm.attributes["error.type"] == "provider_error"
+    assert_recorded_once(telemetry, "error", stream=True, ttft=EXPECTED_TTFT)
+
+
+OLLAMA_MODEL = f"{MODEL_ID}:latest"
+
+
+def ollama_request(telemetry):
+    config = type("C", (), {})()
+    config.OLLAMA_BASE_URLS = ["http://ollama.test"]
+    config.OLLAMA_API_CONFIGS = {}
+    return fake_request(
+        telemetry.metrics,
+        config=config,
+        OLLAMA_MODELS={OLLAMA_MODEL: {"urls": [0]}},
+    )
+
+
+@pytest.mark.anyio
+async def test_ollama_generate_endpoint(telemetry, monkeypatch):
+    clock = Clock()
+    monkeypatch.setattr(llm_obs, "_monotonic", clock)
+    provider = Provider(monkeypatch, clock)
+    provider.body = [
+        2.0,
+        b'{"model": "m", "response": "", "done": false}\n',
+        0.5,
+        b'{"model": "m", "response": "hi", "done": false}\n',
+        b'{"model": "m", "response": "", "done": true, '
+        b'"prompt_eval_count": 4, "eval_count": 1}\n',
+    ]
+
+    response = await ollama_router.generate_completion(
+        ollama_request(telemetry),
+        ollama_router.GenerateCompletionForm(model=MODEL_ID, prompt="p"),
+        url_idx=0,
+        user=None,
+    )
+    [_ async for _ in response.body_iterator]
+
+    llm = only_span(telemetry, "llm.chat")
+    assert llm.attributes["canchat.llm.usage.output_tokens"] == 1
+    assert_recorded_once(
+        telemetry,
+        "success",
+        stream=True,
+        ttft=HEADER_DELAY + 2.5,
+        provider="ollama",
+        model=OLLAMA_MODEL,
+    )
+
+
+@pytest.mark.anyio
+async def test_ollama_openai_compatible_endpoint(telemetry, monkeypatch):
+    clock = Clock()
+    monkeypatch.setattr(llm_obs, "_monotonic", clock)
+    provider = Provider(monkeypatch, clock)
+    monkeypatch.setattr(ollama_router.Models, "get_model_by_id", lambda _id: None)
+
+    async def ollama_url(request, model, url_idx):
+        return "http://ollama.test", 0
+
+    monkeypatch.setattr(ollama_router, "get_ollama_url", ollama_url)
+    admin = type("U", (), {"role": "admin", "id": "u"})()
+
+    response = await ollama_router.generate_openai_chat_completion(
+        ollama_request(telemetry),
+        {
+            "model": MODEL_ID,
+            "messages": [{"role": "user", "content": "hi"}],
+            "stream": True,
+            "metadata": {"task": "tags_generation"},
+        },
+        url_idx=0,
+        user=admin,
+    )
+    [_ async for _ in response.body_iterator]
+
+    llm = only_span(telemetry, "llm.chat")
+    assert llm.attributes["canchat.llm.usage.input_tokens"] == 7
+    assert_recorded_once(
+        telemetry,
+        "success",
+        stream=True,
+        ttft=EXPECTED_TTFT,
+        task="tags_generation",
+        provider="ollama",
+        model=OLLAMA_MODEL,
+    )

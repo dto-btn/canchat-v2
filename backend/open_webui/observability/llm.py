@@ -32,8 +32,9 @@ from contextlib import contextmanager
 from typing import Any, AsyncIterator, Iterator, Mapping
 
 from opentelemetry import trace
-from opentelemetry.trace import Span
+from opentelemetry.trace import Span, StatusCode
 
+from open_webui.constants import TASKS
 from open_webui.observability.chat import (
     OUTCOME_CANCELLED,
     OUTCOME_ERROR,
@@ -62,6 +63,11 @@ FORMAT_NDJSON = "ndjson"
 
 UNKNOWN = "unknown"
 
+# ``task`` label: user generations vs. task-model calls (title, tags, ...).
+TASK_GENERATION = "generation"
+TASK_OTHER = "other"
+_KNOWN_TASKS = frozenset(task.value for task in TASKS)
+
 # Indirection so tests can drive a deterministic clock.
 _monotonic = time.monotonic
 
@@ -82,6 +88,14 @@ def _non_negative_int(value: Any) -> int | None:
     return value
 
 
+def task_label(task: Any) -> str:
+    """Bounded ``task`` label from request metadata."""
+    if task is None or task == "":
+        return TASK_GENERATION
+    task = str(task)
+    return task if task in _KNOWN_TASKS else TASK_OTHER
+
+
 class LLMOperation:
     """One provider generation: an ``llm.chat`` span plus metrics, recorded once."""
 
@@ -93,16 +107,21 @@ class LLMOperation:
         model: str | None,
         provider: str,
         stream: bool,
+        task: str = TASK_GENERATION,
     ):
         self.context = context
         self._metrics = metrics_service
         self.model = model or UNKNOWN
         self.provider = provider
         self.stream = stream
+        self.task = task
         self.attempts = 0
         self.first_token_at: float | None = None
         self.input_tokens: int | None = None
         self.output_tokens: int | None = None
+        # error.type of a failure reported in a response that still completed
+        # (HTTP error status on a stream, in-band provider error).
+        self.failure: str | None = None
         self._owner: Any = None
 
     @property
@@ -127,39 +146,58 @@ class LLMOperation:
 
         ``model`` must already be a configured model ID (a bounded label).
         The span is a child of the current span (normally ``chat.operation``)
-        but is not made current, so it can outlive the HTTP handler.
+        but is not made current, so it can outlive the HTTP handler. Never
+        raises: if instrumentation fails, a no-op operation is returned so the
+        provider call still goes ahead.
         """
         started = _monotonic()
-        metadata = metadata if isinstance(metadata, Mapping) else {}
-        chat_id = safe_chat_id(metadata.get("chat_id"))
-        span = _tracer().start_span("llm.chat")
-        for key, value in {
-            "canchat.operation": "llm.chat",
-            "canchat.llm.provider": provider,
-            "canchat.model": model,
-            "canchat.stream": bool(stream),
-            "canchat.chat.id": chat_id,
-        }.items():
-            if value is not None:
-                span.set_attribute(key, value)
-        context = OperationContext(
-            span=span,
-            started=started,
-            chat_id=chat_id,
-            message_id=safe_chat_id(metadata.get("message_id")),
-        )
-        state = getattr(getattr(request, "app", None), "state", None)
-        operation = cls(
-            context,
-            getattr(state, "metrics_service", None),
-            model=model,
-            provider=provider,
-            stream=bool(stream),
-        )
-        owner = current_chat_operation_var.get()
-        if owner is not None and owner.attach(operation):
-            operation._owner = owner
-        return operation
+        try:
+            metadata = metadata if isinstance(metadata, Mapping) else {}
+            task = task_label(metadata.get("task"))
+        except Exception:
+            metadata, task = {}, TASK_GENERATION
+        try:
+            chat_id = safe_chat_id(metadata.get("chat_id"))
+            span = _tracer().start_span("llm.chat")
+            for key, value in {
+                "canchat.operation": "llm.chat",
+                "canchat.llm.provider": provider,
+                "canchat.llm.task": task,
+                "canchat.model": model,
+                "canchat.stream": bool(stream),
+                "canchat.chat.id": chat_id,
+            }.items():
+                if value is not None:
+                    span.set_attribute(key, value)
+            context = OperationContext(
+                span=span,
+                started=started,
+                chat_id=chat_id,
+                message_id=safe_chat_id(metadata.get("message_id")),
+            )
+            state = getattr(getattr(request, "app", None), "state", None)
+            operation = cls(
+                context,
+                getattr(state, "metrics_service", None),
+                model=model,
+                provider=provider,
+                stream=bool(stream),
+                task=task,
+            )
+            owner = current_chat_operation_var.get()
+            if owner is not None and owner.attach(operation):
+                operation._owner = owner
+            return operation
+        except Exception as e:
+            log.warning("Failed to start llm.chat operation: %s", type(e).__name__)
+            return cls(
+                OperationContext(span=trace.INVALID_SPAN, started=started),
+                None,
+                model=model,
+                provider=provider,
+                stream=bool(stream),
+                task=task,
+            )
 
     @contextmanager
     def attempt(self) -> Iterator[Span]:
@@ -169,9 +207,13 @@ class LLMOperation:
         finishes it.
         """
         self.attempts += 1
-        parent = trace.set_span_in_context(self.span)
-        span = _tracer().start_span("llm.attempt", context=parent)
-        span.set_attribute("canchat.llm.attempt", self.attempts)
+        try:
+            parent = trace.set_span_in_context(self.span)
+            span = _tracer().start_span("llm.attempt", context=parent)
+            span.set_attribute("canchat.llm.attempt", self.attempts)
+        except Exception as e:
+            log.warning("Failed to start llm.attempt span: %s", type(e).__name__)
+            span = trace.INVALID_SPAN
         with (
             trace.use_span(
                 span,
@@ -193,6 +235,16 @@ class LLMOperation:
             except BaseException as e:
                 mark_span_error(span, e)
                 raise
+
+    def mark_failed(self, error_type: str) -> None:
+        """Report a failure carried by a response that otherwise completes."""
+        if self.failure is None:
+            self.failure = error_type
+
+    def record_http_status(self, status: Any) -> None:
+        """An error status on a response that is still streamed to the client."""
+        if isinstance(status, int) and status >= 400:
+            self.mark_failed(str(status))
 
     def record_usage(self, input_tokens: Any, output_tokens: Any) -> None:
         input_tokens = _non_negative_int(input_tokens)
@@ -229,7 +281,11 @@ class LLMOperation:
         try:
             async for chunk in iterator:
                 if not self.finished:
-                    self._observe_chunk(chunk, fmt)
+                    try:
+                        self._observe_chunk(chunk, fmt)
+                    except Exception as e:
+                        # Telemetry must never break the response.
+                        log.debug("Failed to observe llm chunk: %s", type(e).__name__)
                 yield chunk
         except (asyncio.CancelledError, GeneratorExit):
             self.finish(OUTCOME_CANCELLED)
@@ -254,9 +310,17 @@ class LLMOperation:
                 if line == "[DONE]":
                     self.finish()
                     return
-                if self.first_token_at is not None and '"usage"' not in line:
+                if (
+                    self.first_token_at is not None
+                    and '"usage"' not in line
+                    and '"error"' not in line
+                ):
                     continue
-            elif self.first_token_at is not None and '"done"' not in line:
+            elif (
+                self.first_token_at is not None
+                and '"done"' not in line
+                and '"error"' not in line
+            ):
                 continue
 
             try:
@@ -266,6 +330,8 @@ class LLMOperation:
             if not isinstance(data, Mapping):
                 continue
 
+            if data.get("error"):
+                self.mark_failed("provider_error")
             if self.first_token_at is None and self._has_content(data, fmt):
                 self.first_token_at = _monotonic()
             self._observe_usage(data)
@@ -276,8 +342,11 @@ class LLMOperation:
     @staticmethod
     def _has_content(data: Mapping[str, Any], fmt: str) -> bool:
         if fmt == FORMAT_NDJSON:
+            # /api/chat sends ``message.content``; /api/generate sends ``response``.
             message = data.get("message")
-            return isinstance(message, Mapping) and bool(message.get("content"))
+            if isinstance(message, Mapping) and message.get("content"):
+                return True
+            return isinstance(data.get("response"), str) and bool(data["response"])
         choices = data.get("choices")
         if not isinstance(choices, list):
             return False
@@ -301,6 +370,10 @@ class LLMOperation:
         if self.stream and self.first_token_at is not None:
             ttft = self.first_token_at - self.context.started
 
+        failure = None
+        if outcome == OUTCOME_SUCCESS and self.failure is not None:
+            outcome, failure = OUTCOME_ERROR, self.failure
+
         try:
             span = self.span
             span.set_attribute("canchat.outcome", outcome)
@@ -319,6 +392,9 @@ class LLMOperation:
                 span.set_attribute("canchat.llm.time_to_first_token", ttft)
             if error is not None:
                 mark_span_error(span, error)
+            elif failure is not None:
+                span.set_attribute("error.type", failure)
+                span.set_status(StatusCode.ERROR)
             span.end()
         except Exception as e:
             log.warning("Failed to end llm.chat span: %s", type(e).__name__)
@@ -331,12 +407,13 @@ class LLMOperation:
         if self._metrics is None:
             return
         labels = {"model": self.model, "provider": self.provider}
+        outcome_labels = {**labels, "task": self.task, "outcome": outcome}
         values = [
-            (LLM_REQUESTS, 1, {**labels, "outcome": outcome}),
+            (LLM_REQUESTS, 1, outcome_labels),
             (
                 LLM_REQUEST_DURATION,
                 duration,
-                {**labels, "outcome": outcome, "stream": self.stream},
+                {**outcome_labels, "stream": self.stream},
             ),
         ]
         if ttft is not None:
@@ -361,4 +438,5 @@ __all__ = [
     "LLM_TIME_TO_FIRST_TOKEN",
     "PROVIDER_OLLAMA",
     "PROVIDER_OPENAI",
+    "task_label",
 ]
