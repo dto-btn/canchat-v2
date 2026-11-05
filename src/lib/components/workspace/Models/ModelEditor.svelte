@@ -104,6 +104,11 @@
 		}
 	};
 
+	// TS casts aren't allowed inline in template expressions, so handle the event here
+	const onBaseModelChange = (e: Event) => {
+		addUsage((e.target as HTMLSelectElement).value);
+	};
+
 	// Add validation logic
 	function validateDescription() {
 		if (!info.meta.description?.trim() || !info.meta.description_fr?.trim()) {
@@ -382,6 +387,7 @@
 								? 'bg-transparent'
 								: 'bg-white'} shadow-xl group relative"
 							type="button"
+							aria-label={$i18n.t('Change profile image')}
 							on:click={() => {
 								filesInputElement.click();
 							}}
@@ -389,13 +395,13 @@
 							{#if info.meta.profile_image_url}
 								<img
 									src={info.meta.profile_image_url}
-									alt="model profile"
+									alt=""
 									class="rounded-xl size-72 md:size-60 object-cover shrink-0"
 								/>
 							{:else}
 								<img
 									src="/static/favicon.png"
-									alt="model profile"
+									alt=""
 									class=" rounded-xl size-72 md:size-60 object-cover shrink-0"
 								/>
 							{/if}
@@ -492,9 +498,7 @@
 									class="text-sm w-full bg-transparent outline-none"
 									placeholder={$i18n.t('Select a base model (e.g. llama3, gpt-4o)')}
 									bind:value={info.base_model_id}
-									on:change={(e) => {
-										addUsage(e.target.value);
-									}}
+									on:change={onBaseModelChange}
 									required
 									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 									aria-label={$i18n.t('Base Model (From)')}

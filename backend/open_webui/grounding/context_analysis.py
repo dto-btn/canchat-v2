@@ -17,6 +17,22 @@ log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["GROUNDING"])
 
 
+def enhance_query_with_temporal_context(
+    query: str, current_year: int | None = None
+) -> str:
+    """Add the current year when a query does not already specify a time."""
+    year = current_year or datetime.now().year
+    enhanced_query = query
+
+    if not re.search(r"\b(19|20)\d{2}s?\b|\b\d{2}s\b", query):
+        enhanced_query = f"{enhanced_query} {year}"
+
+    log.info(
+        f"🕒 Enhanced query with temporal context: '{query}' -> '{enhanced_query}'"
+    )
+    return enhanced_query
+
+
 class ConversationContextAnalyzer:
     """
     Analyzes conversation history to generate context-aware search queries
@@ -200,33 +216,7 @@ class ConversationContextAnalyzer:
         return any(re.search(pattern, query_lower) for pattern in question_patterns)
 
     def _enhance_query_with_temporal_context(self, query: str) -> str:
-        """
-        Enhance ALL queries with temporal context to get more recent information.
-
-        This applies temporal enhancement to EVERY query without exception.
-        The approach adds the current year naturally to help search algorithms
-        prioritize recent information and understand temporal context.
-
-        Args:
-            query: Original query
-
-        Returns:
-            Enhanced query with temporal context
-        """
-        enhanced_query = query
-
-        # Universal Strategy: Always add current year if no year is mentioned
-        # This helps all search algorithms understand temporal context for ANY query
-        # Check for explicit years (1990, 2024) and decade references (1990s, 90s, 20s)
-        if not re.search(r"\b(19|20)\d{2}s?\b|\b\d{2}s\b", query):
-            enhanced_query = f"{enhanced_query} {self.current_year}"
-
-        log.info(
-            f"🕒 Enhanced query with temporal context: '{query}' -> '{enhanced_query}'"
-        )
-        return enhanced_query
-
-        return "\n".join(context_parts[-5:])  # Last 5 context entries
+        return enhance_query_with_temporal_context(query, self.current_year)
 
     def is_follow_up_question(
         self, current_query: str, conversation_context: str

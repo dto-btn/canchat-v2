@@ -4,7 +4,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import {
 		getDomains,
-		getModels,
+		getModelsGrouped,
 		getMcpProcesses,
 		getTotalUsers,
 		getDailyUsers,
@@ -19,11 +19,13 @@
 		getModelPrompts,
 		getModelDailyPrompts,
 		getModelHistoricalPrompts,
-		getRangeMetrics,
 		getInterPromptLatencyHistogram,
 		exportMetricsData,
 		getExportLogs
 	} from '$lib/apis/metrics';
+	import type { MetricsModelOption } from '$lib/apis/metrics';
+	import MetricsModelSelect from './MetricsModelSelect.svelte';
+	import { findModel, getDefaultModel } from '$lib/utils/metricsModels';
 	import { getUserByDomain } from '$lib/apis/users';
 	import { Chart, registerables } from 'chart.js';
 	import { user } from '$lib/stores';
@@ -62,7 +64,7 @@
 			endDate = formatDate(newEndDate);
 		}
 
-		updateRangeMetrics();
+		handleDatesChange();
 	}
 
 	function getYAxisSubLabel(item: { domain?: string; department?: string }): string {
@@ -123,7 +125,12 @@
 
 	// Data variables
 	let domains: string[] = [];
-	let models: string[] = [];
+	let activeModels: MetricsModelOption[] = [];
+	let archivedModels: MetricsModelOption[] = [];
+
+	// Shown in the chart title
+	$: selectedModelLabel =
+		findModel([...activeModels, ...archivedModels], selectedModel)?.name ?? selectedModel ?? '';
 	let mcpProcesses: string[] = [];
 	let totalUsers: number = 0,
 		totalPrompts: number = 0,
@@ -447,9 +454,6 @@
 	let endDate = formatDate(new Date());
 	let showCustomDateRange = false;
 
-	// Advanced metrics
-	let rangeMetrics: any = null;
-
 	// Change default tab name from 'cost' to 'business' for clarity
 	let activeTab = 'users'; // Changed from 'business' to 'users'
 
@@ -596,11 +600,12 @@
 
 	// Initialize charts function
 	function initializeCharts() {
+		const getCanvas = (id: string) => document.getElementById(id) as HTMLCanvasElement | null;
 		// Users chart - for both overview and users tabs
 		if (activeTab === 'users' && dailyActiveUsersData.length > 0 && enrolledUsersData.length > 0) {
 			// Enrolled Users Chart
 			const enrolledChartId = 'userEnrollmentsOverTimeChart';
-			const enrolledCanvas = document.getElementById(enrolledChartId);
+			const enrolledCanvas = getCanvas(enrolledChartId);
 			const enrolledCtx = enrolledCanvas?.getContext('2d');
 			if (enrolledCtx) {
 				if (enrolledUsersChart) {
@@ -631,7 +636,7 @@
 
 			// Daily Active Users Chart
 			const dailyChartId = 'usersOverTimeChart';
-			const dailyCanvas = document.getElementById(dailyChartId);
+			const dailyCanvas = getCanvas(dailyChartId);
 			const dailyCtx = dailyCanvas?.getContext('2d');
 			if (dailyCtx) {
 				if (dailyActiveUsersChart) {
@@ -663,7 +668,7 @@
 
 		// Department usage chart
 		const departmentChartId = 'departmentUsageChart';
-		const departmentCanvas = document.getElementById(departmentChartId);
+		const departmentCanvas = getCanvas(departmentChartId);
 		const departmentCtx = departmentCanvas?.getContext('2d');
 		if (departmentCtx) {
 			if (userByDepartmentChart) {
@@ -713,7 +718,7 @@
 		// Prompts chart - for both overview and prompts tabs
 		if ((activeTab === 'prompts' || activeTab === 'overview') && dailyPromptsData.length > 0) {
 			const chartId = activeTab === 'overview' ? 'dailyPromptsChart' : 'promptsOverTimeChart';
-			const canvas = document.getElementById(chartId);
+			const canvas = getCanvas(chartId);
 			const ctx = canvas?.getContext('2d');
 			if (ctx) {
 				if (dailyPromptsChart) {
@@ -745,7 +750,7 @@
 
 		// Tokens chart - for tokens tab
 		if (activeTab === 'tokens' && dailyTokensData.length > 0) {
-			const canvas = document.getElementById('tokensOverTimeChart');
+			const canvas = getCanvas('tokensOverTimeChart');
 			const ctx = canvas?.getContext('2d');
 			if (ctx) {
 				if (dailyTokensChart) {
@@ -777,7 +782,7 @@
 
 		// Model chart - for models tab
 		if (activeTab === 'models' && selectedModel && modelPromptsData.length > 0) {
-			const canvas = document.getElementById('modelOverTimeChart');
+			const canvas = getCanvas('modelOverTimeChart');
 			const ctx = canvas?.getContext('2d');
 			if (ctx) {
 				if (modelPromptsChart) {
@@ -809,7 +814,7 @@
 
 		// Inter-prompt latency histogram - for behavior tab
 		if (activeTab === 'behavior' && interPromptLatencyData.counts.length > 0) {
-			const canvas = document.getElementById('interPromptLatencyChart');
+			const canvas = getCanvas('interPromptLatencyChart');
 			const ctx = canvas?.getContext('2d');
 			if (ctx) {
 				if (interPromptLatencyChart) {
@@ -941,31 +946,12 @@
 			endDate = formatDate(new Date(today.getTime() - 24 * 60 * 60 * 1000)); // Yesterday
 		}
 
-		updateRangeMetrics();
+		handleDatesChange();
 	}
 
-	async function updateRangeMetrics() {
-		// Don't make API calls if either date is empty (from clearing date inputs)
-		if (!startDate || !endDate) {
-			rangeMetrics = null; // Clear stale data
-			return;
-		}
-
-		try {
-			rangeMetrics = await getRangeMetrics(
-				getRequestToken(),
-				startDate,
-				endDate,
-				selectedDomain,
-				selectedModel
-			);
-			// Remove costAnalysis fetch
-
-			// Also update the chart data based on the selected date range
-			await updateCharts(selectedDomain, selectedModel);
-		} catch (error: any) {
-			console.error('Error fetching range metrics:', error);
-		}
+	// Reload the charts for the new dates (skipped while a date is empty)
+	function handleDatesChange() {
+		updateCharts(selectedDomain, selectedModel);
 	}
 
 	onMount(() => {
@@ -1015,13 +1001,13 @@
 			(async () => {
 				try {
 					domains = await getDomains(getRequestToken());
-					models = await getModels(getRequestToken());
-					// Set the first model as the selected model if available
-					if (models.length > 0) {
-						selectedModel = models[0];
+					({ active: activeModels, archived: archivedModels } =
+						await getModelsGrouped(getRequestToken()));
+					const firstModel = getDefaultModel(activeModels, archivedModels);
+					if (firstModel) {
+						selectedModel = firstModel.id;
 					}
 					await updateCharts(selectedDomain, selectedModel);
-					updateRangeMetrics(); // Load initial range metrics
 					componentLoaded = true;
 				} catch (error: any) {
 					console.error('Error initializing charts:', error);
@@ -1061,9 +1047,8 @@
 	}
 
 	// Handler for model selection changes
-	function handleModelChange(event: any) {
-		const newModel = event.target.value || null;
-		selectedModel = newModel;
+	function handleModelChange(modelId: string | null) {
+		selectedModel = modelId || null;
 		updateCharts(selectedDomain, selectedModel);
 	}
 
@@ -1221,7 +1206,7 @@
 								min={getMinEndDate(startDate)}
 								required
 								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
-								on:change={updateRangeMetrics}
+								on:change={handleDatesChange}
 								class="block w-40 p-2 text-sm border border-gray-400 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
 								aria-label={$i18n.t('End Date')}
 							/>
@@ -1251,10 +1236,7 @@
 							<select
 								id="domain-select"
 								bind:value={selectedDomain}
-								on:change={(e) => {
-									handleDomainChange(e);
-									updateRangeMetrics();
-								}}
+								on:change={handleDomainChange}
 								class="block w-36 p-2 text-sm border border-gray-400 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
 								aria-label={$i18n.t('Select Domain:')}
 							>
@@ -1270,26 +1252,19 @@
 					<!-- Model Selector (shown only on models tab) -->
 					{#if activeTab === 'models'}
 						<div>
-							<label
+							<span
+								id="model-select-label"
 								class="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-2"
-								for="model-select"
 							>
 								{$i18n.t('Select Model:')}
-							</label>
-							<select
-								id="model-select"
-								bind:value={selectedModel}
-								on:change={(e) => {
-									handleModelChange(e);
-									updateRangeMetrics();
-								}}
-								class="block w-36 p-2 text-sm border border-gray-400 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
-								aria-label={$i18n.t('Select Model:')}
-							>
-								{#each models as model}
-									<option value={model}>{model}</option>
-								{/each}
-							</select>
+							</span>
+							<MetricsModelSelect
+								{activeModels}
+								{archivedModels}
+								labelledBy="model-select-label"
+								value={selectedModel}
+								on:change={(e) => handleModelChange(e.detail)}
+							/>
 						</div>
 					{/if}
 					<!-- MCP Process Selector (shown only on tokens tab) -->
@@ -1675,7 +1650,7 @@
 
 				<!-- Tab Content - Model Analysis -->
 				<div class={`${activeTab === 'models' ? 'flex flex-col h-full' : 'hidden'}`}>
-					{#if models.length === 0}
+					{#if activeModels.length === 0 && archivedModels.length === 0}
 						<div
 							class="bg-white shadow-lg rounded-lg p-6 dark:bg-gray-800 flex items-center justify-center h-64 mt-6"
 						>
@@ -1714,7 +1689,7 @@
 						<div class="grid grid-cols-1 gap-6 mb-6">
 							<div class="bg-white shadow-lg rounded-lg p-4 dark:bg-gray-800">
 								<h5 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
-									{$i18n.t('Daily Model Usage')} - {selectedModel}
+									{$i18n.t('Daily Model Usage')} - {selectedModelLabel}
 								</h5>
 								<div class="h-80">
 									<canvas id="modelOverTimeChart"></canvas>

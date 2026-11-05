@@ -1,0 +1,76 @@
+overrides:
+  - filename: '**/*'
+    language: 'fr'
+    words:
+      # Known spelling exceptions
+      - d'acces
+      - déarchiver
+      - departement
+      - department
+      - emojis
+      - executable
+      - Edition
+      - integrations
+      - elections
+      - Regénérer
+      - l'extention
+      - Deleted
+      - Cleaned
+      - keep
+      - selected
+      - desk
+
+      # CANChat terminology
+      - CANCHAT
+      - PSIA
+      - webui
+      - extrants
+
+      # Products and services
+      - Arctic
+      - Cohere
+      - Comfy
+      - Crew
+      - Docling
+      - Eleven
+      - Excel
+      - Hugging
+      - Jina
+      - Kagi
+      - Llama
+      - Mirostat
+      - Mojeek
+      - Ollama
+      - Searxng
+      - Serper
+      - Serply
+      - Serpstack
+      - Tavily
+      - Tika
+      - Tiktoken
+      - Transformers
+      - whisper
+
+      # Technical terminology
+      - beta
+      - completions
+      - DELEGATED
+      - dept
+      - faster
+      - GGUF
+      - inet
+      - Karras
+      - logits
+      - mlock
+      - mmap
+      - REQUIRED
+      - reranking
+      - Spoofing
+      - toolkits
+      - verbose
+
+  # Ignore JSON property names and HTML tags
+  - filename: '**/*.json'
+    ignoreRegExpList:
+      - '/\x22(?:\\.|[^\x22\\])*\x22\s*:/g'
+      - '/<\/?[A-Za-z][^>]*>/g'

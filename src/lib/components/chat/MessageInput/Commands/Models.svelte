@@ -95,7 +95,7 @@
 							<div class="flex font-medium text-black dark:text-gray-100 line-clamp-1">
 								<img
 									src={model?.info?.meta?.profile_image_url ?? '/static/favicon.png'}
-									alt={model?.name ?? model.id}
+									alt=""
 									class="rounded-full size-6 items-center mr-2"
 								/>
 								{model.name}

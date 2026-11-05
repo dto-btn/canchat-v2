@@ -378,7 +378,7 @@
 								user.profile_image_url.startsWith('data:')
 									? user.profile_image_url
 									: `/user.png`}
-								alt="user"
+								alt=""
 							/>
 
 							<div class=" font-medium self-center">{user.name}</div>

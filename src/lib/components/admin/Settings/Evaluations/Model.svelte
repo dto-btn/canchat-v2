@@ -30,7 +30,7 @@
 			<div class="flex gap-2.5 items-center">
 				<img
 					src={model.meta.profile_image_url}
-					alt={model.name}
+					alt=""
 					class="size-8 rounded-full object-cover shrink-0"
 				/>
 

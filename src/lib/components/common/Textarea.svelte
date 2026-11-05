@@ -59,7 +59,7 @@
 		/* absolute */
 		position: absolute;
 		content: attr(data-placeholder);
-		color: #adb5bd;
+		color: var(--placeholder-color);
 		overflow: hidden;
 		display: -webkit-box;
 		-webkit-box-orient: vertical;

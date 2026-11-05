@@ -69,7 +69,7 @@
 	};
 
 	const downloadTxt = async () => {
-		const chat = await getChatById(getRequestToken(), chatId);
+		const chat: any = await getChatById(getRequestToken(), chatId);
 		if (!chat) {
 			return;
 		}
@@ -83,7 +83,7 @@
 	};
 
 	const downloadPdf = async () => {
-		const chat = await getChatById(getRequestToken(), chatId);
+		const chat: any = await getChatById(getRequestToken(), chatId);
 		if (!chat) {
 			return;
 		}

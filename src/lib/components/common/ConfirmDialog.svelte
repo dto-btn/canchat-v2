@@ -79,7 +79,7 @@
 				if (returnFocusSelector) {
 					const returnEl = document.querySelector(returnFocusSelector);
 					if (returnEl) {
-						returnEl.focus();
+						(returnEl as HTMLElement).focus();
 						return;
 					}
 				}

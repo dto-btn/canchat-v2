@@ -45,7 +45,7 @@
 	let requestFormat = '';
 	let keepAlive: string | null = null;
 
-	let params = {
+	let params: Record<string, string | number | boolean | null | undefined> = {
 		// Advanced
 		stream_response: null,
 		seed: null,
@@ -63,7 +63,10 @@
 		num_batch: null,
 		num_keep: null,
 		max_tokens: null,
-		num_gpu: null
+		num_gpu: null,
+		use_mmap: null,
+		use_mlock: null,
+		num_thread: null
 	};
 
 	const toggleRequestFormat = async () => {

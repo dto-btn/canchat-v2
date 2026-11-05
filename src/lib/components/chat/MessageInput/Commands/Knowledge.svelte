@@ -98,7 +98,7 @@
 						},
 
 						...legacy_documents
-							.reduce((a, item) => {
+							.reduce<any[]>((a, item) => {
 								return [
 									...new Set([...a, ...(item?.meta?.tags ?? []).map((tag: any) => tag.name)])
 								];
@@ -127,7 +127,7 @@
 			$knowledge.length > 0
 				? [
 						...$knowledge
-							.reduce((a, item) => {
+							.reduce<any[]>((a, item) => {
 								return [
 									...new Set([
 										...a,

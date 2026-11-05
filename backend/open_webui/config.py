@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 import os
 import shutil
 from datetime import datetime
@@ -24,6 +25,12 @@ from open_webui.env import (
 )
 from open_webui.internal.db import get_db
 from open_webui.models.base import Base
+from open_webui.grounding.constants import (
+    EKH_KNOWLEDGE_SOURCES,
+    EKH_SOURCE_WIKIPEDIA,
+    PROVIDER_TXTAI,
+    WIKIPEDIA_GROUNDING_PROVIDERS,
+)
 
 ####################################
 # Config helpers
@@ -1952,6 +1959,66 @@ WIKIPEDIA_GROUNDING_MAX_CONCURRENT = PersistentConfig(
 )
 
 
+def _validated_env_choice(name: str, choices: tuple[str, ...], default: str) -> str:
+    value = os.getenv(name, default).strip().lower()
+    if value not in choices:
+        log.warning(
+            "Invalid %s value %r; defaulting to %r",
+            name,
+            value,
+            default,
+        )
+        return default
+    return value
+
+
+def normalize_ekh_knowledge_source(value: object) -> str:
+    """Return a supported EKH source, guarding persisted configuration too."""
+    value = getattr(value, "value", value)
+    if isinstance(value, str):
+        value = value.strip().lower()
+        if value in EKH_KNOWLEDGE_SOURCES:
+            return value
+    log.warning(
+        "Invalid EKH_KNOWLEDGE_SOURCE value %r; defaulting to %r",
+        value,
+        EKH_SOURCE_WIKIPEDIA,
+    )
+    return EKH_SOURCE_WIKIPEDIA
+
+
+def _ekh_timeout_from_env() -> float:
+    raw_value = os.getenv("EKH_TIMEOUT_SECONDS", "5")
+    try:
+        timeout = float(raw_value)
+    except (TypeError, ValueError):
+        timeout = 0
+    if not math.isfinite(timeout) or timeout <= 0:
+        log.warning("Invalid EKH_TIMEOUT_SECONDS value %r; defaulting to 5", raw_value)
+        return 5.0
+    return timeout
+
+
+# Wikipedia grounding backend: txtai (local model, default) or EKH.
+WIKIPEDIA_GROUNDING_PROVIDER = _validated_env_choice(
+    "WIKIPEDIA_GROUNDING_PROVIDER", WIKIPEDIA_GROUNDING_PROVIDERS, PROVIDER_TXTAI
+)
+EKH_BASE_URL = os.getenv("EKH_BASE_URL", "")
+EKH_KNOWLEDGE_SOURCE = PersistentConfig(
+    "EKH_KNOWLEDGE_SOURCE",
+    "rag.ekh.knowledge_source",
+    normalize_ekh_knowledge_source(
+        _validated_env_choice(
+            "EKH_KNOWLEDGE_SOURCE",
+            EKH_KNOWLEDGE_SOURCES,
+            EKH_SOURCE_WIKIPEDIA,
+        )
+    ),
+)
+EKH_API_KEY = os.getenv("EKH_API_KEY", "")
+EKH_TIMEOUT_SECONDS = _ekh_timeout_from_env()
+
+
 def _validate_fallback_max_tokens(value: int, default: int = 16000) -> int:
     """Validate RAG_CONTEXT_FALLBACK_MAX_TOKENS is a positive integer."""
     try:
@@ -2053,6 +2120,7 @@ _DEFAULT_MODEL_CONTEXT_LENGTHS = {
     "o1-pro": 200000,
     "o1": 200000,
     # Google Gemini
+    "gemini-3.5-flash": 1048576,
     "gemini-2.5-flash": 1048576,
     "gemini-2.5-pro": 1048576,
     "gemini-2.0-flash": 1048576,

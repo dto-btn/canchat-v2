@@ -2,7 +2,12 @@
 	import { getI18n } from '$lib/utils/context';
 
 	import WikipediaGroundingConfig from './grounding/WikipediaGroundingConfig.svelte';
-	import { updateRAGConfig } from '$lib/apis/retrieval';
+	import {
+		EKH_KNOWLEDGE_SOURCES,
+		updateRAGConfig,
+		WIKIPEDIA_GROUNDING_PROVIDERS
+	} from '$lib/apis/retrieval';
+	import type { EkhKnowledgeSource, WikipediaGroundingProvider } from '$lib/apis/retrieval';
 	import { toast } from 'svelte-sonner';
 	import { getRequestToken } from '$lib/services/auth';
 
@@ -10,15 +15,30 @@
 
 	export let saveHandler: Function;
 
-	let wikipediaConfig = { enabled: false };
+	let wikipediaConfig: {
+		enabled: boolean;
+		source: EkhKnowledgeSource;
+		provider: WikipediaGroundingProvider;
+	} = {
+		enabled: false,
+		source: EKH_KNOWLEDGE_SOURCES[0],
+		provider: WIKIPEDIA_GROUNDING_PROVIDERS[0]
+	};
+	let configLoaded = false;
 	let loading = false;
 
 	const handleSubmit = async () => {
+		if (!configLoaded) {
+			toast.error($i18n.t('Failed to load grounding settings'));
+			return;
+		}
+
 		loading = true;
 
 		try {
 			const res = await updateRAGConfig(getRequestToken(), {
-				enable_wikipedia_grounding: wikipediaConfig.enabled
+				enable_wikipedia_grounding: wikipediaConfig.enabled,
+				ekh_knowledge_source: wikipediaConfig.source
 			});
 
 			if (res) {
@@ -54,8 +74,8 @@
 
 	<!-- Grounding Sources -->
 	<div class="space-y-4 overflow-y-auto scrollbar-hidden flex-1">
-		<!-- Wikipedia Grounding -->
-		<WikipediaGroundingConfig bind:config={wikipediaConfig} />
+		<!-- Knowledge Grounding -->
+		<WikipediaGroundingConfig bind:config={wikipediaConfig} bind:loaded={configLoaded} />
 
 		<!-- Future grounding sources will be added here -->
 		<!-- <ScholarGroundingConfig bind:config={scholarConfig} /> -->
@@ -88,7 +108,7 @@
 		<button
 			class="px-3.5 py-1.5 text-sm font-medium bg-black hover:bg-gray-900 text-white dark:bg-white dark:text-black dark:hover:bg-gray-100 transition rounded-full disabled:opacity-50"
 			type="submit"
-			disabled={loading}
+			disabled={loading || !configLoaded}
 		>
 			{#if loading}
 				<svg class="w-3.5 h-3.5 animate-spin mr-2 inline" viewBox="0 0 24 24" fill="currentColor">

@@ -16,9 +16,18 @@
 	import { getRequestToken } from '$lib/services/auth';
 
 	export let users: any[] = [];
-	export let group = {
+	type Group = {
+		id?: string;
+		name: string;
+		user_ids: number[];
+		allowed_domains?: string[];
+	};
+
+	export let group: Group = {
+		id: undefined,
 		name: 'Admins',
-		user_ids: [1, 2, 3]
+		user_ids: [1, 2, 3],
+		allowed_domains: []
 	};
 
 	export let setGroups: () => void = () => {};
