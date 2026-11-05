@@ -1164,6 +1164,7 @@
 							bind:value={selectedDateRange}
 							on:change={handleDateRangeChange}
 							class="block w-36 p-2 text-sm border border-gray-400 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
+							aria-label={$i18n.t('Date Range')}
 						>
 							{#each dateRangeOptions as option}
 								<option value={option.value}>{$i18n.t(option.label)}</option>
@@ -1184,8 +1185,10 @@
 								bind:value={startDate}
 								max={formatDate(new Date(Date.now() - 24 * 60 * 60 * 1000))}
 								required
+								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 								on:change={handleStartDateChange}
 								class="block w-40 p-2 text-sm border border-gray-400 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
+								aria-label={$i18n.t('Start Date')}
 							/>
 						</div>
 						<div>
@@ -1202,8 +1205,10 @@
 								max={formatDate(new Date())}
 								min={getMinEndDate(startDate)}
 								required
+								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 								on:change={handleDatesChange}
 								class="block w-40 p-2 text-sm border border-gray-400 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
+								aria-label={$i18n.t('End Date')}
 							/>
 						</div>
 					{/if}
@@ -1233,6 +1238,7 @@
 								bind:value={selectedDomain}
 								on:change={handleDomainChange}
 								class="block w-36 p-2 text-sm border border-gray-400 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
+								aria-label={$i18n.t('Select Domain:')}
 							>
 								<option value={null}>{$i18n.t('All')}</option>
 								{#each domains as domain}
@@ -1277,6 +1283,7 @@
 									handleMcpProcessChange();
 								}}
 								class="block w-52 p-2 text-sm border border-gray-400 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
+								aria-label={$i18n.t('Select MCP Process:')}
 							>
 								<option value={null}>{$i18n.t('No Filter')}</option>
 								<option value="__mcp_all__">{$i18n.t('MCP — All Tools')}</option>
@@ -1294,7 +1301,9 @@
 								<button
 									on:click={handleExportData}
 									disabled={isExporting || !startDate || !endDate}
-									title="Export raw message metrics data including tokens, timestamps, and user information in CSV format"
+									title={$i18n.t(
+										'Export raw message metrics data including tokens, timestamps, and user information in CSV format'
+									)}
 									class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-md transition-colors duration-200 flex items-center gap-2"
 								>
 									{#if isExporting}

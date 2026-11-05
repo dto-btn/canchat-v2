@@ -162,6 +162,7 @@
 								type="file"
 								hidden
 								accept="image/*"
+								aria-label={$i18n.t('Profile image')}
 								on:change={(e) => {
 									const input = getFileInput(e);
 									const files = input.files ?? [];
@@ -254,8 +255,12 @@
 										type="text"
 										bind:value={name}
 										placeholder={$i18n.t('Model Name')}
+										aria-label={$i18n.t('Model Name')}
 										autocomplete="off"
 										required
+										on:invalid={(e) =>
+											e.target.setCustomValidity($i18n.t('This field is required'))}
+										on:input={(e) => e.target.setCustomValidity('')}
 									/>
 								</div>
 							</div>
@@ -269,9 +274,13 @@
 										type="text"
 										bind:value={id}
 										placeholder={$i18n.t('Model ID')}
+										aria-label={$i18n.t('Model ID')}
 										autocomplete="off"
 										required
 										disabled={edit}
+										on:invalid={(e) =>
+											e.target.setCustomValidity($i18n.t('This field is required'))}
+										on:input={(e) => e.target.setCustomValidity('')}
 									/>
 								</div>
 							</div>
@@ -286,6 +295,7 @@
 									type="text"
 									bind:value={description}
 									placeholder={$i18n.t('Enter description')}
+									aria-label={$i18n.t('Enter description')}
 									autocomplete="off"
 								/>
 							</div>
@@ -357,6 +367,7 @@
 									? ''
 									: 'text-gray-500'} placeholder:text-gray-300 dark:placeholder:text-gray-700 outline-none"
 								bind:value={selectedModelId}
+								aria-label={$i18n.t('Select a model')}
 							>
 								<option value="">{$i18n.t('Select a model')}</option>
 								{#each $models.filter((m) => m?.owned_by !== 'arena') as model}

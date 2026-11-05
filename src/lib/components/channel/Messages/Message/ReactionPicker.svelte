@@ -1,10 +1,13 @@
 <script lang="ts">
 	import { DropdownMenu } from 'bits-ui';
+	import { getI18n } from '$lib/utils/context';
 	import { flyAndScale } from '$lib/utils/transitions';
 	import emojiGroups from '$lib/emoji-groups.json';
 	import emojiShortCodes from '$lib/emoji-shortcodes.json';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import VirtualList from '@sveltejs/svelte-virtual-list';
+
+	const i18n = getI18n();
 
 	const emojiGroupsMap = emojiGroups as Record<string, string[]>;
 	const emojiShortCodesMap = emojiShortCodes as Record<string, string | string[]>;
@@ -129,8 +132,9 @@
 			<input
 				type="text"
 				class="w-full text-sm bg-transparent outline-none"
-				placeholder="Search all emojis"
+				placeholder={$i18n.t('Search all emojis')}
 				bind:value={search}
+				aria-label={$i18n.t('Search all emojis')}
 			/>
 		</div>
 		<!-- Virtualized Emoji List -->

@@ -1,4 +1,8 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
+	const i18n = getI18n();
+
 	export let value: string = '';
 	export let placeholder = '';
 	export let required = true;
@@ -17,9 +21,11 @@
 		{placeholder}
 		bind:value
 		required={required && !readOnly}
+		on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 		disabled={readOnly}
 		autocomplete="off"
 		type="text"
+		aria-label={placeholder || $i18n.t('Sensitive input')}
 	/>
 	<button
 		class={showButtonClassName}

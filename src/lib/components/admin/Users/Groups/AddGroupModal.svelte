@@ -80,6 +80,9 @@
 										placeholder={$i18n.t('Group Name')}
 										autocomplete="off"
 										required
+										aria-label={$i18n.t('Group Name')}
+										on:invalid={(e) =>
+											e.target.setCustomValidity($i18n.t('This field is required'))}
 									/>
 								</div>
 							</div>
@@ -94,6 +97,7 @@
 									rows={2}
 									bind:value={description}
 									placeholder={$i18n.t('Group Description')}
+									aria-label={$i18n.t('Group Description')}
 								/>
 							</div>
 						</div>

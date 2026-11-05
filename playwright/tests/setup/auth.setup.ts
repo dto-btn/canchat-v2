@@ -1,4 +1,4 @@
-import { test as setup, type Page } from '@playwright/test';
+import { test as setup, expect, type Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -20,6 +20,7 @@ setup('global setup: seed data & initialize', async ({ page }) => {
 	const adminPage = new AdminPage(page);
 
 	await authPage.goto('/auth');
+	await expect(authPage.isFirstRunButton.or(authPage.signInButton).first()).toBeVisible();
 	const isFirstRun = await authPage.isFirstRunButton.isVisible();
 
 	if (!isFirstRun) {
@@ -53,7 +54,7 @@ async function seedUserAccounts(page: Page, adminPage: AdminPage) {
 	);
 
 	for (const user of standardUsers) {
-		const userExists = await page.getByText(user.email).isVisible();
+		const userExists = await page.getByText(user.email, { exact: true }).isVisible();
 
 		if (!userExists) {
 			console.log(`Creating user: ${user.username}`);

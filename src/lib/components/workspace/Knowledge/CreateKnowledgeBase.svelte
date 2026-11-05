@@ -88,7 +88,9 @@
 							type="text"
 							bind:value={name}
 							placeholder={$i18n.t('Name your knowledge base')}
+							aria-label={$i18n.t('Name your knowledge base')}
 							required
+							on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 						/>
 					</div>
 				</div>
@@ -102,7 +104,9 @@
 							rows="4"
 							bind:value={description}
 							placeholder={$i18n.t('Describe your knowledge base and objectives')}
+							aria-label={$i18n.t('Describe your knowledge base and objectives')}
 							required
+							on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 						/>
 					</div>
 				</div>

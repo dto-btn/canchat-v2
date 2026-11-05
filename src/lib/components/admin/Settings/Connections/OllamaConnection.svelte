@@ -60,6 +60,7 @@
 			class="w-full text-sm bg-transparent outline-none"
 			placeholder={$i18n.t('Enter URL (e.g. http://localhost:11434)')}
 			bind:value={url}
+			aria-label={$i18n.t('Enter URL (e.g. http://localhost:11434)')}
 		/>
 	</Tooltip>
 

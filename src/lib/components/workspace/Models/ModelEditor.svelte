@@ -299,7 +299,7 @@
 					/>
 				</svg>
 			</div>
-			<div class=" self-center text-sm font-medium">{'Back'}</div>
+			<div class=" self-center text-sm font-medium">{$i18n.t('Back')}</div>
 		</button>
 	{/if}
 
@@ -310,6 +310,7 @@
 			type="file"
 			hidden
 			accept="image/*"
+			aria-label={$i18n.t('Model Profile Image')}
 			on:change={() => {
 				let reader = new FileReader();
 				reader.onload = (event) => {
@@ -454,6 +455,8 @@
 									placeholder={$i18n.t('Model Name')}
 									bind:value={name}
 									required
+									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+									aria-label={$i18n.t('Model Name')}
 								/>
 							</div>
 						</div>
@@ -466,6 +469,8 @@
 									bind:value={id}
 									disabled={edit}
 									required
+									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+									aria-label={$i18n.t('Model ID')}
 								/>
 							</div>
 						</div>
@@ -491,10 +496,12 @@
 							<div>
 								<select
 									class="text-sm w-full bg-transparent outline-none"
-									placeholder="Select a base model (e.g. llama3, gpt-4o)"
+									placeholder={$i18n.t('Select a base model (e.g. llama3, gpt-4o)')}
 									bind:value={info.base_model_id}
 									on:change={onBaseModelChange}
 									required
+									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+									aria-label={$i18n.t('Base Model (From)')}
 								>
 									<option value={null} class=" text-gray-900"
 										>{$i18n.t('Select a base model')}</option
@@ -520,6 +527,7 @@
 								placeholder={$i18n.t('Enter English description')}
 								className="text-sm w-full bg-transparent outline-none resize-none overflow-y-hidden"
 								required
+								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 							/>
 						</div>
 						<div class="mt-2">
@@ -528,6 +536,7 @@
 								placeholder={$i18n.t('Enter French description')}
 								className="text-sm w-full bg-transparent outline-none resize-none overflow-y-hidden"
 								required
+								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 							/>
 						</div>
 					</div>
@@ -701,6 +710,7 @@
 											<input
 												class=" text-sm w-full bg-transparent outline-none border-r border-gray-50 dark:border-gray-850"
 												placeholder={$i18n.t('Write a prompt suggestion (e.g. Who are you?)')}
+												aria-label={$i18n.t('Write a prompt suggestion (e.g. Who are you?)')}
 												bind:value={prompt.content}
 											/>
 											<button
@@ -787,6 +797,7 @@
 									value={JSON.stringify(info, null, 2)}
 									disabled
 									readonly
+									aria-label={$i18n.t('JSON Preview')}
 								/>
 							</div>
 						{/if}

@@ -845,6 +845,7 @@
 									bind:this={editTextAreaElement}
 									class=" bg-transparent outline-none w-full resize-none"
 									bind:value={editedContent}
+									aria-label={$i18n.t('Edit message')}
 									on:input={() => {
 										editTextAreaElement.style.height = '';
 										editTextAreaElement.style.height = `${editTextAreaElement.scrollHeight}px`;

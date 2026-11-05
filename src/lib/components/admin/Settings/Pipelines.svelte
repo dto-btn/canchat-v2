@@ -212,6 +212,7 @@
 									await tick();
 									await setPipelines();
 								}}
+								aria-label={$i18n.t('Select a pipeline url')}
 							>
 								<option value="" selected disabled class="bg-gray-100 dark:bg-gray-700"
 									>{$i18n.t('Select a pipeline url')}</option
@@ -239,6 +240,7 @@
 								type="file"
 								accept=".py"
 								hidden
+								aria-label={$i18n.t('Upload Pipeline')}
 							/>
 
 							<button
@@ -322,6 +324,7 @@
 								class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 								placeholder={$i18n.t('Enter Github Raw URL')}
 								bind:value={pipelineDownloadUrl}
+								aria-label={$i18n.t('Enter Github Raw URL')}
 							/>
 						</div>
 						<button
@@ -410,6 +413,7 @@
 												await tick();
 												await getValves(selectedPipelineIdx);
 											}}
+											aria-label={$i18n.t('Select a pipeline')}
 										>
 											{#each pipelines as pipeline, idx}
 												<option value={idx} class="bg-gray-100 dark:bg-gray-700"
@@ -475,6 +479,7 @@
 																<select
 																	class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 																	bind:value={valves[property]}
+																	aria-label={valves_spec.properties[property].title}
 																>
 																	{#each valves_spec.properties[property].enum as option}
 																		<option value={option} selected={option === valves[property]}>
@@ -500,6 +505,9 @@
 																	bind:value={valves[property]}
 																	autocomplete="off"
 																	required
+																	on:invalid={(e) =>
+																		e.target.setCustomValidity($i18n.t('This field is required'))}
+																	aria-label={valves_spec.properties[property].title}
 																/>
 															{/if}
 														</div>

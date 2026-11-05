@@ -16,6 +16,7 @@
 			class="w-full py-2 px-4 text-sm outline-none bg-transparent"
 			bind:value={selectedUrlIdx}
 			placeholder={$i18n.t('Select an Ollama instance')}
+			aria-label={$i18n.t('Select an Ollama instance')}
 		>
 			{#each ollamaConfig.OLLAMA_BASE_URLS as url, idx}
 				<option value={idx}>{url}</option>

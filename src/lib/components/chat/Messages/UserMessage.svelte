@@ -159,6 +159,7 @@
 							bind:this={messageEditTextAreaElement}
 							class=" bg-transparent outline-none w-full resize-none"
 							bind:value={editedContent}
+							aria-label={$i18n.t('Edit message')}
 							on:input={(e) => {
 								const textarea = getTextArea(e);
 								textarea.style.height = '';
