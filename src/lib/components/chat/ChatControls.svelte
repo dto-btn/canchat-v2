@@ -11,6 +11,9 @@
 	import Overview from './Overview.svelte';
 	import EllipsisVertical from '../icons/EllipsisVertical.svelte';
 	import Artifacts from './Artifacts.svelte';
+	import { getI18n } from '$lib/utils/context';
+
+	const i18n = getI18n();
 
 	export let history: any;
 	export let models: any[] = [];
@@ -162,6 +165,7 @@
 		{#if $showControls}
 			<Drawer
 				show={$showControls}
+				ariaLabel={$i18n.t('Chat Controls')}
 				on:close={() => {
 					showControls.set(false);
 				}}

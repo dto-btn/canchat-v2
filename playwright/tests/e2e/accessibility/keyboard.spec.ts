@@ -309,3 +309,28 @@ test('the non-modal Chat Controls panel does not trap focus and returns it on cl
 	await page.keyboard.press('Enter');
 	await expect(opener).toBeFocused();
 });
+
+test('the Chat Controls drawer on small screens traps focus and Escape returns it', async ({
+	page
+}) => {
+	await page.setViewportSize({ width: 390, height: 844 });
+	await page.goto(`${baseURL}/__keyboard?controls`);
+	const opener = page.locator('#open-controls');
+	await opener.focus();
+	await page.keyboard.press('Enter');
+	const dialog = page.getByRole('dialog', { name: 'Chat Controls' });
+	await expect(dialog).toHaveAttribute('aria-modal', 'true');
+	const close = dialog.getByRole('button', { name: 'Close', exact: true });
+	await expect(close).toBeFocused();
+	for (const key of ['Tab', 'Shift+Tab']) {
+		for (let index = 0; index < 25; index++) {
+			await page.keyboard.press(key);
+			expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(
+				true
+			);
+		}
+	}
+	await page.keyboard.press('Escape');
+	await expect(dialog).toHaveCount(0);
+	await expect(opener).toBeFocused();
+});

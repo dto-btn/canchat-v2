@@ -60,7 +60,7 @@ Want to learn more about CANChat's features? Check out our [documentation](https
 - Press **Enter** on a message to focus its actions. Use the **arrow keys** to choose an action and **Enter/Space** to activate it. **Escape** returns to the message; **Tab/Shift+Tab** lets you leave the message area.
 - In a chat's **Chat Menu**, choose **Move to folder** to select an existing folder, remove the chat from its folder, or create a new destination folder without dragging. Choose **Tags** to manage tags.
 - Use **Tab** within the model selector to reach the **Temporary Chat** switch. **Escape** closes the selector and returns focus to its button.
-- Folder and Chat Controls expansion buttons support **Enter/Space**. Sidebar folders also support **Right/Left** to expand/collapse. The non-modal Chat Controls panel does not trap keyboard focus.
+- Folder and Chat Controls expansion buttons support **Enter/Space**. Sidebar folders also support **Right/Left** to expand/collapse. On large screens (1024px and wider), the Chat Controls side panel is non-modal and does not trap keyboard focus. On smaller screens, and when zoomed in, it opens as a modal drawer that keeps focus inside until you close it.
 
 The keyboard regression tests mount real components with mocked API responses; no running backend is required:
 
