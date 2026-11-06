@@ -36,6 +36,8 @@ from open_webui.observability.chat import OUTCOME_CANCELLED, OUTCOME_ERROR
 from open_webui.observability.llm import (
     FORMAT_NDJSON,
     FORMAT_SSE,
+    OPERATION_CHAT,
+    OPERATION_TEXT_COMPLETION,
     PROVIDER_OLLAMA,
     LLMOperation,
 )
@@ -1016,6 +1018,8 @@ async def generate_completion(
         provider=PROVIDER_OLLAMA,
         model=model_label,
         stream=form_data.stream is not False,
+        operation_name=OPERATION_TEXT_COMPLETION,
+        request_model=form_data.model,
     )
     return await send_post_request(
         url=f"{url}/api/generate",
@@ -1134,6 +1138,7 @@ async def generate_chat_completion(
         payload["model"] = payload["model"].replace(f"{prefix_id}.", "")
 
     key = get_api_key(url_idx, url, request.app.state.config.OLLAMA_API_CONFIGS)
+    request_model = payload["model"]
     payload = json.dumps(payload)
     llm = LLMOperation.start(
         request,
@@ -1141,6 +1146,8 @@ async def generate_chat_completion(
         model=model_label,
         stream=bool(form_data.stream),
         metadata=metadata,
+        operation_name=OPERATION_CHAT,
+        request_model=request_model,
     )
     return await send_post_request(
         url=f"{url}/api/chat",
@@ -1187,6 +1194,7 @@ async def generate_openai_completion(
     url_idx: Optional[int] = None,
     user=Depends(get_verified_user),
 ):
+    metadata = form_data.get("metadata") if isinstance(form_data, dict) else None
     try:
         form_data = OpenAICompletionForm(**form_data)
     except Exception as e:
@@ -1241,16 +1249,29 @@ async def generate_openai_completion(
         request.app.state.config.OLLAMA_API_CONFIGS.get(url, {}),  # Legacy support
     )
 
+    model_label = _configured_model_label(request, payload["model"])
     prefix_id = api_config.get("prefix_id", None)
 
     if prefix_id:
         payload["model"] = payload["model"].replace(f"{prefix_id}.", "")
 
+    stream = bool(payload.get("stream", False))
+    llm = LLMOperation.start(
+        request,
+        provider=PROVIDER_OLLAMA,
+        model=model_label,
+        stream=stream,
+        metadata=metadata,
+        operation_name=OPERATION_TEXT_COMPLETION,
+        request_model=payload["model"],
+    )
     return await send_post_request(
         url=f"{url}/v1/completions",
         payload=json.dumps(payload),
-        stream=payload.get("stream", False),
+        stream=stream,
         key=get_api_key(url_idx, url, request.app.state.config.OLLAMA_API_CONFIGS),
+        llm=llm,
+        llm_format=FORMAT_SSE,
     )
 
 
@@ -1325,6 +1346,7 @@ async def generate_openai_chat_completion(
 
     key = get_api_key(url_idx, url, request.app.state.config.OLLAMA_API_CONFIGS)
     stream = bool(payload.get("stream", False))
+    request_model = payload["model"]
     payload = json.dumps(payload)
     llm = LLMOperation.start(
         request,
@@ -1332,6 +1354,8 @@ async def generate_openai_chat_completion(
         model=model_label,
         stream=stream,
         metadata=form_data.get("metadata"),
+        operation_name=OPERATION_CHAT,
+        request_model=request_model,
     )
     return await send_post_request(
         url=f"{url}/v1/chat/completions",
