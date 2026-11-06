@@ -38,6 +38,7 @@ from sqlalchemy import text
 from starlette.responses import PlainTextResponse
 from starlette.testclient import TestClient
 
+from open_webui.observability import providers as providers_module
 from open_webui.observability import tracing
 from open_webui.observability.logging_config import JsonFormatter
 from open_webui.observability.middleware import RequestContextMiddleware
@@ -272,7 +273,11 @@ def test_route_produces_one_bounded_server_span(otel):
         app,
         "GET",
         f"/api/v1/items/{SECRET}?token={SECRET}",
-        headers={"x-request-id": REQUEST_ID, "user-agent": SECRET},
+        headers={
+            "x-request-id": REQUEST_ID,
+            "user-agent": SECRET,
+            "host": f"{SECRET}.example",
+        },
     )
 
     assert response.status_code == 200
@@ -286,7 +291,14 @@ def test_route_produces_one_bounded_server_span(otel):
     assert span.attributes["http.request.method"] == "GET"
     assert span.attributes["http.response.status_code"] == 200
     assert span.attributes["canchat.request.id"] == REQUEST_ID
-    for key in ("url.path", "url.query", "client.address", "user_agent.original"):
+    for key in (
+        "url.path",
+        "url.query",
+        "client.address",
+        "user_agent.original",
+        "server.address",
+        "server.port",
+    ):
         assert key not in span.attributes
     assert SECRET not in _all_attribute_values(span)
 
@@ -1076,6 +1088,8 @@ def test_sanitized_span_keeps_only_allow_listed_data():
             "db.user": SECRET,
             "db.statement": f"SELECT '{SECRET}'",
             "canchat.request.id": REQUEST_ID,
+            "server.address": f"{SECRET}.example",
+            "server.port": 8443,
         },
         events=(
             Event(
@@ -1117,3 +1131,43 @@ def test_sanitized_span_keeps_only_allow_listed_data():
         1,
         2,
     )
+
+
+def test_client_span_keeps_server_address():
+    span = ReadableSpan(
+        name="GET",
+        context=SpanContext(1, 2, False, TraceFlags(1)),
+        attributes={"server.address": "api.example", "server.port": 8443},
+        kind=SpanKind.CLIENT,
+    )
+
+    assert dict(tracing.sanitize_span(span).attributes) == {
+        "server.address": "api.example",
+        "server.port": 8443,
+    }
+
+
+def test_custom_resource_attributes_are_not_exported(monkeypatch):
+    monkeypatch.setenv(
+        "OTEL_RESOURCE_ATTRIBUTES", f"canchat.secret={SECRET},host.name={SECRET}"
+    )
+    otel = Tracing()
+    try:
+        with otel.tracer.start_as_current_span("request", kind=SpanKind.SERVER):
+            pass
+
+        resources = [
+            otel.spans()[0].resource,
+            otel.bundle.tracer_provider.resource,
+            otel.bundle.meter_provider._sdk_config.resource,
+            otel.bundle.logger_provider.resource,
+        ]
+    finally:
+        otel.bundle.shutdown()
+
+    for resource in resources:
+        assert set(resource.attributes) <= set(
+            providers_module.ALLOWED_RESOURCE_ATTRIBUTES
+        )
+        assert resource.attributes["service.name"] == "test-service"
+        assert SECRET not in str(dict(resource.attributes))

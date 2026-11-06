@@ -137,6 +137,8 @@ ALLOWED_EVENT_ATTRIBUTES = frozenset({"exception.type", "exception.escaped"})
 
 _URL_ATTRIBUTES = frozenset({"url.full", "http.url"})
 _SQL_ATTRIBUTES = frozenset({"db.statement", "db.query.text"})
+# On server spans these come from the client-supplied Host header.
+_SERVER_SPAN_DROPPED_ATTRIBUTES = frozenset({"server.address", "server.port"})
 _MAX_STATEMENT_LENGTH = 2048
 # Backslash escapes are treated as escapes even where the dialect would not;
 # over-redacting a statement is the safe failure.
@@ -526,12 +528,16 @@ def _filter_event_attributes(attributes: Attributes) -> dict[str, Any]:
 
 def sanitize_span(span: ReadableSpan) -> ReadableSpan:
     """Return a copy of ``span`` that only holds allow-listed data."""
+    attributes = filter_span_attributes(span.attributes)
+    if span.kind is SpanKind.SERVER:
+        for key in _SERVER_SPAN_DROPPED_ATTRIBUTES:
+            attributes.pop(key, None)
     return ReadableSpan(
         name=span.name,
         context=span.context,
         parent=span.parent,
         resource=span.resource,
-        attributes=filter_span_attributes(span.attributes),
+        attributes=attributes,
         events=tuple(
             Event(
                 event.name,

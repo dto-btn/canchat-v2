@@ -49,6 +49,20 @@ DEFAULT_DEV_TRACES_SAMPLER_RATIO = 1.0
 _LEGACY_METRIC_PATH = "/v1/metrics"
 _SHUTDOWN_TIMEOUT_MS = 5000
 
+# Resource attributes exported with every span, metric and log record.
+# ``Resource.create`` also merges ``OTEL_RESOURCE_ATTRIBUTES`` and any enabled
+# resource detectors, which bypass the span sanitizer; keep only these.
+ALLOWED_RESOURCE_ATTRIBUTES = frozenset(
+    {
+        "service.name",
+        "service.version",
+        "deployment.environment",
+        "telemetry.sdk.language",
+        "telemetry.sdk.name",
+        "telemetry.sdk.version",
+    }
+)
+
 
 @dataclass(frozen=True)
 class OTelSettings:
@@ -304,6 +318,17 @@ def _signal_endpoint(base_endpoint: str, signal: str) -> str:
     return f"{base_endpoint.rstrip('/')}/v1/{signal}"
 
 
+def _allow_listed_resource(resource: Resource) -> Resource:
+    return Resource(
+        {
+            key: value
+            for key, value in resource.attributes.items()
+            if key in ALLOWED_RESOURCE_ATTRIBUTES
+        },
+        resource.schema_url,
+    )
+
+
 def create_providers(
     settings: OTelSettings,
     metric_readers: Sequence[MetricReader] = (),
@@ -314,12 +339,14 @@ def create_providers(
     Every span exporter, including test exporters, receives spans only after
     the attribute allow-list in ``tracing.SanitizingSpanExporter`` is applied.
     """
-    resource = Resource.create(
-        {
-            "service.name": settings.service_name,
-            "service.version": settings.service_version,
-            "deployment.environment": settings.environment,
-        }
+    resource = _allow_listed_resource(
+        Resource.create(
+            {
+                "service.name": settings.service_name,
+                "service.version": settings.service_version,
+                "deployment.environment": settings.environment,
+            }
+        )
     )
     configured_readers = list(metric_readers)
     # The lifecycle owner shuts providers down once; SDK atexit hooks would repeat it.
