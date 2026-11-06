@@ -17,7 +17,12 @@ from starlette.background import BackgroundTask
 
 from open_webui.models.models import Models
 from open_webui.observability.chat import OUTCOME_CANCELLED, OUTCOME_ERROR
-from open_webui.observability.llm import FORMAT_SSE, PROVIDER_OPENAI, LLMOperation
+from open_webui.observability.llm import (
+    FORMAT_SSE,
+    OPERATION_CHAT,
+    PROVIDER_OPENAI,
+    LLMOperation,
+)
 from open_webui.config import (
     CACHE_DIR,
     MODEL_CONTEXT_LENGTHS,
@@ -680,6 +685,7 @@ async def generate_chat_completion(
         del payload["max_tokens"]
 
     # Convert the modified body back to JSON
+    request_model = payload.get("model")
     payload = json.dumps(payload)
 
     r = None
@@ -692,6 +698,9 @@ async def generate_chat_completion(
         model=model_id,
         stream=bool(form_data.get("stream", False)),
         metadata=form_data.get("metadata"),
+        operation_name=OPERATION_CHAT,
+        request_model=request_model,
+        pipeline=bool(model.get("pipeline")),
     )
 
     try:
