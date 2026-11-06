@@ -11,19 +11,8 @@ from open_webui.metrics.service import MetricsService
 def test_unset_uses_builtin_defaults(monkeypatch):
     monkeypatch.delenv("METRIC_DEFINITIONS", raising=False)
 
+    # HTTP request metrics come from the FastAPI instrumentation (OBS-20).
     assert _load_metric_definitions() == [
-        {
-            "name": "http_requests_total",
-            "type": "counter",
-            "description": "Total HTTP requests",
-            "unit": "",
-        },
-        {
-            "name": "http_request_duration_ms",
-            "type": "histogram",
-            "description": "Duration of HTTP requests in milliseconds",
-            "unit": "ms",
-        },
         {
             "name": "task_queue_size",
             "type": "gauge",
