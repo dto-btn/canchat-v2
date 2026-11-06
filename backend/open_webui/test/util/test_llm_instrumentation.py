@@ -20,6 +20,8 @@ from starlette.responses import StreamingResponse
 
 from open_webui.observability import chat as chat_obs
 from open_webui.observability import llm as llm_obs
+from open_webui.observability import tracing
+from open_webui import functions as functions_module
 from open_webui.routers import ollama as ollama_router
 from open_webui.routers import openai as openai_router
 from open_webui.test.util.test_chat_instrumentation import (
@@ -50,7 +52,9 @@ ALLOWED_LLM_ATTRIBUTES = {
     "canchat.llm.usage.input_tokens",
     "canchat.llm.usage.output_tokens",
     "canchat.llm.time_to_first_token",
+    "canchat.llm.pipeline",
     "error.type",
+    *llm_obs.GEN_AI_ATTRIBUTES,
 }
 
 
@@ -311,6 +315,12 @@ async def test_background_stream(telemetry, chat, caplog):
         "canchat.llm.usage.input_tokens": 7,
         "canchat.llm.usage.output_tokens": 2,
         "canchat.llm.time_to_first_token": pytest.approx(EXPECTED_TTFT),
+        "gen_ai.operation.name": "chat",
+        "gen_ai.provider.name": "openai",
+        "gen_ai.request.model": MODEL_ID,
+        "gen_ai.response.model": MODEL_ID,
+        "gen_ai.usage.input_tokens": 7,
+        "gen_ai.usage.output_tokens": 2,
     }
     assert dict(only_span(telemetry, "llm.attempt").attributes) == {
         "canchat.llm.attempt": 1
@@ -384,6 +394,8 @@ async def test_missing_usage_is_unknown_not_zero(telemetry, chat):
     assert llm.attributes["canchat.llm.usage.known"] is False
     assert "canchat.llm.usage.input_tokens" not in llm.attributes
     assert "canchat.llm.usage.output_tokens" not in llm.attributes
+    assert "gen_ai.usage.input_tokens" not in llm.attributes
+    assert "gen_ai.usage.output_tokens" not in llm.attributes
 
 
 @pytest.mark.anyio
@@ -747,3 +759,484 @@ async def test_ollama_openai_compatible_endpoint(telemetry, monkeypatch):
         provider="ollama",
         model=OLLAMA_MODEL,
     )
+
+
+# OBS-25: approved ``gen_ai.*`` metadata on ``llm.chat``
+
+PROMPT_SENTINEL = "obs25-secret-prompt"
+COMPLETION_SENTINEL = "obs25-secret-completion"
+UPSTREAM_MODEL = "gpt-4o-2024-08-06"
+
+
+def gen_ai(span):
+    return {k: v for k, v in span.attributes.items() if k.startswith("gen_ai.")}
+
+
+def assert_no_content(span, *sentinels):
+    assert set(span.attributes) <= ALLOWED_LLM_ATTRIBUTES
+    for value in span.attributes.values():
+        values = value if isinstance(value, tuple) else (value,)
+        for item in values:
+            for sentinel in sentinels:
+                assert sentinel not in str(item)
+
+
+def test_approved_gen_ai_attributes_survive_export_and_content_is_dropped():
+    assert llm_obs.GEN_AI_ATTRIBUTES <= tracing.ALLOWED_SPAN_ATTRIBUTES
+    allowed_gen_ai = {
+        k for k in tracing.ALLOWED_SPAN_ATTRIBUTES if k.startswith("gen_ai.")
+    }
+    assert allowed_gen_ai == llm_obs.GEN_AI_ATTRIBUTES
+
+    approved = {
+        "gen_ai.operation.name": "chat",
+        "gen_ai.provider.name": "openai",
+        "gen_ai.request.model": MODEL_ID,
+        "gen_ai.response.model": UPSTREAM_MODEL,
+        "gen_ai.response.finish_reasons": ("stop",),
+        "gen_ai.usage.input_tokens": 7,
+        "gen_ai.usage.output_tokens": 2,
+    }
+    content = {
+        "gen_ai.input.messages": PROMPT_SENTINEL,
+        "gen_ai.output.messages": COMPLETION_SENTINEL,
+        "gen_ai.system_instructions": PROMPT_SENTINEL,
+        "gen_ai.prompt": PROMPT_SENTINEL,
+        "gen_ai.completion": COMPLETION_SENTINEL,
+        "gen_ai.tool.call.arguments": PROMPT_SENTINEL,
+        "gen_ai.tool.call.result": COMPLETION_SENTINEL,
+        "gen_ai.conversation.id": CHAT_ID,
+        "gen_ai.system": "openai",
+    }
+
+    assert tracing.filter_span_attributes({**approved, **content}) == approved
+
+
+@pytest.mark.anyio
+async def test_openai_json_gen_ai_attributes_without_content(telemetry, chat):
+    chat.provider.json = {
+        "id": "chatcmpl-1",
+        "model": UPSTREAM_MODEL,
+        "choices": [
+            {
+                "message": {"role": "assistant", "content": COMPLETION_SENTINEL},
+                "finish_reason": "stop",
+            }
+        ],
+        "usage": USAGE,
+    }
+
+    result = await chat.complete(chat.form(PROMPT_SENTINEL))
+
+    assert result["choices"][0]["message"]["content"] == COMPLETION_SENTINEL
+    llm = assert_llm_span_tree(telemetry)
+    assert gen_ai(llm) == {
+        "gen_ai.operation.name": "chat",
+        "gen_ai.provider.name": "openai",
+        "gen_ai.request.model": MODEL_ID,
+        "gen_ai.response.model": UPSTREAM_MODEL,
+        "gen_ai.response.finish_reasons": ("stop",),
+        "gen_ai.usage.input_tokens": 7,
+        "gen_ai.usage.output_tokens": 2,
+    }
+    assert "canchat.llm.pipeline" not in llm.attributes
+    assert_no_content(llm, PROMPT_SENTINEL, COMPLETION_SENTINEL, "chatcmpl-1")
+
+
+@pytest.mark.anyio
+async def test_openai_stream_finish_reason_after_first_token(telemetry, chat):
+    def chunk(finish_reason, **fields):
+        return sse(
+            {
+                "model": UPSTREAM_MODEL,
+                "choices": [
+                    {"index": 0, "delta": fields, "finish_reason": finish_reason}
+                ],
+            }
+        )
+
+    chat.provider.body = [
+        chunk(None, role="assistant"),
+        chunk(None, content=COMPLETION_SENTINEL),
+        chunk(None, content="more"),
+        chunk("length"),
+        b"data: [DONE]\n",
+    ]
+
+    response = await chat.complete(chat.form(PROMPT_SENTINEL, stream=True))
+    [_ async for _ in response.body_iterator]
+
+    llm = only_span(telemetry, "llm.chat")
+    assert llm.attributes["gen_ai.response.model"] == UPSTREAM_MODEL
+    assert llm.attributes["gen_ai.response.finish_reasons"] == ("length",)
+    assert_no_content(llm, PROMPT_SENTINEL, COMPLETION_SENTINEL)
+
+
+@pytest.mark.anyio
+async def test_openai_pipeline_model(telemetry, chat):
+    # An OpenAI connection that is a Pipelines server: the user block is
+    # forwarded to the provider but never reaches the span.
+    chat.request.app.state.OPENAI_MODELS[MODEL_ID]["pipeline"] = True
+    chat.provider.json = {
+        "model": MODEL_ID,
+        "choices": [
+            {
+                "message": {"role": "assistant", "content": COMPLETION_SENTINEL},
+                "finish_reason": "stop",
+            }
+        ],
+        "usage": USAGE,
+    }
+
+    await chat.complete(chat.form(PROMPT_SENTINEL))
+
+    llm = assert_llm_span_tree(telemetry)
+    assert llm.attributes["canchat.llm.pipeline"] is True
+    assert llm.attributes["gen_ai.provider.name"] == "openai"
+    assert llm.attributes["gen_ai.request.model"] == MODEL_ID
+    assert llm.attributes["gen_ai.usage.output_tokens"] == 2
+    assert_no_content(
+        llm, PROMPT_SENTINEL, COMPLETION_SENTINEL, chat.user.email, chat.user.id
+    )
+
+
+PIPE_ID = "obs25_pipe"
+
+
+def install_pipe(monkeypatch, chat, pipe):
+    chat.request.app.state.MODELS[PIPE_ID] = {
+        "id": PIPE_ID,
+        "name": "Pipe",
+        "owned_by": "openai",
+        "pipe": {"type": "pipe"},
+        "info": {"meta": {}},
+    }
+
+    async def no_tools(*args, **kwargs):
+        return {}
+
+    module = type("PipeModule", (), {"pipe": staticmethod(pipe)})()
+    monkeypatch.setattr(functions_module, "get_tools_async", no_tools)
+    monkeypatch.setattr(functions_module.Models, "get_model_by_id", lambda _id: None)
+    monkeypatch.setattr(
+        functions_module, "get_function_module_by_id", lambda _r, _id: module
+    )
+    monkeypatch.setattr(functions_module, "get_event_emitter", lambda _m: None)
+    monkeypatch.setattr(functions_module, "get_event_call", lambda _m: None)
+
+
+@pytest.mark.anyio
+async def test_function_pipe_calling_a_provider_router(telemetry, chat, monkeypatch):
+    # A pipe function is not itself an LLM operation; the provider call it
+    # makes through the router is, and carries the gen_ai metadata.
+    async def pipe(body, __request__):
+        return await openai_router.generate_chat_completion(
+            __request__, {**body, "model": MODEL_ID}, chat.user, bypass_filter=True
+        )
+
+    install_pipe(monkeypatch, chat, pipe)
+    chat.provider.json = {
+        "model": MODEL_ID,
+        "choices": [{"message": {"content": COMPLETION_SENTINEL}}],
+        "usage": USAGE,
+    }
+    form = chat.form(PROMPT_SENTINEL)
+    form["model"] = PIPE_ID
+
+    result = await chat.complete(form)
+
+    assert result["choices"][0]["message"]["content"] == COMPLETION_SENTINEL
+    llm = only_span(telemetry, "llm.chat")
+    assert llm.parent.span_id == only_span(telemetry, "chat.operation").context.span_id
+    assert gen_ai(llm) == {
+        "gen_ai.operation.name": "chat",
+        "gen_ai.provider.name": "openai",
+        "gen_ai.request.model": MODEL_ID,
+        "gen_ai.response.model": MODEL_ID,
+        "gen_ai.usage.input_tokens": 7,
+        "gen_ai.usage.output_tokens": 2,
+    }
+    assert_no_content(llm, PROMPT_SENTINEL, COMPLETION_SENTINEL)
+    assert_recorded_once(telemetry, "success", stream=False)
+
+
+@pytest.mark.anyio
+async def test_function_pipe_without_provider_router_has_no_llm_span(
+    telemetry, chat, monkeypatch
+):
+    def pipe(body):
+        return COMPLETION_SENTINEL
+
+    install_pipe(monkeypatch, chat, pipe)
+    form = chat.form(PROMPT_SENTINEL)
+    form["model"] = PIPE_ID
+
+    await chat.complete(form)
+
+    assert spans_named(telemetry, "llm.chat") == []
+    assert chat.provider.calls == 0
+    assert metric_points(telemetry, llm_obs.LLM_REQUESTS) == []
+
+
+def ollama_admin(monkeypatch):
+    monkeypatch.setattr(ollama_router.Models, "get_model_by_id", lambda _id: None)
+
+    async def ollama_url(request, model, url_idx):
+        return "http://ollama.test", 0
+
+    monkeypatch.setattr(ollama_router, "get_ollama_url", ollama_url)
+    return type("U", (), {"role": "admin", "id": "u"})()
+
+
+def ndjson(data):
+    return (json.dumps(data) + "\n").encode()
+
+
+@pytest.mark.anyio
+async def test_ollama_api_chat_gen_ai_attributes(telemetry, monkeypatch):
+    provider = Provider(monkeypatch, Clock())
+    monkeypatch.setattr(llm_obs, "_monotonic", provider.clock)
+    provider.body = [
+        ndjson({"model": OLLAMA_MODEL, "message": {"content": COMPLETION_SENTINEL}}),
+        ndjson(
+            {
+                "model": OLLAMA_MODEL,
+                "message": {"content": ""},
+                "done": True,
+                "done_reason": "stop",
+                "prompt_eval_count": 11,
+                "eval_count": 3,
+            }
+        ),
+    ]
+
+    response = await ollama_router.generate_chat_completion(
+        ollama_request(telemetry),
+        {
+            "model": MODEL_ID,
+            "messages": [{"role": "user", "content": PROMPT_SENTINEL}],
+            "stream": True,
+        },
+        url_idx=0,
+        user=ollama_admin(monkeypatch),
+    )
+    [_ async for _ in response.body_iterator]
+
+    llm = only_span(telemetry, "llm.chat")
+    assert gen_ai(llm) == {
+        "gen_ai.operation.name": "chat",
+        "gen_ai.provider.name": "ollama",
+        "gen_ai.request.model": OLLAMA_MODEL,
+        "gen_ai.response.model": OLLAMA_MODEL,
+        "gen_ai.response.finish_reasons": ("stop",),
+        "gen_ai.usage.input_tokens": 11,
+        "gen_ai.usage.output_tokens": 3,
+    }
+    assert_no_content(llm, PROMPT_SENTINEL, COMPLETION_SENTINEL)
+
+
+@pytest.mark.anyio
+async def test_ollama_api_generate_gen_ai_attributes(telemetry, monkeypatch):
+    provider = Provider(monkeypatch, Clock())
+    monkeypatch.setattr(llm_obs, "_monotonic", provider.clock)
+    # ``/api/generate`` always proxies the provider body as a stream; a
+    # ``stream: false`` answer is a single NDJSON line.
+    provider.body = [
+        ndjson(
+            {
+                "model": OLLAMA_MODEL,
+                "response": COMPLETION_SENTINEL,
+                "done": True,
+                "done_reason": "length",
+                "prompt_eval_count": 4,
+                "eval_count": 1,
+            }
+        )
+    ]
+
+    response = await ollama_router.generate_completion(
+        ollama_request(telemetry),
+        ollama_router.GenerateCompletionForm(
+            model=MODEL_ID, prompt=PROMPT_SENTINEL, stream=False
+        ),
+        url_idx=0,
+        user=None,
+    )
+    [_ async for _ in response.body_iterator]
+
+    llm = only_span(telemetry, "llm.chat")
+    assert gen_ai(llm) == {
+        "gen_ai.operation.name": "text_completion",
+        "gen_ai.provider.name": "ollama",
+        "gen_ai.request.model": MODEL_ID,
+        "gen_ai.response.model": OLLAMA_MODEL,
+        "gen_ai.response.finish_reasons": ("length",),
+        "gen_ai.usage.input_tokens": 4,
+        "gen_ai.usage.output_tokens": 1,
+    }
+    assert_no_content(llm, PROMPT_SENTINEL, COMPLETION_SENTINEL)
+
+
+@pytest.mark.anyio
+async def test_ollama_openai_chat_gen_ai_attributes(telemetry, monkeypatch):
+    provider = Provider(monkeypatch, Clock())
+    monkeypatch.setattr(llm_obs, "_monotonic", provider.clock)
+
+    response = await ollama_router.generate_openai_chat_completion(
+        ollama_request(telemetry),
+        {
+            "model": MODEL_ID,
+            "messages": [{"role": "user", "content": PROMPT_SENTINEL}],
+            "stream": True,
+        },
+        url_idx=0,
+        user=ollama_admin(monkeypatch),
+    )
+    [_ async for _ in response.body_iterator]
+
+    llm = only_span(telemetry, "llm.chat")
+    assert gen_ai(llm) == {
+        "gen_ai.operation.name": "chat",
+        "gen_ai.provider.name": "ollama",
+        "gen_ai.request.model": OLLAMA_MODEL,
+        "gen_ai.response.model": MODEL_ID,
+        "gen_ai.usage.input_tokens": 7,
+        "gen_ai.usage.output_tokens": 2,
+    }
+    assert_no_content(llm, PROMPT_SENTINEL)
+
+
+@pytest.mark.anyio
+async def test_ollama_openai_completions_endpoint(telemetry, monkeypatch):
+    # ``/v1/completions`` had no provider operation before OBS-25.
+    provider = Provider(monkeypatch, Clock())
+    monkeypatch.setattr(llm_obs, "_monotonic", provider.clock)
+
+    def text(value, finish_reason=None):
+        return sse(
+            {
+                "model": OLLAMA_MODEL,
+                "choices": [
+                    {"index": 0, "text": value, "finish_reason": finish_reason}
+                ],
+            }
+        )
+
+    provider.body = [
+        2.0,
+        text(""),
+        0.5,
+        text(COMPLETION_SENTINEL),
+        text("", "stop"),
+        sse({"model": OLLAMA_MODEL, "choices": [], "usage": USAGE}),
+        b"data: [DONE]\n",
+    ]
+
+    response = await ollama_router.generate_openai_completion(
+        ollama_request(telemetry),
+        {
+            "model": MODEL_ID,
+            "prompt": PROMPT_SENTINEL,
+            "stream": True,
+            "metadata": {"task": "autocomplete_generation"},
+        },
+        url_idx=0,
+        user=ollama_admin(monkeypatch),
+    )
+    [_ async for _ in response.body_iterator]
+
+    llm = only_span(telemetry, "llm.chat")
+    assert gen_ai(llm) == {
+        "gen_ai.operation.name": "text_completion",
+        "gen_ai.provider.name": "ollama",
+        "gen_ai.request.model": OLLAMA_MODEL,
+        "gen_ai.response.model": OLLAMA_MODEL,
+        "gen_ai.response.finish_reasons": ("stop",),
+        "gen_ai.usage.input_tokens": 7,
+        "gen_ai.usage.output_tokens": 2,
+    }
+    assert_no_content(llm, PROMPT_SENTINEL, COMPLETION_SENTINEL)
+    assert_recorded_once(
+        telemetry,
+        "success",
+        stream=True,
+        ttft=HEADER_DELAY + 2.5,
+        task="autocomplete_generation",
+        provider="ollama",
+        model=OLLAMA_MODEL,
+    )
+
+
+def test_gen_ai_values_are_bounded(telemetry):
+    # Unconfigured model: no request model. Provider-reported values that are
+    # not identifiers or known finish reasons are dropped or bucketed.
+    operation = llm_obs.LLMOperation.start(
+        fake_request(telemetry.metrics),
+        provider="openai",
+        model=None,
+        stream=False,
+        operation_name="not-an-operation",
+        request_model="anything",
+    )
+    operation.observe_response(
+        {
+            "model": f"{PROMPT_SENTINEL} with spaces",
+            "choices": [
+                {"finish_reason": "stop"},
+                {"finish_reason": PROMPT_SENTINEL},
+                {"finish_reason": "stop"},
+                {"finish_reason": None},
+            ],
+        }
+    )
+    operation.finish()
+
+    llm = only_span(telemetry, "llm.chat")
+    assert gen_ai(llm) == {
+        "gen_ai.operation.name": "chat",
+        "gen_ai.provider.name": "openai",
+        "gen_ai.response.finish_reasons": ("stop", "other"),
+    }
+    assert_no_content(llm, PROMPT_SENTINEL)
+
+
+def test_start_failure_sets_no_gen_ai(telemetry, monkeypatch):
+    def broken_tracer():
+        raise RuntimeError("tracer unavailable")
+
+    monkeypatch.setattr(llm_obs, "_tracer", broken_tracer)
+    operation = llm_obs.LLMOperation.start(
+        fake_request(telemetry.metrics),
+        provider="openai",
+        model=MODEL_ID,
+        stream=False,
+        request_model=MODEL_ID,
+    )
+    operation.observe_response({"model": MODEL_ID, "usage": USAGE})
+    operation.finish()
+
+    assert spans_named(telemetry, "llm.chat") == []
+
+
+@pytest.mark.anyio
+async def test_malformed_response_metadata_never_fails_the_response(telemetry, chat):
+    chat.provider.json = {
+        "model": {"name": UPSTREAM_MODEL},
+        "choices": [
+            {"message": {"content": "answer"}, "finish_reason": ["stop"]},
+            {"message": {"content": "answer"}, "finish_reason": {"type": "stop"}},
+            "not-a-choice",
+        ],
+        "done_reason": 42,
+        "usage": USAGE,
+    }
+
+    result = await chat.complete(chat.form())
+
+    assert result["choices"][0]["message"]["content"] == "answer"
+    llm = only_span(telemetry, "llm.chat")
+    assert llm.attributes["canchat.outcome"] == "success"
+    assert "gen_ai.response.model" not in llm.attributes
+    assert "gen_ai.response.finish_reasons" not in llm.attributes
+    assert llm.attributes["gen_ai.usage.input_tokens"] == 7
+    assert_recorded_once(telemetry, "success", stream=False)

@@ -128,6 +128,15 @@ ALLOWED_SPAN_ATTRIBUTES = frozenset(
         "http.status_code",
         "http.url",
         "http.scheme",
+        # GenAI metadata on ``llm.chat`` (OBS-25; ``llm.GEN_AI_ATTRIBUTES``).
+        # Message, system-instruction and tool content keys are never allowed.
+        "gen_ai.operation.name",
+        "gen_ai.provider.name",
+        "gen_ai.request.model",
+        "gen_ai.response.model",
+        "gen_ai.response.finish_reasons",
+        "gen_ai.usage.input_tokens",
+        "gen_ai.usage.output_tokens",
     }
 )
 ALLOWED_SPAN_ATTRIBUTE_PREFIXES = ("canchat.",)
