@@ -290,6 +290,19 @@ class MetricsService:
         log.warning(message)
 
 
+_current_service: MetricsService | None = None
+
+
+def set_metrics_service(service: MetricsService | None) -> None:
+    """Expose the app's service to code without a ``Request`` (models, sockets)."""
+    global _current_service
+    _current_service = service
+
+
+def get_metrics_service() -> MetricsService | None:
+    return _current_service
+
+
 def validate_definition(definition: MetricsDefinition) -> None:
     """Raise ``ValueError`` naming the offending field; never echo values."""
     if not definition.name.strip():

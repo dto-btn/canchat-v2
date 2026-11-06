@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy import Column, Text, BigInteger, func
 
 from open_webui.internal.db import get_db
+from open_webui.metrics.service import get_metrics_service
 from open_webui.models.base import Base
 from logging import getLogger
 
@@ -47,6 +48,28 @@ class UsageModel(BaseModel):
     total_tokens: float
 
 
+LLM_TOKENS = "canchat.llm.tokens"
+
+
+def _record_token_counter(tokens: UsageModel) -> None:
+    metrics = get_metrics_service()
+    if metrics is None:
+        return
+    try:
+        if not metrics.has_instrument(LLM_TOKENS):
+            return
+        for token_type, value in (
+            ("prompt", tokens.prompt_tokens),
+            ("completion", tokens.completion_tokens),
+        ):
+            metrics.record(LLM_TOKENS, value, {"type": token_type})
+    except Exception as e:
+        # MetricsService raises only in strict (test) mode.
+        if getattr(metrics, "strict", False):
+            raise
+        logger.warning("Failed to record %s: %s", LLM_TOKENS, type(e).__name__)
+
+
 class MessageMetricsTable:
     def insert_new_metrics(
         self,
@@ -79,7 +102,10 @@ class MessageMetricsTable:
             result = MessageMetric(**metrics.model_dump())
             db.add(result)
             db.commit()
-            db.refresh(result)
+
+        # Only after a successful commit, from the same validated values as
+        # the row, so the counter and the admin dashboard cannot drift.
+        _record_token_counter(tokens)
 
     def get_used_models(self) -> list[str]:
         try:
