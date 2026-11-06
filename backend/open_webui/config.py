@@ -912,6 +912,17 @@ DEFAULT_METRIC_DEFINITIONS = [
         "attributes": ["task"],
     },
     {
+        # Recorded only by ``MessageMetrics.insert_new_metrics`` after the
+        # ``message_metrics`` row commits, so it matches the admin dashboard.
+        # Prometheus: ``canchat_llm_tokens_total``.
+        "name": "canchat.llm.tokens",
+        "type": "counter",
+        "description": "LLM tokens recorded in message_metrics, by token type",
+        "unit": "{token}",
+        # ``prompt`` or ``completion``.
+        "attributes": ["type"],
+    },
+    {
         "name": "canchat.llm.request.duration",
         "type": "histogram",
         "description": "LLM provider request duration, invocation to final chunk",
