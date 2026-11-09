@@ -17,6 +17,10 @@ message_id_var: ContextVar[str | None] = ContextVar("message_id", default=None)
 model_var: ContextVar[str | None] = ContextVar("model", default=None)
 provider_var: ContextVar[str | None] = ContextVar("provider", default=None)
 
+# ASGI ``scope["state"]`` key where the server span context is kept, so the
+# completion access record, emitted after the span has ended, still carries it.
+SERVER_SPAN_CONTEXT_STATE_KEY = "otel_server_span_context"
+
 LOG_CONTEXT_VARS: dict[str, ContextVar[str | None]] = {
     "request_id": request_id_var,
     "operation_id": operation_id_var,
