@@ -7,6 +7,9 @@ receivers:
 exporters:
   debug:
       verbosity: detailed
+  # Log bodies and span details can be sensitive; only print counts locally.
+  debug/basic:
+    verbosity: basic
   prometheus:
     endpoint: 0.0.0.0:8889
 
@@ -20,3 +23,9 @@ service:
     metrics:
       receivers: [otlp]
       exporters: [debug, prometheus]
+    traces:
+      receivers: [otlp]
+      exporters: [debug/basic]
+    logs:
+      receivers: [otlp]
+      exporters: [debug/basic]
