@@ -958,6 +958,15 @@ DEFAULT_METRIC_DEFINITIONS = [
         "unit": "s",
         "buckets": list(CHAT_OPERATION_BUCKETS),
     },
+    {
+        # One value per ``crew-mcp-query`` Socket.IO event (OBS-26), from the
+        # authenticated handler to the result or error sent to the client.
+        "name": "canchat.crew.operation.duration",
+        "type": "histogram",
+        "description": "End-to-end CrewAI operation duration, socket event to result",
+        "unit": "s",
+        "buckets": list(CHAT_OPERATION_BUCKETS),
+    },
 ]
 
 METRIC_DEFINITIONS = _load_metric_definitions()
