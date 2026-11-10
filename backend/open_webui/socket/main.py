@@ -184,27 +184,28 @@ async def periodic_usage_pool_cleanup():
                         # Emit updated usage information after cleaning
                         await sio.emit("usage", {"models": get_models_in_use()})
 
-                except Exception as e:
-                    log.error(f"Error during usage pool cleanup: {type(e).__name__}")
+                except Exception:
+                    log.exception("Error during usage pool cleanup")
                     # Continue running even if cleanup fails
 
                 await asyncio.sleep(TIMEOUT_DURATION)
 
-            except Exception as e:
-                log.error(
-                    f"Error in cleanup loop: {type(e).__name__}. Will retry in {TIMEOUT_DURATION} seconds."
+            except Exception:
+                log.exception(
+                    "Error in cleanup loop. Will retry in %s seconds.",
+                    TIMEOUT_DURATION,
                 )
                 await asyncio.sleep(TIMEOUT_DURATION)
                 continue
 
-    except Exception as e:
-        log.error(f"Fatal error in periodic_usage_pool_cleanup: {type(e).__name__}")
+    except Exception:
+        log.exception("Fatal error in periodic_usage_pool_cleanup")
     finally:
         try:
             await release_func()
             log.debug("Released usage pool cleanup lock")
-        except Exception as e:
-            log.error(f"Error releasing cleanup lock:  {type(e).__name__}")
+        except Exception:
+            log.exception("Error releasing cleanup lock")
 
     log.info("Periodic usage pool cleanup task exited gracefully")
 
@@ -335,11 +336,8 @@ def flush_user_and_session_pools(prune_session_pool: bool = False):
             f"prune_session_pool={prune_session_pool})"
         )
 
-    except Exception as e:
-        log.error(
-            f"Error during Redis session pool cleanup: {type(e).__name__}",
-            exc_info=True,
-        )
+    except Exception:
+        log.exception("Error during Redis session pool cleanup")
 
     return stats
 
@@ -430,9 +428,9 @@ async def crew_mcp_query(sid, data):
                 data.get("selected_tools") if isinstance(data, dict) else None
             ),
         )
-    except Exception as e:
-        log.error("CrewMCP WebSocket error: %s", type(e).__name__)
-        await sio.emit("crew-mcp-error", {"error": str(e), "code": 500}, room=sid)
+    except Exception:
+        log.exception("CrewMCP WebSocket error")
+        await sio.emit("crew-mcp-error", CREW_MCP_INTERNAL_ERROR, room=sid)
         return
 
     with operation.activate():
@@ -440,12 +438,38 @@ async def crew_mcp_query(sid, data):
             await _run_crew_mcp_query(sid, data, user_session, operation)
         except Exception as e:
             operation.finish(OUTCOME_ERROR, e)
-            # Exception text can echo the prompt or provider payload; log the type only.
-            log.error("CrewMCP WebSocket error: %s", type(e).__name__)
-            await sio.emit("crew-mcp-error", {"error": str(e), "code": 500}, room=sid)
+            if _is_missing_graph_token(e):
+                log.warning("CrewMCP WebSocket error: %s", type(e).__name__)
+                await sio.emit(
+                    "crew-mcp-error", {"error": str(e), "code": 500}, room=sid
+                )
+                return
+            # Exception text can echo the prompt or provider payload: the log
+            # keeps the redacted traceback and the client gets a generic error.
+            log.exception("CrewMCP WebSocket error")
+            await sio.emit("crew-mcp-error", CREW_MCP_INTERNAL_ERROR, room=sid)
 
 
-async def _run_crew_mcp_query(sid, data, user_session, operation):
+CREW_MCP_INTERNAL_ERROR = {
+    "error": "An unexpected error occurred while processing your request.",
+    "code": 500,
+}
+
+
+def _is_missing_graph_token(error: Exception) -> bool:
+    """Whether ``error`` is the fixed, user-facing missing Graph token error.
+
+    Matched by class name so the optional CrewMCP backend is not imported here.
+    """
+    return any(cls.__name__ == "MissingGraphTokenError" for cls in type(error).__mro__)
+
+
+async def _run_crew_mcp_query(
+    sid: str,
+    data: dict,
+    user_session: dict,
+    operation: crew_obs.CrewOperation,
+) -> None:
     # Extract request data
     query = data.get("query", "")
     model = data.get("model", "")
