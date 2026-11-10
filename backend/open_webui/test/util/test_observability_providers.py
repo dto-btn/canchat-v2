@@ -10,6 +10,8 @@ from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 from opentelemetry.sdk.trace import TracerProvider
 
+from open_webui.config import DEFAULT_METRIC_DEFINITIONS
+from open_webui.metrics.service import MetricsService
 from open_webui.observability import providers as providers_module
 from open_webui.observability.providers import (
     OTelSettings,
@@ -231,11 +233,8 @@ def test_web_search_metrics_are_recorded_with_in_memory_reader(monkeypatch):
     monkeypatch.delenv("OTEL_SDK_DISABLED", raising=False)
     reader = InMemoryMetricReader()
     providers = create_providers(_settings(enabled=False), metric_readers=[reader])
-    monkeypatch.setattr(
-        web_search_logger,
-        "_METRICS_INSTRUMENTS",
-        web_search_logger._create_metrics_instruments(providers.meter),
-    )
+    service = MetricsService(providers.meter, DEFAULT_METRIC_DEFINITIONS, strict=True)
+    monkeypatch.setattr(web_search_logger, "get_metrics_service", lambda: service)
 
     try:
         context = web_search_logger.log_web_search_dispatch(
@@ -251,10 +250,14 @@ def test_web_search_metrics_are_recorded_with_in_memory_reader(monkeypatch):
     finally:
         providers.shutdown()
 
-    assert observed["web_search_dispatch_total"].data.data_points[0].value == 1
-    assert observed["web_search_result_total"].data.data_points[0].value == 1
-    assert "web_search_result_latency_ms" in observed
-    assert observed["web_search_result_count"].data.data_points[0].sum == 1
+    [duration] = observed["canchat.web_search.request.duration"].data.data_points
+    assert duration.count == 1
+    assert dict(duration.attributes) == {
+        "provider": "test-engine",
+        "outcome": "success",
+        "domain_filter_active": False,
+    }
+    assert observed["canchat.web_search.results"].data.data_points[0].sum == 1
 
 
 def test_bundle_flushes_before_shutting_down_each_provider():

@@ -657,29 +657,16 @@ Create an explicit operation context in `observability/context.py` (span, monoto
 
 ---
 
-### OBS-24: Emit `llm_tokens_total` from the `MessageMetrics.insert_new_metrics` call sites
+### ⚪ Low: Architecture doc uses two names for the same metric
 
-**Type:** Story | **Depends on:** OBS-01, OBS-21, OBS-23 | **Ref:** §4 Provider operation, §5 Relationship to `message_metrics`
+**File:** `docs/observability/Canchat-v2-Logging Architecture-v2.md`
+**Lines:** 306 (changed in this branch); also 21, 675, 721
 
-**Description**
-Emit `llm_tokens_total{type}` from the same call site (or a thin wrapper) as `MessageMetrics.insert_new_metrics` in `utils/middleware.py` and `socket/main.py`, so the OTel counter and the admin dashboard cannot drift.
+**Why it's an issue**
+Line 303 now documents the implemented metric as `canchat.llm.tokens` / `canchat_llm_tokens_total`. Line 306, which this branch also edits, still calls it `llm_tokens_total` in the same paragraph that names `canchat.llm.tokens`. Someone building dashboards or alerts (OBS-7x) from the doc could query a metric that doesn't exist.
 
-**Acceptance criteria**
-
-- [ ] One wrapper writes the `message_metrics` row and records `llm_tokens_total` (prompt/completion).
-- [ ] All existing call sites use the wrapper; no separate token-count code path.
-- [ ] Admin metrics dashboard values unchanged.
-
-**Testing**
-
-- Test that for a stubbed completion the DB row token totals equal the recorded counter values.
-- Existing metrics router tests pass.
-
-**Definition of done**
-
-- Common DoD.
-
----
+**How to fix**
+On line 306, replace `` `llm_tokens_total` `` with `` `canchat.llm.tokens` (Prometheus `canchat_llm_tokens_total`) ``. Optionally, add a one-line note near line 21 or 675 that the planned `llm_tokens_total` is implemented as `canchat.llm.tokens`, so the history still reads correctly.
 
 ### OBS-25: Add approved `gen_ai.*` metadata to provider routers
 

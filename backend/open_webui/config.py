@@ -29,6 +29,8 @@ from open_webui.metrics.service import (
     LLM_TTFT_BUCKETS,
     MCP_DURATION_BUCKETS,
     RAG_DURATION_BUCKETS,
+    WEB_SEARCH_DURATION_BUCKETS,
+    WEB_SEARCH_RESULT_COUNT_BUCKETS,
     MetricsDefinition,
     validate_definition,
 )
@@ -957,6 +959,30 @@ DEFAULT_METRIC_DEFINITIONS = [
         "description": "End-to-end chat operation duration, preprocessing to response delivery",
         "unit": "s",
         "buckets": list(CHAT_OPERATION_BUCKETS),
+    },
+    {
+        # The histogram count is the number of provider searches by outcome.
+        "name": "canchat.web_search.request.duration",
+        "type": "histogram",
+        "description": "Web-search provider request duration",
+        "unit": "s",
+        "buckets": list(WEB_SEARCH_DURATION_BUCKETS),
+        "attributes": ["domain_filter_active"],
+    },
+    {
+        "name": "canchat.web_search.results",
+        "type": "histogram",
+        "description": "Number of results returned by a web-search provider",
+        "unit": "{result}",
+        "buckets": list(WEB_SEARCH_RESULT_COUNT_BUCKETS),
+    },
+    {
+        "name": "canchat.web_search.content_load.duration",
+        "type": "histogram",
+        "description": "Web-search result URL loading duration, including embedding",
+        "unit": "s",
+        "buckets": list(WEB_SEARCH_DURATION_BUCKETS),
+        "attributes": ["bypass_embedding"],
     },
 ]
 

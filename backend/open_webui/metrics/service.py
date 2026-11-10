@@ -31,6 +31,9 @@ LLM_TTFT_BUCKETS = (0.1, 0.25, 0.5, 1, 2, 3, 5, 10, 20, 30)
 CHAT_OPERATION_BUCKETS = (0.5, 1, 2, 5, 10, 20, 30, 60, 120, 300, 600)
 RAG_DURATION_BUCKETS = (0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30)
 MCP_DURATION_BUCKETS = (0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30, 60, 120)
+# Provider calls and URL loading are capped by RAG_WEB_SEARCH_TOTAL_TIMEOUT.
+WEB_SEARCH_DURATION_BUCKETS = (0.1, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120)
+WEB_SEARCH_RESULT_COUNT_BUCKETS = (0, 1, 2, 3, 5, 10, 20, 50)
 
 # Low-cardinality labels that any metric may carry.
 ALLOWED_METRIC_ATTRIBUTES = frozenset(
