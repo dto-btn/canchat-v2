@@ -29,6 +29,9 @@ LLM_DURATION_BUCKETS = (0.5, 1, 2, 5, 10, 20, 30, 60, 120, 300)
 LLM_TTFT_BUCKETS = (0.1, 0.25, 0.5, 1, 2, 3, 5, 10, 20, 30)
 RAG_DURATION_BUCKETS = (0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30)
 MCP_DURATION_BUCKETS = (0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30, 60, 120)
+# Provider calls and URL loading are capped by RAG_WEB_SEARCH_TOTAL_TIMEOUT.
+WEB_SEARCH_DURATION_BUCKETS = (0.1, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120)
+WEB_SEARCH_RESULT_COUNT_BUCKETS = (0, 1, 2, 3, 5, 10, 20, 50)
 
 # Low-cardinality labels that any metric may carry.
 ALLOWED_METRIC_ATTRIBUTES = frozenset(
@@ -286,6 +289,19 @@ class MetricsService:
                 return
             self._warned.add((name, key))
         log.warning(message)
+
+
+_current_service: MetricsService | None = None
+
+
+def set_metrics_service(service: MetricsService | None) -> None:
+    """Expose the app's service to code without a ``Request`` (models, sockets)."""
+    global _current_service
+    _current_service = service
+
+
+def get_metrics_service() -> MetricsService | None:
+    return _current_service
 
 
 def validate_definition(definition: MetricsDefinition) -> None:
