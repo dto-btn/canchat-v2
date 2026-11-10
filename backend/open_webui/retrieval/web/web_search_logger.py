@@ -23,11 +23,7 @@ from typing import Any, Iterator, Optional
 from urllib.parse import urlparse, urlunparse
 
 from open_webui.env import SRC_LOG_LEVELS
-
-try:
-    from open_webui.instrumentation import meter as otel_meter
-except Exception:
-    otel_meter = None
+from open_webui.metrics.service import get_metrics_service
 
 # ---------------------------------------------------------------------------
 # Module-level logger
@@ -35,61 +31,10 @@ except Exception:
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["RAG"])
 
+REQUEST_DURATION = "canchat.web_search.request.duration"
+RESULT_COUNT = "canchat.web_search.results"
+CONTENT_LOAD_DURATION = "canchat.web_search.content_load.duration"
 
-@dataclass
-class WebSearchMetricsInstruments:
-    dispatch_counter: Any = None
-    result_counter: Any = None
-    result_latency_histogram: Any = None
-    result_count_histogram: Any = None
-    content_load_counter: Any = None
-    content_load_latency_histogram: Any = None
-
-
-def _create_metrics_instruments(meter=None) -> WebSearchMetricsInstruments:
-    meter = meter if meter is not None else otel_meter
-    if meter is None:
-        return WebSearchMetricsInstruments()
-
-    try:
-        return WebSearchMetricsInstruments(
-            dispatch_counter=meter.create_counter(
-                name="web_search_dispatch_total",
-                description="Total web-search requests dispatched to providers",
-                unit="{dispatch}",
-            ),
-            result_counter=meter.create_counter(
-                name="web_search_result_total",
-                description="Total web-search provider results (success and failure)",
-                unit="{result}",
-            ),
-            result_latency_histogram=meter.create_histogram(
-                name="web_search_result_latency_ms",
-                description="Latency of provider web-search calls in milliseconds",
-                unit="ms",
-            ),
-            result_count_histogram=meter.create_histogram(
-                name="web_search_result_count",
-                description="Number of search results returned by providers",
-                unit="{result}",
-            ),
-            content_load_counter=meter.create_counter(
-                name="web_search_content_load_total",
-                description="Total web-search content-load phases",
-                unit="{load}",
-            ),
-            content_load_latency_histogram=meter.create_histogram(
-                name="web_search_content_load_latency_ms",
-                description="Latency of web-search content loading in milliseconds",
-                unit="ms",
-            ),
-        )
-    except Exception:
-        log.error("[web_search_audit] failed to initialize OTel metrics")
-        return WebSearchMetricsInstruments()
-
-
-_METRICS_INSTRUMENTS = _create_metrics_instruments()
 _MAX_LOGGED_RESULT_URLS = 20
 
 
@@ -158,22 +103,32 @@ def _emit_audit_record(record: dict) -> None:
         log.error("[web_search_audit] failed to serialize audit record")
 
 
-def _record_counter(instrument, value: int, attributes: dict[str, Any]) -> None:
-    if instrument is None:
-        return
-    try:
-        instrument.add(value, attributes=attributes)
-    except Exception:
-        log.debug("[web_search_audit] failed to record counter metric")
+def _outcome_attrs(engine: Optional[str], error: Optional[Exception]) -> dict:
+    attrs: dict[str, Any] = {
+        "provider": engine or "unknown",
+        "outcome": "error" if error else "success",
+    }
+    if error is not None:
+        attrs["error.type"] = type(error).__name__
+    return attrs
 
 
-def _record_histogram(instrument, value: int, attributes: dict[str, Any]) -> None:
-    if instrument is None:
+def _record_metric(name: str, value: float, attributes: dict[str, Any]) -> None:
+    """Record through ``MetricsService`` so labels pass its allow-list."""
+    metrics = get_metrics_service()
+    if metrics is None:
         return
     try:
-        instrument.record(value, attributes=attributes)
-    except Exception:
-        log.debug("[web_search_audit] failed to record histogram metric")
+        # Custom METRIC_DEFINITIONS may leave web-search metrics out.
+        if metrics.has_instrument(name):
+            metrics.record(name, value, attributes)
+    except Exception as e:
+        # MetricsService raises only in strict (test) mode.
+        if getattr(metrics, "strict", False):
+            raise
+        log.warning(
+            "[web_search_audit] failed to record %s: %s", name, type(e).__name__
+        )
 
 
 @dataclass
@@ -182,6 +137,7 @@ class WebSearchAuditContext:
     engine: str
     start_time: float = field(default_factory=time.monotonic)
     result_logged: bool = False
+    domain_filter_active: bool = False
 
 
 def new_web_search_event_id() -> str:
@@ -199,6 +155,7 @@ def _normalize_dispatch_ctx(
         event_id=dispatch_ctx["event_id"],
         start_time=dispatch_ctx["start_time"],
         engine=dispatch_ctx["engine"],
+        domain_filter_active=bool(dispatch_ctx.get("domain_filter_active", False)),
     )
 
 
@@ -224,6 +181,7 @@ def log_web_search_dispatch(
     ctx = WebSearchAuditContext(
         event_id=event_id or new_web_search_event_id(),
         engine=engine,
+        domain_filter_active=bool(domain_filter_list),
     )
     ts = datetime.now(timezone.utc).isoformat()
     user_attrs = _safe_user_attrs(user)
@@ -247,14 +205,6 @@ def log_web_search_dispatch(
             "user_name": None,
         }
         _emit_audit_record(record)
-        _record_counter(
-            _METRICS_INSTRUMENTS.dispatch_counter,
-            1,
-            {
-                "engine": engine,
-                "domain_filter_active": bool(domain_filter_list),
-            },
-        )
     except Exception:
         log.error("[web_search_dispatch] audit logging failure")
 
@@ -277,7 +227,8 @@ def log_web_search_result(
         error: The exception if the call failed, else None.
     """
     ctx = _normalize_dispatch_ctx(dispatch_ctx)
-    elapsed_ms = round((time.monotonic() - ctx.start_time) * 1000)
+    elapsed_s = time.monotonic() - ctx.start_time
+    elapsed_ms = round(elapsed_s * 1000)
     event_id = ctx.event_id
     engine = ctx.engine
 
@@ -321,22 +272,13 @@ def log_web_search_result(
         }
         _emit_audit_record(record)
 
-        metric_attrs = {
-            "engine": engine,
-            "success": error is None,
-            "error_type": type(error).__name__ if error else "none",
-        }
-        _record_counter(_METRICS_INSTRUMENTS.result_counter, 1, metric_attrs)
-        _record_histogram(
-            _METRICS_INSTRUMENTS.result_latency_histogram,
-            elapsed_ms,
-            metric_attrs,
+        metric_attrs = _outcome_attrs(engine, error)
+        _record_metric(
+            REQUEST_DURATION,
+            elapsed_s,
+            {**metric_attrs, "domain_filter_active": ctx.domain_filter_active},
         )
-        _record_histogram(
-            _METRICS_INSTRUMENTS.result_count_histogram,
-            len(results) if results else 0,
-            metric_attrs,
-        )
+        _record_metric(RESULT_COUNT, len(results) if results else 0, metric_attrs)
     except Exception:
         log.error("[web_search_result] audit logging failure")
     finally:
@@ -403,17 +345,10 @@ def log_web_search_content_load(
         }
         _emit_audit_record(record)
 
-        metric_attrs = {
-            "engine": engine or "unknown",
-            "success": error is None,
-            "bypass_embedding": bypass_embedding,
-            "error_type": type(error).__name__ if error else "none",
-        }
-        _record_counter(_METRICS_INSTRUMENTS.content_load_counter, 1, metric_attrs)
-        _record_histogram(
-            _METRICS_INSTRUMENTS.content_load_latency_histogram,
-            latency_ms,
-            metric_attrs,
+        _record_metric(
+            CONTENT_LOAD_DURATION,
+            latency_ms / 1000,
+            {**_outcome_attrs(engine, error), "bypass_embedding": bypass_embedding},
         )
     except Exception:
         log.error("[web_search_content_load] audit logging failure")

@@ -1,6 +1,7 @@
 """Tests for web search audit logging via container-native structured logs."""
 
 import asyncio
+import inspect
 import json
 import logging
 import time
@@ -8,7 +9,11 @@ import uuid
 from types import SimpleNamespace
 
 import pytest
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 
+from open_webui.config import DEFAULT_METRIC_DEFINITIONS
+from open_webui.metrics.service import MetricsService
 from open_webui.routers import retrieval  # noqa: F401
 from open_webui.retrieval.web import web_search_logger
 
@@ -178,7 +183,7 @@ class TestStructuredAuditLogs:
 
     @pytest.mark.parametrize(
         "failure_site",
-        ["serialization", "counter", "histogram", "dispatch", "result", "content_load"],
+        ["serialization", "metric", "dispatch", "result", "content_load"],
     )
     def test_internal_failures_omit_exception_details(
         self, audit_caplog, canary_harness, monkeypatch, failure_site
@@ -197,10 +202,14 @@ class TestStructuredAuditLogs:
             # Patch only this module's json; the harness sinks need the real one.
             monkeypatch.setattr(web_search_logger, "json", SimpleNamespace(dumps=fail))
             web_search_logger._emit_audit_record({"event_type": "test"})
-        elif failure_site == "counter":
-            web_search_logger._record_counter(SimpleNamespace(add=fail), 1, {})
-        elif failure_site == "histogram":
-            web_search_logger._record_histogram(SimpleNamespace(record=fail), 1, {})
+        elif failure_site == "metric":
+            failing_service = SimpleNamespace(
+                has_instrument=lambda name: True, record=fail
+            )
+            monkeypatch.setattr(
+                web_search_logger, "get_metrics_service", lambda: failing_service
+            )
+            web_search_logger._record_metric("canchat.web_search.results", 1, {})
         else:
             monkeypatch.setattr(web_search_logger, "_emit_audit_record", fail)
             if failure_site == "dispatch":
@@ -352,49 +361,41 @@ class TestStructuredAuditLogs:
         assert result_record["success"] is False
 
 
-class TestOpenTelemetryMetrics:
+@pytest.fixture
+def metric_reader(monkeypatch):
+    """Route web-search metrics into a strict, in-memory ``MetricsService``."""
+    reader = InMemoryMetricReader()
+    provider = MeterProvider(metric_readers=[reader], shutdown_on_exit=False)
+    service = MetricsService(
+        provider.get_meter("test"), DEFAULT_METRIC_DEFINITIONS, strict=True
+    )
+    monkeypatch.setattr(web_search_logger, "get_metrics_service", lambda: service)
+    yield reader
+    provider.shutdown()
+
+
+def _points(reader) -> dict:
+    data = reader.get_metrics_data()
+    if data is None:
+        return {}
+    return {
+        metric.name: list(metric.data.data_points)
+        for resource_metrics in data.resource_metrics
+        for scope_metrics in resource_metrics.scope_metrics
+        for metric in scope_metrics.metrics
+    }
+
+
+class TestMetricsServiceRecording:
     @pytest.mark.parametrize(
         "error", [None, ConnectionError("sensitive provider detail")]
     )
-    def test_metrics_are_emitted(self, monkeypatch, error):
-        class FakeCounter:
-            def __init__(self):
-                self.calls = []
-
-            def add(self, value, attributes=None):
-                self.calls.append((value, attributes or {}))
-
-        class FakeHistogram:
-            def __init__(self):
-                self.calls = []
-
-            def record(self, value, attributes=None):
-                self.calls.append((value, attributes or {}))
-
-        dispatch_counter = FakeCounter()
-        result_counter = FakeCounter()
-        content_counter = FakeCounter()
-        result_latency = FakeHistogram()
-        result_count = FakeHistogram()
-        content_latency = FakeHistogram()
-
-        monkeypatch.setattr(
-            web_search_logger,
-            "_METRICS_INSTRUMENTS",
-            web_search_logger.WebSearchMetricsInstruments(
-                dispatch_counter=dispatch_counter,
-                result_counter=result_counter,
-                result_latency_histogram=result_latency,
-                result_count_histogram=result_count,
-                content_load_counter=content_counter,
-                content_load_latency_histogram=content_latency,
-            ),
-        )
-
+    def test_metrics_go_through_metrics_service(self, metric_reader, error):
         ctx = log_web_search_dispatch(
             engine="brave",
             query="metric test",
             result_count_requested=2,
+            domain_filter_list=["example.com"],
         )
         log_web_search_result(
             dispatch_ctx=ctx,
@@ -406,33 +407,73 @@ class TestOpenTelemetryMetrics:
             engine="brave",
             urls=["https://a.com"],
             docs_loaded=1,
-            latency_ms=123,
+            latency_ms=1500,
             error=error,
         )
 
-        assert len(dispatch_counter.calls) == 1
-        assert len(result_counter.calls) == 1
-        assert len(content_counter.calls) == 1
-        assert len(result_latency.calls) == 1
-        assert len(result_count.calls) == 1
-        assert len(content_latency.calls) == 1
-
-        assert dispatch_counter.calls == [
-            (1, {"engine": "brave", "domain_filter_active": False})
-        ]
-        result_attrs = result_counter.calls[0][1]
-        assert result_attrs == {
-            "engine": "brave",
-            "success": error is None,
-            "error_type": "ConnectionError" if error else "none",
+        points = _points(metric_reader)
+        outcome_attrs = {
+            "provider": "brave",
+            "outcome": "error" if error else "success",
         }
-        assert result_counter.calls == [(1, result_attrs)]
-        assert result_count.calls == [(1, result_attrs)]
-        assert result_latency.calls[0][0] >= 0
-        assert result_latency.calls[0][1] == result_attrs
-        content_attrs = {**result_attrs, "bypass_embedding": False}
-        assert content_counter.calls == [(1, content_attrs)]
-        assert content_latency.calls == [(123, content_attrs)]
+        if error:
+            outcome_attrs["error.type"] = "ConnectionError"
+
+        [duration] = points["canchat.web_search.request.duration"]
+        assert dict(duration.attributes) == {
+            **outcome_attrs,
+            "domain_filter_active": True,
+        }
+        assert duration.count == 1
+        assert 0 <= duration.sum < 5
+
+        [result_count] = points["canchat.web_search.results"]
+        assert dict(result_count.attributes) == outcome_attrs
+        assert result_count.sum == 1
+
+        [content_load] = points["canchat.web_search.content_load.duration"]
+        assert dict(content_load.attributes) == {
+            **outcome_attrs,
+            "bypass_embedding": False,
+        }
+        assert content_load.sum == pytest.approx(1.5)
+
+        exported = json.dumps(
+            [dict(p.attributes) for series in points.values() for p in series]
+        )
+        assert "sensitive provider detail" not in exported
+        assert "metric test" not in exported
+
+    def test_no_raw_instruments_bypass_metrics_service(self):
+        source = inspect.getsource(web_search_logger)
+        assert "create_counter" not in source
+        assert "create_histogram" not in source
+        assert "instrumentation" not in source
+
+    def test_definitions_missing_from_service_are_skipped(
+        self, monkeypatch, audit_caplog
+    ):
+        reader = InMemoryMetricReader()
+        provider = MeterProvider(metric_readers=[reader], shutdown_on_exit=False)
+        service = MetricsService(provider.get_meter("test"), [], strict=True)
+        monkeypatch.setattr(web_search_logger, "get_metrics_service", lambda: service)
+
+        ctx = log_web_search_dispatch(
+            engine="brave", query="custom definitions", result_count_requested=1
+        )
+        log_web_search_result(dispatch_ctx=ctx, results=[])
+
+        assert _points(reader) == {}
+        assert audit_caplog.records[-1].levelno == logging.INFO
+        provider.shutdown()
+
+    def test_no_service_is_a_no_op(self, monkeypatch, audit_caplog):
+        monkeypatch.setattr(web_search_logger, "get_metrics_service", lambda: None)
+        ctx = log_web_search_dispatch(
+            engine="brave", query="no service", result_count_requested=1
+        )
+        log_web_search_result(dispatch_ctx=ctx, results=[])
+        assert len(_extract_audit_records(audit_caplog)) == 2
 
 
 class TestSearchWebLogging:
