@@ -24,6 +24,7 @@ from open_webui.env import (
 )
 from open_webui.internal.db import get_db
 from open_webui.metrics.service import (
+    CHAT_OPERATION_BUCKETS,
     LLM_DURATION_BUCKETS,
     LLM_TTFT_BUCKETS,
     MCP_DURATION_BUCKETS,
@@ -927,6 +928,15 @@ DEFAULT_METRIC_DEFINITIONS = [
         "description": "MCP tool call duration",
         "unit": "s",
         "buckets": list(MCP_DURATION_BUCKETS),
+    },
+    {
+        # One value per chat completion request, from payload processing to
+        # response delivery. Title and tag generation are not included.
+        "name": "canchat.chat.operation.duration",
+        "type": "histogram",
+        "description": "End-to-end chat operation duration, preprocessing to response delivery",
+        "unit": "s",
+        "buckets": list(CHAT_OPERATION_BUCKETS),
     },
     {
         # The histogram count is the number of provider searches by outcome.
