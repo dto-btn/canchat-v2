@@ -414,13 +414,19 @@ async def lifespan(app: FastAPI):
 
     # Initialize metrics service
     try:
-        from open_webui.metrics.service import MetricsService
+        from open_webui.metrics.service import MetricsService, set_metrics_service
+        from open_webui.tasks import tasks as active_tasks
 
         # meter imported earlier than fastapi to ensure it's set up correctly.
         app.state.metrics_meter = meter
         app.state.metrics_service = MetricsService(
             app.state.metrics_meter, METRIC_DEFINITIONS
         )
+        set_metrics_service(app.state.metrics_service)
+        if app.state.metrics_service.has_instrument("canchat.tasks.active"):
+            app.state.metrics_service.register_callback(
+                "canchat.tasks.active", lambda: [(len(active_tasks), None)]
+            )
 
         log.info(
             f"Metrics service initialized with the following meter: {app.state.metrics_meter.name}"

@@ -1,10 +1,10 @@
 import json
 import traceback
-from unittest.mock import Mock
+from unittest.mock import ANY, Mock
 
 import pytest
 
-from open_webui.config import _load_metric_definitions
+from open_webui.config import DEFAULT_METRIC_DEFINITIONS, _load_metric_definitions
 from open_webui.metrics.service import MetricsService
 
 
@@ -12,17 +12,34 @@ def test_unset_uses_builtin_defaults(monkeypatch):
     monkeypatch.delenv("METRIC_DEFINITIONS", raising=False)
 
     # HTTP request metrics come from the FastAPI instrumentation (OBS-20).
-    assert _load_metric_definitions() == [
-        {
-            "name": "task_queue_size",
-            "type": "gauge",
-            "description": "Number of tasks in background queue",
-            "unit": "",
-        },
-    ]
+    definitions = _load_metric_definitions()
+    assert definitions is DEFAULT_METRIC_DEFINITIONS
+    by_name = {d["name"]: d for d in definitions}
+    assert "task_queue_size" not in by_name
+    assert by_name["canchat.tasks.active"]["type"] == "observable_updowncounter"
+    for name in (
+        "canchat.llm.request.duration",
+        "canchat.llm.time_to_first_token",
+        "canchat.rag.retrieval.duration",
+        "canchat.mcp.tool.duration",
+    ):
+        assert by_name[name]["type"] == "histogram"
+        assert by_name[name]["unit"] == "s"
+        assert by_name[name]["buckets"]
+    assert MetricsService(Mock(), definitions).list_instruments() == list(by_name)
 
 
-@pytest.mark.parametrize("metric_type", ["counter", "histogram", "gauge", "COUNTER"])
+@pytest.mark.parametrize(
+    "metric_type",
+    [
+        "counter",
+        "updowncounter",
+        "histogram",
+        "gauge",
+        "observable_updowncounter",
+        "COUNTER",
+    ],
+)
 def test_valid_json_creates_instrument(monkeypatch, metric_type):
     definitions = [
         {
@@ -41,17 +58,53 @@ def test_valid_json_creates_instrument(monkeypatch, metric_type):
     assert service.list_instruments() == ["custom_metric"]
     method = {
         "counter": meter.create_counter,
+        "updowncounter": meter.create_up_down_counter,
         "histogram": meter.create_histogram,
         "gauge": meter.create_observable_gauge,
+        "observable_updowncounter": meter.create_observable_up_down_counter,
     }[metric_type.lower()]
     kwargs: dict[str, object] = {
         "name": "custom_metric",
         "description": "Custom metric",
         "unit": "",
     }
-    if metric_type == "gauge":
-        kwargs["callbacks"] = []
+    if metric_type in {"gauge", "observable_updowncounter"}:
+        kwargs["callbacks"] = [ANY]
     method.assert_called_once_with(**kwargs)
+
+
+def test_buckets_and_attributes_are_accepted(monkeypatch):
+    definition = {
+        "name": "latency",
+        "type": "histogram",
+        "description": "",
+        "unit": "s",
+        "buckets": [0.1, 1, 10],
+        "attributes": ["tier"],
+    }
+    monkeypatch.setenv("METRIC_DEFINITIONS", json.dumps([definition]))
+    assert _load_metric_definitions() == [definition]
+
+
+@pytest.mark.parametrize(
+    "overrides, field",
+    [
+        ({"buckets": [1, 1]}, "buckets"),
+        ({"buckets": [2, 1]}, "buckets"),
+        ({"buckets": []}, "buckets"),
+        ({"buckets": ["1"]}, "buckets"),
+        ({"type": "counter", "buckets": [1, 2]}, "buckets"),
+        ({"attributes": ["user_id"]}, "attributes"),
+        ({"attributes": [""]}, "attributes"),
+        ({"attributes": [1]}, "attributes"),
+    ],
+)
+def test_invalid_buckets_or_attributes_are_rejected(monkeypatch, overrides, field):
+    definition = {"name": "m", "type": "histogram", "description": "", "unit": ""}
+    definition.update(overrides)
+    monkeypatch.setenv("METRIC_DEFINITIONS", json.dumps([definition]))
+    with pytest.raises(ValueError, match=rf"METRIC_DEFINITIONS\[0\].*{field}"):
+        _load_metric_definitions()
 
 
 def test_empty_array_is_allowed(monkeypatch):

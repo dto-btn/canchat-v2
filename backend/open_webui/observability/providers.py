@@ -7,7 +7,9 @@ import json
 import math
 import os
 import re
+import socket
 import threading
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Sequence
@@ -57,6 +59,7 @@ ALLOWED_RESOURCE_ATTRIBUTES = frozenset(
         "service.name",
         "service.version",
         "deployment.environment",
+        "service.instance.id",
         "telemetry.sdk.language",
         "telemetry.sdk.name",
         "telemetry.sdk.version",
@@ -76,6 +79,7 @@ class OTelSettings:
     traces_sampler_ratio: float = DEFAULT_DEV_TRACES_SAMPLER_RATIO
     traces_healthchecks: bool = False
     propagation_allowed_hosts: tuple[str, ...] = ()
+    service_instance_id: str = ""
 
 
 @dataclass
@@ -134,6 +138,18 @@ def _service_version() -> str:
     if not isinstance(version, str) or not version:
         raise RuntimeError("The package.json version must be a non-empty string")
     return version
+
+
+def _service_instance_id(environ: Mapping[str, str]) -> str:
+    """Per-replica identity so per-instance metrics stay separate series.
+
+    Kubernetes and Docker set ``HOSTNAME`` to the pod name / container ID.
+    """
+    for name in ("OTEL_SERVICE_INSTANCE_ID", "HOSTNAME"):
+        value = environ.get(name, "").strip()
+        if value:
+            return value
+    return socket.gethostname() or str(uuid.uuid4())
 
 
 def _resolve_setting(
@@ -311,6 +327,7 @@ def load_settings(environ: Mapping[str, str] | None = None) -> OTelSettings:
         propagation_allowed_hosts=_parse_propagation_hosts(
             values.get("OTEL_PROPAGATION_ALLOWED_HOSTS", "")
         ),
+        service_instance_id=_service_instance_id(values),
     )
 
 
@@ -345,6 +362,8 @@ def create_providers(
                 "service.name": settings.service_name,
                 "service.version": settings.service_version,
                 "deployment.environment": settings.environment,
+                "service.instance.id": settings.service_instance_id
+                or _service_instance_id({}),
             }
         )
     )

@@ -23,7 +23,16 @@ from open_webui.env import (
     log,
 )
 from open_webui.internal.db import get_db
-from open_webui.metrics.service import MetricsDefinition
+from open_webui.metrics.service import (
+    LLM_DURATION_BUCKETS,
+    LLM_TTFT_BUCKETS,
+    MCP_DURATION_BUCKETS,
+    RAG_DURATION_BUCKETS,
+    WEB_SEARCH_DURATION_BUCKETS,
+    WEB_SEARCH_RESULT_COUNT_BUCKETS,
+    MetricsDefinition,
+    validate_definition,
+)
 from open_webui.models.base import Base
 from open_webui.observability.redaction import (
     invalidate_secrets,
@@ -866,32 +875,82 @@ def _load_metric_definitions():
             raise ValueError(
                 f"Invalid METRIC_DEFINITIONS[{index}]: "
                 f"expected an object with string fields name, type, description, unit "
+                f"and optional buckets (numbers) and attributes (strings) "
                 f"(invalid: {fields})"
             ) from None
 
-        if not definition.name.strip():
-            raise ValueError(
-                f"Invalid METRIC_DEFINITIONS[{index}].name: "
-                "expected a non-empty string"
-            )
-
-        if definition.type.lower() not in {"counter", "histogram", "gauge"}:
-            raise ValueError(
-                f"Invalid METRIC_DEFINITIONS[{index}].type: "
-                "expected counter, histogram, or gauge"
-            )
+        try:
+            validate_definition(definition)
+        except ValueError as exc:
+            raise ValueError(f"Invalid METRIC_DEFINITIONS[{index}].{exc}") from None
 
     return definitions
 
 
 # HTTP request counts and durations come from the OpenTelemetry FastAPI
-# instrumentation (``http.server.request.duration``, OBS-20).
+# instrumentation (``http.server.request.duration``, OBS-20). Durations are in
+# seconds so Prometheus names end in ``_seconds`` like the HTTP histograms.
 DEFAULT_METRIC_DEFINITIONS = [
     {
-        "name": "task_queue_size",
-        "type": "gauge",
-        "description": "Number of tasks in background queue",
-        "unit": "",
+        # Formerly ``task_queue_size``. Counts in-process asyncio tasks from
+        # ``open_webui.tasks``; it is not a durable queue. Observable up-down
+        # counters sum across instances (each tagged by ``service.instance.id``).
+        "name": "canchat.tasks.active",
+        "type": "observable_updowncounter",
+        "description": "Active in-process background tasks on this instance",
+        "unit": "{task}",
+    },
+    {
+        "name": "canchat.llm.request.duration",
+        "type": "histogram",
+        "description": "LLM provider request duration, invocation to final chunk",
+        "unit": "s",
+        "buckets": list(LLM_DURATION_BUCKETS),
+    },
+    {
+        "name": "canchat.llm.time_to_first_token",
+        "type": "histogram",
+        "description": "Time from LLM invocation to the first parsed content token",
+        "unit": "s",
+        "buckets": list(LLM_TTFT_BUCKETS),
+    },
+    {
+        "name": "canchat.rag.retrieval.duration",
+        "type": "histogram",
+        "description": "RAG retrieval duration",
+        "unit": "s",
+        "buckets": list(RAG_DURATION_BUCKETS),
+    },
+    {
+        "name": "canchat.mcp.tool.duration",
+        "type": "histogram",
+        "description": "MCP tool call duration",
+        "unit": "s",
+        "buckets": list(MCP_DURATION_BUCKETS),
+    },
+    {
+        # The histogram count is the number of provider searches by outcome.
+        "name": "canchat.web_search.request.duration",
+        "type": "histogram",
+        "description": "Web-search provider request duration",
+        "unit": "s",
+        "buckets": list(WEB_SEARCH_DURATION_BUCKETS),
+        "attributes": ["domain_filter_active"],
+    },
+    {
+        "name": "canchat.web_search.results",
+        "type": "histogram",
+        "description": "Number of results returned by a web-search provider",
+        "unit": "{result}",
+        "buckets": list(WEB_SEARCH_RESULT_COUNT_BUCKETS),
+    },
+    {
+        "name": "canchat.web_search.content_load.duration",
+        "type": "histogram",
+        "description": "Web-search result URL loading duration, including embedding",
+        "unit": "s",
+        "buckets": list(WEB_SEARCH_DURATION_BUCKETS),
+        "attributes": ["bypass_embedding"],
     },
 ]
 

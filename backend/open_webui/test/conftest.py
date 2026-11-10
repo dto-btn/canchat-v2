@@ -1,4 +1,9 @@
+import os
+
 import pytest
+
+# Metric label/usage violations raise under test and are dropped in production.
+os.environ.setdefault("METRICS_STRICT", "true")
 
 
 @pytest.hookimpl(wrapper=True)
