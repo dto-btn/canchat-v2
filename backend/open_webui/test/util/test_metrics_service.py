@@ -232,3 +232,15 @@ def test_invalid_definition_is_logged_not_raised(make_service, caplog):
 
 def test_service_module_has_no_print_calls():
     assert "print(" not in inspect.getsource(service_module)
+
+
+def test_metrics_service_accessor_round_trips(make_service):
+    service = make_service(True)
+    previous = service_module.get_metrics_service()
+    try:
+        service_module.set_metrics_service(service)
+        assert service_module.get_metrics_service() is service
+        service_module.set_metrics_service(None)
+        assert service_module.get_metrics_service() is None
+    finally:
+        service_module.set_metrics_service(previous)
