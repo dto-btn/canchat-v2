@@ -984,6 +984,22 @@ DEFAULT_METRIC_DEFINITIONS = [
         "buckets": list(WEB_SEARCH_DURATION_BUCKETS),
         "attributes": ["bypass_embedding"],
     },
+    {
+        # Sockets connected to this instance; sums across instances.
+        "name": "canchat.socketio.connections",
+        "type": "observable_updowncounter",
+        "description": "Socket.IO connections open on this instance",
+        "unit": "{connection}",
+    },
+    {
+        # ``event`` is the registered handler name (bounded by the handlers);
+        # ``outcome`` is success, error, rejected or cancelled.
+        "name": "canchat.socketio.events",
+        "type": "counter",
+        "description": "Handled Socket.IO events by event name and outcome",
+        "unit": "{event}",
+        "attributes": ["event"],
+    },
 ]
 
 METRIC_DEFINITIONS = _load_metric_definitions()
