@@ -410,6 +410,9 @@ def test_crew_error_finishes_once_with_model_usage(telemetry, socket):
         for span in telemetry.spans(name):
             assert span.attributes["error.type"] == "ProviderError", name
             assert span.status.status_code == StatusCode.ERROR, name
+    for span in telemetry.spans("llm.chat"):
+        assert span.attributes["canchat.llm.usage.known"] is False
+    assert operation.attributes["canchat.llm.usage.known"] is False
     (point,) = telemetry.points()
     assert point.count == 1
     assert dict(point.attributes) == {

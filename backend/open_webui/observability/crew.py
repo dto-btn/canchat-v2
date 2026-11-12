@@ -456,6 +456,10 @@ def _end_llm(
             a - b if a is not None and b is not None and a >= b else None
             for a, b in zip(after, before)
         ]
+        if error is not None:
+            # Unchanged counters on a failed call mean no usage was reported,
+            # not that the call used zero tokens.
+            delta = [d or None for d in delta]
         operation.record_usage(*delta)
         crew = current_crew_operation()
         if crew is not None:
