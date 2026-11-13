@@ -9,7 +9,7 @@ on:
       - main
     paths:
       - "renovate.json"
-      - ".github/workflows/cron-renovate-scan.yaml"
+      - ".github/workflows/cron-dependency-scan.yaml"
 
 permissions: {}
 
