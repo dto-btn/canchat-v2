@@ -51,7 +51,9 @@ RAG_RESULTS = "canchat.rag.results"
 VECTOR_DB_SYSTEM = "qdrant"
 # ``provider`` label for the in-process SentenceTransformers model (engine "").
 LOCAL_EMBEDDING_PROVIDER = "sentence_transformers"
-# ``error.type`` when an embedding provider swallowed its error and returned None.
+# ``error.type`` for a failed remote embedding: the name of the
+# ``retrieval.utils.EmbeddingFailed`` exception, also used if an embedding
+# function returns None instead of raising.
 EMBEDDING_FAILED = "EmbeddingFailed"
 
 SEARCH_TYPE_VECTOR = "vector"
@@ -188,6 +190,25 @@ def _collection_name(args: tuple, kwargs: Mapping[str, Any]) -> Any:
     return args[0] if args else None
 
 
+def count_arg(
+    name: str, position: int = 1
+) -> Callable[[tuple, Mapping[str, Any]], int | None]:
+    """``count_items`` callback: length of argument ``name`` (``None`` if absent).
+
+    ``position`` is its index in the caller's positional arguments, after
+    ``self`` (``collection_name`` is 0).
+    """
+
+    def _count(args: tuple, kwargs: Mapping[str, Any]) -> int | None:
+        if name in kwargs:
+            value = kwargs[name]
+        else:
+            value = args[position] if len(args) > position else None
+        return len(value) if value is not None else None
+
+    return _count
+
+
 def vector_operation(
     operation: str,
     *,
@@ -219,8 +240,12 @@ def vector_operation(
                 limit = kwargs.get("limit")
                 if isinstance(limit, int) and not isinstance(limit, bool):
                     attributes["canchat.rag.limit"] = limit
-            except Exception:
-                pass
+            except Exception as e:
+                log.debug(
+                    "Failed to read rag.vector.%s attributes: %s",
+                    operation,
+                    type(e).__name__,
+                )
             with rag_operation(
                 f"rag.vector.{operation}",
                 duration_metric=RAG_VECTOR_DURATION,
@@ -232,8 +257,12 @@ def vector_operation(
                 if count_results is not None:
                     try:
                         op.set_result_count(count_results(result))
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        log.debug(
+                            "Failed to count rag.vector.%s results: %s",
+                            operation,
+                            type(e).__name__,
+                        )
                 return result
 
         return wrapper

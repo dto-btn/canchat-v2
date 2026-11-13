@@ -294,6 +294,56 @@ def test_vector_error_marks_span_and_metric(telemetry, qdrant):
     assert durations[key].count == 1
 
 
+def test_swallowed_query_error_is_recorded(telemetry, qdrant):
+    # query() logs and returns None, but the span and metric still see the error.
+    qdrant.fake.fail = ConnectionError(f"http://qdrant:6333 {QUERY}")
+
+    result = asyncio.run(
+        qdrant.client.query(collection_name=COLLECTION, filter={"hash": "secret"})
+    )
+
+    assert result is None
+    (span,) = telemetry.spans("rag.vector.query")
+    assert span.status.status_code == StatusCode.ERROR
+    assert span.attributes["error.type"] == "ConnectionError"
+    assert span.attributes["canchat.outcome"] == "error"
+    assert "canchat.rag.result_count" not in span.attributes
+    assert_no_content(span)
+    durations = telemetry.points(rag_obs.RAG_VECTOR_DURATION)
+    key = labels(
+        operation="query",
+        provider="qdrant",
+        outcome="error",
+        **{"error.type": "ConnectionError"},
+    )
+    assert durations[key].count == 1
+    assert labels(operation="query") not in telemetry.points(rag_obs.RAG_RESULTS)
+
+
+@pytest.mark.parametrize(
+    "args, kwargs, expected",
+    [
+        ((COLLECTION, ["a", "b"]), {}, 2),
+        ((COLLECTION,), {"ids": ["a"]}, 1),
+        ((COLLECTION,), {"ids": []}, 0),
+        ((COLLECTION,), {"ids": None, "filter": {"file_id": "x"}}, None),
+        ((COLLECTION,), {}, None),
+    ],
+)
+def test_count_arg(args, kwargs, expected):
+    assert rag_obs.count_arg("ids")(args, kwargs) == expected
+
+
+def test_delete_by_filter_has_no_item_count(telemetry, qdrant):
+    asyncio.run(
+        qdrant.client.delete(collection_name=COLLECTION, filter={"file_id": "x"})
+    )
+
+    (span,) = telemetry.spans("rag.vector.delete")
+    assert "canchat.rag.item_count" not in span.attributes
+    assert span.attributes["canchat.outcome"] == "success"
+
+
 def test_local_embedding_span_and_metric(telemetry, clock):
     model = FakeModel(clock)
     embed = retrieval_utils.get_embedding_function(
@@ -325,14 +375,18 @@ def test_local_embedding_span_and_metric(telemetry, clock):
     assert point.sum == pytest.approx(0.5)
 
 
-def test_remote_embedding_failure_is_error(telemetry, monkeypatch):
+@pytest.mark.parametrize("query", [QUERY, [QUERY, DOC]], ids=["single", "batch"])
+def test_remote_embedding_failure_is_error(telemetry, monkeypatch, query):
     # generate_*_batch_embeddings log and return None on provider errors.
-    monkeypatch.setattr(retrieval_utils, "generate_embeddings", lambda **kw: None)
+    monkeypatch.setattr(
+        retrieval_utils, "generate_openai_batch_embeddings", lambda *a, **kw: None
+    )
     embed = retrieval_utils.get_embedding_function(
         "openai", "text-embedding-3-small", None, "http://x", "key", 8
     )
 
-    assert embed(QUERY) is None
+    with pytest.raises(retrieval_utils.EmbeddingFailed):
+        embed(query)
 
     (span,) = telemetry.spans("rag.embedding")
     assert span.status.status_code == StatusCode.ERROR

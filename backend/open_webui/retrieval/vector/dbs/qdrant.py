@@ -30,7 +30,7 @@ from open_webui.config import (
     QDRANT_URL,
 )
 from open_webui.env import SRC_LOG_LEVELS
-from open_webui.observability.rag import count_ids, vector_operation
+from open_webui.observability.rag import count_arg, count_ids, vector_operation
 from open_webui.retrieval.vector.locks import get_collection_lock_manager
 from open_webui.retrieval.vector.main import GetResult, SearchResult, VectorItem
 
@@ -47,16 +47,6 @@ def with_qdrant_client(func):
         return await func(self, client, *args, **kwargs)
 
     return wrapper
-
-
-def _count_items(args, kwargs):
-    items = kwargs.get("items", args[1] if len(args) > 1 else None)
-    return len(items) if items is not None else None
-
-
-def _count_ids_arg(args, kwargs):
-    ids = kwargs.get("ids", args[1] if len(args) > 1 else None)
-    return len(ids) if ids else None
 
 
 # Global distributed lock manager for collection-level synchronization.
@@ -329,31 +319,41 @@ class QdrantClient:
         )
         return self._result_to_search_result(result)
 
+    async def query(
+        self,
+        collection_name: str,
+        filter: dict,
+        limit: Optional[int] = None,
+    ) -> Optional[GetResult]:
+        try:
+            return await self._query(collection_name, filter, limit=limit)
+        except Exception as e:
+            log.error(
+                f"Error querying Qdrant collection {collection_name}: {type(e).__name__}"
+            )
+            return None
+
+    # The span sits here, inside query()'s error handling, so failures are
+    # recorded as errors before query() swallows them.
     @vector_operation("query", count_results=count_ids)
     @with_qdrant_client
-    async def query(
+    async def _query(
         self,
         client: AsyncQdrantClient,
         collection_name: str,
         filter: dict,
         limit: Optional[int] = None,
     ) -> Optional[GetResult]:
-        try:
-            if not await client.collection_exists(collection_name=collection_name):
-                return None
-
-            points, _ = await client.scroll(
-                collection_name=collection_name,
-                scroll_filter=self._build_filter(filter),
-                limit=limit or 1,
-            )
-
-            return self._result_to_get_result(points)
-        except Exception as e:
-            log.error(
-                f"Error querying Qdrant collection {collection_name}: {type(e).__name__}"
-            )
+        if not await client.collection_exists(collection_name=collection_name):
             return None
+
+        points, _ = await client.scroll(
+            collection_name=collection_name,
+            scroll_filter=self._build_filter(filter),
+            limit=limit or 1,
+        )
+
+        return self._result_to_get_result(points)
 
     @vector_operation("get", count_results=count_ids)
     @with_qdrant_client
@@ -448,7 +448,7 @@ class QdrantClient:
             wait=True,
         )
 
-    @vector_operation("upsert", count_items=_count_items)
+    @vector_operation("upsert", count_items=count_arg("items"))
     async def upsert(
         self,
         collection_name: str,
@@ -463,7 +463,7 @@ class QdrantClient:
         async with _collection_lock_manager.acquire_lock(collection_name):
             return await self._upsert_unlocked(collection_name, items)
 
-    @vector_operation("delete", count_items=_count_ids_arg)
+    @vector_operation("delete", count_items=count_arg("ids"))
     @with_qdrant_client
     async def delete(
         self,

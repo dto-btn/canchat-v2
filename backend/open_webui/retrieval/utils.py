@@ -35,6 +35,13 @@ log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["RAG"])
 
 
+class EmbeddingFailed(RuntimeError):
+    """A remote embedding provider returned no embeddings.
+
+    The class name is recorded as ``error.type`` on ``rag.embedding``.
+    """
+
+
 from typing import Any
 
 from langchain_core.callbacks import CallbackManagerForRetrieverRun
@@ -716,14 +723,18 @@ def generate_embeddings(engine: str, model: str, text: Union[str, list[str]], **
             embeddings = generate_ollama_batch_embeddings(
                 **{"model": model, "texts": [text], "url": url, "key": key}
             )
-        return embeddings[0] if isinstance(text, str) else embeddings
     elif engine == "openai":
         if isinstance(text, list):
             embeddings = generate_openai_batch_embeddings(model, text, url, key)
         else:
             embeddings = generate_openai_batch_embeddings(model, [text], url, key)
+    else:
+        return None
 
-        return embeddings[0] if isinstance(text, str) else embeddings
+    # The batch helpers log provider errors and return None.
+    if embeddings is None:
+        raise EmbeddingFailed(f"{engine} embedding request failed")
+    return embeddings[0] if isinstance(text, str) else embeddings
 
 
 import operator
