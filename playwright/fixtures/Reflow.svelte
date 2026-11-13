@@ -9,6 +9,7 @@
 
 	const params = new URLSearchParams(location.search);
 	const locale = params.get('locale') || 'en-GB';
+	document.documentElement.lang = locale.startsWith('fr') ? 'fr-CA' : 'en-GB';
 	const multi = params.has('multi');
 	const i18n = createInstance();
 	i18n.init({

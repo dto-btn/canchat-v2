@@ -136,6 +136,7 @@ for (const locale of ['en-GB', 'fr-CA']) {
 				exact: true
 			});
 			await expect(regenerate).toBeVisible({ timeout: 30_000 });
+			await expect(page.locator('html')).toHaveAttribute('lang', locale);
 			await expectControlsFit(actions);
 			await expectNoHorizontalScroll(page);
 			const rows = await actions.evaluate((element) => {
@@ -234,3 +235,8 @@ for (const locale of ['en-GB', 'fr-CA']) {
 		await expectNoHorizontalScroll(page);
 	});
 }
+
+test('fixture defaults to English document language', async ({ page }) => {
+	await page.goto(`${baseURL}/__reflow`);
+	await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB', { timeout: 30_000 });
+});
