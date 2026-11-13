@@ -240,3 +240,37 @@ test('fixture defaults to English document language', async ({ page }) => {
 	await page.goto(`${baseURL}/__reflow`);
 	await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB', { timeout: 30_000 });
 });
+
+test('multiple response cards adapt across responsive breakpoints', async ({ page }) => {
+	await page.setViewportSize({ width: 639, height: 800 });
+	await page.goto(`${baseURL}/__reflow?multi`);
+	const responses = page.locator('[id^="responses-container-"]');
+	const cards = responses.locator(':scope > div');
+	await expect(cards).toHaveCount(2, { timeout: 30_000 });
+	await expect(responses).toHaveCSS('flex-direction', 'column');
+
+	for (const width of [640, 767]) {
+		await page.setViewportSize({ width, height: 800 });
+		await expect(responses).toHaveCSS('flex-direction', 'row');
+		await expect
+			.poll(async () =>
+				responses.evaluate((element) => {
+					const card = element.firstElementChild;
+					if (!card) throw new Error('Expected a response card');
+					return Math.abs(card.getBoundingClientRect().width - element.clientWidth);
+				})
+			)
+			.toBeLessThan(1);
+	}
+
+	await page.setViewportSize({ width: 768, height: 800 });
+	await expect
+		.poll(async () =>
+			responses.evaluate((element) => {
+				const card = element.firstElementChild;
+				if (!card) throw new Error('Expected a response card');
+				return card.getBoundingClientRect().width < element.clientWidth - 1;
+			})
+		)
+		.toBe(true);
+});
