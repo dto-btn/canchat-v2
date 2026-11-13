@@ -225,6 +225,8 @@ class LLMOperation:
         operation_name: str = OPERATION_CHAT,
         request_model: str | None = None,
         pipeline: bool = False,
+        gen_ai_provider: str | None = None,
+        metrics_service: Any = None,
     ) -> "LLMOperation":
         """Start the operation and its timer; call right before the provider call.
 
@@ -232,7 +234,9 @@ class LLMOperation:
         ``request_model`` is the model name sent to the provider (after base
         model and prefix resolution); it is recorded as ``gen_ai.request.model``
         only when ``model`` is configured. ``pipeline`` marks an OpenAI
-        connection that is a Pipelines server.
+        connection that is a Pipelines server. ``gen_ai_provider`` overrides
+        ``gen_ai.provider.name`` when the client differs from the ``provider``
+        label (CrewAI). Without a ``request``, ``metrics_service`` is used.
         The span is a child of the current span (normally ``chat.operation``)
         but is not made current, so it can outlive the HTTP handler. Never
         raises: if instrumentation fails, a no-op operation is returned so the
@@ -266,7 +270,7 @@ class LLMOperation:
                         if operation_name in _OPERATION_NAMES
                         else OPERATION_CHAT
                     ),
-                    GEN_AI_PROVIDER_NAME: provider,
+                    GEN_AI_PROVIDER_NAME: gen_ai_provider or provider,
                     GEN_AI_REQUEST_MODEL: (
                         _model_name(request_model) if model is not None else None
                     ),
@@ -281,7 +285,7 @@ class LLMOperation:
             state = getattr(getattr(request, "app", None), "state", None)
             operation = cls(
                 context,
-                getattr(state, "metrics_service", None),
+                getattr(state, "metrics_service", None) or metrics_service,
                 model=model,
                 provider=provider,
                 stream=bool(stream),

@@ -20,6 +20,14 @@ from crewai import Agent, Task, Crew, Process, LLM
 from crewai_tools import MCPServerAdapter
 from mcp import StdioServerParameters
 
+from open_webui.observability.crew import (
+    bounded_name,
+    crew_span,
+    mark_crew_failed,
+    trace_crew_llm,
+    trace_crew_tools,
+)
+
 logger = logging.getLogger(__name__)
 
 # CrewAI verbosity control - disable in production for cleaner logs
@@ -242,20 +250,22 @@ class CrewMCPManager:
 
     def get_azure_llm_config(self) -> LLM:
         """Get Azure OpenAI LLM configuration for CrewAI"""
-        # Set environment variables for LiteLLM/CrewAI Azure OpenAI
-        # CrewAI 1.7.2 uses LiteLLM which requires specific Azure env var format
+        # CrewAI's native Azure provider (Azure AI Inference SDK, see OBS-03)
+        # reads these environment variables.
         os.environ["AZURE_API_KEY"] = self.azure_config.api_key
         os.environ["AZURE_API_BASE"] = self.azure_config.endpoint
         os.environ["AZURE_API_VERSION"] = self.azure_config.api_version
 
-        # Create LLM instance with Azure configuration
-        # CrewAI 1.7.2 LiteLLM format: azure/<deployment_name>
-        # Must NOT include base_url or api_key - LiteLLM reads from env vars
+        # Model format azure/<deployment_name>; base_url and api_key come from
+        # the environment above.
         # Add timeout to prevent hanging in K8s environments
         # O3-mini doesn't support temperature or max_completion_tokens parameters
-        return LLM(
-            model=f"azure/{self.azure_config.deployment}",
-            timeout=30,  # 30 second timeout per LLM API call
+        # Each model invocation is traced as ``llm.chat`` (OBS-26).
+        return trace_crew_llm(
+            LLM(
+                model=f"azure/{self.azure_config.deployment}",
+                timeout=30,  # 30 second timeout per LLM API call
+            )
         )
 
     def run_time_crew(self, query: str = "What's the current time?") -> str:
@@ -293,7 +303,7 @@ class CrewMCPManager:
                 role="Time Specialist",
                 goal="Provide accurate time information using available time tools",
                 backstory="I am an AI specialist focused on time-related queries. I have access to time tools via MCP and can provide current time in various formats and timezones.",
-                tools=mcp_tools,  # Pass MCP tools to agent
+                tools=trace_crew_tools(mcp_tools, "time_server"),
                 llm=llm,
                 verbose=CREW_VERBOSE,
                 max_iter=3,  # Limit iterations to prevent excessive thinking
@@ -316,7 +326,14 @@ class CrewMCPManager:
 
             # Execute the crew
             logger.info("Executing CrewAI crew...")
-            result = time_crew.kickoff()
+            with crew_span(
+                "crew.kickoff",
+                {
+                    "canchat.crew.specialist": "time",
+                    "canchat.mcp.server": "time_server",
+                },
+            ):
+                result = time_crew.kickoff()
             logger.info("CrewAI crew execution completed successfully")
 
             # Extract token usage from the crew result
@@ -364,7 +381,7 @@ class CrewMCPManager:
                 role="News Specialist",
                 goal="Provide current news information exactly as returned by news tools, preserving original formatting and language",
                 backstory="I am an AI specialist focused on news and current events. I have access to NewsDesk via MCP tools and can fetch the latest headlines. My role is to pass through the news information exactly as provided by the tools, preserving all formatting, emojis, language (French/English), and structure without translation or summarization.",
-                tools=mcp_tools,  # Pass MCP tools to agent
+                tools=trace_crew_tools(mcp_tools, "news_server"),
                 llm=llm,
                 verbose=CREW_VERBOSE,
                 max_iter=5,  # Limit iterations to prevent excessive thinking
@@ -387,7 +404,14 @@ class CrewMCPManager:
 
             # Execute the crew
             logger.info("Executing CrewAI news crew...")
-            result = news_crew.kickoff()
+            with crew_span(
+                "crew.kickoff",
+                {
+                    "canchat.crew.specialist": "news",
+                    "canchat.mcp.server": "news_server",
+                },
+            ):
+                result = news_crew.kickoff()
 
             # Extract token usage from the crew result
             token_usage = _extract_token_usage(result)
@@ -486,7 +510,7 @@ class CrewMCPManager:
     - Do NOT show your reasoning process ("Thought:", "Action:", etc.)
     - Include document name and source when applicable
     - Be direct and concise""",
-                tools=mcp_tools,
+                tools=trace_crew_tools(mcp_tools, f"{dept_lower}_sharepoint_server"),
                 llm=llm,
                 verbose=CREW_VERBOSE,
                 max_iter=5,
@@ -572,7 +596,14 @@ class CrewMCPManager:
 
             # Execute the crew
             logger.info(f"Executing CrewAI {dept_key} SharePoint crew...")
-            result = sharepoint_crew.kickoff()
+            with crew_span(
+                "crew.kickoff",
+                {
+                    "canchat.crew.specialist": "sharepoint",
+                    "canchat.mcp.server": f"{dept_lower}_sharepoint_server",
+                },
+            ):
+                result = sharepoint_crew.kickoff()
 
             # Cleanup adapter
             try:
@@ -590,6 +621,8 @@ class CrewMCPManager:
             logger.error(
                 f"Error in CrewAI MCP {dept_key} SharePoint integration: {type(e).__name__}"
             )
+            # The user gets an explanation instead of an error: still a failure.
+            mark_crew_failed(e)
 
             # Provide specific error messages based on the type of failure
             if (
@@ -633,6 +666,28 @@ class CrewMCPManager:
         Returns:
             A 3-tuple of (result_str, token_usage_dict, mcp_process_name).
         """
+        with crew_span(
+            "crew.run",
+            {
+                "canchat.operation": "crew.run",
+                "canchat.crew.tools.selected": len(selected_tools or []),
+            },
+        ) as span:
+            result = self._route_intelligent_crew(
+                query, selected_tools, user_access_token
+            )
+            if isinstance(result, tuple) and len(result) == 3:
+                server = bounded_name(result[2])
+                if server:
+                    span.set_attribute("canchat.mcp.server", server)
+            return result
+
+    def _route_intelligent_crew(
+        self,
+        query: str,
+        selected_tools: list = None,
+        user_access_token: str | None = None,
+    ) -> tuple:
         logger.info("Starting intelligent router (query_len=%d)", len(query))
         logger.info(f"Selected tools: {selected_tools}")
 

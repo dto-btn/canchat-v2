@@ -45,6 +45,13 @@ current_chat_operation_var: ContextVar[Any] = ContextVar(
     "current_chat_operation", default=None
 )
 
+# The CrewAI operation (``observability.crew.CrewOperation``) of the current
+# ``crew-mcp-query`` event. Carried into the executor by an explicit context
+# copy, so model and tool spans in the crew thread find their own operation.
+current_crew_operation_var: ContextVar[Any] = ContextVar(
+    "current_crew_operation", default=None
+)
+
 
 @dataclass
 class OperationContext:

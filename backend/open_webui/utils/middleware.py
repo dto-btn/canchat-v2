@@ -2191,12 +2191,15 @@ async def process_chat_response(
 
         def finish_unstarted_operation(task):
             # Covers a task that ended before reaching a finish point; a no-op
-            # otherwise. Retrieving the exception also avoids asyncio's
-            # "exception was never retrieved" warning.
+            # otherwise. Retrieving the exception suppresses asyncio's
+            # "exception was never retrieved" report, so it is logged here.
             if task.cancelled():
                 operation.finish(OUTCOME_CANCELLED)
-            else:
-                operation.finish(OUTCOME_ERROR, task.exception())
+                return
+            exc = task.exception()
+            if exc is not None:
+                log.error("Chat response background task failed", exc_info=exc)
+            operation.finish(OUTCOME_ERROR, exc)
 
         # background_tasks.add_task(post_response_handler, response, events)
         task_id, task = create_task(post_response_handler(response, events))
