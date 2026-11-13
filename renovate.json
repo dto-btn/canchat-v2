@@ -1,6 +1,6 @@
 {
-	    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-      "extends": ["config:best-practices", "mergeConfidence:all-badges"],
+	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
+	"extends": ["config:best-practices", "mergeConfidence:all-badges"],
       "baseBranchPatterns": ["dev"],
       "addLabels": ["renovate"],
       "rebaseWhen": "auto",
