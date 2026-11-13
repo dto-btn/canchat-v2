@@ -5,10 +5,13 @@ import { readdirSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import fr from '../../../../src/lib/i18n/locales/fr-CA/translation.json' with { type: 'json' };
 
 let server: ViteDevServer;
 let baseURL: string;
 let cacheDir: string | undefined;
+
+const t = (locale: string, key: keyof typeof fr) => (locale === 'fr-CA' ? fr[key] || key : key);
 
 test.describe.configure({ mode: 'default' });
 
@@ -132,7 +135,7 @@ for (const locale of ['en-GB', 'fr-CA']) {
 			await page.goto(`${baseURL}/__reflow?locale=${locale}`);
 			const actions = page.locator('#message-response .buttons');
 			const regenerate = actions.getByRole('button', {
-				name: locale === 'fr-CA' ? 'Regénérer' : 'Regenerate',
+				name: t(locale, 'Regenerate'),
 				exact: true
 			});
 			await expect(regenerate).toBeVisible({ timeout: 30_000 });
@@ -172,18 +175,14 @@ for (const locale of ['en-GB', 'fr-CA']) {
 				await page.setViewportSize({ width, height: 800 });
 				await page.goto(`${baseURL}/__reflow?locale=${locale}${bubbles ? '' : '&no-bubbles'}`);
 				const response = page.locator('#message-response');
-				await response
-					.getByRole('button', { name: locale === 'fr-CA' ? 'Modifier' : 'Edit', exact: true })
-					.click();
+				await response.getByRole('button', { name: t(locale, 'Edit'), exact: true }).click();
 				await expect(response.locator('textarea')).toBeVisible();
 				await expectControlsFit(response.locator('textarea').locator('..'));
 				await expectNoHorizontalScroll(page);
 				await response.locator('#close-edit-message-button').click();
 				const prompt = page.locator('#message-prompt');
 				await prompt.hover();
-				await prompt
-					.getByRole('button', { name: locale === 'fr-CA' ? 'Modifier' : 'Edit', exact: true })
-					.click();
+				await prompt.getByRole('button', { name: t(locale, 'Edit'), exact: true }).click();
 				await expect(prompt.locator('textarea')).toBeVisible();
 				await expectControlsFit(prompt.locator('textarea').locator('../..'));
 				await expectNoHorizontalScroll(page);
@@ -211,7 +210,7 @@ for (const locale of ['en-GB', 'fr-CA']) {
 		await page
 			.locator('#message-response')
 			.getByRole('button', {
-				name: locale === 'fr-CA' ? 'Modifier' : 'Edit',
+				name: t(locale, 'Edit'),
 				exact: true
 			})
 			.click();
