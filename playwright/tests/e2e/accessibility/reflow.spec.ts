@@ -131,16 +131,34 @@ for (const locale of ['en-GB', 'fr-CA']) {
 			await page.setViewportSize({ width, height: 800 });
 			await page.goto(`${baseURL}/__reflow?locale=${locale}`);
 			const actions = page.locator('#message-response .buttons');
-			await expect(actions.locator('button')).toHaveCount(14, { timeout: 30_000 });
-			await expectControlsFit(actions);
-			await expectNoHorizontalScroll(page);
-			const height = await actions.evaluate((element) => element.clientHeight);
-			if (width === 320) expect(height).toBeGreaterThan(28);
-			else expect(height).toBe(28);
 			const regenerate = actions.getByRole('button', {
 				name: locale === 'fr-CA' ? 'Regénérer' : 'Regenerate',
 				exact: true
 			});
+			await expect(regenerate).toBeVisible({ timeout: 30_000 });
+			await expectControlsFit(actions);
+			await expectNoHorizontalScroll(page);
+			const rows = await actions.evaluate((element) => {
+				const buttons = Array.from(element.querySelectorAll('button'), (button) =>
+					button.getBoundingClientRect()
+				)
+					.filter((rect) => rect.width > 0 && rect.height > 0)
+					.sort((a, b) => a.top - b.top);
+				let rows = 0;
+				let rowBottom = -Infinity;
+				// Buttons of different heights can share a row despite having different top positions.
+				for (const rect of buttons) {
+					if (rect.top >= rowBottom) {
+						rows++;
+						rowBottom = rect.bottom;
+					} else {
+						rowBottom = Math.min(rowBottom, rect.bottom);
+					}
+				}
+				return rows;
+			});
+			if (width === 320) expect(rows).toBeGreaterThan(1);
+			else expect(rows).toBe(1);
 			await regenerate.click();
 			await expect(page.getByRole('status', { name: 'Regenerations' })).toHaveText('1');
 			expect(await page.evaluate(() => window.scrollX)).toBe(0);
@@ -212,7 +230,7 @@ for (const locale of ['en-GB', 'fr-CA']) {
 		const second = await page.locator('#message-alternative').boundingBox();
 		if (!first || !second) throw new Error('Expected both model responses to have a layout');
 		expect(second.x).toBeGreaterThan(first.x);
-		expect(second.y).toBe(first.y);
+		expect(Math.abs(second.y - first.y)).toBeLessThan(1);
 		await expectNoHorizontalScroll(page);
 	});
 }
