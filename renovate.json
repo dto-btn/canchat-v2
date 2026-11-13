@@ -1,14 +1,14 @@
 {
-  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:best-practices", "mergeConfidence:all-badges"],
-  "baseBranchPatterns": ["dev"],
-  "addLabels": ["renovate"],
-  "rebaseWhen": "auto",
-  "timezone": "America/Toronto",
-  "minimumReleaseAge": "14 days",
-  "semanticCommits": "enabled",
-  "semanticCommitScope": "deps",
-  "semanticCommitType": "fix",
-  "dependencyDashboard": true,
-  "dependencyDashboardApproval": true
+	    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+      "extends": ["config:best-practices", "mergeConfidence:all-badges"],
+      "baseBranchPatterns": ["dev"],
+      "addLabels": ["renovate"],
+      "rebaseWhen": "auto",
+      "timezone": "America/Toronto",
+      "minimumReleaseAge": "14 days",
+      "semanticCommits": "enabled",
+      "semanticCommitScope": "deps",
+      "semanticCommitType": "fix",
+      "dependencyDashboard": true,
+      "dependencyDashboardApproval": true
 }
