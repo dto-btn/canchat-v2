@@ -14,8 +14,9 @@ operation gets a manual ``rag.vector.<operation>`` span. Its HTTP calls
   ``query_collection_with_hybrid_search`` (hybrid) call, the parent of the
   embedding and vector spans for a chat retrieval.
 
-Spans carry the collection name, counts and outcomes only: never query text,
-document text, vectors, filters or URLs. Instrumentation failures are logged
+Spans carry a bounded collection type, counts and outcomes only: never
+collection names (they can be user supplied), query text, document text,
+vectors, filters or URLs. Instrumentation failures are logged
 and swallowed so they never break retrieval.
 """
 
@@ -24,6 +25,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+import uuid
 from contextlib import contextmanager
 from functools import wraps
 from typing import Any, Callable, Iterator, Mapping
@@ -31,6 +33,7 @@ from typing import Any, Callable, Iterator, Mapping
 from opentelemetry import trace
 from opentelemetry.trace import SpanKind
 
+from open_webui.constants import VECTOR_COLLECTION_PREFIXES
 from open_webui.metrics.service import get_metrics_service
 from open_webui.observability.chat import (
     OUTCOME_CANCELLED,
@@ -58,6 +61,15 @@ EMBEDDING_FAILED = "EmbeddingFailed"
 
 SEARCH_TYPE_VECTOR = "vector"
 SEARCH_TYPE_HYBRID = "hybrid"
+
+# ``error.type`` on ``rag.retrieve`` when a collection query failed but the
+# retrieval fell back to the remaining results instead of raising.
+VECTOR_SEARCH_FAILED = "VectorSearchFailed"
+
+COLLECTION_TYPE_FILE = "file"
+COLLECTION_TYPE_WEB_SEARCH = "web-search"
+COLLECTION_TYPE_KNOWLEDGE = "knowledge"
+COLLECTION_TYPE_OTHER = "other"
 
 # Indirection so tests can drive a deterministic clock.
 _monotonic = time.monotonic
@@ -184,6 +196,22 @@ def count_documents(result: Any) -> int:
         return 0
 
 
+def collection_type(name: str) -> str:
+    """Bounded type of a collection; the name itself is never exported."""
+    if name.startswith(VECTOR_COLLECTION_PREFIXES.FILE.value):
+        return COLLECTION_TYPE_FILE
+    if name.startswith(VECTOR_COLLECTION_PREFIXES.WEB_SEARCH.value):
+        return COLLECTION_TYPE_WEB_SEARCH
+    if name.startswith(VECTOR_COLLECTION_PREFIXES.KNOWLEDGE_BASE.value):
+        return COLLECTION_TYPE_KNOWLEDGE
+    try:
+        # Knowledge bases use their UUID ``id`` as the collection name.
+        uuid.UUID(name)
+        return COLLECTION_TYPE_KNOWLEDGE
+    except ValueError:
+        return COLLECTION_TYPE_OTHER
+
+
 def _collection_name(args: tuple, kwargs: Mapping[str, Any]) -> Any:
     if "collection_name" in kwargs:
         return kwargs["collection_name"]
@@ -234,7 +262,9 @@ def vector_operation(
             try:
                 collection = _collection_name(args, kwargs)
                 if isinstance(collection, str):
-                    attributes["db.collection.name"] = collection
+                    attributes["canchat.rag.collection.type"] = collection_type(
+                        collection
+                    )
                 if count_items is not None:
                     attributes["canchat.rag.item_count"] = count_items(args, kwargs)
                 limit = kwargs.get("limit")

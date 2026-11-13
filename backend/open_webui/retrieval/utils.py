@@ -26,6 +26,7 @@ from open_webui.observability.rag import (
     LOCAL_EMBEDDING_PROVIDER,
     SEARCH_TYPE_HYBRID,
     SEARCH_TYPE_VECTOR,
+    VECTOR_SEARCH_FAILED,
     count_documents,
     instrument_embedding_function,
     retrieval_operation,
@@ -289,10 +290,15 @@ async def query_collection(
         queries=len(queries),
         top_k=k,
     ) as op:
-        result = await _query_collection(
+        result, failed = await _query_collection(
             collection_names, queries, embedding_function, k
         )
         op.set_result_count(count_documents(result))
+        if failed:
+            # The reindex helper logs and swallows query errors so retrieval can
+            # continue with the other collections; keep that fallback but do
+            # not report the operation as a success.
+            op.fail(VECTOR_SEARCH_FAILED)
         return result
 
 
@@ -301,8 +307,10 @@ async def _query_collection(
     queries: list[str],
     embedding_function,
     k: int,
-) -> dict:
+) -> tuple[dict, bool]:
+    """Merged results and whether any collection query failed."""
     results = []
+    failed = False
     for query in queries:
         # Some embedding backends are synchronous (requests-based).
         query_embedding = await asyncio.to_thread(embedding_function, query)
@@ -321,15 +329,17 @@ async def _query_collection(
 
                 if result is not None:
                     results.append(result)
+                else:
+                    failed = True
             else:
                 pass
 
     if VECTOR_DB == "chroma":
         # Chroma uses unconventional cosine similarity, so we don't need to reverse the results
         # https://docs.trychroma.com/docs/collections/configure#configuring-chroma-collections
-        return merge_and_sort_query_results(results, k=k, reverse=False)
+        return merge_and_sort_query_results(results, k=k, reverse=False), failed
     else:
-        return merge_and_sort_query_results(results, k=k, reverse=True)
+        return merge_and_sort_query_results(results, k=k, reverse=True), failed
 
 
 async def query_collection_with_hybrid_search(

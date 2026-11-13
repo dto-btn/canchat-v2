@@ -44,7 +44,7 @@ ALLOWED_RAG_ATTRIBUTES = {
     "canchat.rag.top_k",
     "db.system.name",
     "db.operation.name",
-    "db.collection.name",
+    "canchat.rag.collection.type",
     "error.type",
 }
 
@@ -208,7 +208,7 @@ def test_search_span_and_metrics(telemetry, qdrant, clock):
     assert span.status.status_code == StatusCode.UNSET
     assert span.attributes["db.system.name"] == "qdrant"
     assert span.attributes["db.operation.name"] == "search"
-    assert span.attributes["db.collection.name"] == COLLECTION
+    assert span.attributes["canchat.rag.collection.type"] == "file"
     assert span.attributes["canchat.rag.result_count"] == 2
     assert span.attributes["canchat.rag.limit"] == 5
     assert span.attributes["canchat.outcome"] == "success"
@@ -257,7 +257,7 @@ def test_insert_and_delete_spans(telemetry, qdrant):
     (delete,) = telemetry.spans("rag.vector.delete")
     assert delete.attributes["canchat.rag.item_count"] == 2
     (drop,) = telemetry.spans("rag.vector.delete_collection")
-    assert drop.attributes["db.collection.name"] == COLLECTION
+    assert drop.attributes["canchat.rag.collection.type"] == "file"
     for span in (upsert, delete, drop):
         assert "canchat.rag.result_count" not in span.attributes
         assert_no_content(span)
@@ -443,6 +443,58 @@ def test_query_collection_nests_embedding_and_search(telemetry, qdrant, clock):
     assert point.sum == pytest.approx(0.25 + 2 * 0.5)
     results = telemetry.points(rag_obs.RAG_RESULTS)
     assert results[labels(operation="retrieve")].count == 1
+
+
+@pytest.mark.parametrize(
+    "name, expected",
+    [
+        ("file-0b8a4d6e", "file"),
+        ("web-search-abc123", "web-search"),
+        ("knowledge-abc", "knowledge"),
+        ("3f2b1c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d", "knowledge"),
+        ("private-project-name", "other"),
+    ],
+)
+def test_collection_name_is_exported_as_type_only(telemetry, qdrant, name, expected):
+    asyncio.run(qdrant.client.search(collection_name=name, vectors=[VECTOR], limit=1))
+
+    (span,) = telemetry.spans("rag.vector.search")
+    assert span.attributes["canchat.rag.collection.type"] == expected
+    assert "db.collection.name" not in span.attributes
+    assert all(name not in str(v) for v in span.attributes.values())
+
+
+def test_query_collection_search_failure_records_error(telemetry, qdrant, clock):
+    model = FakeModel(clock)
+    embed = retrieval_utils.get_embedding_function("", "m", model, "", "", 8)
+    qdrant.fake.fail = ConnectionError("simulated outage")
+
+    result = asyncio.run(
+        retrieval_utils.query_collection(
+            collection_names=[COLLECTION],
+            queries=[QUERY],
+            embedding_function=embed,
+            k=1,
+        )
+    )
+
+    # The fallback still returns an empty result instead of raising.
+    assert result["documents"] == [[]]
+    (search,) = telemetry.spans("rag.vector.search")
+    assert search.attributes["canchat.outcome"] == "error"
+    (retrieve,) = telemetry.spans("rag.retrieve")
+    assert retrieve.attributes["canchat.outcome"] == "error"
+    assert retrieve.attributes["error.type"] == rag_obs.VECTOR_SEARCH_FAILED
+    assert retrieve.status.status_code == StatusCode.ERROR
+    assert_no_content(retrieve)
+    point = telemetry.points(rag_obs.RAG_RETRIEVAL_DURATION)[
+        labels(
+            operation="vector",
+            outcome="error",
+            **{"error.type": rag_obs.VECTOR_SEARCH_FAILED},
+        )
+    ]
+    assert point.count == 1
 
 
 def test_hybrid_failure_records_error(telemetry, monkeypatch):

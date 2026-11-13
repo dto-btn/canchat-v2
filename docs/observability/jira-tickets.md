@@ -750,7 +750,7 @@ Wrap Qdrant client calls (`retrieval/vector/dbs/qdrant.py`) in manual spans (no 
 
 **Acceptance criteria**
 
-- [ ] Spans for embedding generation and vector query/insert/delete with collection name and result count (no query text).
+- [ ] Spans for embedding generation and vector query/insert/delete with collection type and result count (no collection names or query text).
 - [ ] `rag_*` latency and result-count metrics recorded.
 - [ ] Follow-up ticket created for the blocking embeddings call.
 
