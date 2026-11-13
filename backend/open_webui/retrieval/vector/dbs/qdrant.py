@@ -30,6 +30,7 @@ from open_webui.config import (
     QDRANT_URL,
 )
 from open_webui.env import SRC_LOG_LEVELS
+from open_webui.observability.rag import count_ids, vector_operation
 from open_webui.retrieval.vector.locks import get_collection_lock_manager
 from open_webui.retrieval.vector.main import GetResult, SearchResult, VectorItem
 
@@ -46,6 +47,16 @@ def with_qdrant_client(func):
         return await func(self, client, *args, **kwargs)
 
     return wrapper
+
+
+def _count_items(args, kwargs):
+    items = kwargs.get("items", args[1] if len(args) > 1 else None)
+    return len(items) if items is not None else None
+
+
+def _count_ids_arg(args, kwargs):
+    ids = kwargs.get("ids", args[1] if len(args) > 1 else None)
+    return len(ids) if ids else None
 
 
 # Global distributed lock manager for collection-level synchronization.
@@ -292,6 +303,7 @@ class QdrantClient:
             )
             raise
 
+    @vector_operation("delete_collection")
     async def delete_collection(self, collection_name: str):
         """
         Delete the collection based on the collection name.
@@ -300,6 +312,7 @@ class QdrantClient:
         async with _collection_lock_manager.acquire_lock(collection_name):
             return await self._delete_collection_unlocked(collection_name)
 
+    @vector_operation("search", count_results=count_ids)
     @with_qdrant_client
     async def search(
         self,
@@ -316,6 +329,7 @@ class QdrantClient:
         )
         return self._result_to_search_result(result)
 
+    @vector_operation("query", count_results=count_ids)
     @with_qdrant_client
     async def query(
         self,
@@ -341,6 +355,7 @@ class QdrantClient:
             )
             return None
 
+    @vector_operation("get", count_results=count_ids)
     @with_qdrant_client
     async def get(
         self, client: AsyncQdrantClient, collection_name: str
@@ -433,6 +448,7 @@ class QdrantClient:
             wait=True,
         )
 
+    @vector_operation("upsert", count_items=_count_items)
     async def upsert(
         self,
         collection_name: str,
@@ -447,6 +463,7 @@ class QdrantClient:
         async with _collection_lock_manager.acquire_lock(collection_name):
             return await self._upsert_unlocked(collection_name, items)
 
+    @vector_operation("delete", count_items=_count_ids_arg)
     @with_qdrant_client
     async def delete(
         self,

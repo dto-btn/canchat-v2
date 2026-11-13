@@ -22,6 +22,14 @@ from open_webui.models.users import UserModel
 from open_webui.models.files import Files
 
 from open_webui.env import SRC_LOG_LEVELS, OFFLINE_MODE
+from open_webui.observability.rag import (
+    LOCAL_EMBEDDING_PROVIDER,
+    SEARCH_TYPE_HYBRID,
+    SEARCH_TYPE_VECTOR,
+    count_documents,
+    instrument_embedding_function,
+    retrieval_operation,
+)
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["RAG"])
@@ -268,6 +276,25 @@ async def query_collection(
     embedding_function,
     k: int,
 ) -> dict:
+    with retrieval_operation(
+        SEARCH_TYPE_VECTOR,
+        collections=len(collection_names),
+        queries=len(queries),
+        top_k=k,
+    ) as op:
+        result = await _query_collection(
+            collection_names, queries, embedding_function, k
+        )
+        op.set_result_count(count_documents(result))
+        return result
+
+
+async def _query_collection(
+    collection_names: list[str],
+    queries: list[str],
+    embedding_function,
+    k: int,
+) -> dict:
     results = []
     for query in queries:
         # Some embedding backends are synchronous (requests-based).
@@ -299,6 +326,27 @@ async def query_collection(
 
 
 async def query_collection_with_hybrid_search(
+    collection_names: list[str],
+    queries: list[str],
+    embedding_function,
+    k: int,
+    reranking_function,
+    r: float,
+) -> dict:
+    with retrieval_operation(
+        SEARCH_TYPE_HYBRID,
+        collections=len(collection_names),
+        queries=len(queries),
+        top_k=k,
+    ) as op:
+        result = await _query_collection_with_hybrid_search(
+            collection_names, queries, embedding_function, k, reranking_function, r
+        )
+        op.set_result_count(count_documents(result))
+        return result
+
+
+async def _query_collection_with_hybrid_search(
     collection_names: list[str],
     queries: list[str],
     embedding_function,
@@ -348,7 +396,11 @@ def get_embedding_function(
     embedding_batch_size,
 ):
     if embedding_engine == "":
-        return lambda query, user=None: embedding_function.encode(query).tolist()
+        return instrument_embedding_function(
+            lambda query, user=None: embedding_function.encode(query).tolist(),
+            provider=LOCAL_EMBEDDING_PROVIDER,
+            model=embedding_model,
+        )
     elif embedding_engine in ["ollama", "openai"]:
         func = lambda query, user=None: generate_embeddings(
             engine=embedding_engine,
@@ -370,7 +422,11 @@ def get_embedding_function(
             else:
                 return func(query, user)
 
-        return lambda query, user=None: generate_multiple(query, user, func)
+        return instrument_embedding_function(
+            lambda query, user=None: generate_multiple(query, user, func),
+            provider=embedding_engine,
+            model=embedding_model,
+        )
     else:
         raise ValueError(f"Unknown embedding engine: {embedding_engine}")
 

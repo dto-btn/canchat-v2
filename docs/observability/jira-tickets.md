@@ -24,7 +24,7 @@ Source plan: [Canchat-v2-Logging Architecture-v2.md](Canchat-v2-Logging%20Archit
 | -------------------------------------------- | ------------- | ---------------- |
 | E0 Decisions & implementation gates          | Before PR 1–3 | OBS-01 to OBS-06 |
 | E1 Safe foundations                          | PR 1          | OBS-10 to OBS-19 |
-| E2 Tracing & metrics                         | PR 2          | OBS-20 to OBS-30 |
+| E2 Tracing & metrics                         | PR 2          | OBS-20 to OBS-31 |
 | E3 Durable audit                             | PR 3          | OBS-40 to OBS-47 |
 | E4 Observability infrastructure              | PR 4          | OBS-50 to OBS-59 |
 | E5 Retention TTLs                            | PR 5          | OBS-60 to OBS-61 |
@@ -802,6 +802,36 @@ Record active local task counts and task outcomes from the registry in `tasks.py
 **Testing**
 
 - Tests for task completion, cancellation and shutdown finalization.
+
+**Definition of done**
+
+- Common DoD.
+
+---
+
+### OBS-31: Move remaining synchronous embedding calls off the event loop
+
+**Type:** Story | **Depends on:** OBS-28 | **Ref:** §4 RAG
+
+**Description**
+Ollama/OpenAI embeddings use synchronous `requests.post` (`retrieval/utils.py`), and the SentenceTransformers model runs on the CPU. Chat retrieval (`query_collection`, `AsyncVectorSearchRetriever`) already calls the embedding function through `asyncio.to_thread`, but these async paths still call it on the event loop:
+
+- `save_docs_to_vector_db` in `routers/retrieval.py` (document ingestion, file upload and web search results).
+- `query_doc_handler` (`POST /api/v1/retrieval/query/doc`, non-hybrid branch).
+- The dev-only `GET /api/v1/retrieval/ef/{text}` endpoint.
+
+While they run, every other request on the worker stalls, which also inflates the latency of unrelated spans. Run them with `asyncio.to_thread` (which keeps the `rag.embedding` span parented) or move the remote providers to an async HTTP client.
+
+**Acceptance criteria**
+
+- [ ] No embedding function call runs directly on the event loop.
+- [ ] `rag.embedding` spans stay children of the calling span.
+- [ ] Ingestion of a large file no longer blocks concurrent requests on the same worker.
+
+**Testing**
+
+- Unit test that the embedding function runs off the event-loop thread for each path above.
+- Concurrency test: a slow stubbed embedding does not delay a concurrent request.
 
 **Definition of done**
 
