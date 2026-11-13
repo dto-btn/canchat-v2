@@ -9,5 +9,6 @@
   "semanticCommits": "enabled",
   "semanticCommitScope": "deps",
   "semanticCommitType": "fix",
-  "dependencyDashboard": true
+  "dependencyDashboard": true,
+  "dependencyDashboardApproval": true
 }
