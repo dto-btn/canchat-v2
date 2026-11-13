@@ -1,16 +1,44 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import { createServer, type ViteDevServer } from 'vite';
 import { svelte, vitePreprocess } from '@sveltejs/vite-plugin-svelte';
-import { resolve } from 'node:path';
+import { readdirSync } from 'node:fs';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 
 let server: ViteDevServer;
 let baseURL: string;
+let cacheDir: string | undefined;
+
+test.describe.configure({ mode: 'default' });
 
 test.beforeAll(async () => {
+	test.setTimeout(60_000);
+	cacheDir = await mkdtemp(join(tmpdir(), 'canchat-reflow-vite-'));
 	server = await createServer({
 		configFile: false,
+		cacheDir,
 		optimizeDeps: {
-			include: ['lowlight', 'highlight.js/lib/core', 'turndown', 'dayjs', 'file-saver']
+			noDiscovery: true,
+			holdUntilCrawlEnd: false,
+			include: [
+				'lowlight',
+				'highlight.js/lib/core',
+				'turndown',
+				'dayjs',
+				'dayjs/plugin/duration',
+				'dayjs/plugin/isToday',
+				'dayjs/plugin/isYesterday',
+				'dayjs/plugin/relativeTime',
+				...readdirSync(resolve('node_modules/dayjs/locale'))
+					.filter((name) => name.endsWith('.js'))
+					.map((name) => `dayjs/locale/${name.slice(0, -3)}`),
+				'file-saver',
+				'@braintree/sanitize-url',
+				'js-sha256',
+				'panzoom',
+				'sanitize-html'
+			]
 		},
 		define: { APP_VERSION: '"test"', APP_BUILD_HASH: '"test"' },
 		resolve: { alias: { $lib: resolve('src/lib') } },
@@ -55,11 +83,18 @@ test.beforeAll(async () => {
 	const address = server.httpServer?.address();
 	if (!address || typeof address === 'string') throw new Error('Expected a TCP fixture server');
 	baseURL = `http://127.0.0.1:${address.port}`;
-}, 60_000);
+});
 
 test.afterAll(async () => {
-	server?.httpServer?.closeAllConnections();
-	await server?.close();
+	try {
+		const httpServer = server?.httpServer;
+		if (httpServer && 'closeAllConnections' in httpServer) {
+			httpServer.closeAllConnections();
+		}
+		await server?.close();
+	} finally {
+		if (cacheDir) await rm(cacheDir, { recursive: true, force: true });
+	}
 });
 
 async function expectNoHorizontalScroll(page: Page) {
