@@ -2,7 +2,7 @@
 
 Self-contained spec for docs/observability/Canchat-v2-OBS-04-Audit-Event-Schema.md; OBS-41 moves
 it into observability/audit.py. Regenerate docs/observability/obs04-audit-event-v1.schema.json with
-OBS04_WRITE_SCHEMA=1 pytest backend/open_webui/test/util/test_audit_event_schema_poc.py
+OBS04_WRITE_SCHEMA=1 pytest backend/open_webui/test/util/test_audit_event_schema.py
 """
 
 import base64

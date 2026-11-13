@@ -991,6 +991,15 @@ DEFAULT_METRIC_DEFINITIONS = [
         "buckets": list(CHAT_OPERATION_BUCKETS),
     },
     {
+        # One value per ``crew-mcp-query`` Socket.IO event (OBS-26), from the
+        # authenticated handler to the result or error sent to the client.
+        "name": "canchat.crew.operation.duration",
+        "type": "histogram",
+        "description": "End-to-end CrewAI operation duration, socket event to result",
+        "unit": "s",
+        "buckets": list(CHAT_OPERATION_BUCKETS),
+    },
+    {
         # The histogram count is the number of provider searches by outcome.
         "name": "canchat.web_search.request.duration",
         "type": "histogram",
@@ -1013,6 +1022,22 @@ DEFAULT_METRIC_DEFINITIONS = [
         "unit": "s",
         "buckets": list(WEB_SEARCH_DURATION_BUCKETS),
         "attributes": ["bypass_embedding"],
+    },
+    {
+        # Sockets connected to this instance; sums across instances.
+        "name": "canchat.socketio.connections",
+        "type": "observable_updowncounter",
+        "description": "Socket.IO connections open on this instance",
+        "unit": "{connection}",
+    },
+    {
+        # ``event`` is the registered handler name (bounded by the handlers);
+        # ``outcome`` is success, error, rejected or cancelled.
+        "name": "canchat.socketio.events",
+        "type": "counter",
+        "description": "Handled Socket.IO events by event name and outcome",
+        "unit": "{event}",
+        "attributes": ["event"],
     },
 ]
 

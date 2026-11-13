@@ -25,6 +25,7 @@ def test_unset_uses_builtin_defaults(monkeypatch):
         "canchat.rag.embedding.duration",
         "canchat.rag.vector.duration",
         "canchat.mcp.tool.duration",
+        "canchat.crew.operation.duration",
     ):
         assert by_name[name]["type"] == "histogram"
         assert by_name[name]["unit"] == "s"

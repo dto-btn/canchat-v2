@@ -484,6 +484,29 @@ async def test_background_cancellation_is_recorded_once(telemetry, monkeypatch):
 
 
 @pytest.mark.anyio
+async def test_background_failure_is_logged_and_recorded_once(
+    telemetry, monkeypatch, caplog
+):
+    chat = Chat(monkeypatch, telemetry.metrics)
+    chat.respond_with(sse_response(("a", "b"), fail_after=1))
+
+    with caplog.at_level("ERROR", logger=middleware.log.name):
+        await chat.complete(chat.form(stream=True, socket=True))
+        await asyncio.gather(chat.task, return_exceptions=True)
+
+    failures = [
+        r for r in caplog.records if r.message == "Chat response background task failed"
+    ]
+    assert len(failures) == 1
+    assert "ConnectionError" in failures[0].exc_text
+    assert "provider dropped" not in failures[0].exc_text
+    operation = telemetry.spans()["chat.operation"]
+    assert operation.attributes["canchat.outcome"] == "error"
+    assert operation.attributes["error.type"] == "ConnectionError"
+    assert dict(single_point(telemetry).attributes)["outcome"] == "error"
+
+
+@pytest.mark.anyio
 async def test_unknown_model_records_error_without_model_label(telemetry, monkeypatch):
     chat = Chat(monkeypatch, telemetry.metrics)
     form = chat.form()

@@ -14,6 +14,17 @@ from open_webui.env import (
 )
 from open_webui.utils.auth import decode_token
 from open_webui.socket.utils import RedisDict, RedisLock
+from open_webui.observability import crew as crew_obs
+from open_webui.observability.context import user_id_var
+from open_webui.observability.socketio import (
+    OUTCOME_ERROR,
+    OUTCOME_REJECTED,
+    bind_connection_user,
+    current_socket_event,
+    observe_event,
+    register_connection,
+    unregister_connection,
+)
 
 from open_webui.env import (
     SRC_LOG_LEVELS,
@@ -182,27 +193,28 @@ async def periodic_usage_pool_cleanup():
                         # Emit updated usage information after cleaning
                         await sio.emit("usage", {"models": get_models_in_use()})
 
-                except Exception as e:
-                    log.error(f"Error during usage pool cleanup: {type(e).__name__}")
+                except Exception:
+                    log.exception("Error during usage pool cleanup")
                     # Continue running even if cleanup fails
 
                 await asyncio.sleep(TIMEOUT_DURATION)
 
-            except Exception as e:
-                log.error(
-                    f"Error in cleanup loop: {type(e).__name__}. Will retry in {TIMEOUT_DURATION} seconds."
+            except Exception:
+                log.exception(
+                    "Error in cleanup loop. Will retry in %s seconds.",
+                    TIMEOUT_DURATION,
                 )
                 await asyncio.sleep(TIMEOUT_DURATION)
                 continue
 
-    except Exception as e:
-        log.error(f"Fatal error in periodic_usage_pool_cleanup: {type(e).__name__}")
+    except Exception:
+        log.exception("Fatal error in periodic_usage_pool_cleanup")
     finally:
         try:
             await release_func()
             log.debug("Released usage pool cleanup lock")
-        except Exception as e:
-            log.error(f"Error releasing cleanup lock:  {type(e).__name__}")
+        except Exception:
+            log.exception("Error releasing cleanup lock")
 
     log.info("Periodic usage pool cleanup task exited gracefully")
 
@@ -333,11 +345,8 @@ def flush_user_and_session_pools(prune_session_pool: bool = False):
             f"prune_session_pool={prune_session_pool})"
         )
 
-    except Exception as e:
-        log.error(
-            f"Error during Redis session pool cleanup: {type(e).__name__}",
-            exc_info=True,
-        )
+    except Exception:
+        log.exception("Error during Redis session pool cleanup")
 
     return stats
 
@@ -386,7 +395,20 @@ def _upsert_socket_session(sid: str, session_data: dict):
         USER_POOL[user_id] = current_sids + [sid]
 
 
+def _set_event_outcome(outcome: str):
+    event = current_socket_event()
+    if event is not None:
+        event.set_outcome(outcome)
+
+
+def _event_reply(payload: dict) -> dict:
+    """Carry the event's operation ID on replies so the browser can match them."""
+    event = current_socket_event()
+    return event.reply(payload) if event is not None else payload
+
+
 @sio.on("usage")
+@observe_event("usage")
 async def usage(sid, data):
     model_id = data["model"]
     # Record the timestamp for the last update
@@ -403,15 +425,19 @@ async def usage(sid, data):
 
 
 @sio.on("crew-mcp-query")
+@observe_event("crew-mcp-query", span=True)
 async def crew_mcp_query(sid, data):
     """Handle CrewMCP query via WebSocket"""
     try:
         # Authenticate user from session
         if sid not in SESSION_POOL:
             log.error(f"crew-mcp-query: Session {sid} not found in SESSION_POOL")
+            _set_event_outcome(OUTCOME_REJECTED)
             await sio.emit(
                 "crew-mcp-error",
-                {"error": "Unauthorized - session not found", "code": 401},
+                _event_reply(
+                    {"error": "Unauthorized - session not found", "code": 401}
+                ),
                 room=sid,
             )
             return
@@ -420,151 +446,228 @@ async def crew_mcp_query(sid, data):
         log.info(f"crew-mcp-query: Retrieved session for sid={sid}")
         log.info(f"crew-mcp-query: Session keys: {list(user_session.keys())}")
 
-        # Extract request data
-        query = data.get("query", "")
-        model = data.get("model", "")
-        selected_tools = data.get("selected_tools", [])
-        chat_id = data.get("chat_id", "")
-
-        if not query:
-            await sio.emit(
-                "crew-mcp-error", {"error": "Query is required", "code": 400}, room=sid
-            )
-            return
-
-        log.info(
-            "CrewMCP WebSocket query: user=%s chat_id=%s model=%s query_len=%d tools=%d",
-            user_session.get("id"),
-            chat_id,
-            model,
-            len(query),
-            len(selected_tools or []),
+        # The actor comes from the authenticated session, never the payload.
+        operation = crew_obs.CrewOperation.start(
+            user_id=user_session.get("id"),
+            chat_id=data.get("chat_id") if isinstance(data, dict) else None,
+            selected_tools=(
+                data.get("selected_tools") if isinstance(data, dict) else None
+            ),
         )
-
-        # Emit processing status
+    except Exception:
+        log.exception("CrewMCP WebSocket error")
+        _set_event_outcome(OUTCOME_ERROR)
         await sio.emit(
-            "crew-mcp-status",
-            {"status": "processing", "message": "CrewAI is analyzing your request... "},
+            "crew-mcp-error", _event_reply(CREW_MCP_INTERNAL_ERROR), room=sid
+        )
+        return
+
+    with operation.activate():
+        try:
+            await _run_crew_mcp_query(sid, data, user_session, operation)
+        except Exception as e:
+            operation.finish(OUTCOME_ERROR, e)
+            _set_event_outcome(OUTCOME_ERROR)
+            if _is_missing_graph_token(e):
+                log.warning("CrewMCP WebSocket error: %s", type(e).__name__)
+                await sio.emit(
+                    "crew-mcp-error",
+                    _event_reply({"error": str(e), "code": 500}),
+                    room=sid,
+                )
+                return
+            # Exception text can echo the prompt or provider payload: the log
+            # keeps the redacted traceback and the client gets a generic error.
+            log.exception("CrewMCP WebSocket error")
+            await sio.emit(
+                "crew-mcp-error", _event_reply(CREW_MCP_INTERNAL_ERROR), room=sid
+            )
+
+
+CREW_MCP_INTERNAL_ERROR = {
+    "error": "An unexpected error occurred while processing your request.",
+    "code": 500,
+}
+
+
+def _is_missing_graph_token(error: Exception) -> bool:
+    """Whether ``error`` is the fixed, user-facing missing Graph token error.
+
+    Matched by class name so the optional CrewMCP backend is not imported here.
+    """
+    return any(cls.__name__ == "MissingGraphTokenError" for cls in type(error).__mro__)
+
+
+async def _run_crew_mcp_query(
+    sid: str,
+    data: dict,
+    user_session: dict,
+    operation: crew_obs.CrewOperation,
+) -> None:
+    # Extract request data
+    query = data.get("query", "")
+    model = data.get("model", "")
+    selected_tools = data.get("selected_tools", [])
+    chat_id = data.get("chat_id", "")
+
+    if not query:
+        operation.fail("invalid_request")
+        _set_event_outcome(OUTCOME_REJECTED)
+        await sio.emit(
+            "crew-mcp-error",
+            _event_reply({"error": "Query is required", "code": 400}),
             room=sid,
         )
+        return
 
-        # Import crew_mcp_manager
-        try:
-            from mcp_backend.routers.crew_mcp import crew_mcp_manager
-            import asyncio
-            import concurrent.futures
-        except ImportError as e:
-            log.error(f"Failed to import CrewMCP dependencies: {type(e).__name__}")
-            await sio.emit(
-                "crew-mcp-error",
-                {"error": "CrewMCP integration not available", "code": 503},
-                room=sid,
-            )
-            return
+    log.info(
+        "CrewMCP WebSocket query: user=%s chat_id=%s model=%s query_len=%d tools=%d",
+        user_session.get("id"),
+        chat_id,
+        model,
+        len(query),
+        len(selected_tools or []),
+    )
 
-        # Check if manager is initialized
-        if not crew_mcp_manager:
-            await sio.emit(
-                "crew-mcp-error",
-                {"error": "CrewMCP manager not initialized", "code": 503},
-                room=sid,
-            )
-            return
+    # Emit processing status
+    await sio.emit(
+        "crew-mcp-status",
+        _event_reply(
+            {
+                "status": "processing",
+                "message": "CrewAI is analyzing your request... ",
+            }
+        ),
+        room=sid,
+    )
 
-        # Get the Graph access token from session (stored during websocket connect)
-        user_access_token = user_session.get("graph_access_token")
-
-        log.info(
-            "crew-mcp-query: graph_access_token present=%s", bool(user_access_token)
+    # Import crew_mcp_manager
+    try:
+        from mcp_backend.routers.crew_mcp import crew_mcp_manager
+        import asyncio
+        import concurrent.futures
+    except ImportError as e:
+        log.error(f"Failed to import CrewMCP dependencies: {type(e).__name__}")
+        operation.fail("unavailable")
+        _set_event_outcome(OUTCOME_ERROR)
+        await sio.emit(
+            "crew-mcp-error",
+            _event_reply({"error": "CrewMCP integration not available", "code": 503}),
+            room=sid,
         )
+        return
 
-        # Get available tools
-        tools = crew_mcp_manager.get_available_tools()
-        if not tools:
-            await sio.emit(
-                "crew-mcp-error",
+    # Check if manager is initialized
+    if not crew_mcp_manager:
+        operation.fail("unavailable")
+        _set_event_outcome(OUTCOME_ERROR)
+        await sio.emit(
+            "crew-mcp-error",
+            _event_reply({"error": "CrewMCP manager not initialized", "code": 503}),
+            room=sid,
+        )
+        return
+
+    # Get the Graph access token from session (stored during websocket connect)
+    user_access_token = user_session.get("graph_access_token")
+
+    log.info("crew-mcp-query: graph_access_token present=%s", bool(user_access_token))
+
+    # Get available tools
+    tools = crew_mcp_manager.get_available_tools()
+    if not tools:
+        operation.fail("unavailable")
+        _set_event_outcome(OUTCOME_ERROR)
+        await sio.emit(
+            "crew-mcp-error",
+            _event_reply(
                 {
                     "error": "No MCP tools available.  Check MCP server configuration.",
                     "code": 503,
-                },
-                room=sid,
-            )
-            return
-
-        log.info(f"Selected tools: {selected_tools}")
-        log.info("Using intelligent crew with manager agent for routing")
-
-        # Run crew in executor to prevent blocking
-        loop = asyncio.get_event_loop()
-        log.info("Starting crew execution in thread pool executor via WebSocket")
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            crew_result = await loop.run_in_executor(
-                executor,
-                crew_mcp_manager.run_intelligent_crew,
-                query,
-                selected_tools,
-                user_access_token,
-            )
-
-        # Unpack the (result_str, token_usage, mcp_process) tuple returned by run_intelligent_crew
-        if isinstance(crew_result, tuple) and len(crew_result) == 3:
-            result, token_usage, mcp_process = crew_result
-        else:
-            result = str(crew_result)
-            token_usage = {}
-            mcp_process = None
-
-        log.info(
-            f"Crew execution finished via WebSocket. Result length: {len(result) if result else 0}"
-        )
-
-        # Log token consumption to message_metrics
-        try:
-            from open_webui.models.message_metrics import MessageMetrics
-            from types import SimpleNamespace
-
-            if token_usage and token_usage.get("total_tokens", 0) > 0:
-                user_obj = SimpleNamespace(
-                    id=user_session.get("id"),
-                    domain=user_session.get("domain", ""),
-                )
-                crewai_model = (
-                    f"azure/{crew_mcp_manager.azure_config.deployment}"
-                    if crew_mcp_manager.azure_config.deployment
-                    else "crewai"
-                )
-                MessageMetrics.insert_new_metrics(
-                    user=user_obj,
-                    model=crewai_model,
-                    usage=token_usage,
-                    chat_id=chat_id,
-                    mcp_tool=mcp_process,
-                )
-        except Exception as metrics_err:
-            log.warning(
-                f"crew-mcp-query: Failed to log token metrics: {type(metrics_err).__name__}"
-            )
-
-        used_tools = [tool["name"] for tool in tools]
-
-        # Emit success result
-        await sio.emit(
-            "crew-mcp-result",
-            {"result": result, "tools_used": used_tools, "success": True},
+                }
+            ),
             room=sid,
         )
+        return
 
-        log.info(f"CrewMCP WebSocket query completed successfully")
+    log.info(f"Selected tools: {selected_tools}")
+    log.info("Using intelligent crew with manager agent for routing")
 
-    except Exception as e:
-        # Exception text can echo the prompt or provider payload; log the type only.
-        log.error("CrewMCP WebSocket error: %s", type(e).__name__)
-        await sio.emit("crew-mcp-error", {"error": str(e), "code": 500}, room=sid)
+    deployment = getattr(
+        getattr(crew_mcp_manager, "azure_config", None), "deployment", None
+    )
+    crewai_model = f"azure/{deployment}" if deployment else "crewai"
+    operation.set_model(crewai_model)
+
+    # Run crew in executor to prevent blocking
+    loop = asyncio.get_event_loop()
+    log.info("Starting crew execution in thread pool executor via WebSocket")
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        # The context is copied explicitly, so the crew thread's spans and
+        # logs belong to this operation.
+        crew_result = await crew_obs.run_in_executor(
+            loop,
+            executor,
+            crew_mcp_manager.run_intelligent_crew,
+            query,
+            selected_tools,
+            user_access_token,
+        )
+
+    # Unpack the (result_str, token_usage, mcp_process) tuple returned by run_intelligent_crew
+    if isinstance(crew_result, tuple) and len(crew_result) == 3:
+        result, token_usage, mcp_process = crew_result
+    else:
+        result = str(crew_result)
+        token_usage = {}
+        mcp_process = None
+
+    operation.record_usage(token_usage)
+    operation.set_server(mcp_process)
+
+    log.info(
+        f"Crew execution finished via WebSocket. Result length: {len(result) if result else 0}"
+    )
+
+    # Log token consumption to message_metrics
+    try:
+        from open_webui.models.message_metrics import MessageMetrics
+        from types import SimpleNamespace
+
+        if token_usage and token_usage.get("total_tokens", 0) > 0:
+            user_obj = SimpleNamespace(
+                id=user_session.get("id"),
+                domain=user_session.get("domain", ""),
+            )
+            MessageMetrics.insert_new_metrics(
+                user=user_obj,
+                model=crewai_model,
+                usage=token_usage,
+                chat_id=chat_id,
+                mcp_tool=mcp_process,
+            )
+    except Exception as metrics_err:
+        log.warning(
+            f"crew-mcp-query: Failed to log token metrics: {type(metrics_err).__name__}"
+        )
+
+    used_tools = [tool["name"] for tool in tools]
+
+    # Emit success result
+    await sio.emit(
+        "crew-mcp-result",
+        _event_reply({"result": result, "tools_used": used_tools, "success": True}),
+        room=sid,
+    )
+
+    log.info(f"CrewMCP WebSocket query completed successfully")
 
 
 @sio.event
+@observe_event("connect")
 async def connect(sid, environ, auth):
+    register_connection(sid)
     log.info(f"WebSocket connect event:  sid={sid}, auth present={bool(auth)}")
     log.info(
         f"WebSocket environ keys:  {sorted([k for k in environ.keys() if k.startswith('HTTP_')])}"
@@ -591,6 +694,8 @@ async def connect(sid, environ, auth):
             )
 
     if user:
+        bind_connection_user(sid, user.id)
+        user_id_var.set(user.id)
         session_data = user.model_dump()
 
         # Attach token to authenticated user session
@@ -618,21 +723,31 @@ async def connect(sid, environ, auth):
 
         await sio.emit("user-list", {"user_ids": list(USER_POOL.keys())})
         await sio.emit("usage", {"models": get_models_in_use()})
+    else:
+        _set_event_outcome(OUTCOME_REJECTED)
 
 
 @sio.on("user-join")
+@observe_event("user-join")
 async def user_join(sid, data):
     auth = data["auth"] if "auth" in data else None
     if not auth or "token" not in auth:
+        _set_event_outcome(OUTCOME_REJECTED)
         return
 
     data = decode_token(auth["token"])
     if data is None or "id" not in data:
+        _set_event_outcome(OUTCOME_REJECTED)
         return
 
     user = Users.get_user_by_id(data["id"])
     if not user:
+        _set_event_outcome(OUTCOME_REJECTED)
         return
+
+    # A reconnect is a new sid; bind the identity it re-authenticated as.
+    bind_connection_user(sid, user.id)
+    user_id_var.set(user.id)
 
     # Build complete session object
     existing_session = SESSION_POOL.get(sid, {})
@@ -670,17 +785,21 @@ async def user_join(sid, data):
 
 
 @sio.on("join-channels")
+@observe_event("join-channels")
 async def join_channel(sid, data):
     auth = data["auth"] if "auth" in data else None
     if not auth or "token" not in auth:
+        _set_event_outcome(OUTCOME_REJECTED)
         return
 
     data = decode_token(auth["token"])
     if data is None or "id" not in data:
+        _set_event_outcome(OUTCOME_REJECTED)
         return
 
     user = Users.get_user_by_id(data["id"])
     if not user:
+        _set_event_outcome(OUTCOME_REJECTED)
         return
 
     # Join all the channels
@@ -691,6 +810,7 @@ async def join_channel(sid, data):
 
 
 @sio.on("channel-events")
+@observe_event("channel-events")
 async def channel_events(sid, data):
     room = f"channel:{data['channel_id']}"
     participants = sio.manager.get_participants(
@@ -700,6 +820,7 @@ async def channel_events(sid, data):
 
     sids = [sid for sid, _ in participants]
     if sid not in sids:
+        _set_event_outcome(OUTCOME_REJECTED)
         return
 
     event_data = data["data"]
@@ -719,12 +840,15 @@ async def channel_events(sid, data):
 
 
 @sio.on("user-list")
+@observe_event("user-list")
 async def user_list(sid):
     await sio.emit("user-list", {"user_ids": list(USER_POOL.keys())})
 
 
 @sio.event
+@observe_event("disconnect")
 async def disconnect(sid):
+    unregister_connection(sid)
     if sid in SESSION_POOL:
         user = SESSION_POOL[sid]
         del SESSION_POOL[sid]

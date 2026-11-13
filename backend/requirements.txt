@@ -134,6 +134,11 @@ yarl>=1.17.0,<2.0
 # Observability & Telemetry
 # ==========================================
 # Opentelemetry - versions constrained by crewai 1.15.2 (~=1.42.0)
+# OpenTelemetry: observability relies on private internals
+# (ContractOTLPHandler._get_attributes override in observability/logging_config.py,
+# opentelemetry.instrumentation._semconv in observability/tracing.py). Upgrade the
+# SDK and 0.xxbN instrumentation pins together and rerun test_logging_config.py
+# and test_tracing.py before bumping.
 opentelemetry-api==1.42.0
 opentelemetry-sdk==1.42.0
 opentelemetry-exporter-otlp==1.42.0
