@@ -38,6 +38,7 @@ from open_webui.metrics.service import MetricsService  # noqa: E402
 from open_webui.models import message_metrics  # noqa: E402
 from open_webui.observability import crew as crew_obs  # noqa: E402
 from open_webui.observability import llm as llm_obs  # noqa: E402
+from open_webui.observability import socketio as socketio_obs  # noqa: E402
 from open_webui.observability.context import (  # noqa: E402
     current_crew_operation_var,
     operation_id_var,
@@ -187,6 +188,9 @@ def telemetry(monkeypatch):
         crew_obs, "_tracer", _tracer_from(provider, crew_obs.TRACER_NAME)
     )
     monkeypatch.setattr(llm_obs, "_tracer", _tracer_from(provider, llm_obs.TRACER_NAME))
+    monkeypatch.setattr(
+        socketio_obs, "_tracer", _tracer_from(provider, socketio_obs.TRACER_NAME)
+    )
     monkeypatch.setattr(crew_obs, "_default_metrics_service", lambda: t.metrics)
     yield t
     t.bundle.shutdown()
@@ -318,8 +322,10 @@ def test_span_tree_crosses_the_executor(telemetry, socket, integration):
     tool = telemetry.span("crew.tool")
     llm_calls = telemetry.spans("llm.chat")
     attempts = telemetry.spans("llm.attempt")
+    socket_event = telemetry.span("socketio.event")
 
-    assert operation.parent is None
+    assert socket_event.parent is None
+    assert operation.parent.span_id == socket_event.context.span_id
     assert run.parent.span_id == operation.context.span_id
     assert kickoff.parent.span_id == run.context.span_id
     assert tool.parent.span_id == kickoff.context.span_id
@@ -474,7 +480,10 @@ def test_unauthenticated_query_has_no_operation(telemetry, socket):
     asyncio.run(_query("unknown-sid", _payload()))
 
     assert socket.sio.events("unknown-sid") == ["crew-mcp-error"]
-    assert telemetry.spans() == []
+    # Only the rejected socket event is traced; no crew operation starts.
+    (event,) = telemetry.spans()
+    assert event.name == "socketio.event"
+    assert event.attributes["canchat.outcome"] == "rejected"
     assert telemetry.points() == []
 
 

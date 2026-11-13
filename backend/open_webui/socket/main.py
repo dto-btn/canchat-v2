@@ -15,7 +15,16 @@ from open_webui.env import (
 from open_webui.utils.auth import decode_token
 from open_webui.socket.utils import RedisDict, RedisLock
 from open_webui.observability import crew as crew_obs
-from open_webui.observability.chat import OUTCOME_ERROR
+from open_webui.observability.context import user_id_var
+from open_webui.observability.socketio import (
+    OUTCOME_ERROR,
+    OUTCOME_REJECTED,
+    bind_connection_user,
+    current_socket_event,
+    observe_event,
+    register_connection,
+    unregister_connection,
+)
 
 from open_webui.env import (
     SRC_LOG_LEVELS,
@@ -386,7 +395,20 @@ def _upsert_socket_session(sid: str, session_data: dict):
         USER_POOL[user_id] = current_sids + [sid]
 
 
+def _set_event_outcome(outcome: str):
+    event = current_socket_event()
+    if event is not None:
+        event.set_outcome(outcome)
+
+
+def _event_reply(payload: dict) -> dict:
+    """Carry the event's operation ID on replies so the browser can match them."""
+    event = current_socket_event()
+    return event.reply(payload) if event is not None else payload
+
+
 @sio.on("usage")
+@observe_event("usage")
 async def usage(sid, data):
     model_id = data["model"]
     # Record the timestamp for the last update
@@ -403,15 +425,19 @@ async def usage(sid, data):
 
 
 @sio.on("crew-mcp-query")
+@observe_event("crew-mcp-query", span=True)
 async def crew_mcp_query(sid, data):
     """Handle CrewMCP query via WebSocket"""
     try:
         # Authenticate user from session
         if sid not in SESSION_POOL:
             log.error(f"crew-mcp-query: Session {sid} not found in SESSION_POOL")
+            _set_event_outcome(OUTCOME_REJECTED)
             await sio.emit(
                 "crew-mcp-error",
-                {"error": "Unauthorized - session not found", "code": 401},
+                _event_reply(
+                    {"error": "Unauthorized - session not found", "code": 401}
+                ),
                 room=sid,
             )
             return
@@ -430,7 +456,10 @@ async def crew_mcp_query(sid, data):
         )
     except Exception:
         log.exception("CrewMCP WebSocket error")
-        await sio.emit("crew-mcp-error", CREW_MCP_INTERNAL_ERROR, room=sid)
+        _set_event_outcome(OUTCOME_ERROR)
+        await sio.emit(
+            "crew-mcp-error", _event_reply(CREW_MCP_INTERNAL_ERROR), room=sid
+        )
         return
 
     with operation.activate():
@@ -438,16 +467,21 @@ async def crew_mcp_query(sid, data):
             await _run_crew_mcp_query(sid, data, user_session, operation)
         except Exception as e:
             operation.finish(OUTCOME_ERROR, e)
+            _set_event_outcome(OUTCOME_ERROR)
             if _is_missing_graph_token(e):
                 log.warning("CrewMCP WebSocket error: %s", type(e).__name__)
                 await sio.emit(
-                    "crew-mcp-error", {"error": str(e), "code": 500}, room=sid
+                    "crew-mcp-error",
+                    _event_reply({"error": str(e), "code": 500}),
+                    room=sid,
                 )
                 return
             # Exception text can echo the prompt or provider payload: the log
             # keeps the redacted traceback and the client gets a generic error.
             log.exception("CrewMCP WebSocket error")
-            await sio.emit("crew-mcp-error", CREW_MCP_INTERNAL_ERROR, room=sid)
+            await sio.emit(
+                "crew-mcp-error", _event_reply(CREW_MCP_INTERNAL_ERROR), room=sid
+            )
 
 
 CREW_MCP_INTERNAL_ERROR = {
@@ -478,8 +512,11 @@ async def _run_crew_mcp_query(
 
     if not query:
         operation.fail("invalid_request")
+        _set_event_outcome(OUTCOME_REJECTED)
         await sio.emit(
-            "crew-mcp-error", {"error": "Query is required", "code": 400}, room=sid
+            "crew-mcp-error",
+            _event_reply({"error": "Query is required", "code": 400}),
+            room=sid,
         )
         return
 
@@ -495,7 +532,12 @@ async def _run_crew_mcp_query(
     # Emit processing status
     await sio.emit(
         "crew-mcp-status",
-        {"status": "processing", "message": "CrewAI is analyzing your request... "},
+        _event_reply(
+            {
+                "status": "processing",
+                "message": "CrewAI is analyzing your request... ",
+            }
+        ),
         room=sid,
     )
 
@@ -507,9 +549,10 @@ async def _run_crew_mcp_query(
     except ImportError as e:
         log.error(f"Failed to import CrewMCP dependencies: {type(e).__name__}")
         operation.fail("unavailable")
+        _set_event_outcome(OUTCOME_ERROR)
         await sio.emit(
             "crew-mcp-error",
-            {"error": "CrewMCP integration not available", "code": 503},
+            _event_reply({"error": "CrewMCP integration not available", "code": 503}),
             room=sid,
         )
         return
@@ -517,9 +560,10 @@ async def _run_crew_mcp_query(
     # Check if manager is initialized
     if not crew_mcp_manager:
         operation.fail("unavailable")
+        _set_event_outcome(OUTCOME_ERROR)
         await sio.emit(
             "crew-mcp-error",
-            {"error": "CrewMCP manager not initialized", "code": 503},
+            _event_reply({"error": "CrewMCP manager not initialized", "code": 503}),
             room=sid,
         )
         return
@@ -533,12 +577,15 @@ async def _run_crew_mcp_query(
     tools = crew_mcp_manager.get_available_tools()
     if not tools:
         operation.fail("unavailable")
+        _set_event_outcome(OUTCOME_ERROR)
         await sio.emit(
             "crew-mcp-error",
-            {
-                "error": "No MCP tools available.  Check MCP server configuration.",
-                "code": 503,
-            },
+            _event_reply(
+                {
+                    "error": "No MCP tools available.  Check MCP server configuration.",
+                    "code": 503,
+                }
+            ),
             room=sid,
         )
         return
@@ -610,7 +657,7 @@ async def _run_crew_mcp_query(
     # Emit success result
     await sio.emit(
         "crew-mcp-result",
-        {"result": result, "tools_used": used_tools, "success": True},
+        _event_reply({"result": result, "tools_used": used_tools, "success": True}),
         room=sid,
     )
 
@@ -618,7 +665,9 @@ async def _run_crew_mcp_query(
 
 
 @sio.event
+@observe_event("connect")
 async def connect(sid, environ, auth):
+    register_connection(sid)
     log.info(f"WebSocket connect event:  sid={sid}, auth present={bool(auth)}")
     log.info(
         f"WebSocket environ keys:  {sorted([k for k in environ.keys() if k.startswith('HTTP_')])}"
@@ -645,6 +694,8 @@ async def connect(sid, environ, auth):
             )
 
     if user:
+        bind_connection_user(sid, user.id)
+        user_id_var.set(user.id)
         session_data = user.model_dump()
 
         # Attach token to authenticated user session
@@ -672,21 +723,31 @@ async def connect(sid, environ, auth):
 
         await sio.emit("user-list", {"user_ids": list(USER_POOL.keys())})
         await sio.emit("usage", {"models": get_models_in_use()})
+    else:
+        _set_event_outcome(OUTCOME_REJECTED)
 
 
 @sio.on("user-join")
+@observe_event("user-join")
 async def user_join(sid, data):
     auth = data["auth"] if "auth" in data else None
     if not auth or "token" not in auth:
+        _set_event_outcome(OUTCOME_REJECTED)
         return
 
     data = decode_token(auth["token"])
     if data is None or "id" not in data:
+        _set_event_outcome(OUTCOME_REJECTED)
         return
 
     user = Users.get_user_by_id(data["id"])
     if not user:
+        _set_event_outcome(OUTCOME_REJECTED)
         return
+
+    # A reconnect is a new sid; bind the identity it re-authenticated as.
+    bind_connection_user(sid, user.id)
+    user_id_var.set(user.id)
 
     # Build complete session object
     existing_session = SESSION_POOL.get(sid, {})
@@ -724,17 +785,21 @@ async def user_join(sid, data):
 
 
 @sio.on("join-channels")
+@observe_event("join-channels")
 async def join_channel(sid, data):
     auth = data["auth"] if "auth" in data else None
     if not auth or "token" not in auth:
+        _set_event_outcome(OUTCOME_REJECTED)
         return
 
     data = decode_token(auth["token"])
     if data is None or "id" not in data:
+        _set_event_outcome(OUTCOME_REJECTED)
         return
 
     user = Users.get_user_by_id(data["id"])
     if not user:
+        _set_event_outcome(OUTCOME_REJECTED)
         return
 
     # Join all the channels
@@ -745,6 +810,7 @@ async def join_channel(sid, data):
 
 
 @sio.on("channel-events")
+@observe_event("channel-events")
 async def channel_events(sid, data):
     room = f"channel:{data['channel_id']}"
     participants = sio.manager.get_participants(
@@ -754,6 +820,7 @@ async def channel_events(sid, data):
 
     sids = [sid for sid, _ in participants]
     if sid not in sids:
+        _set_event_outcome(OUTCOME_REJECTED)
         return
 
     event_data = data["data"]
@@ -773,12 +840,15 @@ async def channel_events(sid, data):
 
 
 @sio.on("user-list")
+@observe_event("user-list")
 async def user_list(sid):
     await sio.emit("user-list", {"user_ids": list(USER_POOL.keys())})
 
 
 @sio.event
+@observe_event("disconnect")
 async def disconnect(sid):
+    unregister_connection(sid)
     if sid in SESSION_POOL:
         user = SESSION_POOL[sid]
         del SESSION_POOL[sid]

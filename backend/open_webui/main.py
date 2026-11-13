@@ -437,6 +437,12 @@ async def lifespan(app: FastAPI):
             app.state.metrics_service.register_callback(
                 "canchat.tasks.active", lambda: [(len(active_tasks), None)]
             )
+        if app.state.metrics_service.has_instrument("canchat.socketio.connections"):
+            from open_webui.observability.socketio import connection_observations
+
+            app.state.metrics_service.register_callback(
+                "canchat.socketio.connections", connection_observations
+            )
 
         log.info(
             f"Metrics service initialized with the following meter: {app.state.metrics_meter.name}"

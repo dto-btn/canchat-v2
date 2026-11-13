@@ -3,6 +3,11 @@ import { get } from 'svelte/store';
 import { socket } from '$lib/stores';
 import type { Socket } from 'socket.io-client';
 import i18next from 'i18next';
+import {
+	createOperationCarrier,
+	isReplyForOperation,
+	withOperationCarrier
+} from '$lib/utils/operation-carrier';
 
 const getFetchErrorMessage = (err: any) =>
 	err?.message === 'Failed to fetch' ? i18next.t('Failed to fetch') : err?.message;
@@ -129,16 +134,19 @@ export const queryCrewMCPWebSocket = async (
 			return;
 		}
 
+		const carrier = createOperationCarrier(_socket.id);
+
 		// Set up timeout (10 minutes for very long operations)
 		const timeoutId = setTimeout(() => {
-			_socket.off('crew-mcp-status');
-			_socket.off('crew-mcp-result');
-			_socket.off('crew-mcp-error');
+			_socket.off('crew-mcp-status', statusHandler);
+			_socket.off('crew-mcp-result', resultHandler);
+			_socket.off('crew-mcp-error', errorHandler);
 			reject(new Error('CrewAI MCP: Request timeout after 10 minutes'));
 		}, 600000);
 
 		// Listen for status updates
 		const statusHandler = (data: { status: string; message: string }) => {
+			if (!isReplyForOperation(data, carrier)) return;
 			console.log('CrewMCP status:', data);
 			if (onStatus) {
 				onStatus(data.message);
@@ -147,6 +155,7 @@ export const queryCrewMCPWebSocket = async (
 
 		// Listen for result
 		const resultHandler = (data: { result: string; tools_used: string[]; success: boolean }) => {
+			if (!isReplyForOperation(data, carrier)) return;
 			clearTimeout(timeoutId);
 			_socket.off('crew-mcp-status', statusHandler);
 			_socket.off('crew-mcp-result', resultHandler);
@@ -156,6 +165,7 @@ export const queryCrewMCPWebSocket = async (
 
 		// Listen for errors
 		const errorHandler = (data: { error: string; code?: number }) => {
+			if (!isReplyForOperation(data, carrier)) return;
 			clearTimeout(timeoutId);
 			_socket.off('crew-mcp-status', statusHandler);
 			_socket.off('crew-mcp-result', resultHandler);
@@ -168,11 +178,17 @@ export const queryCrewMCPWebSocket = async (
 		_socket.on('crew-mcp-error', errorHandler);
 
 		// Emit query
-		_socket.emit('crew-mcp-query', {
-			query: query,
-			model: model,
-			selected_tools: selectedTools,
-			chat_id: chatId
-		});
+		_socket.emit(
+			'crew-mcp-query',
+			withOperationCarrier(
+				{
+					query: query,
+					model: model,
+					selected_tools: selectedTools,
+					chat_id: chatId
+				},
+				carrier
+			)
+		);
 	});
 };
