@@ -19,6 +19,10 @@ do not count as content. Non-streaming responses have no TTFT.
 
 Spans never carry prompts, completions or URLs, and no span or INFO log is
 emitted per chunk.
+
+OBS-25 adds the approved OpenTelemetry GenAI metadata (``GEN_AI_ATTRIBUTES``)
+to the same ``llm.chat`` span. Any other ``gen_ai.*`` key (messages, system
+instructions, tool arguments) is never set here and is dropped at export.
 """
 
 from __future__ import annotations
@@ -26,6 +30,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import time
 import weakref
 from contextlib import contextmanager
@@ -68,6 +73,52 @@ TASK_GENERATION = "generation"
 TASK_OTHER = "other"
 _KNOWN_TASKS = frozenset(task.value for task in TASKS)
 
+# OpenTelemetry GenAI semantic conventions (OBS-25). Only these keys may be
+# set; they are also the only ``gen_ai.*`` keys in the export allow-list
+# (``tracing.ALLOWED_SPAN_ATTRIBUTES``).
+GEN_AI_OPERATION_NAME = "gen_ai.operation.name"
+GEN_AI_PROVIDER_NAME = "gen_ai.provider.name"
+GEN_AI_REQUEST_MODEL = "gen_ai.request.model"
+GEN_AI_RESPONSE_MODEL = "gen_ai.response.model"
+GEN_AI_RESPONSE_FINISH_REASONS = "gen_ai.response.finish_reasons"
+GEN_AI_USAGE_INPUT_TOKENS = "gen_ai.usage.input_tokens"
+GEN_AI_USAGE_OUTPUT_TOKENS = "gen_ai.usage.output_tokens"
+GEN_AI_ATTRIBUTES = frozenset(
+    {
+        GEN_AI_OPERATION_NAME,
+        GEN_AI_PROVIDER_NAME,
+        GEN_AI_REQUEST_MODEL,
+        GEN_AI_RESPONSE_MODEL,
+        GEN_AI_RESPONSE_FINISH_REASONS,
+        GEN_AI_USAGE_INPUT_TOKENS,
+        GEN_AI_USAGE_OUTPUT_TOKENS,
+    }
+)
+
+OPERATION_CHAT = "chat"
+OPERATION_TEXT_COMPLETION = "text_completion"
+_OPERATION_NAMES = frozenset({OPERATION_CHAT, OPERATION_TEXT_COMPLETION})
+
+# Finish reasons are reported by the provider; anything outside this set is
+# recorded as ``other`` so the attribute stays bounded.
+FINISH_REASON_OTHER = "other"
+_FINISH_REASONS = frozenset(
+    {
+        "stop",
+        "length",
+        "content_filter",
+        "tool_calls",
+        "function_call",
+        "error",
+        # Ollama ``done_reason``
+        "load",
+        "unload",
+    }
+)
+_MAX_FINISH_REASONS = 8
+# Model names reported by the provider: an identifier, never free text.
+_MODEL_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,127}")
+
 # Indirection so tests can drive a deterministic clock.
 _monotonic = time.monotonic
 
@@ -88,12 +139,40 @@ def _non_negative_int(value: Any) -> int | None:
     return value
 
 
+def _model_name(value: Any) -> str | None:
+    if isinstance(value, str) and _MODEL_NAME.fullmatch(value):
+        return value
+    return None
+
+
+def _finish_reason(value: Any) -> str | None:
+    if not isinstance(value, str) or not value:
+        return None
+    return value if value in _FINISH_REASONS else FINISH_REASON_OTHER
+
+
 def task_label(task: Any) -> str:
     """Bounded ``task`` label from request metadata."""
     if task is None or task == "":
         return TASK_GENERATION
     task = str(task)
     return task if task in _KNOWN_TASKS else TASK_OTHER
+
+
+def _has_finish_reason(line: str) -> bool:
+    """Cheap pre-check so later stream lines are parsed only for a finish reason."""
+    return (
+        '"finish_reason"' in line
+        and '"finish_reason":null' not in line
+        and '"finish_reason": null' not in line
+    )
+
+
+def _set_gen_ai(span: Span, attributes: Mapping[str, Any]) -> None:
+    """Set approved ``gen_ai.*`` attributes; unknown keys and ``None`` are dropped."""
+    for key, value in attributes.items():
+        if value is not None and key in GEN_AI_ATTRIBUTES:
+            span.set_attribute(key, value)
 
 
 class LLMOperation:
@@ -119,6 +198,8 @@ class LLMOperation:
         self.first_token_at: float | None = None
         self.input_tokens: int | None = None
         self.output_tokens: int | None = None
+        self.response_model: str | None = None
+        self.finish_reasons: list[str] = []
         # error.type of a failure reported in a response that still completed
         # (HTTP error status on a stream, in-band provider error).
         self.failure: str | None = None
@@ -141,10 +222,21 @@ class LLMOperation:
         model: str | None,
         stream: bool,
         metadata: Mapping[str, Any] | None = None,
+        operation_name: str = OPERATION_CHAT,
+        request_model: str | None = None,
+        pipeline: bool = False,
+        gen_ai_provider: str | None = None,
+        metrics_service: Any = None,
     ) -> "LLMOperation":
         """Start the operation and its timer; call right before the provider call.
 
         ``model`` must already be a configured model ID (a bounded label).
+        ``request_model`` is the model name sent to the provider (after base
+        model and prefix resolution); it is recorded as ``gen_ai.request.model``
+        only when ``model`` is configured. ``pipeline`` marks an OpenAI
+        connection that is a Pipelines server. ``gen_ai_provider`` overrides
+        ``gen_ai.provider.name`` when the client differs from the ``provider``
+        label (CrewAI). Without a ``request``, ``metrics_service`` is used.
         The span is a child of the current span (normally ``chat.operation``)
         but is not made current, so it can outlive the HTTP handler. Never
         raises: if instrumentation fails, a no-op operation is returned so the
@@ -166,9 +258,24 @@ class LLMOperation:
                 "canchat.model": model,
                 "canchat.stream": bool(stream),
                 "canchat.chat.id": chat_id,
+                "canchat.llm.pipeline": True if pipeline else None,
             }.items():
                 if value is not None:
                     span.set_attribute(key, value)
+            _set_gen_ai(
+                span,
+                {
+                    GEN_AI_OPERATION_NAME: (
+                        operation_name
+                        if operation_name in _OPERATION_NAMES
+                        else OPERATION_CHAT
+                    ),
+                    GEN_AI_PROVIDER_NAME: gen_ai_provider or provider,
+                    GEN_AI_REQUEST_MODEL: (
+                        _model_name(request_model) if model is not None else None
+                    ),
+                },
+            )
             context = OperationContext(
                 span=span,
                 started=started,
@@ -178,7 +285,7 @@ class LLMOperation:
             state = getattr(getattr(request, "app", None), "state", None)
             operation = cls(
                 context,
-                getattr(state, "metrics_service", None),
+                getattr(state, "metrics_service", None) or metrics_service,
                 model=model,
                 provider=provider,
                 stream=bool(stream),
@@ -255,9 +362,35 @@ class LLMOperation:
             self.output_tokens = output_tokens
 
     def observe_response(self, body: Any) -> None:
-        """Read usage from a complete (non-streaming) provider response."""
-        if isinstance(body, Mapping):
+        """Read usage and response metadata from a complete (non-streaming) response."""
+        if not isinstance(body, Mapping):
+            return
+        try:
+            self._observe_response_metadata(body)
             self._observe_usage(body)
+        except Exception as e:
+            # Telemetry must never fail a response the provider completed.
+            log.debug("Failed to observe llm response: %s", type(e).__name__)
+
+    def _observe_response_metadata(self, data: Mapping[str, Any]) -> None:
+        if self.response_model is None:
+            self.response_model = _model_name(data.get("model"))
+        reasons = [data.get("done_reason")]
+        choices = data.get("choices")
+        if isinstance(choices, list):
+            reasons.extend(
+                choice.get("finish_reason")
+                for choice in choices
+                if isinstance(choice, Mapping)
+            )
+        for reason in reasons:
+            reason = _finish_reason(reason)
+            if (
+                reason is not None
+                and reason not in self.finish_reasons
+                and len(self.finish_reasons) < _MAX_FINISH_REASONS
+            ):
+                self.finish_reasons.append(reason)
 
     def _observe_usage(self, data: Mapping[str, Any]) -> None:
         usage = data.get("usage")
@@ -314,6 +447,7 @@ class LLMOperation:
                     self.first_token_at is not None
                     and '"usage"' not in line
                     and '"error"' not in line
+                    and not _has_finish_reason(line)
                 ):
                     continue
             elif (
@@ -334,6 +468,7 @@ class LLMOperation:
                 self.mark_failed("provider_error")
             if self.first_token_at is None and self._has_content(data, fmt):
                 self.first_token_at = _monotonic()
+            self._observe_response_metadata(data)
             self._observe_usage(data)
             if fmt == FORMAT_NDJSON and data.get("done") is True:
                 self.finish()
@@ -351,8 +486,13 @@ class LLMOperation:
         if not isinstance(choices, list):
             return False
         for choice in choices:
-            delta = choice.get("delta") if isinstance(choice, Mapping) else None
+            if not isinstance(choice, Mapping):
+                continue
+            delta = choice.get("delta")
             if isinstance(delta, Mapping) and delta.get("content"):
+                return True
+            # Legacy ``/v1/completions`` streams carry ``choices[].text``.
+            if isinstance(choice.get("text"), str) and choice["text"]:
                 return True
         return False
 
@@ -390,6 +530,17 @@ class LLMOperation:
                 )
             if ttft is not None:
                 span.set_attribute("canchat.llm.time_to_first_token", ttft)
+            _set_gen_ai(
+                span,
+                {
+                    GEN_AI_RESPONSE_MODEL: self.response_model,
+                    GEN_AI_RESPONSE_FINISH_REASONS: (
+                        tuple(self.finish_reasons) if self.finish_reasons else None
+                    ),
+                    GEN_AI_USAGE_INPUT_TOKENS: self.input_tokens,
+                    GEN_AI_USAGE_OUTPUT_TOKENS: self.output_tokens,
+                },
+            )
             if error is not None:
                 mark_span_error(span, error)
             elif failure is not None:
@@ -432,10 +583,13 @@ class LLMOperation:
 __all__ = [
     "FORMAT_NDJSON",
     "FORMAT_SSE",
+    "GEN_AI_ATTRIBUTES",
     "LLMOperation",
     "LLM_REQUESTS",
     "LLM_REQUEST_DURATION",
     "LLM_TIME_TO_FIRST_TOKEN",
+    "OPERATION_CHAT",
+    "OPERATION_TEXT_COMPLETION",
     "PROVIDER_OLLAMA",
     "PROVIDER_OPENAI",
     "task_label",

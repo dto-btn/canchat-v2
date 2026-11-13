@@ -6,6 +6,7 @@ import os
 import time
 
 from contextlib import asynccontextmanager
+from typing import Optional
 from urllib.parse import urlencode, parse_qs, urlparse
 from pydantic import BaseModel
 from sqlalchemy import text
@@ -111,7 +112,7 @@ from open_webui.internal.db import Session, get_db
 
 from open_webui.models.functions import Functions
 from open_webui.models.models import Models
-from open_webui.models.users import Users
+from open_webui.models.users import UserModel, Users
 
 from open_webui.config import (
     # Ollama
@@ -325,6 +326,7 @@ from open_webui.utils.chat import (
 )
 from open_webui.utils.middleware import process_chat_payload, process_chat_response
 from open_webui.observability.chat import (
+    OUTCOME_ERROR,
     ChatOperation,
     chat_span,
     count_items,
@@ -446,8 +448,8 @@ async def lifespan(app: FastAPI):
             f"Metrics service initialized with the following meter: {app.state.metrics_meter.name}"
         )
 
-    except Exception as e:
-        log.error(f"Failed to initialize the metrics service: {type(e).__name__}")
+    except Exception:
+        log.exception("Failed to initialize the metrics service")
 
     # Initialize FastMCP manager
     try:
@@ -464,8 +466,8 @@ async def lifespan(app: FastAPI):
             # Note: Built-in MCP servers use stdio transport and are managed internally
             # External MCP servers are loaded from database and managed via API
 
-    except Exception as e:
-        log.error(f"Failed to initialize FastMCP manager: {type(e).__name__}")
+    except Exception:
+        log.exception("Failed to initialize FastMCP manager")
 
     # Initialize Wikipedia grounding models in background
     async def initialize_wiki_grounding():
@@ -485,10 +487,8 @@ async def lifespan(app: FastAPI):
                 log.warning(
                     "Wikipedia grounding models failed to initialize in background"
                 )
-        except Exception as e:
-            log.error(
-                f"Error during background Wikipedia grounding initialization: {type(e).__name__}"
-            )
+        except Exception:
+            log.exception("Error during background Wikipedia grounding initialization")
 
     # Start background initialization (non-blocking)
     wiki_init_task = asyncio.create_task(initialize_wiki_grounding())
@@ -502,8 +502,8 @@ async def lifespan(app: FastAPI):
 
         start_scheduler()
         log.info("Scheduler initialized")
-    except Exception as e:
-        log.error(f"Failed to initialize scheduler: {type(e).__name__}")
+    except Exception:
+        log.exception("Failed to initialize scheduler")
 
     # Add task completion callback to log if it exits
     def on_cleanup_done(task):
@@ -512,12 +512,13 @@ async def lifespan(app: FastAPI):
                 log.info("Periodic usage pool cleanup task was cancelled")
             elif task.exception():
                 log.error(
-                    f"Periodic usage pool cleanup task failed: {task.exception()}"
+                    "Periodic usage pool cleanup task failed",
+                    exc_info=task.exception(),
                 )
             else:
                 log.info("Periodic usage pool cleanup task completed")
-        except Exception as e:
-            log.error(f"Error in cleanup task callback: {type(e).__name__}")
+        except Exception:
+            log.exception("Error in cleanup task callback")
 
     cleanup_task.add_done_callback(on_cleanup_done)
 
@@ -534,10 +535,8 @@ async def lifespan(app: FastAPI):
                 log.info(
                     "Wikipedia grounding initialization task cancelled successfully"
                 )
-            except Exception as e:
-                log.error(
-                    f"Error cancelling Wikipedia initialization task: {type(e).__name__}"
-                )
+            except Exception:
+                log.exception("Error cancelling Wikipedia initialization task")
 
         # Cancel the cleanup task if it's still running
         if not cleanup_task.done():
@@ -547,16 +546,16 @@ async def lifespan(app: FastAPI):
                 await cleanup_task
             except asyncio.CancelledError:
                 log.info("Periodic usage pool cleanup task cancelled successfully")
-            except Exception as e:
-                log.error(f"Error cancelling cleanup task: {type(e).__name__}")
+            except Exception:
+                log.exception("Error cancelling cleanup task")
 
         # Cleanup MCP manager and all its server processes
         if hasattr(app.state, "mcp_manager") and app.state.mcp_manager:
             try:
                 await app.state.mcp_manager.cleanup()
                 log.info("MCP manager cleanup completed")
-            except Exception as e:
-                log.error(f"Error during MCP manager cleanup: {type(e).__name__}")
+            except Exception:
+                log.exception("Error during MCP manager cleanup")
 
         # Cleanup scheduler
         try:
@@ -564,8 +563,8 @@ async def lifespan(app: FastAPI):
 
             stop_scheduler()
             log.info("Scheduler cleanup completed")
-        except Exception as e:
-            log.error(f"Error during scheduler cleanup: {type(e).__name__}")
+        except Exception:
+            log.exception("Error during scheduler cleanup")
 
         # Cleanup cached Qdrant client
         try:
@@ -574,18 +573,16 @@ async def lifespan(app: FastAPI):
             if VECTOR_DB_CLIENT and hasattr(VECTOR_DB_CLIENT, "close"):
                 await VECTOR_DB_CLIENT.close()
                 log.info("Qdrant client cleanup completed")
-        except Exception as e:
-            log.error(f"Error during Qdrant client cleanup: {type(e).__name__}")
+        except Exception:
+            log.exception("Error during Qdrant client cleanup")
 
         # Cleanup Redis lock manager
         if hasattr(app.state, "redis_lock_manager") and app.state.redis_lock_manager:
             try:
                 await app.state.redis_lock_manager.close()
                 log.info("Redis lock manager cleanup completed")
-            except Exception as e:
-                log.error(
-                    f"Error during Redis lock manager cleanup: {type(e).__name__}"
-                )
+            except Exception:
+                log.exception("Error during Redis lock manager cleanup")
 
         try:
             shutdown_logging()
@@ -1023,14 +1020,15 @@ async def commit_session_after_request(request: Request, call_next):
                 content={"detail": "No response generated"},
             )
         return response
-    except Exception as e:
-        log.error(
-            f"Error in commit_session_after_request middleware for {request.url.path}: {type(e).__name__}"
+    except Exception:
+        log.exception(
+            "Error in commit_session_after_request middleware for %s",
+            request.url.path,
         )
         try:
             Session.rollback()
-        except Exception as rollback_error:
-            log.error(f"Error during session rollback: {type(rollback_error).__name__}")
+        except Exception:
+            log.exception("Error during session rollback")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"detail": "Internal server error"},
@@ -1058,10 +1056,8 @@ async def check_url(request: Request, call_next):
         process_time = int(time.time()) - start_time
         response.headers["X-Process-Time"] = str(process_time)
         return response
-    except Exception as e:
-        log.error(
-            f"Error in check_url middleware for {request.url.path}: {type(e).__name__}"
-        )
+    except Exception:
+        log.exception("Error in check_url middleware for %s", request.url.path)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"detail": "Internal server error"},
@@ -1106,10 +1102,8 @@ async def inspect_websocket(request: Request, call_next):
                 content={"detail": "No response generated"},
             )
         return response
-    except Exception as e:
-        log.error(
-            f"Error in inspect_websocket middleware for {request.url.path}: {type(e).__name__}"
-        )
+    except Exception:
+        log.exception("Error in inspect_websocket middleware for %s", request.url.path)
         # For WebSocket upgrade requests, return a proper error response
         if (
             "/ws/socket.io" in request.url.path
@@ -1266,7 +1260,13 @@ async def chat_completion(
         return await _run_chat_operation(request, form_data, user, tasks, operation)
 
 
-async def _run_chat_operation(request, form_data, user, tasks, operation):
+async def _run_chat_operation(
+    request: Request,
+    form_data: dict,
+    user: UserModel,
+    tasks: Optional[dict],
+    operation: ChatOperation,
+):
     try:
         model_id = form_data.get("model", None)
         if model_id not in request.app.state.MODELS:
@@ -1306,7 +1306,7 @@ async def _run_chat_operation(request, form_data, user, tasks, operation):
                 request, form_data, metadata, user, model
             )
     except Exception as e:
-        operation.finish("error", e)
+        operation.finish(OUTCOME_ERROR, e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
@@ -1325,7 +1325,7 @@ async def _run_chat_operation(request, form_data, user, tasks, operation):
             operation=operation,
         )
     except Exception as e:
-        operation.finish("error", e)
+        operation.finish(OUTCOME_ERROR, e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
@@ -1682,4 +1682,7 @@ else:
 
 # Wrap FastAPI itself so request logging observes error responses generated by
 # Starlette's outer ServerErrorMiddleware, as well as normal and streamed bodies.
+# The wrapper proxies attribute access to the FastAPI app, so `main.app.state`
+# and route decorators still work, but `isinstance(app, FastAPI)` is False:
+# code that needs the FastAPI instance should use `request.app`.
 app = RequestContextMiddleware(app)

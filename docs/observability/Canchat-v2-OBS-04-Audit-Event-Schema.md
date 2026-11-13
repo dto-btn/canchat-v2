@@ -4,8 +4,8 @@ Status: **Decided**. Open questions 1 to 5 are answered in §10; the SIEM interf
 
 Artifacts:
 
-- **Pydantic model spec and samples:** [test_audit_event_schema_poc.py](../../backend/open_webui/test/util/test_audit_event_schema_poc.py). It validates one sample event for each of the 46 actions (all 7 categories), plus forbidden-field, free-text, envelope, size, fail-policy and pseudonym tests. 328 tests pass. OBS-41 moves the models into `observability/audit.py` unchanged.
-- **JSON Schema (draft 2020-12):** [obs04-audit-event-v1.schema.json](obs04-audit-event-v1.schema.json), generated from the Pydantic spec. A test fails if the file is out of date. To regenerate it: `OBS04_WRITE_SCHEMA=1 pytest backend/open_webui/test/util/test_audit_event_schema_poc.py`.
+- **Pydantic model spec and samples:** [test_audit_event_schema.py](../../backend/open_webui/test/util/test_audit_event_schema.py). It validates one sample event for each of the 46 actions (all 7 categories), plus forbidden-field, free-text, envelope, size, fail-policy and pseudonym tests. 328 tests pass. OBS-41 moves the models into `observability/audit.py` unchanged.
+- **JSON Schema (draft 2020-12):** [obs04-audit-event-v1.schema.json](obs04-audit-event-v1.schema.json), generated from the Pydantic spec. A test fails if the file is out of date. To regenerate it: `OBS04_WRITE_SCHEMA=1 pytest backend/open_webui/test/util/test_audit_event_schema.py`.
 
 ## 1. Design rules
 

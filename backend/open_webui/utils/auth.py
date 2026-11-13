@@ -353,29 +353,6 @@ def get_request_auth_token(
     return None, None
 
 
-def get_request_identity(
-    request: Request,
-    auth_token: Optional[HTTPAuthorizationCredentials] = None,
-) -> Optional[str]:
-    token, _ = get_request_auth_token(request, auth_token)
-
-    if not token:
-        return None
-
-    if token.startswith("sk-"):
-        return None
-
-    data = decode_token(token)
-    if not data:
-        return None
-
-    user_id = data.get("id")
-    if isinstance(user_id, str) and user_id:
-        return user_id
-
-    return None
-
-
 def create_api_key():
     key = str(uuid.uuid4()).replace("-", "")
     return f"sk-{key}"

@@ -109,9 +109,15 @@ def test_exception_path_does_not_log_prompt_or_token(monkeypatch, canary_harness
 
     fake_sio = _run_handler(monkeypatch, canary_harness, manager)
 
-    assert _events(fake_sio, "crew-mcp-error")
+    assert _events(fake_sio, "crew-mcp-error") == [
+        {
+            "error": "An unexpected error occurred while processing your request.",
+            "code": 500,
+        }
+    ]
     errors = [r for r in canary_harness.records if r.levelno >= logging.ERROR]
-    assert [r.getMessage() for r in errors] == ["CrewMCP WebSocket error: RuntimeError"]
+    assert [r.getMessage() for r in errors] == ["CrewMCP WebSocket error"]
+    assert errors[0].__dict__.get("_canchat_exception_type") == "RuntimeError"
     canary_harness.assert_no_canaries()
 
 
