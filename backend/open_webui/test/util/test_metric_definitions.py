@@ -22,6 +22,8 @@ def test_unset_uses_builtin_defaults(monkeypatch):
         "canchat.llm.request.duration",
         "canchat.llm.time_to_first_token",
         "canchat.rag.retrieval.duration",
+        "canchat.rag.embedding.duration",
+        "canchat.rag.vector.duration",
         "canchat.mcp.tool.duration",
         "canchat.crew.operation.duration",
     ):

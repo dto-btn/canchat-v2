@@ -22,9 +22,25 @@ from open_webui.models.users import UserModel
 from open_webui.models.files import Files
 
 from open_webui.env import SRC_LOG_LEVELS, OFFLINE_MODE
+from open_webui.observability.rag import (
+    LOCAL_EMBEDDING_PROVIDER,
+    SEARCH_TYPE_HYBRID,
+    SEARCH_TYPE_VECTOR,
+    VECTOR_SEARCH_FAILED,
+    count_documents,
+    instrument_embedding_function,
+    retrieval_operation,
+)
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["RAG"])
+
+
+class EmbeddingFailed(RuntimeError):
+    """A remote embedding provider returned no embeddings.
+
+    The class name is recorded as ``error.type`` on ``rag.embedding``.
+    """
 
 
 from typing import Any
@@ -268,7 +284,33 @@ async def query_collection(
     embedding_function,
     k: int,
 ) -> dict:
+    with retrieval_operation(
+        SEARCH_TYPE_VECTOR,
+        collections=len(collection_names),
+        queries=len(queries),
+        top_k=k,
+    ) as op:
+        result, failed = await _query_collection(
+            collection_names, queries, embedding_function, k
+        )
+        op.set_result_count(count_documents(result))
+        if failed:
+            # The reindex helper logs and swallows query errors so retrieval can
+            # continue with the other collections; keep that fallback but do
+            # not report the operation as a success.
+            op.fail(VECTOR_SEARCH_FAILED)
+        return result
+
+
+async def _query_collection(
+    collection_names: list[str],
+    queries: list[str],
+    embedding_function,
+    k: int,
+) -> tuple[dict, bool]:
+    """Merged results and whether any collection query failed."""
     results = []
+    failed = False
     for query in queries:
         # Some embedding backends are synchronous (requests-based).
         query_embedding = await asyncio.to_thread(embedding_function, query)
@@ -287,18 +329,41 @@ async def query_collection(
 
                 if result is not None:
                     results.append(result)
+                else:
+                    failed = True
             else:
                 pass
 
     if VECTOR_DB == "chroma":
         # Chroma uses unconventional cosine similarity, so we don't need to reverse the results
         # https://docs.trychroma.com/docs/collections/configure#configuring-chroma-collections
-        return merge_and_sort_query_results(results, k=k, reverse=False)
+        return merge_and_sort_query_results(results, k=k, reverse=False), failed
     else:
-        return merge_and_sort_query_results(results, k=k, reverse=True)
+        return merge_and_sort_query_results(results, k=k, reverse=True), failed
 
 
 async def query_collection_with_hybrid_search(
+    collection_names: list[str],
+    queries: list[str],
+    embedding_function,
+    k: int,
+    reranking_function,
+    r: float,
+) -> dict:
+    with retrieval_operation(
+        SEARCH_TYPE_HYBRID,
+        collections=len(collection_names),
+        queries=len(queries),
+        top_k=k,
+    ) as op:
+        result = await _query_collection_with_hybrid_search(
+            collection_names, queries, embedding_function, k, reranking_function, r
+        )
+        op.set_result_count(count_documents(result))
+        return result
+
+
+async def _query_collection_with_hybrid_search(
     collection_names: list[str],
     queries: list[str],
     embedding_function,
@@ -348,7 +413,11 @@ def get_embedding_function(
     embedding_batch_size,
 ):
     if embedding_engine == "":
-        return lambda query, user=None: embedding_function.encode(query).tolist()
+        return instrument_embedding_function(
+            lambda query, user=None: embedding_function.encode(query).tolist(),
+            provider=LOCAL_EMBEDDING_PROVIDER,
+            model=embedding_model,
+        )
     elif embedding_engine in ["ollama", "openai"]:
         func = lambda query, user=None: generate_embeddings(
             engine=embedding_engine,
@@ -370,7 +439,11 @@ def get_embedding_function(
             else:
                 return func(query, user)
 
-        return lambda query, user=None: generate_multiple(query, user, func)
+        return instrument_embedding_function(
+            lambda query, user=None: generate_multiple(query, user, func),
+            provider=embedding_engine,
+            model=embedding_model,
+        )
     else:
         raise ValueError(f"Unknown embedding engine: {embedding_engine}")
 
@@ -660,14 +733,18 @@ def generate_embeddings(engine: str, model: str, text: Union[str, list[str]], **
             embeddings = generate_ollama_batch_embeddings(
                 **{"model": model, "texts": [text], "url": url, "key": key}
             )
-        return embeddings[0] if isinstance(text, str) else embeddings
     elif engine == "openai":
         if isinstance(text, list):
             embeddings = generate_openai_batch_embeddings(model, text, url, key)
         else:
             embeddings = generate_openai_batch_embeddings(model, [text], url, key)
+    else:
+        return None
 
-        return embeddings[0] if isinstance(text, str) else embeddings
+    # The batch helpers log provider errors and return None.
+    if embeddings is None:
+        raise EmbeddingFailed(f"{engine} embedding request failed")
+    return embeddings[0] if isinstance(text, str) else embeddings
 
 
 import operator
