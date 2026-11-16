@@ -88,7 +88,7 @@
 			type="file"
 			hidden
 			accept="image/*"
-			aria-label={$i18n.t('Profile image')}
+			aria-label={$i18n.t('Profile Image')}
 			on:change={(e) => {
 				const files = profileImageInputElement.files ?? [];
 				let reader = new FileReader();

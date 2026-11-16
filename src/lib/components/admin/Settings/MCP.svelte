@@ -508,11 +508,9 @@
 											<button
 												class="px-2 py-1 text-gray-700 dark:text-gray-200 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded text-xs transition"
 												type="button"
-												aria-label={$i18n.t('Restart') +
-													' ' +
-													(server.display_name || server.name) +
-													' ' +
-													$i18n.t('server')}
+												aria-label={$i18n.t('Restart {{name}} server', {
+													name: server.display_name || server.name
+												})}
 												on:click={() => restartBuiltinServerHandler(server.name)}
 											>
 												<svg
@@ -616,11 +614,7 @@
 													<button
 														class="px-2 py-1 text-red-700 dark:text-red-300 bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 rounded text-xs transition"
 														type="button"
-														aria-label={$i18n.t('Stop') +
-															' ' +
-															server.name +
-															' ' +
-															$i18n.t('server')}
+														aria-label={$i18n.t('Stop {{name}} server', { name: server.name })}
 														on:click={() => stopServerHandler(server.id, server.name)}
 													>
 														<svg
@@ -640,11 +634,7 @@
 													<button
 														class="px-2 py-1 text-gray-700 dark:text-gray-200 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded text-xs transition"
 														type="button"
-														aria-label={$i18n.t('Restart') +
-															' ' +
-															server.name +
-															' ' +
-															$i18n.t('server')}
+														aria-label={$i18n.t('Restart {{name}} server', { name: server.name })}
 														on:click={() => restartExternalServerHandler(server.id, server.name)}
 													>
 														<svg
@@ -667,11 +657,7 @@
 													<button
 														class="px-2 py-1 text-green-700 dark:text-green-300 bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 rounded text-xs transition"
 														type="button"
-														aria-label={$i18n.t('Start') +
-															' ' +
-															server.name +
-															' ' +
-															$i18n.t('server')}
+														aria-label={$i18n.t('Start {{name}} server', { name: server.name })}
 														on:click={() => startServerHandler(server.id, server.name)}
 													>
 														<svg
@@ -692,7 +678,7 @@
 												<button
 													class="px-2 py-1 text-blue-700 dark:text-blue-300 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 rounded text-xs transition"
 													type="button"
-													aria-label={$i18n.t('Edit') + ' ' + server.name + ' ' + $i18n.t('server')}
+													aria-label={$i18n.t('Edit {{name}} server', { name: server.name })}
 													on:click={() => openServerModal(server)}
 												>
 													<svg
@@ -715,11 +701,7 @@
 												<button
 													class="px-2 py-1 text-red-700 dark:text-red-300 bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 rounded text-xs transition"
 													type="button"
-													aria-label={$i18n.t('Delete') +
-														' ' +
-														server.name +
-														' ' +
-														$i18n.t('server')}
+													aria-label={$i18n.t('Delete {{name}} server', { name: server.name })}
 													on:click={() => deleteServerHandler(server.id, server.name)}
 												>
 													<svg
@@ -1082,7 +1064,7 @@
 										min="1"
 										max="65535"
 										class="w-full rounded-lg py-2 px-3 text-sm dark:text-gray-300 dark:bg-gray-850 outline-none border border-gray-300 dark:border-gray-600 focus:border-purple-500 dark:focus:border-purple-400"
-										placeholder={$i18n.t('3000')}
+										placeholder={'3000'}
 										bind:value={serverForm.port}
 										aria-label={$i18n.t('Port')}
 									/>

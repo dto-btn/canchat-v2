@@ -291,7 +291,7 @@
 					type="button"
 					on:click={() => (searchQuery = '')}
 					class="text-[#757575] hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded p-1"
-					aria-label={$i18n.t('Clear search')}
+					aria-label={$i18n.t('Clear Search')}
 				>
 					<span aria-hidden="true">✕</span>
 				</button>

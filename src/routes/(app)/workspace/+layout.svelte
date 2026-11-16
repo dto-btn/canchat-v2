@@ -91,7 +91,7 @@
 							on:click={() => {
 								showSidebar.set(!$showSidebar);
 							}}
-							aria-label={$i18n.t('Toggle Sidebar')}
+							aria-label={$i18n.t('Toggle sidebar')}
 						>
 							<div class="m-auto self-center">
 								<MenuLines />
