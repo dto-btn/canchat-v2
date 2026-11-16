@@ -146,6 +146,7 @@
 					>
 						<Textarea
 							bind:value={taskConfig.TITLE_GENERATION_PROMPT_TEMPLATE}
+							aria-label={$i18n.t('Title Generation Prompt')}
 							placeholder={$i18n.t(
 								'Leave empty to use the default prompt, or enter a custom prompt'
 							)}
@@ -162,6 +163,7 @@
 					>
 						<Textarea
 							bind:value={taskConfig.IMAGE_PROMPT_GENERATION_PROMPT_TEMPLATE}
+							aria-label={$i18n.t('Image Prompt Generation Prompt')}
 							placeholder={$i18n.t(
 								'Leave empty to use the default prompt, or enter a custom prompt'
 							)}
@@ -221,6 +223,7 @@
 						>
 							<Textarea
 								bind:value={taskConfig.TAGS_GENERATION_PROMPT_TEMPLATE}
+								aria-label={$i18n.t('Tags Generation Prompt')}
 								placeholder={$i18n.t(
 									'Leave empty to use the default prompt, or enter a custom prompt'
 								)}
@@ -256,6 +259,7 @@
 					>
 						<Textarea
 							bind:value={taskConfig.QUERY_GENERATION_PROMPT_TEMPLATE}
+							aria-label={$i18n.t('Query Generation Prompt')}
 							placeholder={$i18n.t(
 								'Leave empty to use the default prompt, or enter a custom prompt'
 							)}

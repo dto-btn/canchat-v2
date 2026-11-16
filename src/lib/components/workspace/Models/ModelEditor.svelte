@@ -526,6 +526,7 @@
 							<Textarea
 								bind:value={info.meta.description}
 								placeholder={$i18n.t('Enter English description')}
+								aria-label={$i18n.t('English description')}
 								className="text-sm w-full bg-transparent outline-none resize-none overflow-y-hidden"
 								required
 							/>
@@ -534,6 +535,7 @@
 							<Textarea
 								bind:value={info.meta.description_fr}
 								placeholder={$i18n.t('Enter French description')}
+								aria-label={$i18n.t('French description')}
 								className="text-sm w-full bg-transparent outline-none resize-none overflow-y-hidden"
 								required
 							/>
@@ -604,6 +606,7 @@
 										placeholder={$i18n.t('Write your model system prompt content here')}
 										rows={4}
 										bind:value={info.params.system}
+										aria-label={$i18n.t('System Prompt')}
 									/>
 								</div>
 							</div>

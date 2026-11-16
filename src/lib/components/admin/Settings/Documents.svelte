@@ -691,6 +691,7 @@
 				>
 					<Textarea
 						bind:value={querySettings.template}
+						aria-label={$i18n.t('RAG Template')}
 						placeholder={$i18n.t('Leave empty to use the default prompt, or enter a custom prompt')}
 					/>
 				</Tooltip>

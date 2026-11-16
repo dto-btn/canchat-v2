@@ -3,6 +3,9 @@
 
 	export let value = '';
 	export let placeholder = '';
+	// A contenteditable isn't part of form validation; this only exposes the requirement to
+	// assistive tech, so callers must still validate on submit.
+	export let required = false;
 	export let className =
 		'w-full rounded-lg px-3 py-2 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none resize-none h-full';
 
@@ -33,6 +36,12 @@
 
 <div
 	contenteditable="true"
+	role="textbox"
+	tabindex="0"
+	aria-multiline="true"
+	aria-label={$$restProps['aria-label']}
+	aria-required={required || undefined}
+	aria-placeholder={placeholder || undefined}
 	bind:this={textareaElement}
 	class="{className} whitespace-pre-wrap relative {value
 		? !value.trim()
