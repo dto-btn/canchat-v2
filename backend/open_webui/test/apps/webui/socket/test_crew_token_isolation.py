@@ -22,6 +22,8 @@ def integration(monkeypatch):
     crewai.LLM = object
     tools = types.ModuleType("crewai_tools")
     tools.MCPServerAdapter = None
+    observed_adapter = types.ModuleType("mcp_backend.integration.observed_adapter")
+    observed_adapter.MCPServerAdapter = None
     mcp = types.ModuleType("mcp")
     mcp.StdioServerParameters = lambda **kwargs: types.SimpleNamespace(**kwargs)
     source = (
@@ -33,6 +35,9 @@ def integration(monkeypatch):
     with monkeypatch.context() as imports:
         imports.setitem(sys.modules, "crewai", crewai)
         imports.setitem(sys.modules, "crewai_tools", tools)
+        imports.setitem(
+            sys.modules, "mcp_backend.integration.observed_adapter", observed_adapter
+        )
         imports.setitem(sys.modules, "mcp", mcp)
         imports.setenv("CREWAI_DISABLE_TELEMETRY", "true")
         imports.setenv("CREWAI_TRACING_ENABLED", "false")
@@ -54,7 +59,7 @@ def _stub_tools(monkeypatch, integration, barrier=None):
     received = []
 
     class Adapter:
-        def __init__(self, params):
+        def __init__(self, params, server_name):
             self.env = params.env
 
         def __enter__(self):
@@ -106,6 +111,41 @@ def test_parallel_crews_keep_tokens_isolated(
     assert not hasattr(manager, "user_jwt_token")
     assert not hasattr(manager, "set_user_token")
     canary_harness.assert_no_canaries()
+
+
+def test_initialized_adapters_are_retained_and_closed(monkeypatch, integration, manager):
+    created = []
+    closed = []
+    manager.time_server_path = manager._sharepoint_server_paths["MPO"]
+    manager.news_server_path = manager._sharepoint_server_paths["PMO"]
+
+    class Adapter:
+        def __init__(self, params, server_name):
+            self.name = server_name
+            created.append(server_name)
+
+        def __enter__(self):
+            return [types.SimpleNamespace(name="tool", description="test tool")]
+
+        def __exit__(self, *args):
+            closed.append(self.name)
+
+    monkeypatch.setattr(integration, "MCPServerAdapter", Adapter)
+    manager.initialize_mcp_adapters()
+    manager.initialize_mcp_adapters()
+    assert set(created) == {
+        "time_server",
+        "news_server",
+        "mpo_sharepoint_server",
+        "pmo_sharepoint_server",
+    }
+    assert len(created) == 4
+    assert len(manager.get_available_tools()) == 4
+
+    manager.cleanup_mcp_adapters()
+    assert sorted(closed) == sorted(created)
+    assert integration._adapter_handles == {}
+    assert manager.get_available_tools() == []
 
 
 @pytest.mark.parametrize(

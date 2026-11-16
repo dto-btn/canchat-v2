@@ -153,6 +153,8 @@ def crew_integration(monkeypatch):
     crewai.LLM = object
     tools = types.ModuleType("crewai_tools")
     tools.MCPServerAdapter = None
+    observed_adapter = types.ModuleType("mcp_backend.integration.observed_adapter")
+    observed_adapter.MCPServerAdapter = None
     mcp = types.ModuleType("mcp")
     mcp.StdioServerParameters = lambda **kwargs: types.SimpleNamespace(**kwargs)
     source = (
@@ -164,6 +166,9 @@ def crew_integration(monkeypatch):
     with monkeypatch.context() as imports:
         imports.setitem(sys.modules, "crewai", crewai)
         imports.setitem(sys.modules, "crewai_tools", tools)
+        imports.setitem(
+            sys.modules, "mcp_backend.integration.observed_adapter", observed_adapter
+        )
         imports.setitem(sys.modules, "mcp", mcp)
         imports.setenv("CREWAI_DISABLE_TELEMETRY", "true")
         imports.setenv("CREWAI_TRACING_ENABLED", "false")
@@ -180,16 +185,17 @@ def test_mcp_tool_error_is_logged_by_type_only(
     manager = crew_integration.CrewMCPManager.__new__(crew_integration.CrewMCPManager)
     manager._sharepoint_server_paths = {"MPO": server}
     manager.get_azure_llm_config = lambda: None
+    closed = []
 
     class Adapter:
-        def __init__(self, params):
+        def __init__(self, params, server_name):
             pass
 
         def __enter__(self):
             return [types.SimpleNamespace(name="mpo_search_documents_fast")]
 
         def __exit__(self, *args):
-            pass
+            closed.append(True)
 
     class Crew:
         def __init__(self, **kwargs):
@@ -212,6 +218,7 @@ def test_mcp_tool_error_is_logged_by_type_only(
         r.getMessage() == "Error in CrewAI MCP MPO SharePoint integration: RuntimeError"
         for r in canary_harness.records
     )
+    assert closed == [True]
     canary_harness.assert_no_canaries()
 
 

@@ -312,11 +312,15 @@ def test_providers_created_after_crew_integration_import_are_enabled(monkeypatch
     stubs = {
         "crewai": types.ModuleType("crewai"),
         "crewai_tools": types.ModuleType("crewai_tools"),
+        "mcp_backend.integration.observed_adapter": types.ModuleType(
+            "mcp_backend.integration.observed_adapter"
+        ),
         "mcp": types.ModuleType("mcp"),
     }
     for name in ("Agent", "Task", "Crew", "Process", "LLM"):
         setattr(stubs["crewai"], name, object)
     stubs["crewai_tools"].MCPServerAdapter = object
+    stubs["mcp_backend.integration.observed_adapter"].MCPServerAdapter = object
     stubs["mcp"].StdioServerParameters = object
     for name, module in stubs.items():
         monkeypatch.setitem(sys.modules, name, module)

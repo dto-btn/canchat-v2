@@ -11,6 +11,8 @@ import sys
 import types
 
 import pytest
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
 
 # Prevent uvicorn import errors in test environment
 sys.modules.setdefault("uvicorn", types.ModuleType("uvicorn"))
@@ -148,4 +150,22 @@ def test_metrics_failure_does_not_log_exception_text(monkeypatch, canary_harness
     fake_sio = _run_handler(monkeypatch, canary_harness, manager)
 
     assert _events(fake_sio, "crew-mcp-result")
+    canary_harness.assert_no_canaries()
+
+
+def test_socket_crew_executor_preserves_the_calling_span(monkeypatch, canary_harness):
+    class TracedCrew(FakeCrewManager):
+        def run_intelligent_crew(self, query, selected_tools, user_access_token):
+            self.parent_span_id = trace.get_current_span().get_span_context().span_id
+            return super().run_intelligent_crew(query, selected_tools, user_access_token)
+
+    provider = TracerProvider(shutdown_on_exit=False)
+    manager = TracedCrew()
+    try:
+        with provider.get_tracer("test").start_as_current_span("parent") as parent:
+            fake_sio = _run_handler(monkeypatch, canary_harness, manager)
+        assert _events(fake_sio, "crew-mcp-result")
+        assert manager.parent_span_id == parent.get_span_context().span_id
+    finally:
+        provider.shutdown()
     canary_harness.assert_no_canaries()

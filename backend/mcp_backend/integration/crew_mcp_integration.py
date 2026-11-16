@@ -17,8 +17,9 @@ os.environ.setdefault("CREWAI_DISABLE_TELEMETRY", "true")
 os.environ.setdefault("CREWAI_TRACING_ENABLED", "false")
 
 from crewai import Agent, Task, Crew, Process, LLM
-from crewai_tools import MCPServerAdapter
 from mcp import StdioServerParameters
+
+from mcp_backend.integration.observed_adapter import MCPServerAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,7 @@ _news_server_adapter = None
 # Department SharePoint adapters keyed by uppercase dept name (e.g. "MPO", "PMO").
 # Populated dynamically at startup from *_sharepoint_server.py scripts.
 _sharepoint_adapters: dict = {}
+_adapter_handles: dict[str, MCPServerAdapter] = {}
 _adapters_initialized = False
 
 
@@ -144,8 +146,9 @@ class CrewMCPManager:
                 args=[str(self.time_server_path)],
                 env=dict(os.environ),  # Pass environment variables
             )
-            adapter = MCPServerAdapter(time_server_params)
+            adapter = MCPServerAdapter(time_server_params, "time_server")
             _time_server_adapter = adapter.__enter__()  # Get the tools from __enter__()
+            _adapter_handles["time_server"] = adapter
             logger.info("✅ Time server adapter initialized")
         except Exception as e:
             logger.error(f"❌ Failed to initialize Time server: {type(e).__name__}")
@@ -158,8 +161,9 @@ class CrewMCPManager:
                 args=[str(self.news_server_path)],
                 env=dict(os.environ),  # Pass environment variables
             )
-            adapter = MCPServerAdapter(news_server_params)
+            adapter = MCPServerAdapter(news_server_params, "news_server")
             _news_server_adapter = adapter.__enter__()  # Get the tools from __enter__()
+            _adapter_handles["news_server"] = adapter
             logger.info("✅ News server adapter initialized")
         except Exception as e:
             logger.error(f"❌ Failed to initialize News server: {type(e).__name__}")
@@ -177,8 +181,10 @@ class CrewMCPManager:
                         if key.startswith("SHP_") or key.startswith(f"{dept_key}_SHP_")
                     },  # Pass global and department specific environment variables
                 )
-                adapter = MCPServerAdapter(params)
+                server_name = f"{dept_key.lower()}_sharepoint_server"
+                adapter = MCPServerAdapter(params, server_name)
                 _sharepoint_adapters[dept_key] = adapter.__enter__()
+                _adapter_handles[server_name] = adapter
                 logger.info(f"✅ {dept_key} SharePoint server adapter initialized")
             except Exception as e:
                 logger.error(
@@ -210,32 +216,19 @@ class CrewMCPManager:
 
         logger.info("🧹 Cleaning up MCP server adapters...")
 
-        for adapter_name, adapter in [
-            ("Time", _time_server_adapter),
-            ("News", _news_server_adapter),
-        ]:
-            if adapter is not None:
-                try:
-                    adapter.__exit__(None, None, None)
-                    logger.info(f"✅ {adapter_name} server adapter cleaned up")
-                except Exception as e:
-                    logger.error(
-                        f"❌ Error cleaning up {adapter_name} adapter: {type(e).__name__}"
-                    )
-
-        for dept_key, adapter in _sharepoint_adapters.items():
-            if adapter is not None:
-                try:
-                    adapter.__exit__(None, None, None)
-                    logger.info(f"✅ {dept_key} SharePoint server adapter cleaned up")
-                except Exception as e:
-                    logger.error(
-                        f"❌ Error cleaning up {dept_key} SharePoint adapter: {type(e).__name__}"
-                    )
+        for adapter_name, adapter in _adapter_handles.items():
+            try:
+                adapter.__exit__(None, None, None)
+                logger.info(f"✅ {adapter_name} server adapter cleaned up")
+            except Exception as e:
+                logger.error(
+                    f"❌ Error cleaning up {adapter_name} adapter: {type(e).__name__}"
+                )
 
         _time_server_adapter = None
         _news_server_adapter = None
         _sharepoint_adapters.clear()
+        _adapter_handles.clear()
         _adapters_initialized = False
 
         logger.info("🎉 All MCP server adapters cleaned up")
@@ -447,6 +440,7 @@ class CrewMCPManager:
             "Initializing fresh SharePoint adapter with invocation-scoped credentials"
         )
 
+        adapter = None
         try:
             sharepoint_params = StdioServerParameters(
                 command=sys.executable,
@@ -455,7 +449,9 @@ class CrewMCPManager:
             )
 
             # Use context manager for automatic cleanup
-            adapter = MCPServerAdapter(sharepoint_params)
+            adapter = MCPServerAdapter(
+                sharepoint_params, f"{dept_lower}_sharepoint_server"
+            )
             mcp_tools = adapter.__enter__()  # Get the tools from adapter
 
             logger.info(
@@ -574,13 +570,6 @@ class CrewMCPManager:
             logger.info(f"Executing CrewAI {dept_key} SharePoint crew...")
             result = sharepoint_crew.kickoff()
 
-            # Cleanup adapter
-            try:
-                adapter.__exit__(None, None, None)
-                logger.info(f"✅ Cleaned up {dept_key} SharePoint adapter")
-            except Exception as e:
-                logger.warning(f"Failed to cleanup adapter: {type(e).__name__}")
-
             token_usage = _extract_token_usage(result)
             return str(result), token_usage
 
@@ -615,6 +604,13 @@ class CrewMCPManager:
                     f"I encountered an issue while searching SharePoint documents: {error_msg}. Please try rephrasing your query or contact support if the problem persists.",
                     {},
                 )
+        finally:
+            if adapter is not None:
+                try:
+                    adapter.__exit__(None, None, None)
+                    logger.info(f"✅ Cleaned up {dept_key} SharePoint adapter")
+                except Exception as e:
+                    logger.warning(f"Failed to cleanup adapter: {type(e).__name__}")
 
     def run_intelligent_crew(
         self,

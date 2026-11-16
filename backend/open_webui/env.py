@@ -422,6 +422,14 @@ else:
     except Exception:
         AIOHTTP_CLIENT_TIMEOUT = 300
 
+# Seconds an MCP tool call may run before it is cancelled; 0 disables the limit.
+MCP_TOOL_CALL_TIMEOUT: float | None
+try:
+    _mcp_tool_call_timeout = float(os.environ.get("MCP_TOOL_CALL_TIMEOUT") or 300)
+except ValueError:
+    _mcp_tool_call_timeout = 300.0
+MCP_TOOL_CALL_TIMEOUT = _mcp_tool_call_timeout if _mcp_tool_call_timeout > 0 else None
+
 AIOHTTP_CLIENT_TIMEOUT_OPENAI_MODEL_LIST = os.environ.get(
     "AIOHTTP_CLIENT_TIMEOUT_OPENAI_MODEL_LIST", ""
 )

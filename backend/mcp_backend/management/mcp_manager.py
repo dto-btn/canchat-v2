@@ -14,7 +14,15 @@ from typing import Dict, List, Any, Optional
 from pathlib import Path
 
 from fastmcp.client import Client
-from fastmcp.client.transports import PythonStdioTransport
+from fastmcp.client.transports import ClientTransport, PythonStdioTransport
+
+from mcp_backend.management.observed_client import ObservedMCPClient
+from open_webui.env import MCP_TOOL_CALL_TIMEOUT
+from open_webui.observability.mcp import (
+    FilteredStderrPipe,
+    observe_tool,
+    register_builtin_server,
+)
 
 log = logging.getLogger(__name__)
 # Ensure MCP manager logs are visible
@@ -106,9 +114,10 @@ class FastMCPManager:
     """Manages FastMCP server instances and client connections"""
 
     def __init__(self):
-        self.clients: Dict[str, Client] = {}
+        self.clients: Dict[str, Client | ClientTransport] = {}
         self.server_processes: Dict[str, subprocess.Popen] = {}
         self.server_configs: Dict[str, Dict[str, Any]] = {}
+        self._stderr_pipes: Dict[str, FilteredStderrPipe] = {}
 
     def add_server_config(
         self,
@@ -118,6 +127,8 @@ class FastMCPManager:
         env: Optional[Dict[str, str]] = None,
         transport: str = "stdio",
         url: Optional[str] = None,
+        *,
+        builtin: bool = False,
     ):
         """Add configuration for an external MCP server
 
@@ -128,6 +139,7 @@ class FastMCPManager:
             env: Environment variables for the server process
             transport: Transport type ('stdio' or 'http')
             url: URL for HTTP transport
+            builtin: Whether this is a trusted, built-in server
         """
         self.server_configs[name] = {
             "command": command,
@@ -135,6 +147,9 @@ class FastMCPManager:
             "env": env,
             "transport": transport,
             "url": url,
+            "_observability_server": (
+                register_builtin_server(name) if builtin else "external"
+            ),
         }
         log.info(f"Added server configuration: {name} ({transport})")
 
@@ -158,26 +173,38 @@ class FastMCPManager:
             else:
                 # Process has terminated, remove it
                 del self.server_processes[name]
+                stderr = self._stderr_pipes.pop(name, None)
+                if stderr:
+                    stderr.close()
 
         config = self.server_configs[name]
-
         try:
             # Validate command before execution
             validate_command(config["command"])
+
+            if name in self.clients:
+                if not await self.stop_server(name):
+                    return False
 
             # Check if this is an HTTP server (has --http in command)
             is_http_server = "--http" in config["command"]
 
             if is_http_server:
-                # Start HTTP server - no stdio pipes needed
-                process = subprocess.Popen(
-                    config["command"],
-                    cwd=config.get("working_dir"),
-                    env=config.get("env"),
-                    text=True,
-                )
+                stderr = FilteredStderrPipe()
+                try:
+                    process = subprocess.Popen(
+                        config["command"],
+                        cwd=config.get("working_dir"),
+                        env=config.get("env"),
+                        stderr=stderr.stream,
+                        text=True,
+                    )
+                except BaseException:
+                    stderr.close()
+                    raise
 
                 self.server_processes[name] = process
+                self._stderr_pipes[name] = stderr
 
                 # For HTTP servers, create client connection to the URL
                 # Extract port from command
@@ -208,16 +235,22 @@ class FastMCPManager:
                     script_path = config["command"][1]
                     args = config["command"][2:] if len(config["command"]) > 2 else []
 
-                    # Create transport
-                    transport = PythonStdioTransport(
-                        script_path=script_path,
-                        args=args,
-                        env=config.get("env"),
-                        cwd=config.get("working_dir"),
-                    )
+                    stderr = FilteredStderrPipe()
+                    try:
+                        transport = PythonStdioTransport(
+                            script_path=script_path,
+                            args=args,
+                            env=config.get("env"),
+                            cwd=config.get("working_dir"),
+                            log_file=stderr.stream,
+                        )
+                    except BaseException:
+                        stderr.close()
+                        raise
 
                     # Store the transport instead of the client for reuse
                     self.clients[name] = transport
+                    self._stderr_pipes[name] = stderr
 
                     log.info(
                         f"Started stdio MCP server: {name} (using {executable_name})"
@@ -230,8 +263,13 @@ class FastMCPManager:
                     )
                     return False
 
+        except asyncio.CancelledError:
+            await self.stop_server(name)
+            raise
         except Exception as e:
             log.exception(f"Failed to start server {name}: {type(e).__name__}")
+            if name in self.server_processes or name in self._stderr_pipes:
+                await self.stop_server(name)
             return False
 
     async def stop_server(self, name: str) -> bool:
@@ -276,6 +314,10 @@ class FastMCPManager:
         except Exception as e:
             log.exception(f"Failed to stop server {name}: {type(e).__name__}")
             return False
+        finally:
+            stderr = self._stderr_pipes.pop(name, None)
+            if stderr:
+                stderr.close()
 
     async def restart_server(self, name: str) -> bool:
         """Restart an external MCP server
@@ -317,6 +359,9 @@ class FastMCPManager:
             else:
                 # Process has terminated
                 del self.server_processes[name]
+                stderr = self._stderr_pipes.pop(name, None)
+                if stderr:
+                    stderr.close()
                 return "stopped"
 
         return "stopped"
@@ -402,6 +447,8 @@ class FastMCPManager:
                     if server_name in self.clients:
                         log.debug(f"Getting tools from stdio server: {server_name}")
                         transport = self.clients[server_name]  # This is the transport
+                        if not isinstance(transport, ClientTransport):
+                            raise TypeError("Invalid MCP stdio transport")
                         client = Client(transport)
                         async with client:
                             log.debug(
@@ -459,42 +506,44 @@ class FastMCPManager:
             ValueError: If server is not found or not running
             Exception: If tool execution fails
         """
-        if server_name not in self.server_configs:
-            raise ValueError(f"Server {server_name} not configured")
+        config = self.server_configs.get(server_name)
+        server_label = (
+            config.get("_observability_server", "external") if config else "external"
+        )
+        with observe_tool(server_label, tool_name) as observation:
+            try:
+                if config is None:
+                    raise ValueError(f"Server {server_name} not configured")
 
-        config = self.server_configs[server_name]
+                if config.get("transport") == "http":
+                    url = config.get("url")
+                    if not url:
+                        raise ValueError(
+                            f"No URL configured for HTTP server {server_name}"
+                        )
+                    client = ObservedMCPClient(url)
+                else:
+                    if self.get_server_status(server_name) != "running":
+                        raise ValueError(f"Server {server_name} is not running")
+                    if server_name not in self.clients:
+                        raise ValueError(
+                            f"No transport available for server {server_name}"
+                        )
+                    transport = self.clients[server_name]
+                    if not isinstance(transport, ClientTransport):
+                        raise TypeError("Invalid MCP stdio transport")
+                    client = ObservedMCPClient(transport)
 
-        try:
-            # For HTTP servers, create a new client connection for each call
-            if config.get("transport") == "http":
-                url = config.get("url")
-                if not url:
-                    raise ValueError(f"No URL configured for HTTP server {server_name}")
-
-                # Create new client connection for HTTP servers
-                client = Client(url)
                 async with client:
-                    result = await client.call_tool(tool_name, arguments)
+                    result = await client.call_tool(
+                        tool_name, arguments, timeout=MCP_TOOL_CALL_TIMEOUT
+                    )
+                    if result.is_error:
+                        observation.error()
                     return result
-            else:
-                # For stdio servers, use the stored transport
-                if self.get_server_status(server_name) != "running":
-                    raise ValueError(f"Server {server_name} is not running")
-
-                if server_name not in self.clients:
-                    raise ValueError(f"No transport available for server {server_name}")
-
-                transport = self.clients[server_name]
-                client = Client(transport)
-                async with client:
-                    result = await client.call_tool(tool_name, arguments)
-                    return result
-
-        except Exception as e:
-            log.exception(
-                f"Error calling tool {tool_name} on server {server_name}: {type(e).__name__}"
-            )
-            raise
+            except Exception as e:
+                log.exception("Error calling MCP tool: %s", type(e).__name__)
+                raise
 
     async def initialize_default_servers(self):
         """Initialize and start default MCP servers with stdio transport"""
@@ -518,6 +567,7 @@ class FastMCPManager:
                 working_dir=str(backend_dir),
                 env=dict(os.environ),  # Pass current environment variables
                 transport="stdio",
+                builtin=True,
             )
 
             # Start the time server
@@ -546,6 +596,7 @@ class FastMCPManager:
                 working_dir=str(backend_dir),
                 env=dict(os.environ),  # Pass current environment variables
                 transport="stdio",
+                builtin=True,
             )
 
             # Start the news server
@@ -612,6 +663,7 @@ class FastMCPManager:
                     if key.startswith("SHP_") or key.startswith(f"{dept}_SHP_")
                 },  # Pass global and department specific environment variables
                 transport="stdio",
+                builtin=True,
             )
 
             log.info(f"About to start {server_name}...")
@@ -728,6 +780,8 @@ class FastMCPManager:
                 # For stdio servers, use stored transport to create client
                 if server_name in self.clients:
                     transport = self.clients[server_name]
+                    if not isinstance(transport, ClientTransport):
+                        raise TypeError("Invalid MCP stdio transport")
                     client = Client(transport)
                     async with client:
                         tools = await client.list_tools()

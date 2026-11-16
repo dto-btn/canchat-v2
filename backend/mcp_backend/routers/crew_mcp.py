@@ -8,6 +8,8 @@ import os
 import sys
 import json
 import aiohttp
+from contextvars import copy_context
+from functools import partial
 from pathlib import Path
 from typing import Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends, Request
@@ -383,13 +385,14 @@ async def run_crew_query(
         loop = asyncio.get_event_loop()
         log.info("Starting crew execution in thread pool executor")
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            crew_result = await loop.run_in_executor(
-                executor,
+            context = copy_context()
+            run_crew = partial(
                 crew_mcp_manager.run_intelligent_crew,
                 request.query,
                 selected_tools,
                 user_access_token,
             )
+            crew_result = await loop.run_in_executor(executor, context.run, run_crew)
 
         # Unpack the (result_str, token_usage, mcp_process) tuple returned by run_intelligent_crew
         result, token_usage, mcp_process = crew_result
@@ -527,13 +530,14 @@ async def run_multi_server_crew_query(
 
         loop = asyncio.get_event_loop()
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            crew_result = await loop.run_in_executor(
-                executor,
+            context = copy_context()
+            run_crew = partial(
                 crew_mcp_manager.run_intelligent_crew,
                 request.query,
                 selected_tools,
                 user_access_token,
             )
+            crew_result = await loop.run_in_executor(executor, context.run, run_crew)
 
         # Unpack the (result_str, token_usage, mcp_process) tuple
         if isinstance(crew_result, tuple) and len(crew_result) == 3:

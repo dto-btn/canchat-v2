@@ -461,6 +461,13 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         log.error(f"Failed to initialize FastMCP manager: {type(e).__name__}")
 
+    crew_manager = crew_mcp.crew_mcp_manager
+    if crew_manager is not None:
+        try:
+            await asyncio.to_thread(crew_manager.initialize_mcp_adapters)
+        except Exception as e:
+            log.error("Failed to initialize Crew MCP adapters: %s", type(e).__name__)
+
     # Initialize Wikipedia grounding models in background
     async def initialize_wiki_grounding():
         """Initialize Wikipedia grounding models in background to avoid first-user delay"""
@@ -543,6 +550,13 @@ async def lifespan(app: FastAPI):
                 log.info("Periodic usage pool cleanup task cancelled successfully")
             except Exception as e:
                 log.error(f"Error cancelling cleanup task: {type(e).__name__}")
+
+        if crew_manager is not None:
+            try:
+                await asyncio.to_thread(crew_manager.cleanup_mcp_adapters)
+                log.info("Crew MCP adapter cleanup completed")
+            except Exception as e:
+                log.error("Error during Crew MCP adapter cleanup: %s", type(e).__name__)
 
         # Cleanup MCP manager and all its server processes
         if hasattr(app.state, "mcp_manager") and app.state.mcp_manager:

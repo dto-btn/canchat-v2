@@ -2,6 +2,8 @@ import asyncio
 import socketio
 import logging
 import time
+from contextvars import copy_context
+from functools import partial
 
 from open_webui.models.users import Users, UserNameResponse
 from open_webui.models.channels import Channels
@@ -499,13 +501,14 @@ async def crew_mcp_query(sid, data):
         log.info("Starting crew execution in thread pool executor via WebSocket")
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            crew_result = await loop.run_in_executor(
-                executor,
+            context = copy_context()
+            run_crew = partial(
                 crew_mcp_manager.run_intelligent_crew,
                 query,
                 selected_tools,
                 user_access_token,
             )
+            crew_result = await loop.run_in_executor(executor, context.run, run_crew)
 
         # Unpack the (result_str, token_usage, mcp_process) tuple returned by run_intelligent_crew
         if isinstance(crew_result, tuple) and len(crew_result) == 3:
