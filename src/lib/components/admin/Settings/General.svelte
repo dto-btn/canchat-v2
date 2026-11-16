@@ -19,6 +19,7 @@
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import { getRequestToken } from '$lib/services/auth';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	const i18n = getI18n();
 
@@ -356,7 +357,7 @@
 								<input
 									class="w-full bg-transparent outline-none py-0.5"
 									required
-									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+									use:requiredMessage={() => $i18n.t('This field is required')}
 									placeholder={$i18n.t('Enter server label')}
 									aria-label={$i18n.t('Label')}
 									bind:value={LDAP_SERVER.label}
@@ -372,7 +373,7 @@
 								<input
 									class="w-full bg-transparent outline-none py-0.5"
 									required
-									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+									use:requiredMessage={() => $i18n.t('This field is required')}
 									placeholder={$i18n.t('Enter server host')}
 									aria-label={$i18n.t('Host')}
 									bind:value={LDAP_SERVER.host}
@@ -409,8 +410,7 @@
 									<input
 										class="w-full bg-transparent outline-none py-0.5"
 										required
-										on:invalid={(e) =>
-											e.target.setCustomValidity($i18n.t('This field is required'))}
+										use:requiredMessage={() => $i18n.t('This field is required')}
 										placeholder={$i18n.t('Enter Application DN')}
 										aria-label={$i18n.t('Application DN')}
 										bind:value={LDAP_SERVER.app_dn}
@@ -441,8 +441,7 @@
 									<input
 										class="w-full bg-transparent outline-none py-0.5"
 										required
-										on:invalid={(e) =>
-											e.target.setCustomValidity($i18n.t('This field is required'))}
+										use:requiredMessage={() => $i18n.t('This field is required')}
 										placeholder={$i18n.t('Example: mail')}
 										aria-label={$i18n.t('Attribute for Mail')}
 										bind:value={LDAP_SERVER.attribute_for_mail}
@@ -464,8 +463,7 @@
 									<input
 										class="w-full bg-transparent outline-none py-0.5"
 										required
-										on:invalid={(e) =>
-											e.target.setCustomValidity($i18n.t('This field is required'))}
+										use:requiredMessage={() => $i18n.t('This field is required')}
 										placeholder={$i18n.t('Example: sAMAccountName or uid or userPrincipalName')}
 										aria-label={$i18n.t('Attribute for Username')}
 										bind:value={LDAP_SERVER.attribute_for_username}
@@ -482,8 +480,7 @@
 									<input
 										class="w-full bg-transparent outline-none py-0.5"
 										required
-										on:invalid={(e) =>
-											e.target.setCustomValidity($i18n.t('This field is required'))}
+										use:requiredMessage={() => $i18n.t('This field is required')}
 										placeholder={$i18n.t('Example: ou=users,dc=foo,dc=example')}
 										aria-label={$i18n.t('Search Base')}
 										bind:value={LDAP_SERVER.search_base}
@@ -530,8 +527,7 @@
 										<input
 											class="w-full bg-transparent outline-none py-0.5"
 											required
-											on:invalid={(e) =>
-												e.target.setCustomValidity($i18n.t('This field is required'))}
+											use:requiredMessage={() => $i18n.t('This field is required')}
 											placeholder={$i18n.t('Enter certificate path')}
 											aria-label={$i18n.t('Certificate Path')}
 											bind:value={LDAP_SERVER.certificate_path}

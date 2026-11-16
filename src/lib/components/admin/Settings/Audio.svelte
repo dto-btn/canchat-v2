@@ -24,6 +24,7 @@
 	import type { Writable } from 'svelte/store';
 	import type { i18n as i18nType } from 'i18next';
 	import { getRequestToken } from '$lib/services/auth';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	const i18n = getContext<Writable<i18nType>>('i18n');
 	const getSelectValue = (event: Event) => (event.currentTarget as HTMLSelectElement).value;
@@ -274,8 +275,7 @@
 								aria-label={$i18n.t('API Base URL')}
 								bind:value={STT_OPENAI_API_BASE_URL}
 								required
-								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
-								on:input={(e) => e.target.setCustomValidity('')}
+								use:requiredMessage={() => $i18n.t('This field is required')}
 							/>
 
 							<SensitiveInput placeholder={$i18n.t('API Key')} bind:value={STT_OPENAI_API_KEY} />
@@ -433,8 +433,7 @@
 								aria-label={$i18n.t('API Base URL')}
 								bind:value={TTS_OPENAI_API_BASE_URL}
 								required
-								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
-								on:input={(e) => e.target.setCustomValidity('')}
+								use:requiredMessage={() => $i18n.t('This field is required')}
 							/>
 
 							<SensitiveInput placeholder={$i18n.t('API Key')} bind:value={TTS_OPENAI_API_KEY} />
@@ -449,8 +448,7 @@
 								aria-label={$i18n.t('API Key')}
 								bind:value={TTS_API_KEY}
 								required
-								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
-								on:input={(e) => e.target.setCustomValidity('')}
+								use:requiredMessage={() => $i18n.t('This field is required')}
 							/>
 						</div>
 					</div>
@@ -463,8 +461,7 @@
 								aria-label={$i18n.t('API Key')}
 								bind:value={TTS_API_KEY}
 								required
-								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
-								on:input={(e) => e.target.setCustomValidity('')}
+								use:requiredMessage={() => $i18n.t('This field is required')}
 							/>
 							<input
 								class="flex-1 w-full rounded-lg py-2 pl-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
@@ -472,8 +469,7 @@
 								aria-label={$i18n.t('Azure Region')}
 								bind:value={TTS_AZURE_SPEECH_REGION}
 								required
-								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
-								on:input={(e) => e.target.setCustomValidity('')}
+								use:requiredMessage={() => $i18n.t('This field is required')}
 							/>
 						</div>
 					</div>

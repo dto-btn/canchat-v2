@@ -5,6 +5,7 @@
 	import { toast } from 'svelte-sonner';
 	import AccessControl from '../common/AccessControl.svelte';
 	import { goto } from '$app/navigation';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	export let onSubmit: Function;
 	export let edit = false;
@@ -123,7 +124,7 @@
 							placeholder={$i18n.t('Name your prompt')}
 							aria-label={$i18n.t('Name your prompt')}
 							required
-							on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+							use:requiredMessage={() => $i18n.t('This field is required')}
 						/>
 					</div>
 				</div>
@@ -140,7 +141,7 @@
 								placeholder={$i18n.t('Command trigger')}
 								aria-label={$i18n.t('Command trigger')}
 								required
-								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+								use:requiredMessage={() => $i18n.t('This field is required')}
 								disabled={edit}
 							/>
 						</div>
@@ -159,7 +160,7 @@
 							bind:value={content}
 							rows={4}
 							required
-							on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+							use:requiredMessage={() => $i18n.t('This field is required')}
 						/>
 						<div class="mt-2 text-xs text-gray-400 dark:text-gray-500">
 							ⓘ {$i18n.t('Format your variables using brackets like this:')}

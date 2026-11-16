@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getI18n } from '$lib/utils/context';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	const i18n = getI18n();
 
@@ -21,7 +22,7 @@
 		{placeholder}
 		bind:value
 		required={required && !readOnly}
-		on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+		use:requiredMessage={() => $i18n.t('This field is required')}
 		disabled={readOnly}
 		autocomplete="off"
 		type="text"

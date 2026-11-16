@@ -18,6 +18,7 @@
 	import AccessControl from '../common/AccessControl.svelte';
 	import { toast } from 'svelte-sonner';
 	import { getRequestToken } from '$lib/services/auth';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	const i18n = getI18n();
 
@@ -455,7 +456,7 @@
 									placeholder={$i18n.t('Model Name')}
 									bind:value={name}
 									required
-									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+									use:requiredMessage={() => $i18n.t('This field is required')}
 									aria-label={$i18n.t('Model Name')}
 								/>
 							</div>
@@ -469,7 +470,7 @@
 									bind:value={id}
 									disabled={edit}
 									required
-									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+									use:requiredMessage={() => $i18n.t('This field is required')}
 									aria-label={$i18n.t('Model ID')}
 								/>
 							</div>
@@ -500,7 +501,7 @@
 									bind:value={info.base_model_id}
 									on:change={onBaseModelChange}
 									required
-									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+									use:requiredMessage={() => $i18n.t('This field is required')}
 									aria-label={$i18n.t('Base Model (From)')}
 								>
 									<option value={null} class=" text-gray-900"
@@ -527,7 +528,6 @@
 								placeholder={$i18n.t('Enter English description')}
 								className="text-sm w-full bg-transparent outline-none resize-none overflow-y-hidden"
 								required
-								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 							/>
 						</div>
 						<div class="mt-2">
@@ -536,7 +536,6 @@
 								placeholder={$i18n.t('Enter French description')}
 								className="text-sm w-full bg-transparent outline-none resize-none overflow-y-hidden"
 								required
-								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
 							/>
 						</div>
 					</div>

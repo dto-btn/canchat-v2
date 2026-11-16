@@ -8,6 +8,7 @@
 	import SensitiveInput from '$lib/components/common/SensitiveInput.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import { getRequestToken } from '$lib/services/auth';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	const i18n = getI18n();
 
@@ -111,7 +112,7 @@
 							bind:value={webConfig.search.engine}
 							placeholder={$i18n.t('Select an engine')}
 							required
-							on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+							use:requiredMessage={() => $i18n.t('This field is required')}
 							aria-label={$i18n.t('Web Search Engine')}
 						>
 							<option disabled selected value="">{$i18n.t('Select an engine')}</option>
@@ -335,7 +336,7 @@
 								placeholder={$i18n.t('Search Result Count')}
 								bind:value={webConfig.search.result_count}
 								required
-								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+								use:requiredMessage={() => $i18n.t('This field is required')}
 								aria-label={$i18n.t('Search Result Count')}
 							/>
 						</div>
@@ -350,7 +351,7 @@
 								placeholder={$i18n.t('Concurrent Requests')}
 								bind:value={webConfig.search.concurrent_requests}
 								required
-								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+								use:requiredMessage={() => $i18n.t('This field is required')}
 								aria-label={$i18n.t('Concurrent Requests')}
 							/>
 						</div>

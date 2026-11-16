@@ -12,6 +12,7 @@
 	import Badge from '$lib/components/common/Badge.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import ChevronLeft from '$lib/components/icons/ChevronLeft.svelte';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	let formElement: any = null;
 	let loading = false;
@@ -323,7 +324,7 @@ class Pipe:
 									aria-label={$i18n.t('Function Name')}
 									bind:value={name}
 									required
-									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+									use:requiredMessage={() => $i18n.t('This field is required')}
 								/>
 							</Tooltip>
 						</div>
@@ -347,7 +348,7 @@ class Pipe:
 									aria-label={$i18n.t('Function ID')}
 									bind:value={id}
 									required
-									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+									use:requiredMessage={() => $i18n.t('This field is required')}
 									disabled={edit}
 								/>
 							</Tooltip>
@@ -365,7 +366,7 @@ class Pipe:
 								aria-label={$i18n.t('Function Description')}
 								bind:value={meta.description}
 								required
-								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+								use:requiredMessage={() => $i18n.t('This field is required')}
 							/>
 						</Tooltip>
 					</div>

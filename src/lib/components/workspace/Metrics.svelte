@@ -34,6 +34,7 @@
 	import Spinner from '../common/Spinner.svelte';
 	import ChartDataLabels from 'chartjs-plugin-datalabels';
 	import { getRequestToken } from '$lib/services/auth';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	// Replace date-fns with native date formatting
 	function formatDate(date: any) {
@@ -1185,7 +1186,7 @@
 								bind:value={startDate}
 								max={formatDate(new Date(Date.now() - 24 * 60 * 60 * 1000))}
 								required
-								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+								use:requiredMessage={() => $i18n.t('This field is required')}
 								on:change={handleStartDateChange}
 								class="block w-40 p-2 text-sm border border-gray-400 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
 								aria-label={$i18n.t('Start Date')}
@@ -1205,7 +1206,7 @@
 								max={formatDate(new Date())}
 								min={getMinEndDate(startDate)}
 								required
-								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+								use:requiredMessage={() => $i18n.t('This field is required')}
 								on:change={handleDatesChange}
 								class="block w-40 p-2 text-sm border border-gray-400 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
 								aria-label={$i18n.t('End Date')}

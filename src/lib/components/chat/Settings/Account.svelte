@@ -11,6 +11,7 @@
 	import { getGravatarUrl } from '$lib/apis/utils';
 	import { generateInitialsImage, canvasPixelTest, getUserTimezone } from '$lib/utils';
 	import { getRequestToken } from '$lib/services/auth';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	const i18n = getI18n();
 
@@ -242,7 +243,7 @@
 							bind:value={name}
 							aria-label={$i18n.t('Name')}
 							required
-							on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+							use:requiredMessage={() => $i18n.t('This field is required')}
 						/>
 					</div>
 				</div>

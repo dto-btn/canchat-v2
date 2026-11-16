@@ -9,6 +9,7 @@
 	import VoiceRecording from '../chat/MessageInput/VoiceRecording.svelte';
 	import Tooltip from '../common/Tooltip.svelte';
 	import { toast } from 'svelte-sonner';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	let name = '';
 	let content = '';
@@ -36,7 +37,7 @@
 					placeholder={$i18n.t('Title')}
 					required
 					aria-label={$i18n.t('Title')}
-					on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+					use:requiredMessage={() => $i18n.t('This field is required')}
 				/>
 			</div>
 		</div>

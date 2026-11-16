@@ -12,6 +12,7 @@
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import LockClosed from '$lib/components/icons/LockClosed.svelte';
 	import AccessControlModal from '../common/AccessControlModal.svelte';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	const dispatch = createEventDispatcher();
 
@@ -223,7 +224,7 @@ class Tools:
 									aria-label={$i18n.t('Tool Name')}
 									bind:value={name}
 									required
-									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+									use:requiredMessage={() => $i18n.t('This field is required')}
 								/>
 							</Tooltip>
 						</div>
@@ -260,7 +261,7 @@ class Tools:
 									bind:value={id}
 									required
 									disabled={edit}
-									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+									use:requiredMessage={() => $i18n.t('This field is required')}
 								/>
 							</Tooltip>
 						{/if}
@@ -277,7 +278,7 @@ class Tools:
 								aria-label={$i18n.t('Tool Description')}
 								bind:value={meta.description}
 								required
-								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+								use:requiredMessage={() => $i18n.t('This field is required')}
 							/>
 						</Tooltip>
 					</div>

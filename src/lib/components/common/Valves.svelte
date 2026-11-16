@@ -6,6 +6,7 @@
 	const i18n = getI18n();
 
 	import Switch from './Switch.svelte';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	export let valvesSpec: any = null;
 	export let valves: Record<string, any> = {};
@@ -92,7 +93,7 @@
 								aria-label={valvesSpec.properties[property].title}
 								autocomplete="off"
 								required
-								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+								use:requiredMessage={() => $i18n.t('This field is required')}
 								on:change={() => {
 									dispatch('change');
 								}}

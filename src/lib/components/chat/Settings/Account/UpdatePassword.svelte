@@ -4,6 +4,7 @@
 	import { toast } from 'svelte-sonner';
 	import { updateUserPassword } from '$lib/apis/auths';
 	import { getRequestToken } from '$lib/services/auth';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	const i18n = getI18n();
 
@@ -69,7 +70,7 @@
 						aria-label={$i18n.t('Enter your current password')}
 						autocomplete="current-password"
 						required
-						on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+						use:requiredMessage={() => $i18n.t('This field is required')}
 					/>
 				</div>
 			</div>
@@ -86,7 +87,7 @@
 						aria-label={$i18n.t('Enter your new password')}
 						autocomplete="new-password"
 						required
-						on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+						use:requiredMessage={() => $i18n.t('This field is required')}
 					/>
 				</div>
 			</div>
@@ -103,7 +104,7 @@
 						aria-label={$i18n.t('Confirm your new password')}
 						autocomplete="off"
 						required
-						on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+						use:requiredMessage={() => $i18n.t('This field is required')}
 					/>
 				</div>
 			</div>

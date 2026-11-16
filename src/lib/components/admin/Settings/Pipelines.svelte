@@ -21,6 +21,7 @@
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import Switch from '$lib/components/common/Switch.svelte';
 	import { getRequestToken } from '$lib/services/auth';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	const i18n: Writable<i18nType> = getI18n();
 
@@ -505,8 +506,7 @@
 																	bind:value={valves[property]}
 																	autocomplete="off"
 																	required
-																	on:invalid={(e) =>
-																		e.target.setCustomValidity($i18n.t('This field is required'))}
+																	use:requiredMessage={() => $i18n.t('This field is required')}
 																	aria-label={valves_spec.properties[property].title}
 																/>
 															{/if}

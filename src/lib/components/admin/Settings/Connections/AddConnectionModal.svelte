@@ -16,6 +16,7 @@
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import Switch from '$lib/components/common/Switch.svelte';
 	import { getRequestToken } from '$lib/services/auth';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	export let onSubmit: Function = () => {};
 	export let onDelete: Function = () => {};
@@ -204,9 +205,7 @@
 										aria-label={$i18n.t('API Base URL')}
 										autocomplete="off"
 										required
-										on:invalid={(e) =>
-											e.target.setCustomValidity($i18n.t('This field is required'))}
-										on:input={(e) => e.target.setCustomValidity('')}
+										use:requiredMessage={() => $i18n.t('This field is required')}
 									/>
 								</div>
 							</div>

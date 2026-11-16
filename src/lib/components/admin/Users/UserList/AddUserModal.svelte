@@ -15,6 +15,7 @@
 
 	import Modal from '$lib/components/common/Modal.svelte';
 	import { getRequestToken } from '$lib/services/auth';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	const i18n = getI18n();
 	const dispatch = createEventDispatcher();
@@ -201,8 +202,7 @@
 										placeholder={$i18n.t('Enter Your Role')}
 										aria-label={$i18n.t('Enter Your Role')}
 										required
-										on:invalid={(e) =>
-											e.target.setCustomValidity($i18n.t('This field is required'))}
+										use:requiredMessage={() => $i18n.t('This field is required')}
 									>
 										<option value="pending"> {$i18n.t('pending')} </option>
 										<option value="user"> {$i18n.t('user')} </option>
@@ -225,8 +225,7 @@
 										aria-label={$i18n.t('Enter Your Full Name')}
 										autocomplete="off"
 										required
-										on:invalid={(e) =>
-											e.target.setCustomValidity($i18n.t('This field is required'))}
+										use:requiredMessage={() => $i18n.t('This field is required')}
 									/>
 								</div>
 							</div>
@@ -244,8 +243,7 @@
 										placeholder={$i18n.t('Enter Your Email')}
 										aria-label={$i18n.t('Enter Your Email')}
 										required
-										on:invalid={(e) =>
-											e.target.setCustomValidity($i18n.t('This field is required'))}
+										use:requiredMessage={() => $i18n.t('This field is required')}
 									/>
 								</div>
 							</div>

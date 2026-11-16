@@ -28,6 +28,7 @@
 	import Switch from '$lib/components/common/Switch.svelte';
 	import Textarea from '$lib/components/common/Textarea.svelte';
 	import { getRequestToken } from '$lib/services/auth';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	const i18n = getI18n();
 	const getSelectValue = (event: Event) => (event.currentTarget as HTMLSelectElement).value;
@@ -325,8 +326,7 @@
 						aria-label={$i18n.t('API Base URL')}
 						bind:value={OpenAIUrl}
 						required
-						on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
-						on:input={(e) => e.target.setCustomValidity('')}
+						use:requiredMessage={() => $i18n.t('This field is required')}
 					/>
 
 					<SensitiveInput placeholder={$i18n.t('API Key')} bind:value={OpenAIKey} />
@@ -339,8 +339,7 @@
 						aria-label={$i18n.t('API Base URL')}
 						bind:value={OllamaUrl}
 						required
-						on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
-						on:input={(e) => e.target.setCustomValidity('')}
+						use:requiredMessage={() => $i18n.t('This field is required')}
 					/>
 
 					<SensitiveInput
@@ -427,8 +426,7 @@
 							placeholder={$i18n.t('Set embedding model')}
 							aria-label={$i18n.t('Set embedding model')}
 							required
-							on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
-							on:input={(e) => e.target.setCustomValidity('')}
+							use:requiredMessage={() => $i18n.t('This field is required')}
 						/>
 					</div>
 				</div>

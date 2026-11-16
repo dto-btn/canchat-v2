@@ -19,6 +19,7 @@
 	import Switch from '$lib/components/common/Switch.svelte';
 	import Textarea from '$lib/components/common/Textarea.svelte';
 	import { getRequestToken } from '$lib/services/auth';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	const dispatch = createEventDispatcher();
 
@@ -311,8 +312,7 @@
 									class="w-fit rounded-xl py-2 px-4 text-xs bg-transparent outline-none"
 									bind:value={banner.type}
 									required
-									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
-									on:input={(e) => e.target.setCustomValidity('')}
+									use:requiredMessage={() => $i18n.t('This field is required')}
 									aria-label={$i18n.t('Type')}
 								>
 									{#if banner.type == ''}
@@ -334,8 +334,7 @@
 									class="w-fit rounded-xl py-2 px-4 text-xs bg-transparent outline-none"
 									bind:value={banner.lang}
 									required
-									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
-									on:input={(e) => e.target.setCustomValidity('')}
+									use:requiredMessage={() => $i18n.t('This field is required')}
 									aria-label={$i18n.t('Language')}
 								>
 									{#if banner.lang == ''}

@@ -10,6 +10,7 @@
 
 	import Modal from '$lib/components/common/Modal.svelte';
 	import { getRequestToken } from '$lib/services/auth';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	const i18n = getI18n();
 	const dispatch = createEventDispatcher();
@@ -151,7 +152,7 @@
 									aria-label={$i18n.t('Email')}
 									autocomplete="off"
 									required
-									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+									use:requiredMessage={() => $i18n.t('This field is required')}
 									disabled={_user.id == sessionUser.id}
 								/>
 							</div>
@@ -168,7 +169,7 @@
 									aria-label={$i18n.t('Name')}
 									autocomplete="off"
 									required
-									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+									use:requiredMessage={() => $i18n.t('This field is required')}
 								/>
 							</div>
 						</div>

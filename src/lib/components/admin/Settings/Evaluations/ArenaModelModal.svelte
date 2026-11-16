@@ -13,6 +13,7 @@
 	import PencilSolid from '$lib/components/icons/PencilSolid.svelte';
 	import { toast } from 'svelte-sonner';
 	import AccessControl from '$lib/components/workspace/common/AccessControl.svelte';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	export let show = false;
 	export let edit = false;
@@ -258,9 +259,7 @@
 										aria-label={$i18n.t('Model Name')}
 										autocomplete="off"
 										required
-										on:invalid={(e) =>
-											e.target.setCustomValidity($i18n.t('This field is required'))}
-										on:input={(e) => e.target.setCustomValidity('')}
+										use:requiredMessage={() => $i18n.t('This field is required')}
 									/>
 								</div>
 							</div>
@@ -278,9 +277,7 @@
 										autocomplete="off"
 										required
 										disabled={edit}
-										on:invalid={(e) =>
-											e.target.setCustomValidity($i18n.t('This field is required'))}
-										on:input={(e) => e.target.setCustomValidity('')}
+										use:requiredMessage={() => $i18n.t('This field is required')}
 									/>
 								</div>
 							</div>

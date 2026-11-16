@@ -19,6 +19,7 @@
 	import Switch from '$lib/components/common/Switch.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import { getRequestToken } from '$lib/services/auth';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 	const dispatch = createEventDispatcher();
 
 	const i18n = getI18n();
@@ -511,7 +512,7 @@
 								aria-label={$i18n.t('ComfyUI Workflow')}
 								bind:value={config.comfyui.COMFYUI_WORKFLOW}
 								required
-								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+								use:requiredMessage={() => $i18n.t('This field is required')}
 							/>
 						{/if}
 
@@ -577,8 +578,7 @@
 													aria-label={$i18n.t('Workflow Node Key')}
 													bind:value={node.key}
 													required
-													on:invalid={(e) =>
-														e.target.setCustomValidity($i18n.t('This field is required'))}
+													use:requiredMessage={() => $i18n.t('This field is required')}
 												/>
 											</Tooltip>
 										</div>
@@ -616,7 +616,7 @@
 								aria-label={$i18n.t('API Base URL')}
 								bind:value={config.openai.OPENAI_API_BASE_URL}
 								required
-								on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+								use:requiredMessage={() => $i18n.t('This field is required')}
 							/>
 
 							<SensitiveInput
@@ -645,8 +645,7 @@
 											placeholder={$i18n.t('Select a model')}
 											aria-label={$i18n.t('Set Default Model')}
 											required
-											on:invalid={(e) =>
-												e.target.setCustomValidity($i18n.t('This field is required'))}
+											use:requiredMessage={() => $i18n.t('This field is required')}
 										/>
 
 										<datalist id="model-list">
@@ -672,7 +671,7 @@
 									aria-label={$i18n.t('Set Image Size')}
 									bind:value={imageGenerationConfig.IMAGE_SIZE}
 									required
-									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+									use:requiredMessage={() => $i18n.t('This field is required')}
 								/>
 							</Tooltip>
 						</div>
@@ -690,7 +689,7 @@
 									aria-label={$i18n.t('Set Steps')}
 									bind:value={imageGenerationConfig.IMAGE_STEPS}
 									required
-									on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+									use:requiredMessage={() => $i18n.t('This field is required')}
 								/>
 							</Tooltip>
 						</div>

@@ -24,6 +24,7 @@
 
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import OnBoarding from '$lib/components/OnBoarding.svelte';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	const i18n = getI18n();
 	const getAuthFeatures = () => /** @type {any} */ ($config?.features ?? {});
@@ -250,8 +251,7 @@
 												placeholder={$i18n.t('Enter Your Full Name')}
 												aria-label={$i18n.t('Name')}
 												required
-												on:invalid={(e) =>
-													e.target.setCustomValidity($i18n.t('This field is required'))}
+												use:requiredMessage={() => $i18n.t('This field is required')}
 											/>
 										</div>
 									{/if}
@@ -268,8 +268,7 @@
 												placeholder={$i18n.t('Enter Your Username')}
 												aria-label={$i18n.t('Username')}
 												required
-												on:invalid={(e) =>
-													e.target.setCustomValidity($i18n.t('This field is required'))}
+												use:requiredMessage={() => $i18n.t('This field is required')}
 											/>
 										</div>
 									{:else}
@@ -284,8 +283,7 @@
 												placeholder={$i18n.t('Enter Your Email')}
 												aria-label={$i18n.t('Email')}
 												required
-												on:invalid={(e) =>
-													e.target.setCustomValidity($i18n.t('This field is required'))}
+												use:requiredMessage={() => $i18n.t('This field is required')}
 											/>
 										</div>
 									{/if}
@@ -302,8 +300,7 @@
 											autocomplete="current-password"
 											name="current-password"
 											required
-											on:invalid={(e) =>
-												e.target.setCustomValidity($i18n.t('This field is required'))}
+											use:requiredMessage={() => $i18n.t('This field is required')}
 										/>
 									</div>
 								</div>

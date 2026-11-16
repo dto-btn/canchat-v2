@@ -2,6 +2,7 @@
 	import { getI18n } from '$lib/utils/context';
 
 	import Textarea from '$lib/components/common/Textarea.svelte';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	const i18n = getI18n();
 
@@ -23,7 +24,7 @@
 				aria-label={$i18n.t('Group Name')}
 				autocomplete="off"
 				required
-				on:invalid={(e) => e.target.setCustomValidity($i18n.t('This field is required'))}
+				use:requiredMessage={() => $i18n.t('This field is required')}
 			/>
 		</div>
 	</div>

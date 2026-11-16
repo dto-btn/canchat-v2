@@ -21,6 +21,7 @@
 	import ModelDeleteConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import { getRequestToken } from '$lib/services/auth';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	let modelUploadInputElement: HTMLInputElement;
 	let showModelDeleteConfirm = false;
@@ -872,9 +873,7 @@
 											on:change={() => {}}
 											accept=".gguf,.safetensors"
 											required
-											on:invalid={(e) =>
-												e.target.setCustomValidity($i18n.t('This field is required'))}
-											on:input={(e) => e.target.setCustomValidity('')}
+											use:requiredMessage={() => $i18n.t('This field is required')}
 											hidden
 											aria-label={$i18n.t('Upload a GGUF model')}
 										/>
@@ -902,9 +901,7 @@
 												: ''}"
 											type="url"
 											required
-											on:invalid={(e) =>
-												e.target.setCustomValidity($i18n.t('This field is required'))}
-											on:input={(e) => e.target.setCustomValidity('')}
+											use:requiredMessage={() => $i18n.t('This field is required')}
 											bind:value={modelFileUrl}
 											placeholder={$i18n.t('Type Hugging Face Resolve (Download) URL')}
 											aria-label={$i18n.t('Type Hugging Face Resolve (Download) URL')}
