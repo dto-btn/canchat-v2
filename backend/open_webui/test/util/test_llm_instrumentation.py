@@ -18,6 +18,7 @@ from fastapi import HTTPException
 from opentelemetry.trace import StatusCode
 from starlette.responses import StreamingResponse
 
+from open_webui import tasks as tasks_module
 from open_webui.observability import chat as chat_obs
 from open_webui.observability import llm as llm_obs
 from open_webui.routers import ollama as ollama_router
@@ -210,6 +211,8 @@ def telemetry(monkeypatch):
 
     monkeypatch.setattr(chat_obs, "_tracer", tracer_for(chat_obs.TRACER_NAME))
     monkeypatch.setattr(llm_obs, "_tracer", tracer_for(llm_obs.TRACER_NAME))
+    monkeypatch.setattr(tasks_module, "tasks", {})
+    monkeypatch.setattr(tasks_module, "_finalizers", {})
     yield t
     t.bundle.shutdown()
 

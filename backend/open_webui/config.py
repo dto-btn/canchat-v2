@@ -904,8 +904,8 @@ DEFAULT_METRIC_DEFINITIONS = [
     {
         # One value per task in ``open_webui.tasks``, recorded when it is
         # finalized: on completion, ``stop_task`` or shutdown. ``outcome`` is
-        # ``success``, ``error`` or ``cancelled``. Prometheus:
-        # ``canchat_tasks_finished_total``.
+        # ``success``, ``error`` or ``cancelled``; errors also carry
+        # ``error.type``. Prometheus: ``canchat_tasks_finished_total``.
         "name": "canchat.tasks.finished",
         "type": "counter",
         "description": "In-process background tasks finished on this instance, by outcome",

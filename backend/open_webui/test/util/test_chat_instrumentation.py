@@ -100,6 +100,9 @@ def telemetry(monkeypatch):
         "_tracer",
         lambda: t.bundle.tracer_provider.get_tracer(chat_obs.TRACER_NAME),
     )
+    # Each test gets an empty task registry, so leftovers never leak across.
+    monkeypatch.setattr(tasks_module, "tasks", {})
+    monkeypatch.setattr(tasks_module, "_finalizers", {})
     yield t
     t.bundle.shutdown()
 
@@ -513,7 +516,7 @@ async def test_background_stop_and_shutdown_finish_operation_once(
     if stop == "stop_task":
         assert (await tasks_module.stop_task(task_id))["status"] is True
     else:
-        assert await tasks_module.shutdown_tasks(timeout=5) >= 1
+        assert await tasks_module.shutdown_tasks(timeout=5) == 1
 
     assert chat.task.done()
     assert task_id not in tasks_module.tasks
@@ -535,7 +538,7 @@ async def test_shutdown_with_hung_cancel_handling_finishes_once(telemetry, monke
     await chat.complete(chat.form(stream=True, socket=True))
     await asyncio.wait_for(started.wait(), timeout=5)
 
-    assert await tasks_module.shutdown_tasks(timeout=0.05) >= 1
+    assert await tasks_module.shutdown_tasks(timeout=0.05) == 1
 
     # The handler is stuck emitting ``task-cancelled``; the registry has
     # given up on it but the operation has still ended exactly once.

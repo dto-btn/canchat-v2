@@ -11,7 +11,7 @@ operation a task delivers (e.g. a chat operation) is never left open.
 import asyncio
 import logging
 from collections.abc import Callable, Coroutine
-from typing import Any, Dict
+from typing import Any
 from uuid import uuid4
 
 from open_webui.metrics.service import MetricsService, get_metrics_service
@@ -24,14 +24,15 @@ from open_webui.observability.chat import (
 TASKS_ACTIVE = "canchat.tasks.active"
 TASKS_FINISHED = "canchat.tasks.finished"
 
-# Shutdown wait for cancelled tasks to run their cleanup before finalizing.
+# Wait for cancelled tasks to run their cleanup before finalizing them.
 SHUTDOWN_TIMEOUT_SECONDS = 5.0
+STOP_TIMEOUT_SECONDS = 5.0
 
 TaskFinalizer = Callable[[str, BaseException | None], None]
 
 # Active tasks by ID.
-tasks: Dict[str, asyncio.Task] = {}
-_finalizers: Dict[str, TaskFinalizer] = {}
+tasks: dict[str, asyncio.Task] = {}
+_finalizers: dict[str, TaskFinalizer] = {}
 
 log = logging.getLogger(__name__)
 
@@ -77,13 +78,17 @@ def _finalize(task_id: str, outcome: str, error: BaseException | None) -> bool:
         return False
     finalizer = _finalizers.pop(task_id, None)
     if outcome == OUTCOME_ERROR and error is not None:
-        log.error("Background task %s failed: %s", task_id, type(error).__qualname__)
-    _record_outcome(outcome, error)
-    if finalizer is not None:
-        try:
-            finalizer(outcome, error)
-        except Exception as e:
-            log.warning("Task finalizer failed: %s", type(e).__name__)
+        # The logging pipeline keeps frames and exception types only.
+        log.error("Background task %s failed", task_id, exc_info=error)
+    try:
+        _record_outcome(outcome, error)
+    finally:
+        # Runs even when strict mode re-raises, so the operation always ends.
+        if finalizer is not None:
+            try:
+                finalizer(outcome, error)
+            except Exception as e:
+                log.warning("Task finalizer failed: %s", type(e).__name__)
     return True
 
 
@@ -95,7 +100,7 @@ def _finalize_done(task_id: str, task: asyncio.Task) -> bool:
 
 def create_task(
     coroutine: Coroutine[Any, Any, Any], *, on_finish: TaskFinalizer | None = None
-):
+) -> tuple[str, asyncio.Task]:
     """
     Create a new asyncio task and add it to the registry.
 
@@ -125,9 +130,14 @@ def list_tasks():
     return list(tasks.keys())
 
 
-async def stop_task(task_id: str):
+async def stop_task(
+    task_id: str, timeout: float = STOP_TIMEOUT_SECONDS
+) -> dict[str, Any]:
     """
     Cancel a running task, wait for it to end and finalize it.
+
+    The task gets ``timeout`` seconds to run its cancellation handling; if it
+    is still running after that, it is finalized as cancelled.
     """
     task = tasks.get(task_id)
     if not task:
@@ -136,8 +146,16 @@ async def stop_task(task_id: str):
     task.cancel()
     # Waits without re-raising the task's result, so a cancellation of this
     # caller is not mistaken for the task's own.
-    await asyncio.wait({task})
-    _finalize_done(task_id, task)
+    _, pending = await asyncio.wait({task}, timeout=timeout)
+    if pending:
+        log.warning(
+            "Background task %s did not stop within %ss; finalized as cancelled",
+            task_id,
+            timeout,
+        )
+        _finalize(task_id, OUTCOME_CANCELLED, None)
+    else:
+        _finalize_done(task_id, task)
     return {"status": True, "message": f"Task {task_id} successfully stopped."}
 
 

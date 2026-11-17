@@ -15,7 +15,8 @@ from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 from open_webui import tasks
 from open_webui.config import DEFAULT_METRIC_DEFINITIONS
 from open_webui.metrics import service as service_module
-from open_webui.metrics.service import MetricsService
+from open_webui.metrics.service import MetricAttributeError, MetricsService
+from open_webui.test.util.canary_harness import CanaryHarness
 
 
 class Metrics:
@@ -104,20 +105,26 @@ async def test_completed_task_is_finalized_once(metrics):
 
 
 @pytest.mark.anyio
-async def test_failed_task_records_error_type_only(metrics, caplog):
+async def test_failed_task_records_error_type_only(metrics, capfd):
     finalizer = Finalizer()
 
-    async def work():
-        raise ConnectionError("secret prompt text")
+    with CanaryHarness(capfd) as harness:
 
-    _, task = tasks.create_task(work(), on_finish=finalizer)
-    await asyncio.wait({task})
-    await settle()
+        async def work():
+            raise ConnectionError(f"provider echoed {harness.canaries.prompt}")
+
+        _, task = tasks.create_task(work(), on_finish=finalizer)
+        await asyncio.wait({task})
+        await settle()
+
+        harness.assert_no_canaries()
+        (record,) = [r for r in harness.records if r.name == tasks.log.name]
+        # The traceback keeps its frames for debugging, never the message.
+        assert "test_tasks.py" in record.exc_text
+        assert "ConnectionError: [message omitted]" in record.exc_text
 
     assert finalizer.calls == [("error", "ConnectionError")]
     assert metrics.outcomes() == {outcome("error", "ConnectionError"): 1}
-    assert "ConnectionError" in caplog.text
-    assert "secret prompt text" not in caplog.text
 
 
 @pytest.mark.anyio
@@ -152,6 +159,55 @@ async def test_stop_task_finalizes_cancelled_once(metrics, swallow):
 async def test_stop_unknown_task_raises(metrics):
     with pytest.raises(ValueError):
         await tasks.stop_task("missing")
+
+
+@pytest.mark.anyio
+async def test_stop_task_finalizes_task_that_does_not_stop_in_time(metrics):
+    started = asyncio.Event()
+    release = asyncio.Event()
+    finalizer = Finalizer()
+
+    async def stubborn():
+        started.set()
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            # Slow cancellation handling, e.g. a hung socket emit.
+            await release.wait()
+
+    task_id, task = tasks.create_task(stubborn(), on_finish=finalizer)
+    await started.wait()
+
+    result = await asyncio.wait_for(tasks.stop_task(task_id, timeout=0.01), 5)
+
+    assert result["status"] is True
+    assert not task.done()
+    assert tasks.list_tasks() == []
+    assert metrics.active() == 0
+    assert finalizer.calls == [("cancelled", None)]
+
+    # The task ending later does not finalize it a second time.
+    release.set()
+    await asyncio.wait({task})
+    await settle()
+    assert finalizer.calls == [("cancelled", None)]
+    assert metrics.outcomes() == {outcome("cancelled"): 1}
+
+
+def test_finalizer_runs_when_strict_metrics_raise(metrics, monkeypatch):
+    def reject(*args, **kwargs):
+        raise MetricAttributeError("rejected")
+
+    monkeypatch.setattr(metrics.service, "record", reject)
+    finalizer = Finalizer()
+    tasks.tasks["task-id"] = object()
+    tasks._finalizers["task-id"] = finalizer
+
+    with pytest.raises(MetricAttributeError):
+        tasks._finalize("task-id", "success", None)
+
+    assert finalizer.calls == [("success", None)]
+    assert tasks.list_tasks() == []
 
 
 @pytest.mark.anyio
