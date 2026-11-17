@@ -417,6 +417,7 @@
 		ariaMessage.set($i18n.t('Message editing started.'));
 		editTextAreaElement.style.height = '';
 		editTextAreaElement.style.height = `${editTextAreaElement.scrollHeight}px`;
+		editTextAreaElement.focus();
 	};
 
 	const editMessageConfirmHandler = async () => {
@@ -663,6 +664,7 @@
 
 				{#if message.timestamp}
 					<div
+						data-reveal-on-focus
 						class=" self-center text-xs invisible group-hover:visible text-gray-400 font-medium first-letter:capitalize ml-0.5 translate-y-[1px]"
 					>
 						<Tooltip content={dayjs(message.timestamp * 1000).format('dddd, DD MMMM YYYY HH:mm')}>
@@ -956,7 +958,8 @@
 				{#if !edit}
 					{#if message.done || siblings.length > 1}
 						<div
-							class=" flex justify-start overflow-x-auto buttons text-gray-600 dark:text-gray-500 mt-0.5"
+							data-message-actions
+							class="flex flex-wrap justify-start overflow-x-auto buttons text-gray-600 dark:text-gray-500 mt-0.5"
 						>
 							{#if siblings.length > 1}
 								<div class="flex self-center min-w-fit">
@@ -1531,14 +1534,3 @@
 {#if showSuggestionModal}
 	<SuggestionModal bind:show={showSuggestionModal} />
 {/if}
-
-<style>
-	.buttons::-webkit-scrollbar {
-		display: none; /* for Chrome, Safari and Opera */
-	}
-
-	.buttons {
-		-ms-overflow-style: none; /* IE and Edge */
-		scrollbar-width: none; /* Firefox */
-	}
-</style>
