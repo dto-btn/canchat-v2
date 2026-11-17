@@ -138,7 +138,10 @@
 				<div class="  flex w-full justify-between pr-2">
 					<div class=" self-center text-xs font-medium">{$i18n.t('Enable New Sign Ups')}</div>
 
-					<Switch bind:state={adminConfig.ENABLE_SIGNUP} />
+					<Switch
+						ariaLabel={$i18n.t('Enable New Sign Ups')}
+						bind:state={adminConfig.ENABLE_SIGNUP}
+					/>
 				</div>
 
 				<div class="  my-3 flex w-full justify-between">
@@ -161,7 +164,7 @@
 				<div class=" flex w-full justify-between pr-2 my-3">
 					<div class=" self-center text-xs font-medium">{$i18n.t('Enable API Key')}</div>
 
-					<Switch bind:state={adminConfig.ENABLE_API_KEY} />
+					<Switch ariaLabel={$i18n.t('Enable API Key')} bind:state={adminConfig.ENABLE_API_KEY} />
 				</div>
 
 				{#if adminConfig?.ENABLE_API_KEY}
@@ -170,7 +173,10 @@
 							{$i18n.t('API Key Endpoint Restrictions')}
 						</div>
 
-						<Switch bind:state={adminConfig.ENABLE_API_KEY_ENDPOINT_RESTRICTIONS} />
+						<Switch
+							ariaLabel={$i18n.t('API Key Endpoint Restrictions')}
+							bind:state={adminConfig.ENABLE_API_KEY_ENDPOINT_RESTRICTIONS}
+						/>
 					</div>
 
 					{#if adminConfig?.ENABLE_API_KEY_ENDPOINT_RESTRICTIONS}
@@ -192,7 +198,7 @@
 								<a
 									href="https://docs.openwebui.com/getting-started/advanced-topics/api-endpoints"
 									target="_blank"
-									class=" text-gray-300 font-medium underline"
+									class=" font-medium underline"
 								>
 									{$i18n.t('To learn more about available endpoints, visit our documentation.')}
 								</a>
@@ -208,19 +214,28 @@
 						{$i18n.t('Show Admin Details in Account Pending Overlay')}
 					</div>
 
-					<Switch bind:state={adminConfig.SHOW_ADMIN_DETAILS} />
+					<Switch
+						ariaLabel={$i18n.t('Show Admin Details in Account Pending Overlay')}
+						bind:state={adminConfig.SHOW_ADMIN_DETAILS}
+					/>
 				</div>
 
 				<div class="my-3 flex w-full items-center justify-between pr-2">
 					<div class=" self-center text-xs font-medium">{$i18n.t('Enable Community Sharing')}</div>
 
-					<Switch bind:state={adminConfig.ENABLE_COMMUNITY_SHARING} />
+					<Switch
+						ariaLabel={$i18n.t('Enable Community Sharing')}
+						bind:state={adminConfig.ENABLE_COMMUNITY_SHARING}
+					/>
 				</div>
 
 				<div class="my-3 flex w-full items-center justify-between pr-2">
 					<div class=" self-center text-xs font-medium">{$i18n.t('Enable Message Rating')}</div>
 
-					<Switch bind:state={adminConfig.ENABLE_MESSAGE_RATING} />
+					<Switch
+						ariaLabel={$i18n.t('Enable Message Rating')}
+						bind:state={adminConfig.ENABLE_MESSAGE_RATING}
+					/>
 				</div>
 
 				<hr class=" border-gray-50 dark:border-gray-850 my-2" />
@@ -268,7 +283,7 @@
 
 					<div class="mt-2 text-xs text-gray-400 dark:text-gray-500">
 						{$i18n.t('Valid time units:')}
-						<span class=" text-gray-300 font-medium"
+						<span class=" font-medium"
 							>{$i18n.t("'s', 'm', 'h', 'd', 'w' or '-1' for no expiration.")}</span
 						>
 					</div>
@@ -294,7 +309,7 @@
 
 					<div class="mt-2 text-xs text-gray-400 dark:text-gray-500">
 						{$i18n.t('Valid time units:')}
-						<span class=" text-gray-300 font-medium"
+						<span class=" font-medium"
 							>{$i18n.t("'s', 'm', 'h', 'd', 'w'. Refresh tokens must remain finite.")}</span
 						>
 					</div>
@@ -325,7 +340,7 @@
 						{$i18n.t('Channels')} ({$i18n.t('Beta')})
 					</div>
 
-					<Switch bind:state={adminConfig.ENABLE_CHANNELS} />
+					<Switch ariaLabel={$i18n.t('Channels')} bind:state={adminConfig.ENABLE_CHANNELS} />
 				</div> -->
 			</div>
 		{/if}
@@ -339,6 +354,7 @@
 
 					<div class="mt-1">
 						<Switch
+							ariaLabel={$i18n.t('LDAP')}
 							bind:state={ENABLE_LDAP}
 							on:change={async () => {
 								updateLdapConfig(getRequestToken(), ENABLE_LDAP);
@@ -503,7 +519,7 @@
 						</div>
 						<div class="text-xs text-gray-400 dark:text-gray-500">
 							<a
-								class=" text-gray-300 font-medium underline"
+								class=" font-medium underline"
 								href="https://ldap.com/ldap-filters/"
 								target="_blank"
 							>
@@ -515,7 +531,7 @@
 								<div class="  font-medium">{$i18n.t('TLS')}</div>
 
 								<div class="mt-1">
-									<Switch bind:state={LDAP_SERVER.use_tls} />
+									<Switch ariaLabel={$i18n.t('TLS')} bind:state={LDAP_SERVER.use_tls} />
 								</div>
 							</div>
 							{#if LDAP_SERVER.use_tls}

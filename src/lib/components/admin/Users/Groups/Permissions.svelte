@@ -99,7 +99,7 @@
 			<div class="flex justify-between items-center text-xs pr-2">
 				<div class=" text-xs font-medium">{$i18n.t('Model Filtering')}</div>
 
-				<Switch bind:state={permissions.model.filter} />
+				<Switch ariaLabel={$i18n.t('Model Filtering')} bind:state={permissions.model.filter} />
 			</div>
 		</div>
 
@@ -203,21 +203,24 @@
 			<div class=" self-center text-xs font-medium">
 				{$i18n.t('Models Access')}
 			</div>
-			<Switch bind:state={permissions.workspace.models} />
+			<Switch ariaLabel={$i18n.t('Models Access')} bind:state={permissions.workspace.models} />
 		</div>
 
 		<div class="  flex w-full justify-between my-2 pr-2">
 			<div class=" self-center text-xs font-medium">
 				{$i18n.t('Knowledge Access')}
 			</div>
-			<Switch bind:state={permissions.workspace.knowledge} />
+			<Switch
+				ariaLabel={$i18n.t('Knowledge Access')}
+				bind:state={permissions.workspace.knowledge}
+			/>
 		</div>
 
 		<div class="  flex w-full justify-between my-2 pr-2">
 			<div class=" self-center text-xs font-medium">
 				{$i18n.t('Prompts Access')}
 			</div>
-			<Switch bind:state={permissions.workspace.prompts} />
+			<Switch ariaLabel={$i18n.t('Prompts Access')} bind:state={permissions.workspace.prompts} />
 		</div>
 
 		<div class=" ">
@@ -231,7 +234,7 @@
 				<div class=" self-center text-xs font-medium">
 					{$i18n.t('Tools Access')}
 				</div>
-				<Switch bind:state={permissions.workspace.tools} />
+				<Switch ariaLabel={$i18n.t('Tools Access')} bind:state={permissions.workspace.tools} />
 			</Tooltip>
 		</div>
 	</div>
@@ -246,7 +249,7 @@
 				{$i18n.t('Allow Chat Controls')}
 			</div>
 
-			<Switch bind:state={permissions.chat.controls} />
+			<Switch ariaLabel={$i18n.t('Allow Chat Controls')} bind:state={permissions.chat.controls} />
 		</div>
 
 		<div class="  flex w-full justify-between my-2 pr-2">
@@ -254,7 +257,7 @@
 				{$i18n.t('Allow File Upload')}
 			</div>
 
-			<Switch bind:state={permissions.chat.file_upload} />
+			<Switch ariaLabel={$i18n.t('Allow File Upload')} bind:state={permissions.chat.file_upload} />
 		</div>
 
 		<div class="  flex w-full justify-between my-2 pr-2">
@@ -262,7 +265,7 @@
 				{$i18n.t('Allow Chat Delete')}
 			</div>
 
-			<Switch bind:state={permissions.chat.delete} />
+			<Switch ariaLabel={$i18n.t('Allow Chat Delete')} bind:state={permissions.chat.delete} />
 		</div>
 
 		<div class="  flex w-full justify-between my-2 pr-2">
@@ -270,7 +273,7 @@
 				{$i18n.t('Allow Chat Edit')}
 			</div>
 
-			<Switch bind:state={permissions.chat.edit} />
+			<Switch ariaLabel={$i18n.t('Allow Chat Edit')} bind:state={permissions.chat.edit} />
 		</div>
 
 		<div class="  flex w-full justify-between my-2 pr-2">
@@ -278,7 +281,7 @@
 				{$i18n.t('Allow Temporary Chat')}
 			</div>
 
-			<Switch bind:state={permissions.chat.temporary} />
+			<Switch ariaLabel={$i18n.t('Allow Temporary Chat')} bind:state={permissions.chat.temporary} />
 		</div>
 	</div>
 
@@ -292,7 +295,7 @@
 				{$i18n.t('Web Search')}
 			</div>
 
-			<Switch bind:state={permissions.features.web_search} />
+			<Switch ariaLabel={$i18n.t('Web Search')} bind:state={permissions.features.web_search} />
 		</div>
 
 		<div class="  flex w-full justify-between my-2 pr-2">
@@ -300,7 +303,10 @@
 				{$i18n.t('Image Generation')}
 			</div>
 
-			<Switch bind:state={permissions.features.image_generation} />
+			<Switch
+				ariaLabel={$i18n.t('Image Generation')}
+				bind:state={permissions.features.image_generation}
+			/>
 		</div>
 	</div>
 
@@ -320,7 +326,7 @@
 					{$i18n.t('MCP: Current Time')}
 				</div>
 
-				<Switch bind:state={permissions.mcp.time_server} />
+				<Switch ariaLabel={$i18n.t('MCP: Current Time')} bind:state={permissions.mcp.time_server} />
 			</div>
 
 			<div class="  flex w-full justify-between my-2 pr-2">
@@ -328,7 +334,10 @@
 					{$i18n.t('MCP: News Headlines')}
 				</div>
 
-				<Switch bind:state={permissions.mcp.news_server} />
+				<Switch
+					ariaLabel={$i18n.t('MCP: News Headlines')}
+					bind:state={permissions.mcp.news_server}
+				/>
 			</div>
 
 			{#each sharepointServers as serverName}
@@ -338,7 +347,10 @@
 						{$i18n.t('MCP: {{dept}} SharePoint', { dept })}
 					</div>
 
-					<Switch bind:state={permissions.mcp[serverName]} />
+					<Switch
+						ariaLabel={$i18n.t('MCP: {{dept}} SharePoint', { dept })}
+						bind:state={permissions.mcp[serverName]}
+					/>
 				</div>
 			{/each}
 		</div>

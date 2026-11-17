@@ -235,7 +235,7 @@
 
 							<div class="flex flex-col flex-shrink-0 self-end">
 								<Tooltip content={enable ? $i18n.t('Enabled') : $i18n.t('Disabled')}>
-									<Switch bind:state={enable} />
+									<Switch ariaLabel={$i18n.t('Enable Connection')} bind:state={enable} />
 								</Tooltip>
 							</div>
 						</div>

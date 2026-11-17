@@ -179,7 +179,10 @@
 					</div>
 
 					<Tooltip content={$i18n.t('Enable autocomplete generation for chat messages')}>
-						<Switch bind:state={taskConfig.ENABLE_AUTOCOMPLETE_GENERATION} />
+						<Switch
+							ariaLabel={$i18n.t('Autocomplete Generation')}
+							bind:state={taskConfig.ENABLE_AUTOCOMPLETE_GENERATION}
+						/>
 					</Tooltip>
 				</div>
 
@@ -210,7 +213,10 @@
 						{$i18n.t('Tags Generation')}
 					</div>
 
-					<Switch bind:state={taskConfig.ENABLE_TAGS_GENERATION} />
+					<Switch
+						ariaLabel={$i18n.t('Tags Generation')}
+						bind:state={taskConfig.ENABLE_TAGS_GENERATION}
+					/>
 				</div>
 
 				{#if taskConfig.ENABLE_TAGS_GENERATION}
@@ -239,7 +245,10 @@
 						{$i18n.t('Retrieval Query Generation')}
 					</div>
 
-					<Switch bind:state={taskConfig.ENABLE_RETRIEVAL_QUERY_GENERATION} />
+					<Switch
+						ariaLabel={$i18n.t('Retrieval Query Generation')}
+						bind:state={taskConfig.ENABLE_RETRIEVAL_QUERY_GENERATION}
+					/>
 				</div>
 
 				<div class="my-3 flex w-full items-center justify-between">
@@ -247,7 +256,10 @@
 						{$i18n.t('Web Search Query Generation')}
 					</div>
 
-					<Switch bind:state={taskConfig.ENABLE_SEARCH_QUERY_GENERATION} />
+					<Switch
+						ariaLabel={$i18n.t('Web Search Query Generation')}
+						bind:state={taskConfig.ENABLE_SEARCH_QUERY_GENERATION}
+					/>
 				</div>
 
 				<div class="">
@@ -366,7 +378,7 @@
 
 								<div class="relative top-1.5 -left-2">
 									<Tooltip content={$i18n.t('Dismissible')} className="flex h-fit items-center">
-										<Switch bind:state={banner.dismissible} />
+										<Switch ariaLabel={$i18n.t('Dismissible')} bind:state={banner.dismissible} />
 									</Tooltip>
 								</div>
 							</div>

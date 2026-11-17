@@ -79,7 +79,10 @@
 							{$i18n.t('Enable Web Search')}
 						</div>
 
-						<Switch bind:state={webConfig.search.enabled} />
+						<Switch
+							ariaLabel={$i18n.t('Enable Web Search')}
+							bind:state={webConfig.search.enabled}
+						/>
 					</div>
 				</div>
 
@@ -99,7 +102,10 @@
 										'Default to segmented retrieval for focused and relevant content extraction, this is recommended for most cases.'
 									)}
 						>
-							<Switch bind:state={webConfig.search.bypass_embedding_and_retrieval} />
+							<Switch
+								ariaLabel={$i18n.t('Bypass Embedding and Retrieval')}
+								bind:state={webConfig.search.bypass_embedding_and_retrieval}
+							/>
 						</Tooltip>
 					</div>
 				</div>

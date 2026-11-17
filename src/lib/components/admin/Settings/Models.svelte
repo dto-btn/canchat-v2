@@ -273,6 +273,7 @@
 									content={(model?.is_active ?? true) ? $i18n.t('Enabled') : $i18n.t('Disabled')}
 								>
 									<Switch
+										ariaLabel={model.name}
 										state={model.is_active}
 										on:change={async () => {
 											toggleModelHandler(model);

@@ -1064,7 +1064,7 @@
 						{params.use_mmap ? 'Enabled' : 'Disabled'}
 					</div>
 					<div class=" pr-2">
-						<Switch bind:state={params.use_mmap} />
+						<Switch ariaLabel={$i18n.t('use_mmap (Ollama)')} bind:state={params.use_mmap} />
 					</div>
 				</div>
 			{/if}
@@ -1106,7 +1106,7 @@
 					</div>
 
 					<div class=" pr-2">
-						<Switch bind:state={params.use_mlock} />
+						<Switch ariaLabel={$i18n.t('use_mlock (Ollama)')} bind:state={params.use_mlock} />
 					</div>
 				</div>
 			{/if}

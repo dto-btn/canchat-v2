@@ -192,6 +192,7 @@
 						{$i18n.t('Enable Chat Lifetime')}
 					</div>
 					<Switch
+						ariaLabel={$i18n.t('Enable Chat Lifetime')}
 						state={config.enabled}
 						on:change={(e) => {
 							config.enabled = e.detail;
@@ -253,6 +254,7 @@
 							{$i18n.t('Preserve Pinned Chats')}
 						</div>
 						<Switch
+							ariaLabel={$i18n.t('Preserve Pinned Chats')}
 							state={config.preserve_pinned}
 							on:change={(e) => {
 								config.preserve_pinned = e.detail;
@@ -272,6 +274,7 @@
 							{$i18n.t('Preserve Archived Chats')}
 						</div>
 						<Switch
+							ariaLabel={$i18n.t('Preserve Archived Chats')}
 							state={config.preserve_archived}
 							on:change={(e) => {
 								config.preserve_archived = e.detail;

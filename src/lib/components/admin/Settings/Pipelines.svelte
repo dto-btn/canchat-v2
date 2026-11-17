@@ -495,7 +495,10 @@
 																	</div>
 
 																	<div class=" pr-2">
-																		<Switch bind:state={valves[property]} />
+																		<Switch
+																			ariaLabel={valves_spec.properties[property].title}
+																			bind:state={valves[property]}
+																		/>
 																	</div>
 																</div>
 															{:else}

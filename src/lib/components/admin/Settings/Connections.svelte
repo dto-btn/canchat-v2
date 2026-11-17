@@ -203,6 +203,7 @@
 						<div class="flex items-center">
 							<div class="">
 								<Switch
+									ariaLabel={$i18n.t('OpenAI API')}
 									bind:state={ENABLE_OPENAI_API}
 									on:change={async () => {
 										updateOpenAIHandler();
@@ -266,6 +267,7 @@
 
 					<div class="mt-1">
 						<Switch
+							ariaLabel={$i18n.t('Ollama API')}
 							bind:state={ENABLE_OLLAMA_API}
 							on:change={async () => {
 								updateOllamaHandler();
@@ -316,7 +318,7 @@
 						<div class="mt-1 text-xs text-gray-400 dark:text-gray-500">
 							{$i18n.t('Trouble accessing Ollama?')}
 							<a
-								class=" text-gray-300 font-medium underline"
+								class=" font-medium underline"
 								href="https://github.com/open-webui/open-webui#troubleshooting"
 								target="_blank"
 							>

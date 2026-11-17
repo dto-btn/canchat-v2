@@ -183,15 +183,11 @@
 							toggleNotification();
 						}}
 						type="button"
-						aria-labelledby="notification-label"
-						aria-pressed={notificationEnabled}
-						aria-label={$i18n.t('Toggle Notification Setting')}
+						aria-labelledby="notification-label notification-state"
 					>
-						{#if notificationEnabled === true}
-							<span class="ml-2 self-center">{$i18n.t('On')}</span>
-						{:else}
-							<span class="ml-2 self-center">{$i18n.t('Off')}</span>
-						{/if}
+						<span id="notification-state" class="ml-2 self-center">
+							{notificationEnabled === true ? $i18n.t('On') : $i18n.t('Off')}
+						</span>
 					</button>
 				</div>
 			</div>

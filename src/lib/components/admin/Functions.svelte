@@ -213,6 +213,7 @@
 			<a
 				class=" px-2 py-2 rounded-xl hover:bg-gray-700/10 dark:hover:bg-gray-100/10 dark:text-gray-300 dark:hover:text-white transition font-medium text-sm flex items-center space-x-1"
 				href="/admin/functions/create"
+				aria-label={$i18n.t('Create Function')}
 			>
 				<Plus className="size-3.5" />
 			</a>
@@ -358,6 +359,7 @@
 				<div class=" self-center mx-1">
 					<Tooltip content={func.is_active ? $i18n.t('Enabled') : $i18n.t('Disabled')}>
 						<Switch
+							ariaLabel={func.name}
 							bind:state={func.is_active}
 							on:change={async (e) => {
 								toggleFunctionById(getRequestToken(), func.id);

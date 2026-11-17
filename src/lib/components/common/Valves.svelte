@@ -77,6 +77,7 @@
 
 								<div class=" pr-2">
 									<Switch
+										ariaLabel={valvesSpec.properties[property].title}
 										bind:state={valves[property]}
 										on:change={() => {
 											dispatch('change');

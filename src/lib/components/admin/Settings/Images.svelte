@@ -245,6 +245,7 @@
 
 						<div class="px-1">
 							<Switch
+								ariaLabel={$i18n.t('Image Generation (Experimental)')}
 								bind:state={config.enabled}
 								on:change={(e) => {
 									const enabled = e.detail;
@@ -279,7 +280,10 @@
 					<div class=" py-1 flex w-full justify-between">
 						<div class=" self-center text-xs font-medium">{$i18n.t('Image Prompt Generation')}</div>
 						<div class="px-1">
-							<Switch bind:state={config.prompt_generation} />
+							<Switch
+								ariaLabel={$i18n.t('Image Prompt Generation')}
+								bind:state={config.prompt_generation}
+							/>
 						</div>
 					</div>
 				{/if}
@@ -351,7 +355,7 @@
 						<div class="mt-2 text-xs text-gray-400 dark:text-gray-500">
 							{$i18n.t('Include `--api` flag when running stable-diffusion-webui')}
 							<a
-								class=" text-gray-300 font-medium"
+								class=" font-medium underline"
 								href="https://github.com/AUTOMATIC1111/stable-diffusion-webui/discussions/3734"
 								target="_blank"
 							>
@@ -373,7 +377,7 @@
 						<div class="mt-2 text-xs text-gray-400 dark:text-gray-500">
 							{$i18n.t('Include `--api-auth` flag when running stable-diffusion-webui')}
 							<a
-								class=" text-gray-300 font-medium"
+								class=" font-medium underline"
 								href="https://github.com/AUTOMATIC1111/stable-diffusion-webui/discussions/13993"
 								target="_blank"
 							>

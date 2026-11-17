@@ -1,5 +1,8 @@
-import { test, expect } from '../../../src/fixtures/base-fixture';
+import type { Page, TestInfo } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { test, expect } from '../../../src/fixtures/base-fixture';
+
+const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice'];
 
 /**
  * Summarize all aXe violations for logging.
@@ -45,39 +48,75 @@ function logAxeResults(label: string, results: Awaited<ReturnType<AxeBuilder['an
 	}
 }
 
-test.describe('Accessibility (aXe)', () => {
-	test.setTimeout(60000);
+/**
+ * Run aXe on the current page, log and attach the results to the HTML report,
+ * and return only the critical + serious violations (the ones that fail the test).
+ */
+async function runAxe(page: Page, label: string, testInfo: TestInfo) {
+	const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
 
-	// Tag with @a11y to allow running a11y tests in isolation
-	test('Auth page should have no critical accessibility violations @a11y', async ({
-		guestPage
-	}) => {
-		const results = await new AxeBuilder({ page: guestPage.page })
-			.withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice'])
-			.analyze();
-
-		logAxeResults('Auth Page', results);
-
-		// Fail only on critical + serious
-		const criticalViolations = results.violations.filter(
-			(v) => v.impact === 'critical' || v.impact === 'serious'
-		);
-
-		expect(criticalViolations).toEqual([]);
+	logAxeResults(label, results);
+	await testInfo.attach(`${label.toLowerCase().replace(/\s+/g, '-')}-axe.json`, {
+		body: JSON.stringify(
+			{ violations: results.violations, incomplete: results.incomplete },
+			null,
+			2
+		),
+		contentType: 'application/json'
 	});
 
-	test('Chat page should have no critical accessibility violations @a11y', async ({ userPage }) => {
-		const results = await new AxeBuilder({ page: userPage.page })
-			.withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice'])
-			.analyze();
+	return results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious');
+}
 
-		logAxeResults('Chat Page', results);
+// Tag with @a11y to allow running a11y tests in isolation
+test.describe('Accessibility (aXe) @a11y', () => {
+	test.setTimeout(60000);
 
-		// Fail only on critical + serious
-		const criticalViolations = results.violations.filter(
-			(v) => v.impact === 'critical' || v.impact === 'serious'
-		);
+	test('Auth page should have no critical accessibility violations', async ({
+		guestPage
+	}, testInfo) => {
+		// The auth form only renders once the page's onMount sets `loaded`
+		await expect(guestPage.page.getByRole('main')).toBeVisible();
 
-		expect(criticalViolations).toEqual([]);
+		expect(await runAxe(guestPage.page, 'Auth Page', testInfo)).toEqual([]);
+	});
+
+	test('Chat page should have no critical accessibility violations', async ({
+		userPage
+	}, testInfo) => {
+		await expect(userPage.page.locator('#chat-input')).toBeVisible();
+		await userPage.dismissBlockingModal();
+
+		expect(await runAxe(userPage.page, 'Chat Page', testInfo)).toEqual([]);
+	});
+
+	test('Settings modal should have no critical accessibility violations', async ({
+		userPage
+	}, testInfo) => {
+		await userPage.openGlobalSettings();
+		await expect(userPage.page.locator('div.modal')).toBeVisible();
+		await userPage.waitToSettle(500);
+
+		expect(await runAxe(userPage.page, 'Settings Modal', testInfo)).toEqual([]);
+	});
+
+	test('Workspace page should have no critical accessibility violations', async ({
+		adminPage
+	}, testInfo) => {
+		await adminPage.goto('/workspace/models');
+		await expect(adminPage.page.locator('a[href="/workspace/models"]').first()).toBeVisible();
+		await adminPage.waitToSettle(500);
+
+		expect(await runAxe(adminPage.page, 'Workspace Page', testInfo)).toEqual([]);
+	});
+
+	test('Admin settings page should have no critical accessibility violations', async ({
+		adminPage
+	}, testInfo) => {
+		await adminPage.goto('/admin/settings');
+		await expect(adminPage.page.locator('#admin-settings-tabs-container')).toBeVisible();
+		await adminPage.waitToSettle(500);
+
+		expect(await runAxe(adminPage.page, 'Admin Settings Page', testInfo)).toEqual([]);
 	});
 });

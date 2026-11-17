@@ -405,7 +405,7 @@
 							? 'Inject entire contents as context for comprehensive processing, this is recommended for complex queries.'
 							: 'Default to segmented retrieval for focused and relevant content extraction, this is recommended for most cases.'}
 					>
-						<Switch bind:state={RAG_FULL_CONTEXT} />
+						<Switch ariaLabel={$i18n.t('Full Context Mode')} bind:state={RAG_FULL_CONTEXT} />
 					</Tooltip>
 				</div>
 			</div>
@@ -625,7 +625,10 @@
 			<div class="flex justify-between items-center text-xs">
 				<div class="text-xs font-medium">{$i18n.t('Enable Google Drive')}</div>
 				<div>
-					<Switch bind:state={enableGoogleDriveIntegration} />
+					<Switch
+						ariaLabel={$i18n.t('Enable Google Drive')}
+						bind:state={enableGoogleDriveIntegration}
+					/>
 				</div>
 			</div>
 		</div>
@@ -759,7 +762,7 @@
 					<div class=" text-xs font-medium">{$i18n.t('PDF Extract Images (OCR)')}</div>
 
 					<div>
-						<Switch bind:state={pdfExtractImages} />
+						<Switch ariaLabel={$i18n.t('PDF Extract Images (OCR)')} bind:state={pdfExtractImages} />
 					</div>
 				</div>
 			</div>
