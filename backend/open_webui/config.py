@@ -902,6 +902,16 @@ DEFAULT_METRIC_DEFINITIONS = [
         "unit": "{task}",
     },
     {
+        # One value per task in ``open_webui.tasks``, recorded when it is
+        # finalized: on completion, ``stop_task`` or shutdown. ``outcome`` is
+        # ``success``, ``error`` or ``cancelled``. Prometheus:
+        # ``canchat_tasks_finished_total``.
+        "name": "canchat.tasks.finished",
+        "type": "counter",
+        "description": "In-process background tasks finished on this instance, by outcome",
+        "unit": "{task}",
+    },
+    {
         # One value per provider generation (``llm.chat``), however many
         # network attempts it takes. Prometheus: ``canchat_llm_requests_total``.
         "name": "canchat.llm.requests",

@@ -2189,18 +2189,12 @@ async def process_chat_response(
             if response.background is not None:
                 await response.background()
 
-        def finish_unstarted_operation(task):
-            # Covers a task that ended before reaching a finish point; a no-op
-            # otherwise. Retrieving the exception also avoids asyncio's
-            # "exception was never retrieved" warning.
-            if task.cancelled():
-                operation.finish(OUTCOME_CANCELLED)
-            else:
-                operation.finish(OUTCOME_ERROR, task.exception())
-
-        # background_tasks.add_task(post_response_handler, response, events)
-        task_id, task = create_task(post_response_handler(response, events))
-        task.add_done_callback(finish_unstarted_operation)
+        # The registry finalizes the task once, including a task cancelled
+        # before it started or still running at shutdown; finishing an
+        # operation the handler already finished is a no-op.
+        task_id, _ = create_task(
+            post_response_handler(response, events), on_finish=operation.finish
+        )
         return {"status": True, "task_id": task_id}
 
     else:

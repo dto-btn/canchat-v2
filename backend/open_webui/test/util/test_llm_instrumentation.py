@@ -194,9 +194,9 @@ class LLMChat(Chat):
 
         create_task = middleware.create_task
 
-        def record_handoff(coroutine):
+        def record_handoff(coroutine, **kwargs):
             self.handoff_ns = time.time_ns()
-            return create_task(coroutine)
+            return create_task(coroutine, **kwargs)
 
         monkeypatch.setattr(middleware, "create_task", record_handoff)
 

@@ -21,11 +21,13 @@ from opentelemetry.trace import StatusCode
 from starlette.responses import StreamingResponse
 
 import open_webui.main as main
+from open_webui import tasks as tasks_module
 from open_webui.config import DEFAULT_METRIC_DEFINITIONS
 from open_webui.constants import TASKS
 from open_webui.metrics.service import MetricsService
 from open_webui.observability import chat as chat_obs
 from open_webui.observability.providers import OTelSettings, create_providers
+from open_webui.tasks import create_task as real_create_task
 from open_webui.utils import middleware
 
 MODEL_ID = "test-model"
@@ -111,11 +113,14 @@ class Chat:
         self.retrieved = []
         self.titles = []
         self.task = None
+        self.hang_on_cancel = None
         self.query = query
         self.doc = doc
 
         async def emitter(event):
             self.events.append(event)
+            if self.hang_on_cancel is not None and event == {"type": "task-cancelled"}:
+                await self.hang_on_cancel.wait()
 
         async def generate_queries(request, form_data, user):
             return {
@@ -146,8 +151,8 @@ class Chat:
             self.titles.append(form_data["chat_id"])
             return {"choices": [{"message": {"content": "Title"}}]}
 
-        def create_task(coroutine):
-            self.task = asyncio.create_task(coroutine)
+        def create_task(coroutine, **kwargs):
+            _, self.task = real_create_task(coroutine, **kwargs)
             return "task-id", self.task
 
         message_state = {"content": "", "model": MODEL_ID, "id": "message-1"}
@@ -481,6 +486,68 @@ async def test_background_cancellation_is_recorded_once(telemetry, monkeypatch):
     assert "chat.generate_title" not in telemetry.spans()
     assert {"type": "task-cancelled"} in chat.events
     assert dict(single_point(telemetry).attributes)["outcome"] == "cancelled"
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("stop", ["stop_task", "shutdown"])
+async def test_background_stop_and_shutdown_finish_operation_once(
+    telemetry, monkeypatch, stop
+):
+    chat = Chat(monkeypatch, telemetry.metrics)
+    never = asyncio.Event()
+    started = asyncio.Event()
+    chat.respond_with(sse_response(("a", "b"), block=never, started=started))
+    finished = []
+    finish = chat_obs.ChatOperation.finish
+
+    def record_finish(self, *args, **kwargs):
+        if not self.finished:
+            finished.append(args)
+        return finish(self, *args, **kwargs)
+
+    monkeypatch.setattr(chat_obs.ChatOperation, "finish", record_finish)
+
+    await chat.complete(chat.form(stream=True, socket=True))
+    await asyncio.wait_for(started.wait(), timeout=5)
+    (task_id,) = [i for i, t in tasks_module.tasks.items() if t is chat.task]
+    if stop == "stop_task":
+        assert (await tasks_module.stop_task(task_id))["status"] is True
+    else:
+        assert await tasks_module.shutdown_tasks(timeout=5) >= 1
+
+    assert chat.task.done()
+    assert task_id not in tasks_module.tasks
+    assert finished == [("cancelled",)]
+    operation = telemetry.spans()["chat.operation"]
+    assert operation.attributes["canchat.outcome"] == "cancelled"
+    assert "chat.generate_title" not in telemetry.spans()
+    assert {"type": "task-cancelled"} in chat.events
+    assert dict(single_point(telemetry).attributes)["outcome"] == "cancelled"
+
+
+@pytest.mark.anyio
+async def test_shutdown_with_hung_cancel_handling_finishes_once(telemetry, monkeypatch):
+    chat = Chat(monkeypatch, telemetry.metrics)
+    chat.hang_on_cancel = asyncio.Event()
+    never = asyncio.Event()
+    started = asyncio.Event()
+    chat.respond_with(sse_response(("a", "b"), block=never, started=started))
+    await chat.complete(chat.form(stream=True, socket=True))
+    await asyncio.wait_for(started.wait(), timeout=5)
+
+    assert await tasks_module.shutdown_tasks(timeout=0.05) >= 1
+
+    # The handler is stuck emitting ``task-cancelled``; the registry has
+    # given up on it but the operation has still ended exactly once.
+    assert not chat.task.done()
+    assert chat.task not in tasks_module.tasks.values()
+    operation = telemetry.spans()["chat.operation"]
+    assert operation.attributes["canchat.outcome"] == "cancelled"
+    assert dict(single_point(telemetry).attributes)["outcome"] == "cancelled"
+
+    chat.hang_on_cancel.set()
+    await asyncio.gather(chat.task, return_exceptions=True)
+    assert single_point(telemetry).count == 1
 
 
 @pytest.mark.anyio

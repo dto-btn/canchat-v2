@@ -342,7 +342,7 @@ from open_webui.utils.auth import (
 from open_webui.utils.oauth import oauth_manager
 from open_webui.utils.security_headers import SecurityHeadersMiddleware
 
-from open_webui.tasks import stop_task, list_tasks  # Import from tasks.py
+from open_webui.tasks import stop_task, list_tasks, shutdown_tasks
 
 if SAFE_MODE:
     print("SAFE MODE ENABLED")
@@ -423,7 +423,7 @@ async def lifespan(app: FastAPI):
     # Initialize metrics service
     try:
         from open_webui.metrics.service import MetricsService, set_metrics_service
-        from open_webui.tasks import tasks as active_tasks
+        from open_webui.tasks import register_task_metrics
 
         # meter imported earlier than fastapi to ensure it's set up correctly.
         app.state.metrics_meter = meter
@@ -431,10 +431,7 @@ async def lifespan(app: FastAPI):
             app.state.metrics_meter, METRIC_DEFINITIONS
         )
         set_metrics_service(app.state.metrics_service)
-        if app.state.metrics_service.has_instrument("canchat.tasks.active"):
-            app.state.metrics_service.register_callback(
-                "canchat.tasks.active", lambda: [(len(active_tasks), None)]
-            )
+        register_task_metrics(app.state.metrics_service)
 
         log.info(
             f"Metrics service initialized with the following meter: {app.state.metrics_meter.name}"
@@ -518,6 +515,12 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        # Finalize in-flight generations before telemetry is flushed below.
+        try:
+            await shutdown_tasks()
+        except Exception as e:
+            log.error(f"Error shutting down background tasks: {type(e).__name__}")
+
         # Cancel background tasks if they're still running
         if not wiki_init_task.done():
             log.info("Cancelling Wikipedia grounding initialization task")
