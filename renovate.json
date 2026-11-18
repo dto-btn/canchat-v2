@@ -12,6 +12,6 @@
 	"dependencyDashboard": true,
 	"dependencyDashboardApproval": true,
 	"vulnerabilityAlerts": {
-    	"dependencyDashboardApproval": true
-  	}
+      "dependencyDashboardApproval": true
+  }
 }
