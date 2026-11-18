@@ -193,6 +193,7 @@
 					class=" w-full text-sm pr-4 py-1 rounded-r-xl outline-none bg-transparent"
 					bind:value={query}
 					placeholder={$i18n.t('Search Tools')}
+					aria-label={$i18n.t('Search Tools')}
 				/>
 			</div>
 
@@ -200,6 +201,7 @@
 				<a
 					class=" px-2 py-2 rounded-xl hover:bg-gray-700/10 dark:hover:bg-gray-100/10 dark:text-gray-300 dark:hover:text-white transition font-medium text-sm flex items-center space-x-1"
 					href="/workspace/tools/create"
+					aria-label={$i18n.t('Create Tool')}
 				>
 					<Plus className="size-3.5" />
 				</a>
@@ -368,6 +370,7 @@
 					type="file"
 					accept=".json"
 					hidden
+					aria-label={$i18n.t('Import Tools')}
 					on:change={() => {
 						showConfirm = true;
 					}}

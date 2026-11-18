@@ -19,6 +19,7 @@
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import { getRequestToken } from '$lib/services/auth';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	const i18n = getI18n();
 
@@ -137,7 +138,10 @@
 				<div class="  flex w-full justify-between pr-2">
 					<div class=" self-center text-xs font-medium">{$i18n.t('Enable New Sign Ups')}</div>
 
-					<Switch bind:state={adminConfig.ENABLE_SIGNUP} />
+					<Switch
+						ariaLabel={$i18n.t('Enable New Sign Ups')}
+						bind:state={adminConfig.ENABLE_SIGNUP}
+					/>
 				</div>
 
 				<div class="  my-3 flex w-full justify-between">
@@ -146,7 +150,8 @@
 						<select
 							class="dark:bg-gray-900 w-fit pr-8 rounded px-2 text-xs bg-transparent outline-none text-right"
 							bind:value={adminConfig.DEFAULT_USER_ROLE}
-							placeholder="Select a role"
+							placeholder={$i18n.t('Select a role')}
+							aria-label={$i18n.t('Default User Role')}
 						>
 							<option value="pending">{$i18n.t('pending')}</option>
 							<option value="user">{$i18n.t('user')}</option>
@@ -159,7 +164,7 @@
 				<div class=" flex w-full justify-between pr-2 my-3">
 					<div class=" self-center text-xs font-medium">{$i18n.t('Enable API Key')}</div>
 
-					<Switch bind:state={adminConfig.ENABLE_API_KEY} />
+					<Switch ariaLabel={$i18n.t('Enable API Key')} bind:state={adminConfig.ENABLE_API_KEY} />
 				</div>
 
 				{#if adminConfig?.ENABLE_API_KEY}
@@ -168,7 +173,10 @@
 							{$i18n.t('API Key Endpoint Restrictions')}
 						</div>
 
-						<Switch bind:state={adminConfig.ENABLE_API_KEY_ENDPOINT_RESTRICTIONS} />
+						<Switch
+							ariaLabel={$i18n.t('API Key Endpoint Restrictions')}
+							bind:state={adminConfig.ENABLE_API_KEY_ENDPOINT_RESTRICTIONS}
+						/>
 					</div>
 
 					{#if adminConfig?.ENABLE_API_KEY_ENDPOINT_RESTRICTIONS}
@@ -181,6 +189,7 @@
 								class="w-full mt-1 rounded-lg text-sm dark:text-gray-300 bg-transparent outline-none"
 								type="text"
 								placeholder={`e.g.) /api/v1/messages, /api/v1/channels`}
+								aria-label={$i18n.t('Allowed Endpoints')}
 								bind:value={adminConfig.API_KEY_ALLOWED_ENDPOINTS}
 							/>
 
@@ -189,7 +198,7 @@
 								<a
 									href="https://docs.openwebui.com/getting-started/advanced-topics/api-endpoints"
 									target="_blank"
-									class=" text-gray-300 font-medium underline"
+									class=" font-medium underline"
 								>
 									{$i18n.t('To learn more about available endpoints, visit our documentation.')}
 								</a>
@@ -205,19 +214,28 @@
 						{$i18n.t('Show Admin Details in Account Pending Overlay')}
 					</div>
 
-					<Switch bind:state={adminConfig.SHOW_ADMIN_DETAILS} />
+					<Switch
+						ariaLabel={$i18n.t('Show Admin Details in Account Pending Overlay')}
+						bind:state={adminConfig.SHOW_ADMIN_DETAILS}
+					/>
 				</div>
 
 				<div class="my-3 flex w-full items-center justify-between pr-2">
 					<div class=" self-center text-xs font-medium">{$i18n.t('Enable Community Sharing')}</div>
 
-					<Switch bind:state={adminConfig.ENABLE_COMMUNITY_SHARING} />
+					<Switch
+						ariaLabel={$i18n.t('Enable Community Sharing')}
+						bind:state={adminConfig.ENABLE_COMMUNITY_SHARING}
+					/>
 				</div>
 
 				<div class="my-3 flex w-full items-center justify-between pr-2">
 					<div class=" self-center text-xs font-medium">{$i18n.t('Enable Message Rating')}</div>
 
-					<Switch bind:state={adminConfig.ENABLE_MESSAGE_RATING} />
+					<Switch
+						ariaLabel={$i18n.t('Enable Message Rating')}
+						bind:state={adminConfig.ENABLE_MESSAGE_RATING}
+					/>
 				</div>
 
 				<hr class=" border-gray-50 dark:border-gray-850 my-2" />
@@ -232,6 +250,7 @@
 							class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 							type="text"
 							placeholder={`e.g.) "http://localhost:3000"`}
+							aria-label={$i18n.t('WebUI URL')}
 							bind:value={adminConfig.WEBUI_URL}
 						/>
 					</div>
@@ -257,13 +276,14 @@
 							class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 							type="text"
 							placeholder={`e.g.) "30m","1h", "10d". `}
+							aria-label={$i18n.t('Access Token Expiration')}
 							bind:value={adminConfig.ACCESS_TOKEN_EXPIRES_IN}
 						/>
 					</div>
 
 					<div class="mt-2 text-xs text-gray-400 dark:text-gray-500">
 						{$i18n.t('Valid time units:')}
-						<span class=" text-gray-300 font-medium"
+						<span class=" font-medium"
 							>{$i18n.t("'s', 'm', 'h', 'd', 'w' or '-1' for no expiration.")}</span
 						>
 					</div>
@@ -289,7 +309,7 @@
 
 					<div class="mt-2 text-xs text-gray-400 dark:text-gray-500">
 						{$i18n.t('Valid time units:')}
-						<span class=" text-gray-300 font-medium"
+						<span class=" font-medium"
 							>{$i18n.t("'s', 'm', 'h', 'd', 'w'. Refresh tokens must remain finite.")}</span
 						>
 					</div>
@@ -307,6 +327,7 @@
 							class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 							type="text"
 							placeholder={`https://example.com/webhook`}
+							aria-label={$i18n.t('Webhook URL')}
 							bind:value={webhookUrl}
 						/>
 					</div>
@@ -319,7 +340,7 @@
 						{$i18n.t('Channels')} ({$i18n.t('Beta')})
 					</div>
 
-					<Switch bind:state={adminConfig.ENABLE_CHANNELS} />
+					<Switch ariaLabel={$i18n.t('Channels')} bind:state={adminConfig.ENABLE_CHANNELS} />
 				</div> -->
 			</div>
 		{/if}
@@ -333,6 +354,7 @@
 
 					<div class="mt-1">
 						<Switch
+							ariaLabel={$i18n.t('LDAP')}
 							bind:state={ENABLE_LDAP}
 							on:change={async () => {
 								updateLdapConfig(getRequestToken(), ENABLE_LDAP);
@@ -351,7 +373,9 @@
 								<input
 									class="w-full bg-transparent outline-none py-0.5"
 									required
+									use:requiredMessage={() => $i18n.t('This field is required')}
 									placeholder={$i18n.t('Enter server label')}
+									aria-label={$i18n.t('Label')}
 									bind:value={LDAP_SERVER.label}
 								/>
 							</div>
@@ -365,7 +389,9 @@
 								<input
 									class="w-full bg-transparent outline-none py-0.5"
 									required
+									use:requiredMessage={() => $i18n.t('This field is required')}
 									placeholder={$i18n.t('Enter server host')}
+									aria-label={$i18n.t('Host')}
 									bind:value={LDAP_SERVER.host}
 								/>
 							</div>
@@ -382,6 +408,7 @@
 										class="w-full bg-transparent outline-none py-0.5"
 										type="number"
 										placeholder={$i18n.t('Enter server port')}
+										aria-label={$i18n.t('Port')}
 										bind:value={LDAP_SERVER.port}
 									/>
 								</Tooltip>
@@ -399,7 +426,9 @@
 									<input
 										class="w-full bg-transparent outline-none py-0.5"
 										required
+										use:requiredMessage={() => $i18n.t('This field is required')}
 										placeholder={$i18n.t('Enter Application DN')}
+										aria-label={$i18n.t('Application DN')}
 										bind:value={LDAP_SERVER.app_dn}
 									/>
 								</Tooltip>
@@ -428,7 +457,9 @@
 									<input
 										class="w-full bg-transparent outline-none py-0.5"
 										required
+										use:requiredMessage={() => $i18n.t('This field is required')}
 										placeholder={$i18n.t('Example: mail')}
+										aria-label={$i18n.t('Attribute for Mail')}
 										bind:value={LDAP_SERVER.attribute_for_mail}
 									/>
 								</Tooltip>
@@ -448,7 +479,9 @@
 									<input
 										class="w-full bg-transparent outline-none py-0.5"
 										required
+										use:requiredMessage={() => $i18n.t('This field is required')}
 										placeholder={$i18n.t('Example: sAMAccountName or uid or userPrincipalName')}
+										aria-label={$i18n.t('Attribute for Username')}
 										bind:value={LDAP_SERVER.attribute_for_username}
 									/>
 								</Tooltip>
@@ -463,7 +496,9 @@
 									<input
 										class="w-full bg-transparent outline-none py-0.5"
 										required
+										use:requiredMessage={() => $i18n.t('This field is required')}
 										placeholder={$i18n.t('Example: ou=users,dc=foo,dc=example')}
+										aria-label={$i18n.t('Search Base')}
 										bind:value={LDAP_SERVER.search_base}
 									/>
 								</Tooltip>
@@ -477,13 +512,14 @@
 								<input
 									class="w-full bg-transparent outline-none py-0.5"
 									placeholder={$i18n.t('Example: (&(objectClass=inetOrgPerson)(uid=%s))')}
+									aria-label={$i18n.t('Search Filters')}
 									bind:value={LDAP_SERVER.search_filters}
 								/>
 							</div>
 						</div>
 						<div class="text-xs text-gray-400 dark:text-gray-500">
 							<a
-								class=" text-gray-300 font-medium underline"
+								class=" font-medium underline"
 								href="https://ldap.com/ldap-filters/"
 								target="_blank"
 							>
@@ -495,7 +531,7 @@
 								<div class="  font-medium">{$i18n.t('TLS')}</div>
 
 								<div class="mt-1">
-									<Switch bind:state={LDAP_SERVER.use_tls} />
+									<Switch ariaLabel={$i18n.t('TLS')} bind:state={LDAP_SERVER.use_tls} />
 								</div>
 							</div>
 							{#if LDAP_SERVER.use_tls}
@@ -507,7 +543,9 @@
 										<input
 											class="w-full bg-transparent outline-none py-0.5"
 											required
+											use:requiredMessage={() => $i18n.t('This field is required')}
 											placeholder={$i18n.t('Enter certificate path')}
+											aria-label={$i18n.t('Certificate Path')}
 											bind:value={LDAP_SERVER.certificate_path}
 										/>
 									</div>
@@ -521,6 +559,7 @@
 											<input
 												class="w-full bg-transparent outline-none py-0.5"
 												placeholder={$i18n.t('Example: ALL')}
+												aria-label={$i18n.t('Ciphers')}
 												bind:value={LDAP_SERVER.ciphers}
 											/>
 										</Tooltip>

@@ -150,7 +150,8 @@
 						<select
 							class="  w-full rounded text-xs py-2 px-1 bg-transparent outline-none"
 							bind:value={tab}
-							placeholder="Select"
+							placeholder={$i18n.t('Select')}
+							aria-label={$i18n.t('Select')}
 						>
 							<option value="tools" class="bg-gray-100 dark:bg-gray-800">{$i18n.t('Tools')}</option>
 							<option value="functions" class="bg-gray-100 dark:bg-gray-800"
@@ -163,6 +164,7 @@
 						<select
 							class="w-full rounded py-2 px-1 text-xs bg-transparent outline-none"
 							bind:value={selectedId}
+							aria-label={$i18n.t('Select a tool')}
 							on:change={async () => {
 								await tick();
 							}}

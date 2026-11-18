@@ -159,6 +159,7 @@
 				<div class="flex items-center relative">
 					<select
 						id="theme-selection"
+						aria-label={$i18n.t('Theme')}
 						class=" dark:bg-gray-900 w-fit pr-8 rounded py-2 px-2 text-xs bg-transparent outline-none text-right"
 						bind:value={selectedTheme}
 						on:change={() => themeChangeHandler(selectedTheme)}
@@ -182,15 +183,11 @@
 							toggleNotification();
 						}}
 						type="button"
-						aria-labelledby="notification-label"
-						aria-pressed={notificationEnabled}
-						aria-label={$i18n.t('Toggle Notification Setting')}
+						aria-labelledby="notification-label notification-state"
 					>
-						{#if notificationEnabled === true}
-							<span class="ml-2 self-center">{$i18n.t('On')}</span>
-						{:else}
-							<span class="ml-2 self-center">{$i18n.t('Off')}</span>
-						{/if}
+						<span id="notification-state" class="ml-2 self-center">
+							{notificationEnabled === true ? $i18n.t('On') : $i18n.t('Off')}
+						</span>
 					</button>
 				</div>
 			</div>
@@ -209,6 +206,7 @@
 						bind:value={system}
 						class="w-full rounded-lg p-4 text-sm dark:text-gray-300 dark:bg-gray-850 outline-none resize-none"
 						rows="4"
+						aria-label={$i18n.t('System Prompt')}
 					/>
 				</Tooltip>
 			</div>
@@ -262,6 +260,7 @@
 										class="w-full rounded-lg py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-850 outline-none"
 										type="text"
 										placeholder={$i18n.t("e.g. '30s','10m'. Valid time units are 's', 'm', 'h'.")}
+										aria-label={$i18n.t('Keep Alive')}
 										bind:value={keepAlive}
 									/>
 								</div>

@@ -4,6 +4,7 @@
 	import { toast } from 'svelte-sonner';
 	import { updateUserPassword } from '$lib/apis/auths';
 	import { getRequestToken } from '$lib/services/auth';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	const i18n = getI18n();
 
@@ -66,8 +67,10 @@
 						type="password"
 						bind:value={currentPassword}
 						placeholder={$i18n.t('Enter your current password')}
+						aria-label={$i18n.t('Enter your current password')}
 						autocomplete="current-password"
 						required
+						use:requiredMessage={() => $i18n.t('This field is required')}
 					/>
 				</div>
 			</div>
@@ -81,8 +84,10 @@
 						type="password"
 						bind:value={newPassword}
 						placeholder={$i18n.t('Enter your new password')}
+						aria-label={$i18n.t('Enter your new password')}
 						autocomplete="new-password"
 						required
+						use:requiredMessage={() => $i18n.t('This field is required')}
 					/>
 				</div>
 			</div>
@@ -96,8 +101,10 @@
 						type="password"
 						bind:value={newPasswordConfirm}
 						placeholder={$i18n.t('Confirm your new password')}
+						aria-label={$i18n.t('Confirm your new password')}
 						autocomplete="off"
 						required
+						use:requiredMessage={() => $i18n.t('This field is required')}
 					/>
 				</div>
 			</div>

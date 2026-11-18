@@ -7,6 +7,7 @@
 	import { createIssue } from '$lib/apis/issues';
 	import { toast } from 'svelte-sonner';
 	import { getRequestToken } from '$lib/services/auth';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	export let show = false;
 
@@ -158,7 +159,9 @@
 						bind:value={description}
 						rows="4"
 						required
+						use:requiredMessage={() => $i18n.t('This field is required')}
 						placeholder={$i18n.t('Please describe what happened')}
+						aria-label={$i18n.t('Please describe what happened')}
 						class="w-full resize-none rounded-lg py-2 px-4 text-sm bg-gray-100 dark:text-gray-300 dark:bg-gray-850 border border-gray-200 dark:border-gray-700 outline-none"
 					></textarea>
 				</div>
@@ -172,7 +175,9 @@
 						bind:value={stepsToReproduce}
 						rows="4"
 						required
+						use:requiredMessage={() => $i18n.t('This field is required')}
 						placeholder={$i18n.t('Please list the steps to reproduce this issue')}
+						aria-label={$i18n.t('Please list the steps to reproduce this issue')}
 						class="w-full resize-none rounded-lg py-2 px-4 text-sm bg-gray-100 dark:text-gray-300 dark:bg-gray-850 border border-gray-200 dark:border-gray-700 outline-none"
 					></textarea>
 				</div>

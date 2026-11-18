@@ -354,6 +354,7 @@
 					class=" w-full text-sm pr-4 py-1 rounded-r-xl outline-none bg-transparent focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
 					bind:value={query}
 					placeholder={$i18n.t('Search')}
+					aria-label={$i18n.t('Search')}
 					aria-describedby="leaderboard-search-help"
 					on:focus={() => {
 						loadEmbeddingModel();
@@ -374,7 +375,7 @@
 		<div
 			class=" absolute top-0 bottom-0 left-0 right-0 flex"
 			aria-live="polite"
-			aria-label="Loading leaderboard"
+			aria-label={$i18n.t('Loading leaderboard')}
 		>
 			<div class="m-auto">
 				<Spinner />
@@ -390,7 +391,7 @@
 			class="w-full text-sm text-left text-[#767676] dark:text-gray-400 table-auto max-w-full rounded {loadingLeaderboard
 				? 'opacity-20'
 				: ''}"
-			aria-label="Model leaderboard rankings"
+			aria-label={$i18n.t('Model leaderboard rankings')}
 			aria-describedby={query ? 'leaderboard-search-help' : undefined}
 		>
 			<thead
@@ -474,7 +475,7 @@
 </div>
 
 <div class=" text-[#767676] text-xs mt-1.5 w-full flex justify-end">
-	<div class=" text-right" role="note" aria-label="Leaderboard methodology explanation">
+	<div class=" text-right" role="note" aria-label={$i18n.t('Leaderboard methodology explanation')}>
 		<div class="line-clamp-1">
 			ⓘ {$i18n.t(
 				'The evaluation leaderboard uses a hybrid rating system combining competitive ELO ratings with individual feedback analysis.'

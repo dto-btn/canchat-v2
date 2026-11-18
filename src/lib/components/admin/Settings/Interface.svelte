@@ -19,6 +19,7 @@
 	import Switch from '$lib/components/common/Switch.svelte';
 	import Textarea from '$lib/components/common/Textarea.svelte';
 	import { getRequestToken } from '$lib/services/auth';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	const dispatch = createEventDispatcher();
 
@@ -107,6 +108,7 @@
 							class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 							bind:value={taskConfig.TASK_MODEL}
 							placeholder={$i18n.t('Select a model')}
+							aria-label={$i18n.t('Select a model')}
 						>
 							<option value="" selected>{$i18n.t('Current Model')}</option>
 							{#each ($models ?? []).filter((m) => m.owned_by === 'ollama') as model}
@@ -123,6 +125,7 @@
 							class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 							bind:value={taskConfig.TASK_MODEL_EXTERNAL}
 							placeholder={$i18n.t('Select a model')}
+							aria-label={$i18n.t('Select a model')}
 						>
 							<option value="" selected>{$i18n.t('Current Model')}</option>
 							{#each $models ?? [] as model}
@@ -143,6 +146,7 @@
 					>
 						<Textarea
 							bind:value={taskConfig.TITLE_GENERATION_PROMPT_TEMPLATE}
+							aria-label={$i18n.t('Title Generation Prompt')}
 							placeholder={$i18n.t(
 								'Leave empty to use the default prompt, or enter a custom prompt'
 							)}
@@ -159,6 +163,7 @@
 					>
 						<Textarea
 							bind:value={taskConfig.IMAGE_PROMPT_GENERATION_PROMPT_TEMPLATE}
+							aria-label={$i18n.t('Image Prompt Generation Prompt')}
 							placeholder={$i18n.t(
 								'Leave empty to use the default prompt, or enter a custom prompt'
 							)}
@@ -174,7 +179,10 @@
 					</div>
 
 					<Tooltip content={$i18n.t('Enable autocomplete generation for chat messages')}>
-						<Switch bind:state={taskConfig.ENABLE_AUTOCOMPLETE_GENERATION} />
+						<Switch
+							ariaLabel={$i18n.t('Autocomplete Generation')}
+							bind:state={taskConfig.ENABLE_AUTOCOMPLETE_GENERATION}
+						/>
 					</Tooltip>
 				</div>
 
@@ -192,6 +200,7 @@
 								class="w-full outline-none bg-transparent"
 								bind:value={taskConfig.AUTOCOMPLETE_GENERATION_INPUT_MAX_LENGTH}
 								placeholder={$i18n.t('-1 for no limit, or a positive integer for a specific limit')}
+								aria-label={$i18n.t('Autocomplete Generation Input Max Length')}
 							/>
 						</Tooltip>
 					</div>
@@ -204,7 +213,10 @@
 						{$i18n.t('Tags Generation')}
 					</div>
 
-					<Switch bind:state={taskConfig.ENABLE_TAGS_GENERATION} />
+					<Switch
+						ariaLabel={$i18n.t('Tags Generation')}
+						bind:state={taskConfig.ENABLE_TAGS_GENERATION}
+					/>
 				</div>
 
 				{#if taskConfig.ENABLE_TAGS_GENERATION}
@@ -217,6 +229,7 @@
 						>
 							<Textarea
 								bind:value={taskConfig.TAGS_GENERATION_PROMPT_TEMPLATE}
+								aria-label={$i18n.t('Tags Generation Prompt')}
 								placeholder={$i18n.t(
 									'Leave empty to use the default prompt, or enter a custom prompt'
 								)}
@@ -232,7 +245,10 @@
 						{$i18n.t('Retrieval Query Generation')}
 					</div>
 
-					<Switch bind:state={taskConfig.ENABLE_RETRIEVAL_QUERY_GENERATION} />
+					<Switch
+						ariaLabel={$i18n.t('Retrieval Query Generation')}
+						bind:state={taskConfig.ENABLE_RETRIEVAL_QUERY_GENERATION}
+					/>
 				</div>
 
 				<div class="my-3 flex w-full items-center justify-between">
@@ -240,7 +256,10 @@
 						{$i18n.t('Web Search Query Generation')}
 					</div>
 
-					<Switch bind:state={taskConfig.ENABLE_SEARCH_QUERY_GENERATION} />
+					<Switch
+						ariaLabel={$i18n.t('Web Search Query Generation')}
+						bind:state={taskConfig.ENABLE_SEARCH_QUERY_GENERATION}
+					/>
 				</div>
 
 				<div class="">
@@ -252,6 +271,7 @@
 					>
 						<Textarea
 							bind:value={taskConfig.QUERY_GENERATION_PROMPT_TEMPLATE}
+							aria-label={$i18n.t('Query Generation Prompt')}
 							placeholder={$i18n.t(
 								'Leave empty to use the default prompt, or enter a custom prompt'
 							)}
@@ -308,6 +328,8 @@
 									class="w-fit rounded-xl py-2 px-4 text-xs bg-transparent outline-none"
 									bind:value={banner.type}
 									required
+									use:requiredMessage={() => $i18n.t('This field is required')}
+									aria-label={$i18n.t('Type')}
 								>
 									{#if banner.type == ''}
 										<option value="" selected disabled class="text-gray-900"
@@ -328,6 +350,8 @@
 									class="w-fit rounded-xl py-2 px-4 text-xs bg-transparent outline-none"
 									bind:value={banner.lang}
 									required
+									use:requiredMessage={() => $i18n.t('This field is required')}
+									aria-label={$i18n.t('Language')}
 								>
 									{#if banner.lang == ''}
 										<option value="" selected disabled class="text-gray-900"
@@ -349,11 +373,12 @@
 									class="px-5 py-1.5 text-xs w-full bg-transparent outline-none"
 									placeholder={$i18n.t('Content')}
 									bind:value={banner.content}
+									aria-label={$i18n.t('Content')}
 								/>
 
 								<div class="relative top-1.5 -left-2">
 									<Tooltip content={$i18n.t('Dismissible')} className="flex h-fit items-center">
-										<Switch bind:state={banner.dismissible} />
+										<Switch ariaLabel={$i18n.t('Dismissible')} bind:state={banner.dismissible} />
 									</Tooltip>
 								</div>
 							</div>
@@ -424,6 +449,7 @@
 										bind:value={prompt.lang}
 										placeholder={languages.find((language) => language.code === prompt.lang)
 											?.title ?? 'Unknown Language'}
+										aria-label={$i18n.t('Language')}
 									>
 										{#each languages as language}
 											<option value={language.code}>{language.title}</option>
@@ -434,12 +460,14 @@
 											class="px-3 py-1.5 text-xs w-full bg-transparent outline-none border-r border-gray-100 dark:border-gray-800"
 											placeholder={$i18n.t('Title (e.g. Tell me a fun fact)')}
 											bind:value={prompt.title[0]}
+											aria-label={$i18n.t('Title (e.g. Tell me a fun fact)')}
 										/>
 
 										<input
 											class="px-3 py-1.5 text-xs w-full bg-transparent outline-none border-r border-gray-100 dark:border-gray-800"
 											placeholder={$i18n.t('Subtitle (e.g. about the Roman Empire)')}
 											bind:value={prompt.title[1]}
+											aria-label={$i18n.t('Subtitle (e.g. about the Roman Empire)')}
 										/>
 									</div>
 
@@ -448,6 +476,7 @@
 										placeholder={$i18n.t('Prompt (e.g. Tell me a fun fact about the Roman Empire)')}
 										rows="3"
 										bind:value={prompt.content}
+										aria-label={$i18n.t('Prompt (e.g. Tell me a fun fact about the Roman Empire)')}
 									/>
 								</div>
 

@@ -5,6 +5,7 @@
 
 	import Modal from '$lib/components/common/Modal.svelte';
 	import Textarea from '$lib/components/common/Textarea.svelte';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 	export let onSubmit: (value: unknown) => void = () => {};
 	export let show = false;
 
@@ -80,6 +81,8 @@
 										placeholder={$i18n.t('Group Name')}
 										autocomplete="off"
 										required
+										aria-label={$i18n.t('Group Name')}
+										use:requiredMessage={() => $i18n.t('This field is required')}
 									/>
 								</div>
 							</div>
@@ -94,6 +97,7 @@
 									rows={2}
 									bind:value={description}
 									placeholder={$i18n.t('Group Description')}
+									aria-label={$i18n.t('Group Description')}
 								/>
 							</div>
 						</div>

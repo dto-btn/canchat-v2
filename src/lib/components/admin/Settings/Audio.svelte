@@ -24,6 +24,7 @@
 	import type { Writable } from 'svelte/store';
 	import type { i18n as i18nType } from 'i18next';
 	import { getRequestToken } from '$lib/services/auth';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	const i18n = getContext<Writable<i18nType>>('i18n');
 	const getSelectValue = (event: Event) => (event.currentTarget as HTMLSelectElement).value;
@@ -255,7 +256,8 @@
 						<select
 							class="dark:bg-gray-900 cursor-pointer w-fit pr-8 rounded px-2 p-1 text-xs bg-transparent outline-none text-right"
 							bind:value={STT_ENGINE}
-							placeholder="Select an engine"
+							placeholder={$i18n.t('Select an engine')}
+							aria-label={$i18n.t('Speech-to-Text Engine')}
 						>
 							<option value="">{$i18n.t('Whisper (Local)')}</option>
 							<option value="openai">OpenAI</option>
@@ -270,8 +272,10 @@
 							<input
 								class="flex-1 w-full bg-transparent outline-none"
 								placeholder={$i18n.t('API Base URL')}
+								aria-label={$i18n.t('API Base URL')}
 								bind:value={STT_OPENAI_API_BASE_URL}
 								required
+								use:requiredMessage={() => $i18n.t('This field is required')}
 							/>
 
 							<SensitiveInput placeholder={$i18n.t('API Key')} bind:value={STT_OPENAI_API_KEY} />
@@ -288,7 +292,8 @@
 									list="model-list"
 									class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 									bind:value={STT_MODEL}
-									placeholder="Select a model"
+									placeholder={$i18n.t('Select a model')}
+									aria-label={$i18n.t('STT Model')}
 								/>
 
 								<datalist id="model-list">
@@ -306,6 +311,7 @@
 								<input
 									class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 									placeholder={$i18n.t('Set whisper model')}
+									aria-label={$i18n.t('Set whisper model')}
 									bind:value={STT_WHISPER_MODEL}
 								/>
 							</div>
@@ -393,7 +399,8 @@
 						<select
 							class=" dark:bg-gray-900 w-fit pr-8 cursor-pointer rounded px-2 p-1 text-xs bg-transparent outline-none text-right"
 							bind:value={TTS_ENGINE}
-							placeholder="Select a mode"
+							placeholder={$i18n.t('Select a mode')}
+							aria-label={$i18n.t('Text-to-Speech Engine')}
 							on:change={async (e) => {
 								await updateConfigHandler();
 								await getVoices();
@@ -423,8 +430,10 @@
 							<input
 								class="flex-1 w-full bg-transparent outline-none"
 								placeholder={$i18n.t('API Base URL')}
+								aria-label={$i18n.t('API Base URL')}
 								bind:value={TTS_OPENAI_API_BASE_URL}
 								required
+								use:requiredMessage={() => $i18n.t('This field is required')}
 							/>
 
 							<SensitiveInput placeholder={$i18n.t('API Key')} bind:value={TTS_OPENAI_API_KEY} />
@@ -436,8 +445,10 @@
 							<input
 								class="flex-1 w-full rounded-lg py-2 pl-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 								placeholder={$i18n.t('API Key')}
+								aria-label={$i18n.t('API Key')}
 								bind:value={TTS_API_KEY}
 								required
+								use:requiredMessage={() => $i18n.t('This field is required')}
 							/>
 						</div>
 					</div>
@@ -447,14 +458,18 @@
 							<input
 								class="flex-1 w-full rounded-lg py-2 pl-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 								placeholder={$i18n.t('API Key')}
+								aria-label={$i18n.t('API Key')}
 								bind:value={TTS_API_KEY}
 								required
+								use:requiredMessage={() => $i18n.t('This field is required')}
 							/>
 							<input
 								class="flex-1 w-full rounded-lg py-2 pl-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 								placeholder={$i18n.t('Azure Region')}
+								aria-label={$i18n.t('Azure Region')}
 								bind:value={TTS_AZURE_SPEECH_REGION}
 								required
+								use:requiredMessage={() => $i18n.t('This field is required')}
 							/>
 						</div>
 					</div>
@@ -470,6 +485,7 @@
 								<select
 									class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 									bind:value={TTS_VOICE}
+									aria-label={$i18n.t('TTS Voice')}
 								>
 									<option value="" selected={TTS_VOICE !== ''}>{$i18n.t('Default')}</option>
 									{#each browserVoices as voice}
@@ -493,7 +509,8 @@
 									list="model-list"
 									class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 									bind:value={TTS_MODEL}
-									placeholder="CMU ARCTIC speaker embedding name"
+									placeholder={$i18n.t('CMU ARCTIC speaker embedding name')}
+									aria-label={$i18n.t('TTS Model')}
 								/>
 
 								<datalist id="model-list">
@@ -535,7 +552,8 @@
 										list="voice-list"
 										class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 										bind:value={TTS_VOICE}
-										placeholder="Select a voice"
+										placeholder={$i18n.t('Select a voice')}
+										aria-label={$i18n.t('TTS Voice')}
 									/>
 
 									<datalist id="voice-list">
@@ -554,7 +572,8 @@
 										list="tts-model-list"
 										class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 										bind:value={TTS_MODEL}
-										placeholder="Select a model"
+										placeholder={$i18n.t('Select a model')}
+										aria-label={$i18n.t('TTS Model')}
 									/>
 
 									<datalist id="tts-model-list">
@@ -576,7 +595,8 @@
 										list="voice-list"
 										class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 										bind:value={TTS_VOICE}
-										placeholder="Select a voice"
+										placeholder={$i18n.t('Select a voice')}
+										aria-label={$i18n.t('TTS Voice')}
 									/>
 
 									<datalist id="voice-list">
@@ -595,7 +615,8 @@
 										list="tts-model-list"
 										class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 										bind:value={TTS_MODEL}
-										placeholder="Select a model"
+										placeholder={$i18n.t('Select a model')}
+										aria-label={$i18n.t('TTS Model')}
 									/>
 
 									<datalist id="tts-model-list">
@@ -617,7 +638,8 @@
 										list="voice-list"
 										class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 										bind:value={TTS_VOICE}
-										placeholder="Select a voice"
+										placeholder={$i18n.t('Select a voice')}
+										aria-label={$i18n.t('TTS Voice')}
 									/>
 
 									<datalist id="voice-list">
@@ -644,7 +666,8 @@
 										list="tts-model-list"
 										class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 										bind:value={TTS_AZURE_SPEECH_OUTPUT_FORMAT}
-										placeholder="Select a output format"
+										placeholder={$i18n.t('Select an output format')}
+										aria-label={$i18n.t('Output format')}
 									/>
 								</div>
 							</div>
@@ -659,7 +682,7 @@
 					<div class="flex items-center relative">
 						<select
 							class="dark:bg-gray-900 w-fit pr-8 cursor-pointer rounded px-2 p-1 text-xs bg-transparent outline-none text-right"
-							aria-label="Select how to split message text for TTS requests"
+							aria-label={$i18n.t('Select how to split message text for TTS requests')}
 							bind:value={TTS_SPLIT_ON}
 						>
 							{#each Object.values(TTS_RESPONSE_SPLIT) as split}

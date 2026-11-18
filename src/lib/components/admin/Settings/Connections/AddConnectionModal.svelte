@@ -16,6 +16,7 @@
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import Switch from '$lib/components/common/Switch.svelte';
 	import { getRequestToken } from '$lib/services/auth';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	export let onSubmit: Function = () => {};
 	export let onDelete: Function = () => {};
@@ -201,8 +202,10 @@
 										type="text"
 										bind:value={url}
 										placeholder={$i18n.t('API Base URL')}
+										aria-label={$i18n.t('API Base URL')}
 										autocomplete="off"
 										required
+										use:requiredMessage={() => $i18n.t('This field is required')}
 									/>
 								</div>
 							</div>
@@ -232,7 +235,7 @@
 
 							<div class="flex flex-col flex-shrink-0 self-end">
 								<Tooltip content={enable ? $i18n.t('Enabled') : $i18n.t('Disabled')}>
-									<Switch bind:state={enable} />
+									<Switch ariaLabel={$i18n.t('Enable Connection')} bind:state={enable} />
 								</Tooltip>
 							</div>
 						</div>
@@ -265,6 +268,7 @@
 											type="text"
 											bind:value={prefixId}
 											placeholder={$i18n.t('Prefix ID')}
+											aria-label={$i18n.t('Prefix ID')}
 											autocomplete="off"
 										/>
 									</Tooltip>
@@ -323,6 +327,7 @@
 									: 'text-gray-500'} placeholder:text-gray-300 dark:placeholder:text-gray-700 outline-none"
 								bind:value={modelId}
 								placeholder={$i18n.t('Add a model ID')}
+								aria-label={$i18n.t('Add a model ID')}
 							/>
 
 							<div>

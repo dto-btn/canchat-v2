@@ -13,6 +13,7 @@
 	import Mic from '$lib/components/icons/Mic.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import VoiceRecording from '$lib/components/chat/MessageInput/VoiceRecording.svelte';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 	export let show = false;
 
 	let name = 'Untitled';
@@ -63,6 +64,8 @@
 								bind:value={name}
 								placeholder={$i18n.t('Title')}
 								required
+								aria-label={$i18n.t('Title')}
+								use:requiredMessage={() => $i18n.t('This field is required')}
 							/>
 						</div>
 					</div>

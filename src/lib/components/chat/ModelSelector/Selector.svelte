@@ -418,7 +418,7 @@
 									<!-- {JSON.stringify(item.info)} -->
 
 									{#if item.model.owned_by === 'openai'}
-										<Tooltip content={`${'External'}`}>
+										<Tooltip content={$i18n.t('External')}>
 											<div class="translate-y-[1px]">
 												<svg
 													xmlns="http://www.w3.org/2000/svg"

@@ -9,6 +9,7 @@
 	import { flyAndScale } from '$lib/utils/transitions';
 	import * as focusTrap from 'focus-trap';
 	import { ariaMessage } from '$lib/stores';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	export let title = '';
 	export let message = '';
@@ -136,6 +137,8 @@
 								class="w-full mt-2 rounded-lg px-4 py-2 text-sm dark:text-gray-300 dark:bg-gray-900 outline-none resize-none"
 								rows="3"
 								required
+								aria-label={inputPlaceholder ? inputPlaceholder : $i18n.t('Enter your message')}
+								use:requiredMessage={() => $i18n.t('This field is required')}
 							/>
 						{/if}
 					</div>
