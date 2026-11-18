@@ -10,5 +10,8 @@
 	"semanticCommitScope": "deps",
 	"semanticCommitType": "fix",
 	"dependencyDashboard": true,
-	"dependencyDashboardApproval": true
+	"dependencyDashboardApproval": true,
+	"vulnerabilityAlerts": {
+    	"dependencyDashboardApproval": true
+  	}
 }
