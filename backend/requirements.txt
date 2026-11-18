@@ -32,7 +32,7 @@ langchain-core==1.4.6
 langchain-text-splitters==1.1.2
 ## MCP (Model Context Protocol)
 fastmcp==3.4.10
-mcp==1.28.1 #required by crewai
+mcp==1.30.0 #required by crewai
 
 txtai[graph]==9.0.0
 
