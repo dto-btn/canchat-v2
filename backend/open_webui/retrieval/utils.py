@@ -313,7 +313,13 @@ async def _query_collection(
     failed = False
     for query in queries:
         # Some embedding backends are synchronous (requests-based).
-        query_embedding = await asyncio.to_thread(embedding_function, query)
+        try:
+            query_embedding = await asyncio.to_thread(embedding_function, query)
+        except EmbeddingFailed:
+            # Skip this query but keep the results of the others.
+            log.warning("query_collection: query embedding failed, skipping query")
+            failed = True
+            continue
         for collection_name in collection_names:
             if collection_name:
                 # Use the clean reindex utility function
@@ -739,7 +745,7 @@ def generate_embeddings(engine: str, model: str, text: Union[str, list[str]], **
         else:
             embeddings = generate_openai_batch_embeddings(model, [text], url, key)
     else:
-        return None
+        raise ValueError(f"Unknown embedding engine: {engine}")
 
     # The batch helpers log provider errors and return None.
     if embeddings is None:

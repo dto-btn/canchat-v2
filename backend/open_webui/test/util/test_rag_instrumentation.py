@@ -497,6 +497,36 @@ def test_query_collection_search_failure_records_error(telemetry, qdrant, clock)
     assert point.count == 1
 
 
+def test_query_collection_embedding_failure_keeps_other_queries(telemetry, qdrant):
+    def embed(query, user=None):
+        if query == QUERY:
+            raise retrieval_utils.EmbeddingFailed("openai embedding request failed")
+        return VECTOR
+
+    result = asyncio.run(
+        retrieval_utils.query_collection(
+            collection_names=[COLLECTION],
+            queries=[QUERY, DOC],
+            embedding_function=embed,
+            k=3,
+        )
+    )
+
+    # The second query's results are still returned.
+    assert result["documents"][0]
+    assert len(telemetry.spans("rag.vector.search")) == 1
+    (retrieve,) = telemetry.spans("rag.retrieve")
+    assert retrieve.attributes["canchat.outcome"] == "error"
+    assert retrieve.attributes["error.type"] == rag_obs.VECTOR_SEARCH_FAILED
+    assert retrieve.status.status_code == StatusCode.ERROR
+    assert_no_content(retrieve)
+
+
+def test_generate_embeddings_unknown_engine_raises():
+    with pytest.raises(ValueError, match="Unknown embedding engine"):
+        retrieval_utils.generate_embeddings(engine="bogus", model="m", text=QUERY)
+
+
 def test_hybrid_failure_records_error(telemetry, monkeypatch):
     async def failing(**kwargs):
         raise RuntimeError(QUERY)

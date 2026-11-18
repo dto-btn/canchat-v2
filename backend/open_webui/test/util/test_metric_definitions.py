@@ -30,6 +30,9 @@ def test_unset_uses_builtin_defaults(monkeypatch):
         assert by_name[name]["type"] == "histogram"
         assert by_name[name]["unit"] == "s"
         assert by_name[name]["buckets"]
+    assert by_name["canchat.rag.results"]["type"] == "histogram"
+    assert by_name["canchat.rag.results"]["unit"] == "{result}"
+    assert by_name["canchat.rag.results"]["buckets"]
     assert MetricsService(Mock(), definitions).list_instruments() == list(by_name)
 
 
