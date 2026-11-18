@@ -134,7 +134,7 @@ yarl>=1.17.0,<2.0
 # Observability & Telemetry
 # ==========================================
 # Opentelemetry - versions constrained by crewai 1.15.2 (~=1.42.0)
-opentelemetry-api==1.42.0
+opentelemetry-api==1.45.2
 opentelemetry-sdk==1.42.0
 opentelemetry-exporter-otlp==1.42.0
 
