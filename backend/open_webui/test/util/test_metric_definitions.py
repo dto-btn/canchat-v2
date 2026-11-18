@@ -22,12 +22,17 @@ def test_unset_uses_builtin_defaults(monkeypatch):
         "canchat.llm.request.duration",
         "canchat.llm.time_to_first_token",
         "canchat.rag.retrieval.duration",
+        "canchat.rag.embedding.duration",
+        "canchat.rag.vector.duration",
         "canchat.mcp.tool.duration",
         "canchat.crew.operation.duration",
     ):
         assert by_name[name]["type"] == "histogram"
         assert by_name[name]["unit"] == "s"
         assert by_name[name]["buckets"]
+    assert by_name["canchat.rag.results"]["type"] == "histogram"
+    assert by_name["canchat.rag.results"]["unit"] == "{result}"
+    assert by_name["canchat.rag.results"]["buckets"]
     assert MetricsService(Mock(), definitions).list_instruments() == list(by_name)
 
 

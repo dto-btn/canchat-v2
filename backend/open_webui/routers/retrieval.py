@@ -842,8 +842,12 @@ async def save_docs_to_vector_db(
         log.error(error_msg)
         raise ValueError(error_msg)
 
-    embeddings = embedding_function(
-        list(map(lambda x: x.replace("\n", " "), texts)), user=user
+    # Embedding is blocking (requests/CPU); to_thread copies the context so
+    # the rag.embedding span keeps its parent.
+    embeddings = await asyncio.to_thread(
+        embedding_function,
+        list(map(lambda x: x.replace("\n", " "), texts)),
+        user=user,
     )
 
     items = [
@@ -1631,9 +1635,12 @@ async def query_doc_handler(
                 ),
             )
         else:
-            return query_doc(
+            query_embedding = await asyncio.to_thread(
+                request.app.state.EMBEDDING_FUNCTION, form_data.query
+            )
+            return await query_doc(
                 collection_name=form_data.collection_name,
-                query_embedding=request.app.state.EMBEDDING_FUNCTION(form_data.query),
+                query_embedding=query_embedding,
                 k=form_data.k if form_data.k else request.app.state.config.TOP_K,
             )
     except HTTPException:
@@ -1785,7 +1792,8 @@ if ENV == "dev":
 
     @router.get("/ef/{text}")
     async def get_embeddings(request: Request, text: Optional[str] = "Hello World!"):
-        return {"result": request.app.state.EMBEDDING_FUNCTION(text)}
+        result = await asyncio.to_thread(request.app.state.EMBEDDING_FUNCTION, text)
+        return {"result": result}
 
 
 class BatchProcessFilesForm(BaseModel):

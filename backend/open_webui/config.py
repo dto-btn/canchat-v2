@@ -29,6 +29,8 @@ from open_webui.metrics.service import (
     LLM_TTFT_BUCKETS,
     MCP_DURATION_BUCKETS,
     RAG_DURATION_BUCKETS,
+    RAG_EMBEDDING_DURATION_BUCKETS,
+    RAG_RESULT_COUNT_BUCKETS,
     WEB_SEARCH_DURATION_BUCKETS,
     WEB_SEARCH_RESULT_COUNT_BUCKETS,
     MetricsDefinition,
@@ -938,11 +940,39 @@ DEFAULT_METRIC_DEFINITIONS = [
         "buckets": list(LLM_TTFT_BUCKETS),
     },
     {
+        # One ``query_collection`` call (``operation``: vector or hybrid),
+        # including query embedding and every collection searched.
         "name": "canchat.rag.retrieval.duration",
         "type": "histogram",
-        "description": "RAG retrieval duration",
+        "description": "RAG retrieval duration, query embedding to merged results",
         "unit": "s",
         "buckets": list(RAG_DURATION_BUCKETS),
+    },
+    {
+        # One embedding-function call: a query or a batch of document chunks.
+        # ``provider`` is sentence_transformers, ollama or openai.
+        "name": "canchat.rag.embedding.duration",
+        "type": "histogram",
+        "description": "RAG embedding generation duration",
+        "unit": "s",
+        "buckets": list(RAG_EMBEDDING_DURATION_BUCKETS),
+    },
+    {
+        # One Qdrant operation (``operation``: search, query, get, upsert,
+        # delete, delete_collection), including collection-lock waits.
+        "name": "canchat.rag.vector.duration",
+        "type": "histogram",
+        "description": "Vector database operation duration",
+        "unit": "s",
+        "buckets": list(RAG_DURATION_BUCKETS),
+    },
+    {
+        # ``operation``: search, query, get (Qdrant) or retrieve (merged top-k).
+        "name": "canchat.rag.results",
+        "type": "histogram",
+        "description": "Number of records returned by a RAG operation",
+        "unit": "{result}",
+        "buckets": list(RAG_RESULT_COUNT_BUCKETS),
     },
     {
         "name": "canchat.mcp.tool.duration",
