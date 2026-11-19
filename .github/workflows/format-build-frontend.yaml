@@ -28,7 +28,7 @@ jobs:
           node-version: '22' # Or specify any other version you want to use
 
       - name: Install Dependencies
-        run: npm installl --onnxruntime-node-install-cuda=skip
+        run: npm install --onnxruntime-node-install-cuda=skip
 
       - name: Format Frontend
         run: npm run format
