@@ -97,7 +97,7 @@ jobs:
 
       - name:  Set up Node dependencies & build
         run:  |
-          npm ci
+          npm ci --onnxruntime-node-install-cuda=skip
           npm run test:setup:headless
 
 
