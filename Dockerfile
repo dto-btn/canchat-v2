@@ -29,7 +29,7 @@ ARG BUILD_MODE=build
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci && npm cache clean --force
+RUN npm ci --onnxruntime-node-install-cuda=skip && npm cache clean --force
 
 COPY . .
 ENV APP_BUILD_HASH=${BUILD_HASH}
