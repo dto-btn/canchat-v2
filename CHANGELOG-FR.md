@@ -5,6 +5,37 @@ Tous les changements notables apportés à ce projet seront documentés dans ce 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage sémantique](https://semver.org/lang/fr/spec/v2.0.0.html).
 
+## [0.5.7-ccv2-1.17.0] - 2026-11-18
+
+### Ajouté
+
+- **📥 Téléchargement de clavardages en lot** : Ajout d'un mécanisme de téléchargement en lot des clavardages.
+- **🌐 Ancrage Wikipédia** : Ajout d'un point de terminaison EKH pour l'ancrage Wikipédia.
+- **🔄 Gestionnaire de tâches de flux** : Ajout d'un gestionnaire de tâches pour les flux de réponses de clavardage.
+- **📊 Journalisation des requêtes** : Inclusion du courriel de l'utilisateur dans les journaux de requêtes LiteLLM pour un meilleur suivi.
+
+### Modifié
+
+- **🤖 Gemini 3.5 Flash** : Ajout de la configuration en préparation de la mise à niveau vers Gemini 3.5 Flash; le déploiement suivra la mise à disposition du modèle.
+- **📄 Conditions d'utilisation** : Mise à jour des conditions d'utilisation et obligation pour tous les utilisateurs de les accepter de nouveau.
+- **📈 Métriques** : Amélioration des noms de modèles dans la liste des modèles des métriques.
+- **📱 PWA** : Désactivation de la découverte d'installation de la PWA.
+- **🏢 Organisation** : Déplacement du dépôt vers l'organisation dto-btn.
+- **📦 Dépendances** : Mise à jour des dépendances pour corriger les vulnérabilités.
+
+### Corrigé
+
+- **♿ Contraste des couleurs** : Correction des problèmes de contraste des couleurs signalés dans le rapport AAACT.
+- **♿ Accessibilité au clavier** : Correction des problèmes d'accessibilité au clavier signalés dans le rapport AAACT.
+- **♿ Texte de remplacement des images** : Correction des textes de remplacement d'images manquants signalés dans le rapport AAACT.
+- **♿ Accessibilité des formulaires** : Correction des problèmes d'accessibilité des formulaires et de gestion des erreurs signalés dans le rapport AAACT.
+- **♿ Redistribution et conception adaptative** : Correction des problèmes de redistribution et de conception adaptative signalés dans le rapport AAACT.
+- **🔒 Points de terminaison utilitaires** : Ajout de l'authentification aux points de terminaison utilitaires.
+- **🔤 Encodage des caractères** : Correction d'une erreur d'encodage des caractères dans les noms d'utilisateurs.
+- **🧰 Erreurs TypeScript** : Résolution des erreurs TypeScript liées à la sûreté des valeurs nulles/indéfinies, aux propriétés manquantes et aux types implicites « any ».
+- **🚀 Démarrage multi-processus** : Protection des tâches de démarrage du serveur pour les déploiements multi-processus.
+- **🐳 Cache de construction Docker** : Passage des constructions Docker à un cache de registre pour corriger les problèmes de mise en cache.
+
 ## [0.5.7-ccv2-1.16.0] - 2026-08-12
 
 ### Ajouté
