@@ -81,6 +81,10 @@
 			? 'max-w-full'
 			: 'max-w-5xl'} mx-auto group hover:bg-gray-300/5 dark:hover:bg-gray-700/5 transition relative"
 	>
+		<h2 class="sr-only">
+			{message.user?.name || $i18n.t('User')}:
+			{typeof message.content === 'string' ? message.content.trim().slice(0, 100) : ''}
+		</h2>
 		{#if !edit}
 			<div
 				class=" absolute {showButtons ? '' : 'invisible group-hover:visible'} right-1 -top-2 z-10"

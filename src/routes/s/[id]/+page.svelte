@@ -125,16 +125,16 @@
 </svelte:head>
 
 {#if loaded}
-	<div
+	<main
 		class="h-screen max-h-[100dvh] w-full flex flex-col text-gray-700 dark:text-gray-100 bg-white dark:bg-gray-900"
 	>
 		<div class="flex flex-col flex-auto justify-center relative">
 			<div class=" flex flex-col w-full flex-auto overflow-auto h-0" id="messages-container">
 				<div class="pt-5 px-2 w-full max-w-5xl mx-auto">
 					<div class="px-3">
-						<div class=" text-2xl font-semibold line-clamp-1">
-							{title}
-						</div>
+						<h1 class=" text-2xl font-semibold line-clamp-1">
+							{title || $i18n.t('Chat')}
+						</h1>
 
 						<div class="flex text-sm justify-between items-center mt-1">
 							<div class="text-gray-400">
@@ -178,5 +178,5 @@
 				</div>
 			</div>
 		</div>
-	</div>
+	</main>
 {/if}
