@@ -639,6 +639,10 @@
 
 {#key message.id}
 	<div class=" flex w-full message-{message.id}" id="message-{message.id}">
+		<h2 class="sr-only">
+			{model?.name || message.model || $i18n.t('Assistant')}:
+			{message.content?.trim().slice(0, 100)}
+		</h2>
 		<div class="flex-shrink-0 mr-3">
 			<ProfileImage
 				src={model?.info?.meta?.profile_image_url ??

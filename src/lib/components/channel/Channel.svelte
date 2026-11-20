@@ -5,7 +5,7 @@
 	import { onDestroy, onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 
-	import { chatId, showSidebar, socket, user } from '$lib/stores';
+	import { chatId, showSidebar, socket, user, WEBUI_NAME } from '$lib/stores';
 	import { getChannelById, getChannelMessages, sendMessage } from '$lib/apis/channels';
 
 	import Messages from './Messages.svelte';
@@ -15,7 +15,9 @@
 	import EllipsisVertical from '../icons/EllipsisVertical.svelte';
 	import Thread from './Thread.svelte';
 	import { getRequestToken } from '$lib/services/auth';
+	import { getI18n } from '$lib/utils/context';
 
+	const i18n = getI18n();
 	export let id = '';
 
 	let scrollEnd = true;
@@ -200,15 +202,16 @@
 </script>
 
 <svelte:head>
-	<title>#{channel?.name ?? 'Channel'} | Open WebUI</title>
+	<title>{channel?.name ? `#${channel.name}` : $i18n.t('Channels')} | {$WEBUI_NAME}</title>
 </svelte:head>
 
-<div
+<main
 	class="h-screen max-h-[100dvh] transition-width duration-200 ease-in-out {$showSidebar
 		? 'md:max-w-[calc(100%-260px)]'
 		: ''} w-full max-w-full flex flex-col"
 	id="channel-container"
 >
+	<h1 class="sr-only">{channel?.name ? `#${channel.name}` : $i18n.t('Channels')}</h1>
 	<PaneGroup direction="horizontal" class="w-full h-full">
 		<Pane defaultSize={50} minSize={50} class="h-full flex flex-col w-full relative">
 			<Navbar {channel} />
@@ -302,4 +305,4 @@
 			</Pane>
 		{/if}
 	</PaneGroup>
-</div>
+</main>

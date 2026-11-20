@@ -18,14 +18,18 @@
 	});
 </script>
 
+<svelte:head>
+	<title>{$i18n.t('Service Unavailable')} | {$WEBUI_NAME}</title>
+</svelte:head>
+
 {#if loaded}
-	<div class="absolute w-full h-full flex z-50">
+	<main class="absolute w-full h-full flex z-50">
 		<div class="absolute rounded-xl w-full h-full backdrop-blur flex justify-center">
 			<div class="m-auto pb-44 flex flex-col justify-center">
 				<div class="max-w-md">
-					<div class="text-center text-2xl font-medium z-50">
+					<h1 class="text-center text-2xl font-medium z-50">
 						{$i18n.t('Service Unavailable')}
-					</div>
+					</h1>
 
 					<div class=" mt-4 text-center text-sm w-full">
 						{$i18n.t(
@@ -46,5 +50,5 @@
 				</div>
 			</div>
 		</div>
-	</div>
+	</main>
 {/if}

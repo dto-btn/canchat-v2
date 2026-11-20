@@ -11,8 +11,23 @@
 	import MenuLines from '$lib/components/icons/MenuLines.svelte';
 
 	const i18n = getI18n();
+	const sectionTitles: Record<string, string> = {
+		models: 'Models',
+		knowledge: 'Knowledge',
+		prompts: 'Prompts',
+		tools: 'Tools',
+		metrics: 'Metrics',
+		functions: 'Functions'
+	};
 
 	let loaded = false;
+	$: section = $page.url.pathname.split('/')[2];
+	$: sectionTitle = sectionTitles[section] ?? 'Workspace';
+	$: action = $page.url.pathname.split('/')[3];
+	$: heading = [
+		...(action === 'create' ? [$i18n.t('Create')] : action === 'edit' ? [$i18n.t('Edit')] : []),
+		$i18n.t(sectionTitle)
+	].join(' - ');
 
 	const waitForAuthBootstrap = async () => {
 		if ($authBootstrapReady) {
@@ -69,7 +84,7 @@
 
 <svelte:head>
 	<title>
-		{$i18n.t('Workspace')} | {$WEBUI_NAME}
+		{heading} - {$i18n.t('Workspace')} | {$WEBUI_NAME}
 	</title>
 </svelte:head>
 
@@ -79,7 +94,7 @@
 			? 'md:max-w-[calc(100%-260px)]'
 			: ''} max-w-full"
 	>
-		<nav class="px-2.5 pt-1 backdrop-blur-xl drag-region">
+		<nav aria-label={$i18n.t('Workspace')} class="px-2.5 pt-1 backdrop-blur-xl drag-region">
 			<div class="flex items-center gap-1 justify-between">
 				<!-- Left Section: Sidebar Toggle and Links -->
 				<div class="flex items-center gap-1">
@@ -168,8 +183,9 @@
 			</div>
 		</nav>
 
-		<div class="pb-1 px-[18px] flex-1 max-h-full overflow-y-auto" id="workspace-container">
+		<main class="pb-1 px-[18px] flex-1 max-h-full overflow-y-auto" id="workspace-container">
+			<h1 class="sr-only">{heading}</h1>
 			<slot />
-		</div>
+		</main>
 	</div>
 {/if}

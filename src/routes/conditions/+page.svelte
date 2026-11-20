@@ -97,7 +97,11 @@
 	});
 </script>
 
-<div class="w-full h-screen max-h-[100dvh] overflow-y-auto bg-white dark:bg-gray-950">
+<svelte:head>
+	<title>Conditions d'utilisation - CANChat</title>
+</svelte:head>
+
+<main class="w-full h-screen max-h-[100dvh] overflow-y-auto bg-white dark:bg-gray-950">
 	<div class="max-w-5xl mx-auto px-4 py-6 text-black dark:text-white">
 		<div class="flex flex-col md:flex-row items-start md:items-center justify-between">
 			<h1 class="text-3xl font-bold mb-2 md:mb-0 md:mr-4 dark:text-white">
@@ -204,4 +208,4 @@
 			{/if}
 		</div>
 	</div>
-</div>
+</main>

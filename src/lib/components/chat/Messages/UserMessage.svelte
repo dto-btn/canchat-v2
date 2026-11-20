@@ -92,6 +92,14 @@
 </script>
 
 <div class=" flex w-full user-message" id="message-{message.id}">
+	<h2 class="sr-only">
+		{message.user
+			? $i18n.t('You')
+			: $settings.showUsername || $_user?.name !== user?.name
+				? (user?.name ?? $i18n.t('You'))
+				: $i18n.t('You')}:
+		{typeof message.content === 'string' ? message.content.trim().slice(0, 100) : ''}
+	</h2>
 	{#if !($settings?.chatBubble ?? true)}
 		<div class="flex-shrink-0 mr-3">
 			<ProfileImage
