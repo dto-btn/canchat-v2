@@ -61,6 +61,7 @@
 				<div class="flex justify-center mt-8">
 					<div class="flex flex-col justify-center items-center">
 						<button
+							aria-label={$i18n.t('Get started')}
 							class="relative z-20 flex p-1 rounded-full bg-white/5 hover:bg-white/10 transition font-medium text-sm"
 							on:click={() => {
 								getStartedHandler();

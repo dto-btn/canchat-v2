@@ -1,4 +1,8 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
+	const i18n = getI18n();
+
 	export let value: string = '';
 	export let placeholder = '';
 	export let required = true;
@@ -22,6 +26,8 @@
 		type="text"
 	/>
 	<button
+		type="button"
+		aria-label={show ? $i18n.t('Hide value') : $i18n.t('Show value')}
 		class={showButtonClassName}
 		on:click={(e) => {
 			e.preventDefault();

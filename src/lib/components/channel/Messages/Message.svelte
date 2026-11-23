@@ -89,6 +89,9 @@
 					class="flex gap-1 rounded-lg bg-white dark:bg-gray-850 shadow-md p-0.5 border border-gray-100 dark:border-gray-800"
 				>
 					<ReactionPicker
+						on:click={() => {
+							showButtons = true;
+						}}
 						onClose={() => (showButtons = false)}
 						onSubmit={(name) => {
 							showButtons = false;
@@ -96,20 +99,18 @@
 						}}
 					>
 						<Tooltip content={$i18n.t('Add Reaction')}>
-							<button
-								class="hover:bg-gray-100 dark:hover:bg-gray-800 transition rounded-lg p-1"
-								on:click={() => {
-									showButtons = true;
-								}}
+							<span
+								class="inline-flex hover:bg-gray-100 dark:hover:bg-gray-800 transition rounded-lg p-1"
 							>
 								<FaceSmile />
-							</button>
+							</span>
 						</Tooltip>
 					</ReactionPicker>
 
 					{#if !thread}
 						<Tooltip content={$i18n.t('Reply in Thread')}>
 							<button
+								aria-label={$i18n.t('Reply in Thread')}
 								class="hover:bg-gray-100 dark:hover:bg-gray-800 transition rounded-lg p-1"
 								on:click={() => {
 									onThread(message.id);
@@ -123,6 +124,7 @@
 					{#if message.user_id === $user.id || $user.role === 'admin'}
 						<Tooltip content={$i18n.t('Edit')}>
 							<button
+								aria-label={$i18n.t('Edit')}
 								class="hover:bg-gray-100 dark:hover:bg-gray-800 transition rounded-lg p-1"
 								on:click={() => {
 									edit = true;
@@ -135,6 +137,7 @@
 
 						<Tooltip content={$i18n.t('Delete')}>
 							<button
+								aria-label={$i18n.t('Delete')}
 								class="hover:bg-gray-100 dark:hover:bg-gray-800 transition rounded-lg p-1"
 								on:click={() => (showDeleteConfirmDialog = true)}
 							>

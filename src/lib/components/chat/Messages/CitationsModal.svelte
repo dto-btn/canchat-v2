@@ -54,6 +54,7 @@
 				{$i18n.t('Citation')}
 			</div>
 			<button
+				aria-label={$i18n.t('Close')}
 				class="self-center"
 				on:click={() => {
 					show = false;

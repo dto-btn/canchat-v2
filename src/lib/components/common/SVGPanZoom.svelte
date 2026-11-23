@@ -43,6 +43,7 @@
 		<div class=" absolute top-1 right-1">
 			<Tooltip content={$i18n.t('Copy to clipboard')}>
 				<button
+					aria-label={$i18n.t('Copy to clipboard')}
 					class="p-1.5 rounded-lg border border-gray-100 dark:border-none dark:bg-gray-850 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
 					on:click={() => {
 						copyToClipboard(content);
@@ -56,6 +57,7 @@
 		<div class=" absolute top-1 right-10">
 			<Tooltip content={$i18n.t('Reset view')}>
 				<button
+					aria-label={$i18n.t('Reset view')}
 					class="p-1.5 rounded-lg border border-gray-100 dark:border-none dark:bg-gray-850 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
 					on:click={() => {
 						resetPanZoomViewport();

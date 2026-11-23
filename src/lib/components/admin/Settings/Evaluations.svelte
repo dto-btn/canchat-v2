@@ -134,6 +134,7 @@
 						<div>
 							<Tooltip content={$i18n.t('Add Arena Model')}>
 								<button
+									aria-label={$i18n.t('Add Arena Model')}
 									class="p-1"
 									type="button"
 									on:click={() => {

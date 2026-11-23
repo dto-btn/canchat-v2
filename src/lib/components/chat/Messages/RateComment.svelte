@@ -149,6 +149,7 @@
 		<!-- <div class=" text-sm">{$i18n.t('Tell us more:')}</div> -->
 
 		<button
+			aria-label={$i18n.t('Close')}
 			on:click={() => {
 				show = false;
 			}}

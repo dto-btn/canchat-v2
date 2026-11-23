@@ -75,6 +75,7 @@
 			{$i18n.t("{{user}}'s Chats", { user: user.name })}
 		</div>
 		<button
+			aria-label={$i18n.t('Close')}
 			class="self-center"
 			on:click={() => {
 				show = false;
@@ -155,6 +156,7 @@
 												<div class="flex justify-end w-full">
 													<Tooltip content={$i18n.t('Delete Chat')}>
 														<button
+															aria-label={$i18n.t('Delete Chat')}
 															class="self-center w-fit text-sm px-2 py-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl"
 															on:click={async () => {
 																confirmDeleteChat(chat);

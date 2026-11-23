@@ -101,6 +101,7 @@
 					<div class="flex flex-row items-center gap-3 w-full text-sm">
 						<div class="flex items-center">
 							<Checkbox
+								ariaLabel={user.name}
 								state={userIds.includes(user.id) ? 'checked' : 'unchecked'}
 								on:change={(e) => {
 									if (e.detail === 'checked') {

@@ -1829,6 +1829,7 @@
 						{$i18n.t('Export History')}
 					</h3>
 					<button
+						aria-label={$i18n.t('Close')}
 						on:click={closeExportLogs}
 						class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
 					>

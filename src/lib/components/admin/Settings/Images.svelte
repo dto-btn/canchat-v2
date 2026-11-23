@@ -316,6 +316,7 @@
 								/>
 							</div>
 							<button
+								aria-label={$i18n.t('Verify Connection')}
 								class="px-2.5 bg-gray-50 hover:bg-gray-100 text-gray-800 dark:bg-gray-850 dark:hover:bg-gray-800 dark:text-gray-100 rounded-lg transition"
 								type="button"
 								on:click={async () => {
@@ -452,6 +453,7 @@
 								/>
 							</div>
 							<button
+								aria-label={$i18n.t('Verify Connection')}
 								class="px-2.5 bg-gray-50 hover:bg-gray-100 text-gray-800 dark:bg-gray-850 dark:hover:bg-gray-800 dark:text-gray-100 rounded-lg transition"
 								type="button"
 								on:click={async () => {

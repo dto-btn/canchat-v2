@@ -53,9 +53,9 @@
 					}
 				}}
 			>
-				<button
-					class=" px-3.5 py-1.5 font-medium hover:bg-black/5 dark:hover:bg-white/5 outline outline-1 outline-gray-100 dark:outline-gray-850 rounded-3xl"
-					type="button">{$i18n.t('Select Knowledge')}</button
+				<span
+					class="inline-block px-3.5 py-1.5 font-medium hover:bg-black/5 dark:hover:bg-white/5 outline outline-1 outline-gray-100 dark:outline-gray-850 rounded-3xl"
+					>{$i18n.t('Select Knowledge')}</span
 				>
 			</Selector>
 		</div>

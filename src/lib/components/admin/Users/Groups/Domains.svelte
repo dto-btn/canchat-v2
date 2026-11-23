@@ -82,6 +82,7 @@
 					>
 						@{domain}
 						<button
+							aria-label={$i18n.t('Remove {{name}}', { name: domain })}
 							type="button"
 							class="ml-1 inline-flex items-center justify-center w-4 h-4 text-blue-400 hover:text-blue-600"
 							on:click={() => handleDomainToggle(domain, false)}

@@ -118,6 +118,7 @@
 				{$i18n.t('Settings')}
 			</div>
 			<button
+				aria-label={$i18n.t('Close')}
 				class="self-center"
 				on:click={() => {
 					show = false;
@@ -190,6 +191,7 @@
 												</div>
 												<div class="flex-shrink-0">
 													<button
+														aria-label={$i18n.t('Remove Model')}
 														type="button"
 														on:click={() => {
 															defaultModelIds = defaultModelIds.filter(

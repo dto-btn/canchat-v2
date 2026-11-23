@@ -163,6 +163,7 @@
 				{/if}
 			</div>
 			<button
+				aria-label={$i18n.t('Close')}
 				class="self-center"
 				on:click={() => {
 					show = false;
@@ -209,6 +210,7 @@
 
 							<Tooltip content="Verify Connection" className="self-end -mb-1">
 								<button
+									aria-label={$i18n.t('Verify Connection')}
 									class="self-center p-1 bg-transparent hover:bg-gray-100 dark:bg-gray-900 dark:hover:bg-gray-850 rounded-lg transition"
 									on:click={() => {
 										verifyHandler();
@@ -288,6 +290,7 @@
 											</div>
 											<div class="flex-shrink-0">
 												<button
+													aria-label={$i18n.t('Remove Model')}
 													type="button"
 													on:click={() => {
 														modelIds = modelIds.filter((_, idx) => idx !== modelIdx);
@@ -327,6 +330,7 @@
 
 							<div>
 								<button
+									aria-label={$i18n.t('Add Model')}
 									type="button"
 									on:click={() => {
 										addModelHandler();

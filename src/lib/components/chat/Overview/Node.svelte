@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+	const i18n = getI18n();
+
 	import { Handle, Position, type NodeProps } from '@xyflow/svelte';
 
 	import ProfileImage from '../Messages/ProfileImage.svelte';
@@ -70,6 +73,9 @@
 						</div>
 
 						<button
+							aria-label={nodeData?.message?.favorite
+								? $i18n.t('Remove from favorites')
+								: $i18n.t('Mark as favorite')}
 							class={nodeData?.message?.favorite ? '' : 'invisible group-hover:visible'}
 							on:click={() => {
 								toggleFavorite();

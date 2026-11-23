@@ -163,6 +163,7 @@
 	<div class=" absolute z-50 w-full flex justify-between dark:text-gray-100 px-4 py-3.5">
 		<div class="flex items-center gap-2.5">
 			<button
+				aria-label={$i18n.t('Back')}
 				class="self-center p-0.5"
 				on:click={() => {
 					showOverview.set(false);
@@ -173,6 +174,7 @@
 			<div class=" text-lg font-medium self-center font-primary">{$i18n.t('Chat Overview')}</div>
 		</div>
 		<button
+			aria-label={$i18n.t('Close')}
 			class="self-center p-0.5"
 			on:click={() => {
 				dispatch('close');

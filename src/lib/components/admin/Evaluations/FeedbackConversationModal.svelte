@@ -238,6 +238,7 @@
 		<div class="text-lg font-medium self-center capitalize flex gap-1 items-center">
 			{#if viewingChat}
 				<button
+					aria-label={$i18n.t('Back')}
 					class="p-1 hover:bg-gray-100 dark:hover:bg-gray-850 rounded-lg"
 					on:click={() => (viewingChat = false)}
 				>
@@ -250,6 +251,7 @@
 		</div>
 
 		<button
+			aria-label={$i18n.t('Close')}
 			class="self-center"
 			on:click={() => {
 				show = false;

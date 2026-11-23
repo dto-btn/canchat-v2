@@ -21,6 +21,7 @@
 </script>
 
 <Dropdown
+	ariaLabel={$i18n.t('Add Content')}
 	bind:show
 	on:change={(e) => {
 		if (e.detail === false) {
@@ -30,12 +31,8 @@
 	align="end"
 >
 	<Tooltip content={$i18n.t('Add Content')}>
-		<button
+		<span
 			class=" p-1.5 rounded-xl hover:bg-gray-100 dark:bg-gray-850 dark:hover:bg-gray-800 transition font-medium text-sm flex items-center space-x-1"
-			on:click={(e) => {
-				e.stopPropagation();
-				show = true;
-			}}
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
@@ -47,7 +44,7 @@
 					d="M8.75 3.75a.75.75 0 0 0-1.5 0v3.5h-3.5a.75.75 0 0 0 0 1.5h3.5v3.5a.75.75 0 0 0 1.5 0v-3.5h3.5a.75.75 0 0 0 0-1.5h-3.5v-3.5Z"
 				/>
 			</svg>
-		</button>
+		</span>
 	</Tooltip>
 
 	<div slot="content">
