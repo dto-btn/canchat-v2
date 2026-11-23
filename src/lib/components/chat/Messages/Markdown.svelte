@@ -15,7 +15,6 @@
 	export let content: any;
 	export let model: any = null;
 	export let save = false;
-	export let headingLevelOffset = 0;
 
 	export let sourceIds: any[] = [];
 	export let onSourceClick: () => void = () => {};
@@ -43,7 +42,6 @@
 		{tokens}
 		{id}
 		{save}
-		{headingLevelOffset}
 		{onSourceClick}
 		on:update={(e) => {
 			dispatch('update', e.detail);

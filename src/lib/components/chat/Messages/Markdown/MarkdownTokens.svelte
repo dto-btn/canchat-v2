@@ -25,7 +25,6 @@
 	export let id: string;
 	export let tokens: Token[];
 	export let top = true;
-	export let headingLevelOffset = 0;
 
 	export let save = false;
 	export let onSourceClick: Function = () => {};
@@ -75,10 +74,7 @@
 	{#if token.type === 'hr'}
 		<hr class=" border-gray-50 dark:border-gray-850" />
 	{:else if token.type === 'heading'}
-		<svelte:element
-			this={headerComponent(Math.min(token.depth + headingLevelOffset, 6))}
-			class={headingLevelOffset ? `markdown-heading-depth-${token.depth}` : undefined}
-		>
+		<svelte:element this={headerComponent(token.depth)}>
 			<MarkdownInlineTokens
 				id={`${id}-${tokenIdx}-h`}
 				tokens={getTokenChildren(token)}
@@ -178,7 +174,7 @@
 		</div>
 	{:else if token.type === 'blockquote'}
 		<blockquote>
-			<svelte:self id={`${id}-${tokenIdx}`} tokens={getTokenChildren(token)} {headingLevelOffset} />
+			<svelte:self id={`${id}-${tokenIdx}`} tokens={getTokenChildren(token)} />
 		</blockquote>
 	{:else if token.type === 'list'}
 		{#if token.ordered}
@@ -189,7 +185,6 @@
 							id={`${id}-${tokenIdx}-${itemIdx}`}
 							tokens={getTokenChildren(item)}
 							top={token.loose}
-							{headingLevelOffset}
 						/>
 					</li>
 				{/each}
@@ -202,7 +197,6 @@
 							id={`${id}-${tokenIdx}-${itemIdx}`}
 							tokens={getTokenChildren(item)}
 							top={token.loose}
-							{headingLevelOffset}
 						/>
 					</li>
 				{/each}
@@ -211,11 +205,7 @@
 	{:else if token.type === 'details'}
 		<Collapsible title={token.summary} attributes={token?.attributes} className="w-fit space-y-1">
 			<div class=" mb-1.5" slot="content">
-				<svelte:self
-					id={`${id}-${tokenIdx}-d`}
-					tokens={marked.lexer(token.text)}
-					{headingLevelOffset}
-				/>
+				<svelte:self id={`${id}-${tokenIdx}-d`} tokens={marked.lexer(token.text)} />
 			</div>
 		</Collapsible>
 	{:else if token.type === 'html'}
@@ -279,52 +269,3 @@
 		{console.log('Unknown token', token)}
 	{/if}
 {/each}
-
-<style>
-	:global(.markdown-prose .markdown-heading-depth-1) {
-		color: var(--tw-prose-headings);
-		font-size: 2.25em;
-		line-height: 1.1111111;
-	}
-
-	:global(.markdown-prose .markdown-heading-depth-2) {
-		color: var(--tw-prose-headings);
-		font-size: 1.5em;
-		line-height: 1.3333333;
-	}
-
-	:global(.markdown-prose .markdown-heading-depth-3) {
-		color: var(--tw-prose-headings);
-		font-size: 1.25em;
-		line-height: 1.6;
-	}
-
-	:global(.markdown-prose .markdown-heading-depth-4) {
-		color: var(--tw-prose-headings);
-		font-size: 1em;
-		line-height: 1.5;
-	}
-
-	:global(.markdown-prose .markdown-heading-depth-5),
-	:global(.markdown-prose .markdown-heading-depth-6) {
-		color: inherit;
-		font-size: 1em;
-		line-height: inherit;
-	}
-
-	:global(.markdown-prose .markdown-heading-depth-1 strong) {
-		color: inherit;
-		font-weight: 900;
-	}
-
-	:global(.markdown-prose .markdown-heading-depth-2 strong) {
-		color: inherit;
-		font-weight: 800;
-	}
-
-	:global(.markdown-prose .markdown-heading-depth-3 strong),
-	:global(.markdown-prose .markdown-heading-depth-4 strong) {
-		color: inherit;
-		font-weight: 700;
-	}
-</style>

@@ -235,7 +235,7 @@
 								: ' w-full'}"
 						>
 							{#if message.content}
-								<Markdown id={message.id} content={message.content} headingLevelOffset={2} />
+								<Markdown id={message.id} content={message.content} />
 							{/if}
 						</div>
 					</div>

@@ -270,11 +270,7 @@
 									{#if (message?.content ?? '') === ''}
 										<Skeleton />
 									{:else}
-										<Markdown
-											id={`merged`}
-											content={message.content ?? ''}
-											headingLevelOffset={2}
-										/>
+										<Markdown id={`merged`} content={message.content ?? ''} />
 									{/if}
 								</div>
 							</div>
