@@ -152,6 +152,7 @@
 		{content}
 		{model}
 		{save}
+		headingLevelOffset={2}
 		sourceIds={getSourceIds(sources ?? [])}
 		{onSourceClick}
 		on:update={(e) => {

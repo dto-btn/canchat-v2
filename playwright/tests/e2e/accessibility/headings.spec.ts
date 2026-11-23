@@ -71,10 +71,38 @@ test.beforeAll(async () => {
 					{ context }
 				).html
 			);
+			const reasoningResponse = {
+				...response,
+				content:
+					'<details type="reasoning" done="true">\n<summary>Thought process</summary>\n> hidden reasoning\n</details>\n## Final answer'
+			};
+			rendered.set(
+				`${locale}-reasoning`,
+				ResponseMessage.render(
+					{
+						history: { messages: { answer: reasoningResponse } },
+						messageId: 'answer',
+						siblings: [],
+						readOnly: true
+					},
+					{ context }
+				).html
+			);
 			rendered.set(
 				`${locale}-markdown`,
 				MarkdownTokens.render(
-					{ id: 'markdown', tokens: marked.lexer('# First\n\n## Second') },
+					{
+						id: 'markdown',
+						tokens: marked.lexer('# First\n\n## Second\n\n###### Deepest'),
+						headingLevelOffset: 2
+					},
+					{ context }
+				).html
+			);
+			rendered.set(
+				`${locale}-markdown-default`,
+				MarkdownTokens.render(
+					{ id: 'markdown-default', tokens: marked.lexer('# Standalone') },
 					{ context }
 				).html
 			);
@@ -118,8 +146,18 @@ for (const locale of ['en-GB', 'fr-CA']) {
 		await expect(
 			page.getByRole('heading', { level: 2, name: 'Test model: An answer' })
 		).toHaveCount(1);
-		await expect(page.getByRole('heading', { level: 1, name: 'First' })).toHaveCount(1);
-		await expect(page.getByRole('heading', { level: 2, name: 'Second' })).toHaveCount(1);
+		await expect(page.getByRole('heading', { level: 3, name: 'First' })).toHaveCount(1);
+		await expect(page.getByRole('heading', { level: 4, name: 'Second' })).toHaveCount(1);
+		await expect(page.getByRole('heading', { level: 6, name: 'Deepest' })).toHaveCount(1);
+		await page.setContent(rendered.get(`${locale}-markdown-default`)!);
+		await expect(page.getByRole('heading', { level: 1, name: 'Standalone' })).toHaveCount(1);
+	});
+
+	test(`response heading excludes collapsed reasoning in ${locale}`, async ({ page }) => {
+		await page.setContent(rendered.get(`${locale}-reasoning`)!);
+		await expect(
+			page.getByRole('heading', { level: 2, name: 'Test model: Final answer' })
+		).toHaveCount(1);
 	});
 
 	test(`channel messages identify the author when the profile is hidden in ${locale}`, async ({

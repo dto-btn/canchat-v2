@@ -851,6 +851,17 @@ export const removeDetailsWithReasoning = (content: any) => {
 	return content.replace(/<details\s+type="reasoning"[^>]*>.*?<\/details>/gis, '').trim();
 };
 
+export const getResponseHeadingPreview = (content: string): string => {
+	const visibleContent = removeDetailsWithReasoning(content).replace(
+		/<details\s+type="reasoning"[^>]*>[\s\S]*$/i,
+		''
+	);
+	return removeFormattings(visibleContent)
+		.replace(/<\/?[a-z][^>]*>/gi, '')
+		.trim()
+		.slice(0, 100);
+};
+
 // This regular expression matches code blocks marked by triple backticks
 const codeBlockRegex = /```[\s\S]*?```/g;
 

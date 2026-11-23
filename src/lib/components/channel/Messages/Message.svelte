@@ -258,6 +258,7 @@
 						<Markdown
 							id={message.id}
 							content={message.content}
+							headingLevelOffset={2}
 						/>{#if message.created_at !== message.updated_at}<span class="text-gray-500 text-[10px]"
 								>(edited)</span
 							>{/if}
