@@ -65,7 +65,7 @@ export class BasePage {
 		this.t = lang === 'fr-CA' ? fr : en;
 
 		this.userProfileButton = this.page.getByRole('button', {
-			name: this.t['User profile'] || 'User profile'
+			name: this.t['User Menu'] || 'User Menu'
 		});
 		this.headerLanguageButtonEN = this.page.getByRole('button', { name: 'EN', exact: true });
 		this.headerLanguageButtonFR = this.page.getByRole('button', { name: 'FR', exact: true });

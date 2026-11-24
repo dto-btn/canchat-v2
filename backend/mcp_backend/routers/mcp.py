@@ -203,8 +203,7 @@ async def get_all_mcp_tools(request: Request) -> Dict[str, List]:
     """Get all tools from all configured MCP servers"""
     all_tools = []
 
-    # First, get tools from CrewAI singleton adapters (built-in servers)
-    # This uses pre-initialized adapters instead of creating fresh connections
+    # First, get tools from CrewAI adapters (built-in servers), initialized on demand.
     try:
         from mcp_backend.routers.crew_mcp import crew_mcp_manager
 
