@@ -9,7 +9,7 @@ on:
     branches:
       - main
     paths:
-      - ".github/workflows/cron-quality-scan.yaml"
+      - ".github/workflows/cron-code-quality-scan.yaml"
       - ".bandit.yaml"
 
 permissions:
