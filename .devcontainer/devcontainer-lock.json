@@ -1,0 +1,19 @@
+{
+  "features": {
+    "ghcr.io/devcontainers-extra/features/prettier:1": {
+      "version": "1.0.2",
+      "resolved": "ghcr.io/devcontainers-extra/features/prettier@sha256:be8a83826ac496bd1e298ecf1052e600bdddd8ef3248ca630b53a9bdea3d3d76",
+      "integrity": "sha256:be8a83826ac496bd1e298ecf1052e600bdddd8ef3248ca630b53a9bdea3d3d76"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "1.7.1",
+      "resolved": "ghcr.io/devcontainers/features/node@sha256:8c0de46939b61958041700ee89e3493f3b2e4131a06dc46b4d9423427d06e5f6",
+      "integrity": "sha256:8c0de46939b61958041700ee89e3493f3b2e4131a06dc46b4d9423427d06e5f6"
+    },
+    "ghcr.io/gccloudone-aurora-collab/devcontainer-features/enhanced-custom-root-ca:4": {
+      "version": "4.0.2",
+      "resolved": "ghcr.io/gccloudone-aurora-collab/devcontainer-features/enhanced-custom-root-ca@sha256:84d03284fc3248220d9004ebd9dc3f94c774f74c94183bb6f1ab8470faec5474",
+      "integrity": "sha256:84d03284fc3248220d9004ebd9dc3f94c774f74c94183bb6f1ab8470faec5474"
+    }
+  }
+}

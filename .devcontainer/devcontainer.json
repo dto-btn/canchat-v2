@@ -1,0 +1,18 @@
+{
+	"name": "Repo Worker",
+	"image": "mcr.microsoft.com/devcontainers/base:resolute",
+	"features": {
+		"ghcr.io/devcontainers/features/node:1": {},
+    	"ghcr.io/devcontainers-extra/features/prettier:1": {},
+		"ghcr.io/gccloudone-aurora-collab/devcontainer-features/enhanced-custom-root-ca:4": {
+			"sources": "https://raw.githubusercontent.com/gccloudone-aurora-collab/goc-root-cert-mirror/main/certs/GoC-GdC-Root-A.crt",
+			"fingerprints": "FE:E0:9E:77:43:BF:D4:3E:D7:D4:D3:ED:50:6C:C7:9D:2D:90:70:FF:A9:29:91:16:87:D4:27:33:70:BE:A3:06",
+			"allowInsecureDownload": true
+		}
+	},
+  "overrideFeatureInstallOrder": [
+	"ghcr.io/gccloudone-aurora-collab/devcontainer-features/enhanced-custom-root-ca",
+    "ghcr.io/devcontainers/features/node",
+    "ghcr.io/devcontainers-extra/features/prettier"
+  ]
+}
