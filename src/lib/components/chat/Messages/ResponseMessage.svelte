@@ -844,10 +844,10 @@
 							<div class="w-full bg-gray-50 dark:bg-gray-800 rounded-3xl px-5 py-3 my-2">
 								<textarea
 									id="message-edit-{message.id}"
-									aria-label={$i18n.t('Edit')}
 									bind:this={editTextAreaElement}
 									class=" bg-transparent outline-none w-full resize-none"
 									bind:value={editedContent}
+									aria-label={$i18n.t('Edit message')}
 									on:input={() => {
 										editTextAreaElement.style.height = '';
 										editTextAreaElement.style.height = `${editTextAreaElement.scrollHeight}px`;

@@ -24,6 +24,7 @@
 
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import OnBoarding from '$lib/components/OnBoarding.svelte';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	const i18n = getI18n();
 	const getAuthFeatures = () => /** @type {any} */ ($config?.features ?? {});
@@ -174,7 +175,7 @@
 	<div class="w-full absolute top-0 left-0 right-0 h-8 drag-region" />
 
 	{#if loaded}
-		<div class="fixed m-10 z-50">
+		<header class="fixed m-10 z-50" role="banner">
 			<div class="flex space-x-2">
 				<div class=" self-center">
 					<img
@@ -185,9 +186,9 @@
 					/>
 				</div>
 			</div>
-		</div>
+		</header>
 
-		<div
+		<main
 			class="fixed bg-transparent min-h-screen w-full flex justify-center font-primary z-50 text-black dark:text-white"
 		>
 			<div class="w-full sm:max-w-md px-10 min-h-screen flex flex-col text-center">
@@ -248,7 +249,9 @@
 												class="my-0.5 w-full text-sm outline-none bg-transparent"
 												autocomplete="name"
 												placeholder={$i18n.t('Enter Your Full Name')}
+												aria-label={$i18n.t('Name')}
 												required
+												use:requiredMessage={() => $i18n.t('This field is required')}
 											/>
 										</div>
 									{/if}
@@ -263,7 +266,9 @@
 												autocomplete="username"
 												name="username"
 												placeholder={$i18n.t('Enter Your Username')}
+												aria-label={$i18n.t('Username')}
 												required
+												use:requiredMessage={() => $i18n.t('This field is required')}
 											/>
 										</div>
 									{:else}
@@ -276,7 +281,9 @@
 												autocomplete="email"
 												name="email"
 												placeholder={$i18n.t('Enter Your Email')}
+												aria-label={$i18n.t('Email')}
 												required
+												use:requiredMessage={() => $i18n.t('This field is required')}
 											/>
 										</div>
 									{/if}
@@ -289,9 +296,11 @@
 											type="password"
 											class="my-0.5 w-full text-sm outline-none bg-transparent"
 											placeholder={$i18n.t('Enter Your Password')}
+											aria-label={$i18n.t('Password')}
 											autocomplete="current-password"
 											name="current-password"
 											required
+											use:requiredMessage={() => $i18n.t('This field is required')}
 										/>
 									</div>
 								</div>
@@ -475,6 +484,6 @@
 					</div>
 				{/if}
 			</div>
-		</div>
+		</main>
 	{/if}
 </div>

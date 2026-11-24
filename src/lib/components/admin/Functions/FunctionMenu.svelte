@@ -60,7 +60,11 @@
 					</div>
 
 					<div>
-						<Switch on:change={toggleGlobalHandler} bind:state={func.is_global} />
+						<Switch
+							ariaLabel={$i18n.t('Global')}
+							on:change={toggleGlobalHandler}
+							bind:state={func.is_global}
+						/>
 					</div>
 				</div>
 

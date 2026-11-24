@@ -9,6 +9,7 @@
 	import { knowledge } from '$lib/stores';
 	import AccessControl from '../common/AccessControl.svelte';
 	import { getRequestToken } from '$lib/services/auth';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	let loading = false;
 
@@ -88,7 +89,9 @@
 							type="text"
 							bind:value={name}
 							placeholder={$i18n.t('Name your knowledge base')}
+							aria-label={$i18n.t('Name your knowledge base')}
 							required
+							use:requiredMessage={() => $i18n.t('This field is required')}
 						/>
 					</div>
 				</div>
@@ -102,7 +105,9 @@
 							rows="4"
 							bind:value={description}
 							placeholder={$i18n.t('Describe your knowledge base and objectives')}
+							aria-label={$i18n.t('Describe your knowledge base and objectives')}
 							required
+							use:requiredMessage={() => $i18n.t('This field is required')}
 						/>
 					</div>
 				</div>

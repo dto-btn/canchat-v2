@@ -2,6 +2,7 @@
 	import { getI18n } from '$lib/utils/context';
 
 	import Textarea from '$lib/components/common/Textarea.svelte';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	const i18n = getI18n();
 
@@ -20,8 +21,10 @@
 				type="text"
 				bind:value={name}
 				placeholder={$i18n.t('Group Name')}
+				aria-label={$i18n.t('Group Name')}
 				autocomplete="off"
 				required
+				use:requiredMessage={() => $i18n.t('This field is required')}
 			/>
 		</div>
 	</div>
@@ -35,13 +38,14 @@
 			<div class="flex gap-0.5">
 				<div class="text-gray-500">#</div>
 
-				<input
-					class="w-full text-sm bg-transparent placeholder:text-gray-300 dark:placeholder:text-gray-700 outline-none"
-					type="text"
-					bind:value={color}
-					placeholder={$i18n.t('Hex Color')}
-					autocomplete="off"
-				/>
+			<input
+				class="w-full text-sm bg-transparent placeholder:text-gray-300 dark:placeholder:text-gray-700 outline-none"
+				type="text"
+				bind:value={color}
+				placeholder={$i18n.t('Hex Color')}
+				aria-label={$i18n.t('Hex Color')}
+				autocomplete="off"
+			/>
 			</div>
 		</Tooltip>
 	</div>
@@ -56,6 +60,7 @@
 			rows={4}
 			bind:value={description}
 			placeholder={$i18n.t('Group Description')}
+			aria-label={$i18n.t('Group Description')}
 		/>
 	</div>
 </div>

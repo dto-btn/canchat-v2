@@ -220,6 +220,7 @@
 						<Textarea
 							className=" bg-transparent outline-none w-full resize-none"
 							bind:value={editedContent}
+							aria-label={$i18n.t('Edit message')}
 							onKeydown={handleEditedContentKeydown}
 						/>
 						<div class=" mt-2 mb-1 flex justify-end text-sm font-medium">

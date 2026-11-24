@@ -12,6 +12,7 @@
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import LockClosed from '$lib/components/icons/LockClosed.svelte';
 	import AccessControlModal from '../common/AccessControlModal.svelte';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	const dispatch = createEventDispatcher();
 
@@ -220,8 +221,10 @@ class Tools:
 									class="w-full text-2xl font-semibold bg-transparent outline-none"
 									type="text"
 									placeholder={$i18n.t('Tool Name')}
+									aria-label={$i18n.t('Tool Name')}
 									bind:value={name}
 									required
+									use:requiredMessage={() => $i18n.t('This field is required')}
 								/>
 							</Tooltip>
 						</div>
@@ -254,9 +257,11 @@ class Tools:
 									class="w-full text-sm disabled:text-gray-500 bg-transparent outline-none"
 									type="text"
 									placeholder={$i18n.t('Tool ID')}
+									aria-label={$i18n.t('Tool ID')}
 									bind:value={id}
 									required
 									disabled={edit}
+									use:requiredMessage={() => $i18n.t('This field is required')}
 								/>
 							</Tooltip>
 						{/if}
@@ -270,8 +275,10 @@ class Tools:
 								class="w-full text-sm bg-transparent outline-none"
 								type="text"
 								placeholder={$i18n.t('Tool Description')}
+								aria-label={$i18n.t('Tool Description')}
 								bind:value={meta.description}
 								required
+								use:requiredMessage={() => $i18n.t('This field is required')}
 							/>
 						</Tooltip>
 					</div>

@@ -6,6 +6,7 @@
 	const i18n = getI18n();
 
 	import Switch from './Switch.svelte';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	export let valvesSpec: any = null;
 	export let valves: Record<string, any> = {};
@@ -57,6 +58,7 @@
 							<select
 								class="w-full rounded-lg py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-850 outline-none border border-gray-100 dark:border-gray-800"
 								bind:value={valves[property]}
+								aria-label={valvesSpec.properties[property].title}
 								on:change={() => {
 									dispatch('change');
 								}}
@@ -75,6 +77,7 @@
 
 								<div class=" pr-2">
 									<Switch
+										ariaLabel={valvesSpec.properties[property].title}
 										bind:state={valves[property]}
 										on:change={() => {
 											dispatch('change');
@@ -88,8 +91,10 @@
 								type="text"
 								placeholder={valvesSpec.properties[property].title}
 								bind:value={valves[property]}
+								aria-label={valvesSpec.properties[property].title}
 								autocomplete="off"
 								required
+								use:requiredMessage={() => $i18n.t('This field is required')}
 								on:change={() => {
 									dispatch('change');
 								}}

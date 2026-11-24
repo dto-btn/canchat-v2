@@ -28,6 +28,7 @@
 	import Switch from '$lib/components/common/Switch.svelte';
 	import Textarea from '$lib/components/common/Textarea.svelte';
 	import { getRequestToken } from '$lib/services/auth';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	const i18n = getI18n();
 	const getSelectValue = (event: Event) => (event.currentTarget as HTMLSelectElement).value;
@@ -297,7 +298,8 @@
 					<select
 						class="dark:bg-gray-900 w-fit pr-8 rounded px-2 p-1 text-xs bg-transparent outline-none text-right"
 						bind:value={embeddingEngine}
-						placeholder="Select an embedding model engine"
+						placeholder={$i18n.t('Select an embedding model engine')}
+						aria-label={$i18n.t('Embedding Model Engine')}
 						on:change={(e) => {
 							const value = getSelectValue(e);
 							if (value === 'ollama') {
@@ -321,8 +323,10 @@
 					<input
 						class="flex-1 w-full rounded-lg text-sm bg-transparent outline-none"
 						placeholder={$i18n.t('API Base URL')}
+						aria-label={$i18n.t('API Base URL')}
 						bind:value={OpenAIUrl}
 						required
+						use:requiredMessage={() => $i18n.t('This field is required')}
 					/>
 
 					<SensitiveInput placeholder={$i18n.t('API Key')} bind:value={OpenAIKey} />
@@ -332,8 +336,10 @@
 					<input
 						class="flex-1 w-full rounded-lg text-sm bg-transparent outline-none"
 						placeholder={$i18n.t('API Base URL')}
+						aria-label={$i18n.t('API Base URL')}
 						bind:value={OllamaUrl}
 						required
+						use:requiredMessage={() => $i18n.t('This field is required')}
 					/>
 
 					<SensitiveInput
@@ -354,6 +360,7 @@
 							min="1"
 							max="2048"
 							step="1"
+							aria-label={$i18n.t('Embedding Batch Size')}
 							bind:value={embeddingBatchSize}
 							class="w-full h-2 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
 						/>
@@ -363,6 +370,7 @@
 							bind:value={embeddingBatchSize}
 							type="number"
 							class=" bg-transparent text-center w-14"
+							aria-label={$i18n.t('Embedding Batch Size')}
 							min="-2"
 							max="16000"
 							step="1"
@@ -397,7 +405,7 @@
 							? 'Inject entire contents as context for comprehensive processing, this is recommended for complex queries.'
 							: 'Default to segmented retrieval for focused and relevant content extraction, this is recommended for most cases.'}
 					>
-						<Switch bind:state={RAG_FULL_CONTEXT} />
+						<Switch ariaLabel={$i18n.t('Full Context Mode')} bind:state={RAG_FULL_CONTEXT} />
 					</Tooltip>
 				</div>
 			</div>
@@ -416,7 +424,9 @@
 							class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 							bind:value={embeddingModel}
 							placeholder={$i18n.t('Set embedding model')}
+							aria-label={$i18n.t('Set embedding model')}
 							required
+							use:requiredMessage={() => $i18n.t('This field is required')}
 						/>
 					</div>
 				</div>
@@ -428,6 +438,7 @@
 							placeholder={$i18n.t('Set embedding model (e.g. {{model}})', {
 								model: embeddingModel.slice(-40)
 							})}
+							aria-label={$i18n.t('Set embedding model')}
 							bind:value={embeddingModel}
 						/>
 					</div>
@@ -507,6 +518,7 @@
 								placeholder={$i18n.t('Set reranking model (e.g. {{model}})', {
 									model: 'BAAI/bge-reranker-v2-m3'
 								})}
+								aria-label={$i18n.t('Set reranking model')}
 								bind:value={rerankingModel}
 							/>
 						</div>
@@ -579,6 +591,7 @@
 					<select
 						class="dark:bg-gray-900 w-fit pr-8 rounded px-2 text-xs bg-transparent outline-none text-right"
 						bind:value={contentExtractionEngine}
+						aria-label={$i18n.t('Content Extraction Engine')}
 						on:change={(e) => {
 							showTikaServerUrl = getSelectValue(e) === 'tika';
 						}}
@@ -596,6 +609,7 @@
 						<input
 							class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 							placeholder={$i18n.t('Enter Tika Server URL')}
+							aria-label={$i18n.t('Enter Tika Server URL')}
 							bind:value={tikaServerUrl}
 						/>
 					</div>
@@ -611,7 +625,10 @@
 			<div class="flex justify-between items-center text-xs">
 				<div class="text-xs font-medium">{$i18n.t('Enable Google Drive')}</div>
 				<div>
-					<Switch bind:state={enableGoogleDriveIntegration} />
+					<Switch
+						ariaLabel={$i18n.t('Enable Google Drive')}
+						bind:state={enableGoogleDriveIntegration}
+					/>
 				</div>
 			</div>
 		</div>
@@ -630,6 +647,7 @@
 							class=" w-full rounded-lg py-1.5 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 							type="number"
 							placeholder={$i18n.t('Enter Top K')}
+							aria-label={$i18n.t('Enter Top K')}
 							bind:value={querySettings.k}
 							autocomplete="off"
 							min="0"
@@ -649,6 +667,7 @@
 								type="number"
 								step="0.01"
 								placeholder={$i18n.t('Enter Score')}
+								aria-label={$i18n.t('Enter Score')}
 								bind:value={querySettings.r}
 								autocomplete="off"
 								min="0.0"
@@ -675,6 +694,7 @@
 				>
 					<Textarea
 						bind:value={querySettings.template}
+						aria-label={$i18n.t('RAG Template')}
 						placeholder={$i18n.t('Leave empty to use the default prompt, or enter a custom prompt')}
 					/>
 				</Tooltip>
@@ -692,6 +712,7 @@
 					<select
 						class="dark:bg-gray-900 w-fit pr-8 rounded px-2 text-xs bg-transparent outline-none text-right"
 						bind:value={textSplitter}
+						aria-label={$i18n.t('Text Splitter')}
 					>
 						<option value="">{$i18n.t('Default')} ({$i18n.t('Character')})</option>
 						<option value="token">{$i18n.t('Token')} ({$i18n.t('Tiktoken')})</option>
@@ -709,6 +730,7 @@
 							class=" w-full rounded-lg py-1.5 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 							type="number"
 							placeholder={$i18n.t('Enter Chunk Size')}
+							aria-label={$i18n.t('Enter Chunk Size')}
 							bind:value={chunkSize}
 							autocomplete="off"
 							min="0"
@@ -726,6 +748,7 @@
 							class="w-full rounded-lg py-1.5 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 							type="number"
 							placeholder={$i18n.t('Enter Chunk Overlap')}
+							aria-label={$i18n.t('Enter Chunk Overlap')}
 							bind:value={chunkOverlap}
 							autocomplete="off"
 							min="0"
@@ -739,7 +762,7 @@
 					<div class=" text-xs font-medium">{$i18n.t('PDF Extract Images (OCR)')}</div>
 
 					<div>
-						<Switch bind:state={pdfExtractImages} />
+						<Switch ariaLabel={$i18n.t('PDF Extract Images (OCR)')} bind:state={pdfExtractImages} />
 					</div>
 				</div>
 			</div>
@@ -767,6 +790,7 @@
 								class="w-full rounded-lg py-1.5 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 								type="number"
 								placeholder={$i18n.t('Leave empty for unlimited')}
+								aria-label={$i18n.t('Max Upload Size')}
 								bind:value={fileMaxSize}
 								autocomplete="off"
 								min="0"
@@ -790,6 +814,7 @@
 								class=" w-full rounded-lg py-1.5 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
 								type="number"
 								placeholder={$i18n.t('Leave empty for unlimited')}
+								aria-label={$i18n.t('Max Upload Count')}
 								bind:value={fileMaxCount}
 								autocomplete="off"
 								min="0"

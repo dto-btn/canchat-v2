@@ -11,6 +11,7 @@
 	import { getGravatarUrl } from '$lib/apis/utils';
 	import { generateInitialsImage, canvasPixelTest, getUserTimezone } from '$lib/utils';
 	import { getRequestToken } from '$lib/services/auth';
+	import { requiredMessage } from '$lib/utils/actions/requiredMessage';
 
 	const i18n = getI18n();
 
@@ -87,6 +88,7 @@
 			type="file"
 			hidden
 			accept="image/*"
+			aria-label={$i18n.t('Profile Image')}
 			on:change={(e) => {
 				const files = profileImageInputElement.files ?? [];
 				let reader = new FileReader();
@@ -239,7 +241,9 @@
 							class="w-full rounded-lg py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-850 outline-none"
 							type="text"
 							bind:value={name}
+							aria-label={$i18n.t('Name')}
 							required
+							use:requiredMessage={() => $i18n.t('This field is required')}
 						/>
 					</div>
 				</div>
@@ -258,6 +262,7 @@
 						<select
 							id="timezone-select"
 							aria-describedby="timezone-help"
+							aria-label={$i18n.t('Timezone')}
 							class="w-full rounded-lg py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-850 outline-none border border-gray-200 dark:border-gray-700"
 							bind:value={selectedTimezone}
 						>

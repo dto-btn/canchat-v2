@@ -90,6 +90,7 @@
 				class=" w-full text-sm pr-4 rounded-r-xl outline-none bg-transparent"
 				bind:value={query}
 				placeholder={$i18n.t('Search')}
+				aria-label={$i18n.t('Search')}
 			/>
 		</div>
 	</div>

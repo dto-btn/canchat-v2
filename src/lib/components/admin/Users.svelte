@@ -60,7 +60,7 @@
 			class="px-0.5 py-1 min-w-fit rounded-lg lg:flex-none flex text-right transition {selectedTab ===
 			'overview'
 				? ''
-				: ' text-gray-300 dark:text-gray-600 hover:text-gray-700 dark:hover:text-white'}"
+				: ' text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white'}"
 			on:click={() => {
 				selectedTab = 'overview';
 			}}
@@ -84,7 +84,7 @@
 			class="px-0.5 py-1 min-w-fit rounded-lg lg:flex-none flex text-right transition {selectedTab ===
 			'groups'
 				? ''
-				: ' text-gray-300 dark:text-gray-600 hover:text-gray-700 dark:hover:text-white'}"
+				: ' text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white'}"
 			on:click={() => {
 				selectedTab = 'groups';
 			}}
@@ -108,7 +108,7 @@
 			class="px-0.5 py-1 min-w-fit rounded-lg lg:flex-none flex text-right transition {selectedTab ===
 			'domains'
 				? ''
-				: ' text-gray-300 dark:text-gray-600 hover:text-gray-700 dark:hover:text-white'}"
+				: ' text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white'}"
 			on:click={() => {
 				selectedTab = 'domains';
 			}}

@@ -92,6 +92,7 @@
 										{$i18n.t('Using Focused Retrieval')}
 									{/if}
 									<Switch
+										ariaLabel={$i18n.t('Using Entire Document')}
 										bind:state={enableFullContent}
 										on:change={(e) => {
 											item.context = e.detail ? 'full' : undefined;

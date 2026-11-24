@@ -64,6 +64,7 @@ coverage.xml
 .pytest_cache/
 data/
 cover/
+pytest.results
 
 # Playwright
 playwright/.auth

@@ -44,6 +44,7 @@
 				hidden
 				type="file"
 				accept=".json"
+				aria-label={$i18n.t('Database Config Import')}
 				on:change={(e) => {
 					const input = getFileInput(e);
 					const file = input.files?.[0];

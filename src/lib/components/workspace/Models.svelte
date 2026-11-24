@@ -205,6 +205,7 @@
 					class=" w-full text-sm py-1 rounded-r-xl outline-none bg-transparent"
 					bind:value={searchValue}
 					placeholder={$i18n.t('Search Models')}
+					aria-label={$i18n.t('Search Models')}
 				/>
 			</div>
 
@@ -212,6 +213,7 @@
 				<a
 					class=" px-2 py-2 rounded-xl hover:bg-gray-700/10 dark:hover:bg-gray-100/10 dark:text-gray-300 dark:hover:text-white transition font-medium text-sm flex items-center space-x-1"
 					href="/workspace/models/create"
+					aria-label={$i18n.t('Create a model')}
 				>
 					<Plus className="size-3.5" />
 				</a>
@@ -345,6 +347,7 @@
 							<div class="ml-1">
 								<Tooltip content={model.is_active ? $i18n.t('Enabled') : $i18n.t('Disabled')}>
 									<Switch
+										ariaLabel={model.name}
 										state={model.is_active}
 										on:change={async (e) => {
 											await toggleModelById(getRequestToken(), model.id);
@@ -371,6 +374,7 @@
 					type="file"
 					accept=".json"
 					hidden
+					aria-label={$i18n.t('Import Models')}
 					on:change={() => {
 						let reader = new FileReader();
 						reader.onload = async (event) => {
