@@ -54,6 +54,7 @@ class AzureConfig(BaseModel):
     endpoint: str = os.getenv("CREWAI_AZURE_OPENAI_ENDPOINT", "")
     deployment: str = os.getenv("CREWAI_AZURE_OPENAI_DEPLOYMENT_NAME", "")
     api_version: str = os.getenv("CREWAI_AZURE_OPENAI_API_VERSION", "")
+    api_mode: str = os.getenv("CREWAI_AZURE_OPENAI_API_MODE", "legacy")
 
     def validate_config(self) -> bool:
         """Validate that required Azure configuration is present"""
@@ -175,20 +176,23 @@ class CrewMCPManager:
 
     def get_azure_llm_config(self) -> LLM:
         """Get Azure OpenAI LLM configuration for CrewAI"""
-        # Set environment variables for LiteLLM/CrewAI Azure OpenAI
-        # CrewAI 1.7.2 uses LiteLLM which requires specific Azure env var format
+        if self.azure_config.api_mode == "v1":
+            return LLM(
+                model=f"openai/{self.azure_config.deployment}",
+                base_url=f"{self.azure_config.endpoint.rstrip('/')}/openai/v1/",
+                api_key=self.azure_config.api_key,
+                timeout=30,
+            )
+        if self.azure_config.api_mode != "legacy":
+            raise ValueError("CREWAI_AZURE_OPENAI_API_MODE must be 'legacy' or 'v1'")
+
         os.environ["AZURE_API_KEY"] = self.azure_config.api_key
         os.environ["AZURE_API_BASE"] = self.azure_config.endpoint
         os.environ["AZURE_API_VERSION"] = self.azure_config.api_version
 
-        # Create LLM instance with Azure configuration
-        # CrewAI 1.7.2 LiteLLM format: azure/<deployment_name>
-        # Must NOT include base_url or api_key - LiteLLM reads from env vars
-        # Add timeout to prevent hanging in K8s environments
-        # O3-mini doesn't support temperature or max_completion_tokens parameters
         return LLM(
             model=f"azure/{self.azure_config.deployment}",
-            timeout=30,  # 30 second timeout per LLM API call
+            timeout=30,
         )
 
     def run_time_crew(self, query: str = "What's the current time?") -> str:
