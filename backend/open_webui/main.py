@@ -533,13 +533,6 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 log.error(f"Error during MCP manager cleanup: {e}")
 
-        if crew_mcp.crew_mcp_manager:
-            try:
-                crew_mcp.crew_mcp_manager.cleanup_mcp_adapters()
-                log.info("CrewAI MCP adapter cleanup completed")
-            except Exception as e:
-                log.error(f"Error during CrewAI MCP adapter cleanup: {e}")
-
         # Cleanup scheduler
         try:
             from open_webui.scheduler import stop_scheduler

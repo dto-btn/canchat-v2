@@ -47,12 +47,18 @@ That's it. On next startup all departments listed in `SHAREPOINT_DEPARTMENTS` ar
 
 | What                                         | Where                                                      |
 | -------------------------------------------- | ---------------------------------------------------------- |
-| Server process started                       | `backend/mcp_backend/management/mcp_manager.py`            |
-| CrewAI adapter initialised                   | `backend/mcp_backend/integration/crew_mcp_integration.py`  |
+| Built-in sessions owned per backend worker   | `backend/mcp_backend/management/builtin_sessions.py`       |
+| CrewAI tools adapted from shared sessions    | `backend/mcp_backend/integration/crew_mcp_integration.py`  |
 | MCP API endpoint exposes the server          | `backend/mcp_backend/routers/mcp.py`                       |
 | Admin UI lists and describes the server      | `src/lib/components/admin/Settings/MCP.svelte`             |
 | Permissions UI shows a toggle for the server | `src/lib/components/admin/Users/Groups/Permissions.svelte` |
 | Chat tool names/descriptions localised       | `src/lib/utils/mcp-tools.ts`                               |
+
+Built-in time and news sessions start on first discovery or use and close on
+shutdown. SharePoint sessions are short-lived and receive only the current
+request's delegated token. Admin restart is refused while a session is in use;
+an idle status means that no session is currently active. Each backend worker
+owns its own sessions.
 
 ### Naming convention
 

@@ -6,6 +6,7 @@ It follows the same patterns as the Ollama and OpenAI routers for consistency.
 """
 
 import logging
+import os
 from typing import Optional, Dict, List, Any
 
 from fastmcp.client import Client
@@ -15,6 +16,7 @@ from pydantic import BaseModel
 from open_webui.utils.auth import get_admin_user, get_verified_user
 from mcp_backend.models.mcp_servers import MCPServers
 from mcp_backend.management.mcp_manager import validate_command
+from mcp_backend.management.builtin_sessions import BuiltinServerBusy
 
 log = logging.getLogger(__name__)
 
@@ -201,30 +203,23 @@ async def get_tools_from_mcp_server(url: str, idx: int, api_config: Dict):
 
 async def get_all_mcp_tools(request: Request) -> Dict[str, List]:
     """Get all tools from all configured MCP servers"""
+
     all_tools = []
 
-    # First, get tools from CrewAI adapters (built-in servers), initialized on demand.
+    # First, get built-in tools from the shared session owner.
     try:
-        from mcp_backend.routers.crew_mcp import crew_mcp_manager
-
-        if crew_mcp_manager:
-            crew_tools = crew_mcp_manager.get_available_tools()
-
-            # Convert CrewAI tool format to MCP tool format
-            for crew_tool in crew_tools:
-                tool_dict = {
-                    "name": crew_tool["name"],
-                    "description": crew_tool["description"],
-                    "inputSchema": {},  # CrewAI tools don't expose schema
-                    "mcp_server_name": crew_tool["server"],
-                    "mcp_server_idx": 0,  # Not applicable for singleton adapters
-                    "is_builtin": True,
-                }
-                all_tools.append(tool_dict)
-
-            log.info(f"Got {len(crew_tools)} tools from CrewAI singleton adapters")
+        manager = getattr(request.app.state, "mcp_manager", None)
+        if manager:
+            for name in manager.get_server_names():
+                if manager.is_builtin_server(name):
+                    try:
+                        all_tools.extend(await manager.get_tools_from_server(name))
+                    except Exception:
+                        log.exception(
+                            "Error getting tools from built-in server %s", name
+                        )
     except Exception as e:
-        log.exception(f"Error getting tools from CrewAI singleton adapters: {e}")
+        log.exception(f"Error getting built-in MCP tools: {e}")
 
     # Then, get tools from external MCP servers (if any configured)
     try:
@@ -346,7 +341,13 @@ async def call_mcp_tool(
         if hasattr(request.app.state, "mcp_manager") and request.app.state.mcp_manager:
             # Find which server has this tool
             server_name = None
-            server_names = request.app.state.mcp_manager.get_running_servers()
+            manager = request.app.state.mcp_manager
+            server_names = [
+                name
+                for name in manager.get_server_names()
+                if manager.is_builtin_server(name)
+                or manager.get_server_status(name) == "running"
+            ]
 
             # Handle prefixed tool names (e.g., "mcp_server_1/search_news" -> "search_news")
             clean_tool_name = tool_name
@@ -385,11 +386,25 @@ async def call_mcp_tool(
                     detail=f"Tool '{tool_name}' not found on any available MCP server",
                 )
 
+            user_access_token = None
+            if (
+                manager.is_builtin_server(server_name)
+                and server_name.endswith("_sharepoint_server")
+                and os.getenv("SHP_USE_DELEGATED_ACCESS", "true").lower()
+                in ("true", "1", "yes")
+            ):
+                from mcp_backend.routers.crew_mcp import extract_graph_access_token
+
+                user_access_token = extract_graph_access_token(request)
             result = await request.app.state.mcp_manager.call_tool(
-                server_name, tool_name, arguments
+                server_name, tool_name, arguments, user_access_token
             )
 
             # Handle FastMCP result format
+            if getattr(result, "isError", False):
+                raise RuntimeError(f"MCP tool {tool_name} failed: {result.content}")
+            if hasattr(result, "content"):
+                result = result.content
             if isinstance(result, list) and len(result) > 0:
                 # FastMCP returns a list of content objects
                 content = []
@@ -440,13 +455,9 @@ async def get_builtin_servers(request: Request, user=Depends(get_admin_user)):
 
         for name in server_names:
             # Only expose built-in servers (time, news, and any *_sharepoint_server)
-            if not (
-                name in ("time_server", "news_server")
-                or name.endswith("_sharepoint_server")
-            ):
+            if not request.app.state.mcp_manager.is_builtin_server(name):
                 continue
 
-            status = request.app.state.mcp_manager.get_server_status(name)
             config = request.app.state.mcp_manager.server_configs.get(name, {})
 
             # Get tools count for this server
@@ -455,8 +466,9 @@ async def get_builtin_servers(request: Request, user=Depends(get_admin_user)):
                 tools = await request.app.state.mcp_manager.get_tools_from_server(name)
                 tools_count = len(tools)
             except Exception:
-                pass
+                log.exception("Error getting tools from built-in server %s", name)
 
+            status = request.app.state.mcp_manager.get_server_status(name)
             servers.append(
                 {
                     "name": name,
@@ -524,6 +536,11 @@ async def restart_builtin_server(
         ):
             raise HTTPException(status_code=500, detail="MCP manager not available")
 
+        if not request.app.state.mcp_manager.is_builtin_server(server_name):
+            raise HTTPException(
+                status_code=404, detail=f"Built-in server '{server_name}' not found"
+            )
+
         # Restart the server
         success = await request.app.state.mcp_manager.restart_server(server_name)
         if not success:
@@ -535,6 +552,8 @@ async def restart_builtin_server(
 
     except HTTPException:
         raise
+    except BuiltinServerBusy as e:
+        raise HTTPException(status_code=409, detail=str(e))
     except Exception as e:
         log.exception(f"Error restarting built-in MCP server: {e}")
         raise HTTPException(
