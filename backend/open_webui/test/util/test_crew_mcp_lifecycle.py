@@ -91,6 +91,58 @@ def test_invalid_azure_api_mode_fails_explicitly(crew_mcp_module):
         manager.get_azure_llm_config()
 
 
+def test_crewai_tools_adapt_schema_and_call_the_matching_session(crew_mcp_module):
+    from mcp.types import CallToolResult, TextContent, Tool
+    from mcp_backend.management.builtin_sessions import BuiltinTool
+
+    calls = []
+
+    def builtin(name):
+        def call(arguments):
+            calls.append((name, arguments))
+            return CallToolResult(content=[TextContent(type="text", text=name)])
+
+        return BuiltinTool(
+            definition=Tool(
+                name=name,
+                description="Search",
+                inputSchema={
+                    "type": "object",
+                    "properties": {"query": {"type": "string"}},
+                    "required": ["query"],
+                },
+            ),
+            call=call,
+        )
+
+    first, second = crew_mcp_module.CrewMCPManager._crewai_tools(
+        [builtin("first-tool"), builtin("second-tool")]
+    )
+    assert first.to_structured_tool().invoke({"query": "alpha"}) == "first-tool"
+    assert second.to_structured_tool().invoke({"query": "beta"}) == "second-tool"
+    assert calls == [
+        ("first-tool", {"query": "alpha"}),
+        ("second-tool", {"query": "beta"}),
+    ]
+    with pytest.raises(ValueError, match="query"):
+        first.to_structured_tool().invoke({})
+
+
+def test_crewai_tool_surfaces_mcp_errors(crew_mcp_module):
+    from mcp.types import CallToolResult, TextContent, Tool
+    from mcp_backend.management.builtin_sessions import BuiltinTool
+
+    tool = BuiltinTool(
+        definition=Tool(name="failing_tool", inputSchema={"type": "object"}),
+        call=lambda _: CallToolResult(
+            content=[TextContent(type="text", text="request failed")], isError=True
+        ),
+    )
+    adapted = crew_mcp_module.CrewMCPManager._crewai_tools([tool])[0]
+    with pytest.raises(RuntimeError, match="request failed"):
+        adapted.run()
+
+
 def test_adapters_start_lazily_and_close_their_context_managers(
     crew_mcp_module, monkeypatch
 ):

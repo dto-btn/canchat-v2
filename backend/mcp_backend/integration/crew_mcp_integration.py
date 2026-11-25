@@ -14,7 +14,10 @@ os.environ["OTEL_SDK_DISABLED"] = "true"
 
 from crewai import Agent, Task, Crew, Process, LLM
 from crewai.tools import BaseTool
-from crewai_tools.adapters.mcp_adapter import CrewAIToolAdapter
+from crewai.tools.base_tool import Tool
+from crewai.utilities.pydantic_schema_utils import create_model_from_schema
+from crewai.utilities.string_utils import sanitize_tool_name
+from mcp.types import TextContent
 from mcp_backend.management.builtin_sessions import BuiltinTool, builtin_sessions
 
 # Configure logging
@@ -119,8 +122,36 @@ class CrewMCPManager:
 
     @staticmethod
     def _crewai_tools(tools: list[BuiltinTool]) -> list[BaseTool]:
-        adapter = CrewAIToolAdapter()
-        return [adapter.adapt(tool.call, tool.definition) for tool in tools]
+        def adapt(tool: BuiltinTool) -> BaseTool:
+            def call_tool(**kwargs) -> str:
+                result = tool.call(kwargs)
+                if result.isError:
+                    raise RuntimeError(
+                        f"MCP tool {tool.definition.name} failed: {result.content}"
+                    )
+                if len(result.content) == 1:
+                    content = result.content[0]
+                    return (
+                        content.text
+                        if isinstance(content, TextContent)
+                        else str(content)
+                    )
+                return str(
+                    [
+                        item.text
+                        for item in result.content
+                        if isinstance(item, TextContent)
+                    ]
+                )
+
+            return Tool(
+                name=sanitize_tool_name(tool.definition.name),
+                description=tool.definition.description or "",
+                args_schema=create_model_from_schema(tool.definition.inputSchema),
+                func=call_tool,
+            )
+
+        return [adapt(tool) for tool in tools]
 
     def get_azure_llm_config(self) -> LLM:
         """Get Azure OpenAI LLM configuration for CrewAI"""
