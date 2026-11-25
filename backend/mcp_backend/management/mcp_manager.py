@@ -15,19 +15,11 @@ from pathlib import Path
 
 from fastmcp.client import Client
 from fastmcp.client.transports import PythonStdioTransport
+from mcp_backend.management.builtin_sessions import builtin_sessions
 
 log = logging.getLogger(__name__)
 # Ensure MCP manager logs are visible
 log.setLevel(logging.INFO)
-
-
-def _is_builtin_server(name: str) -> bool:
-    """Return True for servers that are part of the built-in MCP configuration.
-
-    Built-in servers are: time_server, news_server, and any *_sharepoint_server
-    (one per department, discovered automatically).
-    """
-    return name in ("time_server", "news_server") or name.endswith("_sharepoint_server")
 
 
 # Define allowed executables for MCP servers
@@ -118,6 +110,7 @@ class FastMCPManager:
         env: Optional[Dict[str, str]] = None,
         transport: str = "stdio",
         url: Optional[str] = None,
+        is_builtin: bool = False,
     ):
         """Add configuration for an external MCP server
 
@@ -129,14 +122,20 @@ class FastMCPManager:
             transport: Transport type ('stdio' or 'http')
             url: URL for HTTP transport
         """
+        if self.is_builtin_server(name) and not is_builtin:
+            raise ValueError(f"Server name {name!r} is reserved for a built-in server")
         self.server_configs[name] = {
             "command": command,
             "working_dir": working_dir,
             "env": env,
             "transport": transport,
             "url": url,
+            "is_builtin": is_builtin,
         }
         log.info(f"Added server configuration: {name} ({transport})")
+
+    def is_builtin_server(self, name: str) -> bool:
+        return bool(self.server_configs.get(name, {}).get("is_builtin"))
 
     async def start_server(self, name: str) -> bool:
         """Start an external MCP server process
@@ -150,6 +149,10 @@ class FastMCPManager:
         if name not in self.server_configs:
             log.error(f"No configuration found for server: {name}")
             return False
+
+        if self.is_builtin_server(name):
+            await asyncio.to_thread(builtin_sessions.restart, name)
+            return True
 
         if name in self.server_processes:
             if self.server_processes[name].poll() is None:
@@ -243,6 +246,9 @@ class FastMCPManager:
         Returns:
             True if server stopped successfully, False otherwise
         """
+        if self.is_builtin_server(name):
+            await asyncio.to_thread(builtin_sessions.stop, name)
+            return True
         try:
             # Close client connection
             if name in self.clients:
@@ -286,6 +292,12 @@ class FastMCPManager:
         Returns:
             True if server restarted successfully, False otherwise
         """
+        if name not in self.server_configs:
+            log.error("No configuration found for server: %s", name)
+            return False
+        if self.is_builtin_server(name):
+            await asyncio.to_thread(builtin_sessions.restart, name)
+            return True
         await self.stop_server(name)
         return await self.start_server(name)
 
@@ -300,6 +312,9 @@ class FastMCPManager:
         """
         if name not in self.server_configs:
             return "not_configured"
+
+        if self.is_builtin_server(name):
+            return builtin_sessions.status(name)
 
         config = self.server_configs[name]
 
@@ -347,7 +362,7 @@ class FastMCPManager:
                 "command": config.get("command", []),
                 "working_dir": config.get("working_dir"),
                 "url": config.get("url"),
-                "is_builtin": _is_builtin_server(name),  # Mark built-in servers
+                "is_builtin": self.is_builtin_server(name),
             }
             servers.append(server_info)
 
@@ -365,6 +380,14 @@ class FastMCPManager:
             server_status = self.get_server_status(server_name)
             log.info(f"Server {server_name} status: {server_status}")
 
+            if self.is_builtin_server(server_name):
+                try:
+                    all_tools.extend(await self.get_tools_from_server(server_name))
+                except Exception:
+                    log.exception(
+                        "Error getting tools from built-in server %s", server_name
+                    )
+                continue
             if server_status != "running":
                 log.warning(f"Skipping {server_name} - not running")
                 continue
@@ -394,7 +417,7 @@ class FastMCPManager:
                                     "mcp_server_idx": list(
                                         self.server_configs.keys()
                                     ).index(server_name),
-                                    "is_builtin": _is_builtin_server(server_name),
+                                    "is_builtin": self.is_builtin_server(server_name),
                                 }
                                 all_tools.append(tool_dict)
                 else:
@@ -423,7 +446,7 @@ class FastMCPManager:
                                     "mcp_server_idx": list(
                                         self.server_configs.keys()
                                     ).index(server_name),
-                                    "is_builtin": _is_builtin_server(server_name),
+                                    "is_builtin": self.is_builtin_server(server_name),
                                 }
                                 all_tools.append(tool_dict)
                                 log.debug(f"Added tool {tool.name} from {server_name}")
@@ -441,7 +464,11 @@ class FastMCPManager:
         return all_tools
 
     async def call_tool(
-        self, server_name: str, tool_name: str, arguments: Dict[str, Any]
+        self,
+        server_name: str,
+        tool_name: str,
+        arguments: Dict[str, Any],
+        user_access_token: Optional[str] = None,
     ) -> Any:
         """Call a tool on a specific MCP server
 
@@ -459,6 +486,17 @@ class FastMCPManager:
         """
         if server_name not in self.server_configs:
             raise ValueError(f"Server {server_name} not configured")
+
+        if self.is_builtin_server(server_name):
+
+            def call_builtin():
+                with builtin_sessions.session(server_name, user_access_token) as tools:
+                    for tool in tools:
+                        if tool.definition.name == tool_name:
+                            return tool.call(arguments)
+                    raise ValueError(f"Tool {tool_name} not found on {server_name}")
+
+            return await asyncio.to_thread(call_builtin)
 
         config = self.server_configs[server_name]
 
@@ -516,16 +554,9 @@ class FastMCPManager:
                 working_dir=str(backend_dir),
                 env=dict(os.environ),  # Pass current environment variables
                 transport="stdio",
+                is_builtin=True,
             )
 
-            # Start the time server
-            log.info(f"About to start time server...")
-            start_result = await self.start_server("time_server")
-            log.info(f"Time server start_server returned: {start_result}")
-            if start_result:
-                log.info("Time server started successfully")
-            else:
-                log.error("Time server failed to start")
         else:
             log.warning(f"Time server not found at {time_server_path}")
 
@@ -544,16 +575,9 @@ class FastMCPManager:
                 working_dir=str(backend_dir),
                 env=dict(os.environ),  # Pass current environment variables
                 transport="stdio",
+                is_builtin=True,
             )
 
-            # Start the news server
-            log.info(f"About to start news server...")
-            start_result = await self.start_server("news_server")
-            log.info(f"News server start_server returned: {start_result}")
-            if start_result:
-                log.info("News server started successfully")
-            else:
-                log.error("News server failed to start")
         else:
             log.warning(f"News server not found at {news_server_path}")
 
@@ -610,15 +634,8 @@ class FastMCPManager:
                     if key.startswith("SHP_") or key.startswith(f"{dept}_SHP_")
                 },  # Pass global and department specific environment variables
                 transport="stdio",
+                is_builtin=True,
             )
-
-            log.info(f"About to start {server_name}...")
-            start_result = await self.start_server(server_name)
-            log.info(f"{server_name} start_server returned: {start_result}")
-            if start_result:
-                log.info(f"{server_name} started successfully")
-            else:
-                log.error(f"{server_name} failed to start")
 
     async def initialize_external_servers(self):
         """Initialize external MCP servers from database"""
@@ -683,12 +700,31 @@ class FastMCPManager:
     async def cleanup(self):
         """Clean up all server processes and connections"""
         for server_name in list(self.server_configs.keys()):
-            await self.stop_server(server_name)
+            if not self.is_builtin_server(server_name):
+                await self.stop_server(server_name)
+        await asyncio.to_thread(builtin_sessions.cleanup)
 
     async def get_tools_from_server(self, server_name: str) -> List[Dict[str, Any]]:
         """Get tools from a specific server"""
         if server_name not in self.server_configs:
             return []
+
+        if self.is_builtin_server(server_name):
+
+            def list_builtin():
+                return [
+                    {
+                        "name": tool.name,
+                        "description": tool.description,
+                        "inputSchema": tool.inputSchema,
+                        "mcp_server_name": server_name,
+                        "mcp_server_idx": 0,
+                        "is_builtin": True,
+                    }
+                    for tool in builtin_sessions.describe(server_name)
+                ]
+
+            return await asyncio.to_thread(list_builtin)
 
         if self.get_server_status(server_name) != "running":
             return []
@@ -715,7 +751,7 @@ class FastMCPManager:
                                     else tool.inputSchema
                                 ),
                                 "mcp_server_name": server_name,
-                                "is_builtin": _is_builtin_server(server_name),
+                                "is_builtin": self.is_builtin_server(server_name),
                             }
                             tool_list.append(tool_dict)
 
@@ -739,7 +775,7 @@ class FastMCPManager:
                                     else tool.inputSchema
                                 ),
                                 "mcp_server_name": server_name,
-                                "is_builtin": _is_builtin_server(server_name),
+                                "is_builtin": self.is_builtin_server(server_name),
                             }
                             tool_list.append(tool_dict)
 

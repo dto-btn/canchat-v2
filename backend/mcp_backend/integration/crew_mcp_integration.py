@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 """
-CrewAI MCP Integration for Open WebUI
-Simple integration using MCPServerAdapter with stdio transport for FastMCP time server
+CrewAI MCP Integration for Open WebUI.
 """
 
 import os
 import re
-import sys
 import logging
 from pathlib import Path
 from pydantic import BaseModel
@@ -15,8 +13,12 @@ from pydantic import BaseModel
 os.environ["OTEL_SDK_DISABLED"] = "true"
 
 from crewai import Agent, Task, Crew, Process, LLM
-from crewai_tools import MCPServerAdapter
-from mcp import StdioServerParameters
+from crewai.tools import BaseTool
+from crewai.tools.base_tool import Tool
+from crewai.utilities.pydantic_schema_utils import create_model_from_schema
+from crewai.utilities.string_utils import sanitize_tool_name
+from mcp.types import TextContent
+from mcp_backend.management.builtin_sessions import BuiltinTool, builtin_sessions
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -24,14 +26,6 @@ logger = logging.getLogger(__name__)
 
 # CrewAI verbosity control - disable in production for cleaner logs
 CREW_VERBOSE = os.getenv("CREW_VERBOSE", "false").lower() == "true"
-
-# Module-level MCP server adapters - initialized once and reused
-_time_server_adapter = None
-_news_server_adapter = None
-# Department SharePoint adapters keyed by uppercase dept name (e.g. "MPO", "PMO").
-# Populated dynamically at startup from *_sharepoint_server.py scripts.
-_sharepoint_adapters: dict = {}
-_adapters_initialized = False
 
 
 def _extract_token_usage(crew_output) -> dict:
@@ -61,6 +55,7 @@ class AzureConfig(BaseModel):
     endpoint: str = os.getenv("CREWAI_AZURE_OPENAI_ENDPOINT", "")
     deployment: str = os.getenv("CREWAI_AZURE_OPENAI_DEPLOYMENT_NAME", "")
     api_version: str = os.getenv("CREWAI_AZURE_OPENAI_API_VERSION", "")
+    api_mode: str = os.getenv("CREWAI_AZURE_OPENAI_API_MODE", "legacy")
 
     def validate_config(self) -> bool:
         """Validate that required Azure configuration is present"""
@@ -89,9 +84,6 @@ class CrewMCPManager:
         # Discover SharePoint server scripts dynamically.
         # Any *_sharepoint_server.py in the servers directory is a department server.
         self._sharepoint_server_paths = self._discover_sharepoint_servers()
-
-        # User token for OBO flow (delegate access)
-        self.user_jwt_token = None
 
     def _discover_sharepoint_servers(self) -> dict:
         """Read SHAREPOINT_DEPARTMENTS env var to determine active departments.
@@ -124,149 +116,73 @@ class CrewMCPManager:
             )
         return result
 
-    def set_user_token(self, token: str):
-        """Set the user's JWT token for OBO authentication"""
-        self.user_jwt_token = token
-        logger.info(f"User JWT token set for OBO flow: {bool(token)}")
-
-        # Set as environment variable for SharePoint MCP servers to use
-        if token:
-            os.environ["USER_JWT_TOKEN"] = token
-            logger.info(f"✅ Set USER_JWT_TOKEN in environment (length: {len(token)})")
-        elif "USER_JWT_TOKEN" in os.environ:
-            del os.environ["USER_JWT_TOKEN"]
-            logger.info("🗑️ Cleared USER_JWT_TOKEN from environment")
-
-    def initialize_mcp_adapters(self):
-        """Initialize all MCP server adapters once at startup"""
-        global _time_server_adapter, _news_server_adapter, _sharepoint_adapters, _adapters_initialized
-
-        if _adapters_initialized:
-            logger.info("MCP adapters already initialized, skipping...")
-            return
-
-        logger.info("🚀 Initializing MCP server adapters...")
-
-        # Initialize Time Server
-        try:
-            time_server_params = StdioServerParameters(
-                command=sys.executable,
-                args=[str(self.time_server_path)],
-                env=dict(os.environ),  # Pass environment variables
-            )
-            adapter = MCPServerAdapter(time_server_params)
-            _time_server_adapter = adapter.__enter__()  # Get the tools from __enter__()
-            logger.info("✅ Time server adapter initialized")
-        except Exception as e:
-            logger.error(f"❌ Failed to initialize Time server: {e}")
-            _time_server_adapter = None
-
-        # Initialize News Server
-        try:
-            news_server_params = StdioServerParameters(
-                command=sys.executable,
-                args=[str(self.news_server_path)],
-                env=dict(os.environ),  # Pass environment variables
-            )
-            adapter = MCPServerAdapter(news_server_params)
-            _news_server_adapter = adapter.__enter__()  # Get the tools from __enter__()
-            logger.info("✅ News server adapter initialized")
-        except Exception as e:
-            logger.error(f"❌ Failed to initialize News server: {e}")
-            _news_server_adapter = None
-
-        # Initialize SharePoint servers for all configured departments
-        for dept_key, server_path in self._sharepoint_server_paths.items():
-            try:
-                params = StdioServerParameters(
-                    command=sys.executable,
-                    args=[str(server_path), dept_key],
-                    env={
-                        key: value
-                        for key, value in os.environ.items()
-                        if key.startswith("SHP_") or key.startswith(f"{dept_key}_SHP_")
-                    },  # Pass global and department specific environment variables
-                )
-                adapter = MCPServerAdapter(params)
-                _sharepoint_adapters[dept_key] = adapter.__enter__()
-                logger.info(f"✅ {dept_key} SharePoint server adapter initialized")
-            except Exception as e:
-                logger.error(
-                    f"❌ Failed to initialize {dept_key} SharePoint server: {e}"
-                )
-                _sharepoint_adapters[dept_key] = None
-
-        _adapters_initialized = True
-
-        # Report initialization status
-        sp_ok = sum(1 for v in _sharepoint_adapters.values() if v is not None)
-        initialized_count = (
-            sum(
-                [
-                    _time_server_adapter is not None,
-                    _news_server_adapter is not None,
-                ]
-            )
-            + sp_ok
-        )
-        total = 2 + len(self._sharepoint_server_paths)
-        logger.info(
-            f"🎉 MCP server initialization complete: {initialized_count}/{total} adapters initialized"
-        )
-
     def cleanup_mcp_adapters(self):
         """Cleanup all MCP server adapters on shutdown"""
-        global _time_server_adapter, _news_server_adapter, _sharepoint_adapters, _adapters_initialized
+        builtin_sessions.cleanup()
 
-        logger.info("🧹 Cleaning up MCP server adapters...")
-
-        for adapter_name, adapter in [
-            ("Time", _time_server_adapter),
-            ("News", _news_server_adapter),
-        ]:
-            if adapter is not None:
-                try:
-                    adapter.__exit__(None, None, None)
-                    logger.info(f"✅ {adapter_name} server adapter cleaned up")
-                except Exception as e:
-                    logger.error(f"❌ Error cleaning up {adapter_name} adapter: {e}")
-
-        for dept_key, adapter in _sharepoint_adapters.items():
-            if adapter is not None:
-                try:
-                    adapter.__exit__(None, None, None)
-                    logger.info(f"✅ {dept_key} SharePoint server adapter cleaned up")
-                except Exception as e:
-                    logger.error(
-                        f"❌ Error cleaning up {dept_key} SharePoint adapter: {e}"
+    @staticmethod
+    def _crewai_tools(tools: list[BuiltinTool]) -> list[BaseTool]:
+        def adapt(tool: BuiltinTool) -> BaseTool:
+            def call_tool(**kwargs) -> str:
+                result = tool.call(kwargs)
+                if result.isError:
+                    raise RuntimeError(
+                        f"MCP tool {tool.definition.name} failed: {result.content}"
                     )
+                if len(result.content) == 1:
+                    content = result.content[0]
+                    return (
+                        content.text
+                        if isinstance(content, TextContent)
+                        else str(content)
+                    )
+                return str(
+                    [
+                        item.text
+                        for item in result.content
+                        if isinstance(item, TextContent)
+                    ]
+                )
 
-        _time_server_adapter = None
-        _news_server_adapter = None
-        _sharepoint_adapters.clear()
-        _adapters_initialized = False
+            return Tool(
+                name=sanitize_tool_name(tool.definition.name),
+                description=tool.definition.description or "",
+                args_schema=create_model_from_schema(tool.definition.inputSchema),
+                func=call_tool,
+            )
 
-        logger.info("🎉 All MCP server adapters cleaned up")
+        return [adapt(tool) for tool in tools]
 
     def get_azure_llm_config(self) -> LLM:
         """Get Azure OpenAI LLM configuration for CrewAI"""
-        # Set environment variables for LiteLLM/CrewAI Azure OpenAI
-        # CrewAI 1.7.2 uses LiteLLM which requires specific Azure env var format
+        if self.azure_config.api_mode == "v1":
+            return LLM(
+                model=f"openai/{self.azure_config.deployment}",
+                base_url=f"{self.azure_config.endpoint.rstrip('/')}/openai/v1/",
+                api_key=self.azure_config.api_key,
+                timeout=30,
+            )
+        if self.azure_config.api_mode != "legacy":
+            raise ValueError("CREWAI_AZURE_OPENAI_API_MODE must be 'legacy' or 'v1'")
+
         os.environ["AZURE_API_KEY"] = self.azure_config.api_key
         os.environ["AZURE_API_BASE"] = self.azure_config.endpoint
         os.environ["AZURE_API_VERSION"] = self.azure_config.api_version
 
-        # Create LLM instance with Azure configuration
-        # CrewAI 1.7.2 LiteLLM format: azure/<deployment_name>
-        # Must NOT include base_url or api_key - LiteLLM reads from env vars
-        # Add timeout to prevent hanging in K8s environments
-        # O3-mini doesn't support temperature or max_completion_tokens parameters
         return LLM(
             model=f"azure/{self.azure_config.deployment}",
-            timeout=30,  # 30 second timeout per LLM API call
+            timeout=30,
         )
 
-    def run_time_crew(self, query: str = "What's the current time?") -> str:
+    def run_time_crew(
+        self, query: str = "What's the current time?"
+    ) -> tuple[str, dict[str, int]]:
+        with builtin_sessions.session("time_server") as tools:
+            return self._run_time_crew(query, self._crewai_tools(tools))
+
+    def _run_time_crew(
+        self, query: str, mcp_tools: list[BaseTool]
+    ) -> tuple[str, dict[str, int]]:
         """
         Run a CrewAI crew with MCP time server tools
 
@@ -274,23 +190,14 @@ class CrewMCPManager:
             query: The time-related query to process
 
         Returns:
-            The crew's response
+            The crew's response and token usage.
         """
-        global _time_server_adapter
-
         if not self.time_server_path.exists():
             raise FileNotFoundError(f"Time server not found at {self.time_server_path}")
-
-        if _time_server_adapter is None:
-            raise RuntimeError(
-                "Time server adapter not initialized. Call initialize_mcp_adapters() first."
-            )
 
         logger.info(f"Starting CrewAI MCP integration for query: {query}")
 
         try:
-            # Use the pre-initialized time server adapter (already contains tools from __enter__())
-            mcp_tools = _time_server_adapter
             logger.info(f"Available MCP tools: {[tool.name for tool in mcp_tools]}")
 
             # Create Azure OpenAI LLM
@@ -335,7 +242,15 @@ class CrewMCPManager:
             logger.error(f"Error in CrewAI MCP integration: {e}")
             raise
 
-    def run_news_crew(self, query: str = "Get the latest news headlines") -> str:
+    def run_news_crew(
+        self, query: str = "Get the latest news headlines"
+    ) -> tuple[str, dict[str, int]]:
+        with builtin_sessions.session("news_server") as tools:
+            return self._run_news_crew(query, self._crewai_tools(tools))
+
+    def _run_news_crew(
+        self, query: str, mcp_tools: list[BaseTool]
+    ) -> tuple[str, dict[str, int]]:
         """
         Run a CrewAI crew with MCP news server tools
 
@@ -343,23 +258,14 @@ class CrewMCPManager:
             query: The news-related query to process
 
         Returns:
-            The crew's response
+            The crew's response and token usage.
         """
-        global _news_server_adapter
-
         if not self.news_server_path.exists():
             raise FileNotFoundError(f"News server not found at {self.news_server_path}")
-
-        if _news_server_adapter is None:
-            raise RuntimeError(
-                "News server adapter not initialized. Call initialize_mcp_adapters() first."
-            )
 
         logger.info(f"Starting CrewAI MCP news integration for query: {query}")
 
         try:
-            # Use the pre-initialized news server adapter (already contains tools from __enter__())
-            mcp_tools = _news_server_adapter
             logger.info(
                 f"Available MCP news tools: {[tool.name for tool in mcp_tools]}"
             )
@@ -406,7 +312,10 @@ class CrewMCPManager:
             raise
 
     def run_sharepoint_crew(
-        self, department: str, query: str = "Search SharePoint documents"
+        self,
+        department: str,
+        query: str = "Search SharePoint documents",
+        user_access_token: str | None = None,
     ) -> tuple[str, dict[str, int]]:
         """
         Run a CrewAI crew with MCP SharePoint server tools for a given department.
@@ -414,6 +323,7 @@ class CrewMCPManager:
         Args:
             department: Department key, e.g. "MPO" or "PMO".  Case-insensitive.
             query: The SharePoint-related query to process.
+            user_access_token: Request-scoped token for delegated access.
 
         Returns:
             (result_str, token_usage) tuple.
@@ -429,30 +339,19 @@ class CrewMCPManager:
 
         logger.info(f"Starting CrewAI MCP SharePoint integration for query: {query}")
         logger.info(f"Using {dept_key} SharePoint server: {server_path}")
-        logger.info(
-            "🔄 Initializing fresh SharePoint adapter with user token from environment"
+        logger.info("🔄 Initializing fresh SharePoint adapter for this request")
+
+        session = builtin_sessions.session(
+            f"{dept_lower}_sharepoint_server", user_access_token
         )
-
+        session_entered = False
         try:
-            # Create adapter with current environment (includes USER_JWT_TOKEN set by set_user_token())
-            sharepoint_params = StdioServerParameters(
-                command=sys.executable,
-                args=[str(server_path), dept_key],
-                env={
-                    key: value
-                    for key, value in os.environ.items()
-                    if key.startswith("SHP_")
-                    or key.startswith(f"{dept_key}_SHP_")
-                    or key == "USER_JWT_TOKEN"
-                },  # Fresh environment snapshot with USER_JWT_TOKEN
-            )
-
-            # Use context manager for automatic cleanup
-            adapter = MCPServerAdapter(sharepoint_params)
-            mcp_tools = adapter.__enter__()  # Get the tools from adapter
+            tools = session.__enter__()
+            session_entered = True
+            mcp_tools = self._crewai_tools(tools)
 
             logger.info(
-                f"✅ {dept_key} SharePoint adapter initialized with {len(list(mcp_tools))} tools"
+                f"✅ {dept_key} SharePoint adapter initialized with {len(mcp_tools)} tools"
             )
             logger.info(
                 f"Available MCP SharePoint tools: {[tool.name for tool in mcp_tools]}"
@@ -567,13 +466,6 @@ class CrewMCPManager:
             logger.info(f"Executing CrewAI {dept_key} SharePoint crew...")
             result = sharepoint_crew.kickoff()
 
-            # Cleanup adapter
-            try:
-                adapter.__exit__(None, None, None)
-                logger.info(f"✅ Cleaned up {dept_key} SharePoint adapter")
-            except Exception as e:
-                logger.warning(f"Failed to cleanup adapter: {e}")
-
             token_usage = _extract_token_usage(result)
             return str(result), token_usage
 
@@ -607,14 +499,23 @@ class CrewMCPManager:
                     f"I encountered an issue while searching SharePoint documents: {error_msg}. Please try rephrasing your query or contact support if the problem persists.",
                     {},
                 )
+        finally:
+            if session_entered:
+                session.__exit__(None, None, None)
 
-    def run_intelligent_crew(self, query: str, selected_tools: list = None) -> tuple:
+    def run_intelligent_crew(
+        self,
+        query: str,
+        selected_tools: list = None,
+        user_access_token: str | None = None,
+    ) -> tuple:
         """
         Route a query to the appropriate specialist crew based on selected_tools.
 
         Args:
             query: The query to process.
             selected_tools: List of tool IDs selected by the user (optional).
+            user_access_token: Request-scoped token for delegated SharePoint access.
 
         Returns:
             A 3-tuple of (result_str, token_usage_dict, mcp_process_name).
@@ -664,7 +565,9 @@ class CrewMCPManager:
                     return result_str, token_usage, "news_server"
                 elif specialist.endswith("_SHAREPOINT"):
                     dept = specialist[: -len("_SHAREPOINT")]
-                    result_str, token_usage = self.run_sharepoint_crew(dept, query)
+                    result_str, token_usage = self.run_sharepoint_crew(
+                        dept, query, user_access_token
+                    )
                     return result_str, token_usage, f"{dept.lower()}_sharepoint_server"
 
             # Multiple specialists - simple priority routing
@@ -681,7 +584,9 @@ class CrewMCPManager:
                 for specialist in available_specialists:
                     if specialist.endswith("_SHAREPOINT"):
                         dept = specialist[: -len("_SHAREPOINT")]
-                        result_str, token_usage = self.run_sharepoint_crew(dept, query)
+                        result_str, token_usage = self.run_sharepoint_crew(
+                            dept, query, user_access_token
+                        )
                         return (
                             result_str,
                             token_usage,
@@ -722,7 +627,7 @@ class CrewMCPManager:
                             dept = m.group(1).upper()
                             logger.info(f"Emergency fallback: {dept} SHAREPOINT")
                             result_str, token_usage = self.run_sharepoint_crew(
-                                dept, query
+                                dept, query, user_access_token
                             )
                             return (
                                 result_str,
@@ -788,32 +693,41 @@ class CrewMCPManager:
         return {name: path for name, path in servers.items() if path.exists()}
 
     def get_available_tools(self) -> list:
-        """Get list of available MCP tools from all initialized adapters"""
-        global _time_server_adapter, _news_server_adapter, _sharepoint_adapters
-
+        """Discover built-in tools through the shared session owner."""
         all_tools = []
 
-        adapters = {
-            "time_server": _time_server_adapter,
-            "news_server": _news_server_adapter,
+        built_in_servers = {
+            "time_server": self.time_server_path,
+            "news_server": self.news_server_path,
         }
-        for dept_key, adapter in _sharepoint_adapters.items():
-            adapters[f"{dept_key.lower()}_sharepoint_server"] = adapter
+        for server_name, server_path in built_in_servers.items():
+            if not server_path.exists():
+                continue
+            try:
+                all_tools.extend(
+                    {
+                        "name": tool.name,
+                        "description": tool.description,
+                        "server": server_name,
+                    }
+                    for tool in builtin_sessions.describe(server_name)
+                )
+            except Exception:
+                logger.exception("Error getting tools from %s", server_name)
 
-        for server_name, tools in adapters.items():
-            if tools is not None:
-                try:
-                    for tool in tools:
-                        all_tools.append(
-                            {
-                                "name": tool.name,
-                                "description": tool.description,
-                                "server": server_name,
-                            }
-                        )
-                    logger.info(f"Found {len(list(tools))} tools from {server_name}")
-                except Exception as e:
-                    logger.error(f"Error getting tools from {server_name}: {e}")
+        for dept_key, server_path in self._sharepoint_server_paths.items():
+            server_name = f"{dept_key.lower()}_sharepoint_server"
+            try:
+                all_tools.extend(
+                    {
+                        "name": tool.name,
+                        "description": tool.description,
+                        "server": server_name,
+                    }
+                    for tool in builtin_sessions.describe(server_name)
+                )
+            except Exception:
+                logger.exception("Error getting tools from %s", server_name)
 
         return all_tools
 
@@ -822,9 +736,6 @@ class CrewMCPManager:
 def main():
     """Main function for testing the CrewAI MCP integration"""
     manager = CrewMCPManager()
-
-    # Initialize MCP adapters once
-    manager.initialize_mcp_adapters()
 
     print("🚀 Starting CrewAI MCP Integration Test")
     print("=" * 50)
@@ -866,6 +777,8 @@ def main():
         import traceback
 
         traceback.print_exc()
+    finally:
+        manager.cleanup_mcp_adapters()
 
 
 if __name__ == "__main__":

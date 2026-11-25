@@ -76,6 +76,7 @@
 	// These ensure the status values are available in translation files
 	$: statusTranslations = {
 		running: $i18n.t('running'),
+		idle: $i18n.t('idle'),
 		stopped: $i18n.t('stopped'),
 		not_configured: $i18n.t('not_configured'),
 		unknown: $i18n.t('unknown')
@@ -498,7 +499,9 @@
 											class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium {server.status ===
 											'running'
 												? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
-												: 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'}"
+												: server.status === 'idle'
+													? 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+													: 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'}"
 										>
 											{statusTranslations[server.status] || $i18n.t('unknown')}
 										</span>

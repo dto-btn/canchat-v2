@@ -305,8 +305,6 @@ crew_mcp_manager = None
 if CrewMCPManager:
     try:
         crew_mcp_manager = CrewMCPManager()
-        # Initialize MCP adapters once at startup
-        crew_mcp_manager.initialize_mcp_adapters()
     except Exception as e:
         logging.error(f"Failed to initialize CrewMCPManager: {e}")
 
@@ -362,16 +360,14 @@ async def run_crew_query(
         if use_delegated_access:
             # Delegated access (OBO flow) - use user token
             if user_access_token:
-                crew_mcp_manager.set_user_token(user_access_token)
                 log.info("Using SharePoint delegated access (OBO flow) with user token")
             else:
-                crew_mcp_manager.set_user_token(None)
                 log.warning(
                     "SHP_USE_DELEGATED_ACCESS=true but no user token available - SharePoint access may fail"
                 )
         else:
             # Application access (client credentials flow) - no user token needed
-            crew_mcp_manager.set_user_token(None)
+            user_access_token = None
             log.info(
                 "Using SharePoint application access (client credentials flow) - SHP_USE_DELEGATED_ACCESS=false"
             )
@@ -404,6 +400,7 @@ async def run_crew_query(
                 crew_mcp_manager.run_intelligent_crew,
                 request.query,
                 selected_tools,
+                user_access_token,
             )
 
         # Unpack the (result_str, token_usage, mcp_process) tuple returned by run_intelligent_crew
@@ -532,16 +529,14 @@ async def run_multi_server_crew_query(
         if use_delegated_access:
             # Delegated access (OBO flow) - use user token
             if user_access_token:
-                crew_mcp_manager.set_user_token(user_access_token)
                 log.info("Using SharePoint delegated access (OBO flow) with user token")
             else:
-                crew_mcp_manager.set_user_token(None)
                 log.warning(
                     "SHP_USE_DELEGATED_ACCESS=true but no user token available - SharePoint access may fail"
                 )
         else:
             # Application access (client credentials flow) - no user token needed
-            crew_mcp_manager.set_user_token(None)
+            user_access_token = None
             log.info(
                 "Using SharePoint application access (client credentials flow) - SHP_USE_DELEGATED_ACCESS=false"
             )
@@ -568,6 +563,7 @@ async def run_multi_server_crew_query(
                 crew_mcp_manager.run_intelligent_crew,
                 request.query,
                 selected_tools,
+                user_access_token,
             )
 
         # Unpack the (result_str, token_usage, mcp_process) tuple

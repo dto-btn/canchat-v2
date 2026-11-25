@@ -477,15 +477,10 @@ async def crew_mcp_query(sid, data):
         log.info(f"crew-mcp-query: user_access_token bool = {bool(user_access_token)}")
 
         if user_access_token:
-            log.info(
-                f"crew-mcp-query: Token found!  Length={len(user_access_token)}, First 50 chars={user_access_token[:50]}"
-            )
+            log.info("crew-mcp-query: Graph access token found")
         else:
             log.warning(
                 f"crew-mcp-query: NO TOKEN FOUND in session.  Session has keys: {list(user_session. keys())}"
-            )
-            log.warning(
-                f"crew-mcp-query: user_access_token value = {repr(user_access_token)}"
             )
 
         use_delegated_access = os.getenv(
@@ -497,18 +492,14 @@ async def crew_mcp_query(sid, data):
         if use_delegated_access:
             # Delegated access (OBO flow) - use user token
             if user_access_token:
-                crew_mcp_manager.set_user_token(user_access_token)
-                log.info(
-                    "crew-mcp-query: Set user token on crew_mcp_manager (delegated access)"
-                )
+                log.info("crew-mcp-query: Using delegated SharePoint access")
             else:
-                crew_mcp_manager.set_user_token(None)
                 log.warning(
                     "crew-mcp-query: SHP_USE_DELEGATED_ACCESS=true but no user token available - SharePoint access may fail"
                 )
         else:
             # Application access (client credentials flow) - no user token needed
-            crew_mcp_manager.set_user_token(None)
+            user_access_token = None
             log.info(
                 "crew-mcp-query: Using SharePoint application access (client credentials flow) - SHP_USE_DELEGATED_ACCESS=false"
             )
@@ -539,6 +530,7 @@ async def crew_mcp_query(sid, data):
                 crew_mcp_manager.run_intelligent_crew,
                 query,
                 selected_tools,
+                user_access_token,
             )
 
         # Unpack the (result_str, token_usage, mcp_process) tuple returned by run_intelligent_crew
