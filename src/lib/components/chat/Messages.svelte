@@ -91,7 +91,7 @@
 		}
 	};
 
-	const updateChat = async () => {
+	const updateChat = async (refreshChatList = true) => {
 		history = history;
 		await tick();
 		await updateChatById(getRequestToken(), chatId, {
@@ -99,8 +99,10 @@
 			messages: messages
 		});
 
-		currentChatPage.set(1);
-		await chats.set(await getChatList(getRequestToken(), $currentChatPage));
+		if (refreshChatList) {
+			currentChatPage.set(1);
+			await chats.set(await getChatList(getRequestToken(), $currentChatPage));
+		}
 	};
 
 	const showPreviousMessage = async (message: any) => {
@@ -292,9 +294,9 @@
 		await chatActionHandler(chatId, actionId, message.model, message.id, event);
 	};
 
-	const saveMessage = async (messageId: any, message: any) => {
+	const saveMessage = async (messageId: any, message: any, refreshChatList = true) => {
 		history.messages[messageId] = message;
-		await updateChat();
+		await updateChat(refreshChatList);
 	};
 
 	const deleteMessage = async (messageId: any) => {

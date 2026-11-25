@@ -12,6 +12,7 @@
 
 	export let id: any;
 	export let content: any;
+	export let language: 'en' | 'fr' | undefined = undefined;
 	export let history: any;
 	export let model: any = null;
 	export let sources: any = null;
@@ -146,7 +147,7 @@
 	});
 </script>
 
-<div bind:this={contentContainerElement}>
+<div bind:this={contentContainerElement} lang={language} data-response-content>
 	<Markdown
 		{id}
 		{content}
