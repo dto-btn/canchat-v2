@@ -195,6 +195,11 @@ chat bubbles enabled and disabled. Tables and code blocks may scroll within thei
 own containers without making the page scroll horizontally.
 These focused checks do not replace a full-page accessibility audit.
 
+For a completed assistant response, use **Response language** to select English or French
+for screen readers, or **Use UI language** to inherit the page language. The selection
+applies to the entire response and is saved with the chat; temporary chats keep it only
+for the current session.
+
 ---
 
 #### 3. Backend Setup (API and Server)

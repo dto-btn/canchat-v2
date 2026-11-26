@@ -2,8 +2,9 @@
 	import { setContext } from 'svelte';
 	import { writable } from 'svelte/store';
 	import { createInstance } from 'i18next';
-	import { config, mobile, models, settings, user } from '$lib/stores';
+	import { config, mobile, models, settings, temporaryChatEnabled, user } from '$lib/stores';
 	import Message from '$lib/components/chat/Messages/Message.svelte';
+	import Messages from '$lib/components/chat/Messages.svelte';
 	import en from '$lib/i18n/locales/en-GB/translation.json';
 	import fr from '$lib/i18n/locales/fr-CA/translation.json';
 
@@ -20,6 +21,7 @@
 	});
 	setContext('i18n', writable(i18n));
 	mobile.set(window.innerWidth < 768);
+	temporaryChatEnabled.set(params.has('temporary'));
 	settings.set({ chatBubble: !params.has('no-bubbles') });
 	user.set({
 		id: 'reflow-user',
@@ -78,6 +80,7 @@
 		content,
 		timestamp: 1700000000,
 		done: true,
+		...(params.get('responseLanguage') ? { responseLanguage: params.get('responseLanguage') } : {}),
 		usage: { total_tokens: 100 }
 	};
 	let history = {
@@ -99,12 +102,18 @@
 	};
 	const noop = () => {};
 	let regenerated = 0;
+	let savedLanguage = 'not saved';
 	const messageProps = {
 		chatId: 'reflow',
 		user: { name: 'Alex' },
 		updateChat: noop,
 		editMessage: noop,
-		saveMessage: noop,
+		saveMessage: async (id: string, message: typeof response) => {
+			if (params.has('saveFailure')) throw new Error('Save failed');
+			history.messages[id] = message;
+			history = history;
+			savedLanguage = message.responseLanguage ?? 'ui';
+		},
 		deleteMessage: noop,
 		rateMessage: noop,
 		actionMessage: noop,
@@ -117,12 +126,28 @@
 		addMessages: noop,
 		triggerScroll: noop,
 		showPreviousMessage: noop,
-		showNextMessage: noop
+		showNextMessage: noop,
+		readOnly: params.has('readonly')
 	};
 </script>
 
 <main>
-	<Message {...messageProps} idx={0} {history} messageId="prompt" />
-	<Message {...messageProps} idx={1} bind:history messageId="response" />
+	{#if params.has('full')}
+		<Messages
+			chatId="reflow"
+			bind:history
+			prompt=""
+			selectedModels={['alpha']}
+			sendPrompt={noop}
+			continueResponse={noop}
+			regenerateResponse={noop}
+			mergeResponses={noop}
+			chatActionHandler={noop}
+		/>
+	{:else}
+		<Message {...messageProps} idx={0} {history} messageId="prompt" />
+		<Message {...messageProps} idx={1} bind:history messageId="response" />
+	{/if}
 	<output aria-label="Regenerations">{regenerated}</output>
+	<output aria-label="Saved response language">{savedLanguage}</output>
 </main>

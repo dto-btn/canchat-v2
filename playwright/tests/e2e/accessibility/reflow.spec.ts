@@ -240,6 +240,107 @@ test('fixture defaults to English document language', async ({ page }) => {
 	await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB', { timeout: 30_000 });
 });
 
+test('response language can be selected and reset without changing the page language', async ({
+	page
+}) => {
+	await page.goto(`${baseURL}/__reflow?locale=en-GB`);
+	const response = page.locator('#message-response');
+	const content = response.locator('[data-response-content]');
+	const language = response.getByLabel('Response language');
+	await expect(language).toBeVisible({ timeout: 30_000 });
+	await expect(content).not.toHaveAttribute('lang');
+	await language.selectOption('fr');
+	await expect(content).toHaveAttribute('lang', 'fr');
+	await expect(page.getByLabel('Saved response language')).toHaveText('fr');
+	await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
+	await language.selectOption('');
+	await expect(content).not.toHaveAttribute('lang');
+	await expect(page.getByLabel('Saved response language')).toHaveText('ui');
+});
+
+test('a saved response language is restored independently of the French UI', async ({ page }) => {
+	await page.goto(`${baseURL}/__reflow?locale=fr-CA&responseLanguage=en&readonly`);
+	const response = page.locator('#message-response');
+	await expect(response.locator('[data-response-content]')).toHaveAttribute('lang', 'en', {
+		timeout: 30_000
+	});
+	await expect(response.getByLabel('Langue de la réponse')).toHaveCount(0);
+});
+
+test('temporary chat language changes stay local', async ({ page }) => {
+	let chatRequests = 0;
+	await page.route('**/api/v1/chats/**', async (route) => {
+		chatRequests++;
+		await route.fulfill({ json: {} });
+	});
+	await page.goto(`${baseURL}/__reflow?full&temporary`);
+	const response = page.locator('#message-response');
+	const language = response.getByLabel('Response language');
+	await expect(language).toBeVisible({ timeout: 30_000 });
+	await language.selectOption('fr');
+	await expect(response.locator('[data-response-content]')).toHaveAttribute('lang', 'fr');
+	await expect(page.getByLabel('Saved response language')).toHaveText('not saved');
+	expect(chatRequests).toBe(0);
+});
+
+test('a failed response language save restores the previous selection', async ({ page }) => {
+	await page.goto(`${baseURL}/__reflow?responseLanguage=en&saveFailure`);
+	const response = page.locator('#message-response');
+	const language = response.getByLabel('Response language');
+	await expect(language).toBeVisible({ timeout: 30_000 });
+	await language.selectOption('fr');
+	await expect(language).toHaveValue('en');
+	await expect(response.locator('[data-response-content]')).toHaveAttribute('lang', 'en');
+});
+
+test('response language is persisted in the chat history', async ({ page }) => {
+	let savedChat: any;
+	await page.route('**/api/v1/chats/reflow', async (route) => {
+		savedChat = route.request().postDataJSON().chat;
+		await route.fulfill({ json: {} });
+	});
+	await page.goto(`${baseURL}/__reflow?full`);
+	const response = page.locator('#message-response');
+	const language = response.getByLabel('Response language');
+	await expect(language).toBeVisible({ timeout: 30_000 });
+	await language.selectOption('fr');
+	await expect.poll(() => savedChat?.history?.messages?.response?.responseLanguage).toBe('fr');
+	expect(
+		savedChat.messages.find((message: { id: string }) => message.id === 'response')
+	).toMatchObject({
+		responseLanguage: 'fr'
+	});
+	await expect(language).toBeEnabled();
+	await language.selectOption('');
+	await expect.poll(() => savedChat?.history?.messages?.response?.responseLanguage).toBeUndefined();
+	await language.selectOption('fr');
+	await expect.poll(() => savedChat?.history?.messages?.response?.responseLanguage).toBe('fr');
+	await page.goto(
+		`${baseURL}/__reflow?full&responseLanguage=${savedChat.history.messages.response.responseLanguage}`
+	);
+	await expect(page.locator('#message-response [data-response-content]')).toHaveAttribute(
+		'lang',
+		'fr',
+		{ timeout: 30_000 }
+	);
+});
+
+test('response language is reachable and operable with a keyboard', async ({ page }) => {
+	await page.goto(`${baseURL}/__reflow`);
+	const response = page.locator('#message-response');
+	const language = response.getByLabel('Response language');
+	await expect(language).toBeVisible({ timeout: 30_000 });
+	await response.locator('xpath=ancestor::*[@data-keyboard-message]').focus();
+	for (let i = 0; i < 10; i++) {
+		await page.keyboard.press('Tab');
+		if (await language.evaluate((element) => element === document.activeElement)) break;
+	}
+	await expect(language).toBeFocused();
+	await page.keyboard.press('End');
+	await expect(language).toHaveValue('fr');
+	await expect(response.locator('[data-response-content]')).toHaveAttribute('lang', 'fr');
+});
+
 test('multiple response cards adapt across responsive breakpoints', async ({ page }) => {
 	await page.setViewportSize({ width: 639, height: 800 });
 	await page.goto(`${baseURL}/__reflow?multi`);

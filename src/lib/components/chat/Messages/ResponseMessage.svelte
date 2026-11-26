@@ -9,7 +9,7 @@
 
 	const dispatch = createEventDispatcher();
 
-	import { ariaMessage, config, models, settings, user } from '$lib/stores';
+	import { ariaMessage, config, models, settings, temporaryChatEnabled, user } from '$lib/stores';
 	import { synthesizeOpenAISpeech } from '$lib/apis/audio';
 	import { imageGenerations } from '$lib/apis/images';
 	import {
@@ -101,6 +101,7 @@
 		id: string;
 		model: string;
 		content: string;
+		responseLanguage?: 'en' | 'fr';
 		files?: { type: string; url: string; name?: string; size?: number }[];
 		timestamp: number;
 		role: string;
@@ -196,6 +197,32 @@
 	let edit = false;
 	let editedContent = '';
 	let editTextAreaElement: HTMLTextAreaElement;
+	let savingResponseLanguage = false;
+
+	const setResponseLanguage = async (event: Event) => {
+		const select = event.currentTarget as HTMLSelectElement;
+		const language = select.value === 'en' || select.value === 'fr' ? select.value : undefined;
+		const currentMessage = history.messages[message.id];
+		const previousLanguage = currentMessage.responseLanguage;
+		const updatedMessage = { ...currentMessage, responseLanguage: language };
+		savingResponseLanguage = true;
+		message = { ...message, responseLanguage: language };
+
+		try {
+			if ($temporaryChatEnabled) {
+				history.messages[message.id] = updatedMessage;
+			} else {
+				await saveMessage(message.id, updatedMessage, false);
+			}
+		} catch (error) {
+			history.messages[message.id].responseLanguage = previousLanguage;
+			message = { ...message, responseLanguage: previousLanguage };
+			console.error('Failed to save response language:', error);
+			toast.error($i18n.t('Could not save response language. Please try again.'));
+		} finally {
+			savingResponseLanguage = false;
+		}
+	};
 
 	let audioParts: Record<number, HTMLAudioElement | null> = {};
 	let speaking = false;
@@ -910,10 +937,34 @@
 								{:else if message.content && message.error !== true}
 									<!-- always show message contents even if there's an error -->
 									<!-- unless message.error === true which is legacy error handling, where the error message is stored in message.content -->
+									{#if message.done && !readOnly}
+										<div
+											class="mb-2 flex flex-wrap items-center gap-x-1 gap-y-1 text-sm text-gray-600 dark:text-gray-400"
+										>
+											<label for="response-language-{message.id}"
+												>{$i18n.t('Response language')}</label
+											>
+											<select
+												id="response-language-{message.id}"
+												class="max-w-full rounded border border-gray-300 bg-transparent px-1 py-0.5 dark:border-gray-600"
+												value={message.responseLanguage ?? ''}
+												disabled={savingResponseLanguage}
+												on:click|stopPropagation
+												on:change={setResponseLanguage}
+											>
+												<option value="">{$i18n.t('Use UI language')}</option>
+												<option value="en" lang="en">English</option>
+												<option value="fr" lang="fr">Français</option>
+											</select>
+										</div>
+									{/if}
 									<ContentRenderer
 										id={message.id}
 										{history}
 										content={message.content}
+										language={message.responseLanguage === 'en' || message.responseLanguage === 'fr'
+											? message.responseLanguage
+											: undefined}
 										sources={message.sources}
 										floatingButtons={message?.done}
 										save={!readOnly}
