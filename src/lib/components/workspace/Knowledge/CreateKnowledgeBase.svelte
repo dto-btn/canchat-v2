@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
-	import { goto } from '$app/navigation';
+	import { goto } from '$lib/navigation';
 	const i18n = getI18n();
 
 	import { createNewKnowledge, getKnowledgeBases } from '$lib/apis/knowledge';

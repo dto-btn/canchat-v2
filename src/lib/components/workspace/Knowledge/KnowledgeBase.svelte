@@ -8,7 +8,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	const i18n = getI18n();
 
-	import { goto } from '$app/navigation';
+	import { goto } from '$lib/navigation';
 	import { page } from '$app/stores';
 	import { showSidebar, knowledge as _knowledge } from '$lib/stores';
 

@@ -4,7 +4,7 @@
 	import { onMount, tick } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import AccessControl from '../common/AccessControl.svelte';
-	import { goto } from '$app/navigation';
+	import { goto } from '$lib/navigation';
 
 	export let onSubmit: Function;
 	export let edit = false;

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
-	import { goto } from '$app/navigation';
+	import { goto } from '$lib/navigation';
 	import { page } from '$app/stores';
 	import { getToolById, getTools, updateToolById } from '$lib/apis/tools';
 	import Spinner from '$lib/components/common/Spinner.svelte';

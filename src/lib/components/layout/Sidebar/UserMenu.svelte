@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { getI18n } from '$lib/utils/context';
+	import { localizedRoute } from '$lib/utils/localizedRoutes';
 
 	import { DropdownMenu } from 'bits-ui';
 	import { createEventDispatcher, tick } from 'svelte';
@@ -165,7 +166,7 @@
 				</DropdownMenu.Item>
 				<DropdownMenu.Item
 					class="flex rounded-md py-2 px-3 w-full hover:bg-gray-50 dark:hover:bg-gray-800 transition"
-					href="/admin"
+					href={localizedRoute('/admin', $i18n.language)}
 					on:click={() => {
 						show = false;
 

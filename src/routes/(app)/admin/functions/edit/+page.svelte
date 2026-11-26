@@ -4,7 +4,7 @@
 	import { toast } from 'svelte-sonner';
 	import { onMount } from 'svelte';
 
-	import { goto } from '$app/navigation';
+	import { goto } from '$lib/navigation';
 	import { page } from '$app/stores';
 	import { functions, models } from '$lib/stores';
 	import { updateFunctionById, getFunctions, getFunctionById } from '$lib/apis/functions';

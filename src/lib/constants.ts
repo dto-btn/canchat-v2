@@ -19,6 +19,8 @@ export const TERMS_MAX_RETRY_ATTEMPTS = 3;
 export const TERMS_RETRY_DELAY_MS = 600;
 export const TERMS_VERSION = '3.0.1';
 export const TERMS_VERSION_DATE = new Date('2026-10-26');
+export const OLA_ENGLISH_TERMS_PATH = '/en/terms';
+export const OLA_FRENCH_TERMS_PATH = '/fr/conditions';
 
 export const WEBUI_VERSION = APP_VERSION;
 export const WEBUI_BUILD_HASH = APP_BUILD_HASH;

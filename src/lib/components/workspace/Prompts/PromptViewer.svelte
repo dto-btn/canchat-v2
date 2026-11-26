@@ -3,7 +3,7 @@
 
 	import { onMount, tick } from 'svelte';
 	import { showSidebar } from '$lib/stores';
-	import { goto } from '$app/navigation';
+	import { goto } from '$lib/navigation';
 
 	const i18n = getI18n();
 

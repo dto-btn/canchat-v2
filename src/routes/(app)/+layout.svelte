@@ -35,6 +35,7 @@
 	import ChangelogModal from '$lib/components/ChangelogModal.svelte';
 	import AccountPending from '$lib/components/layout/Overlay/AccountPending.svelte';
 	import { getTermsStatus } from '$lib/apis/terms';
+	import { OLA_ENGLISH_TERMS_PATH, OLA_FRENCH_TERMS_PATH } from '$lib/constants';
 
 	const i18n = getI18n();
 	const APP_ROLES = ['user', 'admin', 'analyst', 'global_analyst'] as const;
@@ -108,7 +109,8 @@
 				});
 
 				if (!termsAccepted) {
-					const termsOfUseUrl = $i18n.language === 'fr-CA' ? '/conditions' : '/terms';
+					const termsOfUseUrl =
+						$i18n.language === 'fr-CA' ? OLA_FRENCH_TERMS_PATH : OLA_ENGLISH_TERMS_PATH;
 					await goto(termsOfUseUrl);
 					return;
 				}

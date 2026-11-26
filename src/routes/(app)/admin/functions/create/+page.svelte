@@ -3,7 +3,7 @@
 
 	import { toast } from 'svelte-sonner';
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { goto } from '$lib/navigation';
 
 	import { functions, models } from '$lib/stores';
 	import { createNewFunction, getFunctions } from '$lib/apis/functions';

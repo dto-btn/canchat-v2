@@ -1,5 +1,8 @@
 <script lang="ts">
 	import { getI18n } from '$lib/utils/context';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
+	import { localizedRoute } from '$lib/utils/localizedRoutes';
 
 	import Tooltip from './Tooltip.svelte';
 
@@ -7,6 +10,11 @@
 
 	async function toggleLanguage() {
 		const newLocale = $i18n.language === 'en-GB' ? 'fr-CA' : 'en-GB';
+		const current = `${$page.url.pathname}${$page.url.search}${$page.url.hash}`;
+		const destination = localizedRoute(current, newLocale);
+		if (destination !== current) {
+			await goto(destination, { keepFocus: true, noScroll: true });
+		}
 		await $i18n.changeLanguage(newLocale);
 	}
 

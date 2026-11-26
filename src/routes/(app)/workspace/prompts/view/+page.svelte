@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { toast } from 'svelte-sonner';
-	import { goto } from '$app/navigation';
+	import { goto } from '$lib/navigation';
 	import { onMount } from 'svelte';
 
 	import { getPromptByCommand } from '$lib/apis/prompts';

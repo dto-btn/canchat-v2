@@ -5,7 +5,8 @@
 	import fileSaver from 'file-saver';
 	const { saveAs } = fileSaver;
 
-	import { goto } from '$app/navigation';
+	import { goto } from '$lib/navigation';
+	import { localizedRoute } from '$lib/utils/localizedRoutes';
 	import { onMount } from 'svelte';
 	import { WEBUI_NAME, prompts as _prompts, user } from '$lib/stores';
 
@@ -243,7 +244,7 @@
 			<div>
 				<a
 					class=" px-2 py-2 rounded-xl hover:bg-gray-700/10 dark:hover:bg-gray-100/10 dark:text-gray-300 dark:hover:text-white transition font-medium text-sm flex items-center space-x-1"
-					href="/workspace/prompts/create"
+					href={localizedRoute('/workspace/prompts/create', $i18n.language)}
 					aria-label={$i18n.t('Create Prompt')}
 				>
 					<Plus className="size-3.5" aria-hidden="true" />
@@ -259,10 +260,13 @@
 			>
 				<a
 					class="flex flex-1 w-full"
-					href={$user?.role === 'admin' ||
-					(prompt?.user?.id === $user?.id && prompt.access_control !== null)
-						? `/workspace/prompts/edit?command=${encodeURIComponent(prompt.command.replace(/^\//, ''))}`
-						: `/workspace/prompts/view?command=${encodeURIComponent(prompt.command.replace(/^\//, ''))}`}
+					href={localizedRoute(
+						$user?.role === 'admin' ||
+							(prompt?.user?.id === $user?.id && prompt.access_control !== null)
+							? `/workspace/prompts/edit?command=${encodeURIComponent(prompt.command.replace(/^\//, ''))}`
+							: `/workspace/prompts/view?command=${encodeURIComponent(prompt.command.replace(/^\//, ''))}`,
+						$i18n.language
+					)}
 				>
 					<div class="flex flex-col flex-1">
 						<div class="flex items-center gap-2">
@@ -307,7 +311,10 @@
 						<a
 							class="self-center w-fit text-sm px-2 py-2 dark:text-gray-300 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded-xl"
 							type="button"
-							href={`/workspace/prompts/edit?command=${encodeURIComponent(prompt.command.replace(/^\//, ''))}`}
+							href={localizedRoute(
+								`/workspace/prompts/edit?command=${encodeURIComponent(prompt.command.replace(/^\//, ''))}`,
+								$i18n.language
+							)}
 						>
 							<svg
 								xmlns="http://www.w3.org/2000/svg"

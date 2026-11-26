@@ -54,13 +54,14 @@
 
 	import 'tippy.js/dist/tippy.css';
 
-	import { WEBUI_BASE_URL } from '$lib/constants';
+	import { OLA_ENGLISH_TERMS_PATH, OLA_FRENCH_TERMS_PATH, WEBUI_BASE_URL } from '$lib/constants';
 	import i18n, { initI18n, getLanguages } from '$lib/i18n';
 	import { bestMatchingLanguage } from '$lib/utils';
 	import { getAllTags, getChatList } from '$lib/apis/chats';
 	import NotificationToast from '$lib/components/NotificationToast.svelte';
 	import AppSidebar from '$lib/components/app/AppSidebar.svelte';
 	import { getTermsStatus } from '$lib/apis/terms';
+	import { routeLanguage } from '$lib/utils/localizedRoutes';
 
 	setContext('i18n', i18n);
 
@@ -152,6 +153,12 @@
 		afterNavigate(({ to }) => {
 			if (to?.url) {
 				rememberNavigationTarget(toRoutePath(to.url));
+				const language = routeLanguage(to.url.pathname);
+				if (language && $i18n.isInitialized && $i18n.language !== language) {
+					void $i18n.changeLanguage(language).catch((error) => {
+						console.error('Failed to change route language:', error);
+					});
+				}
 			}
 		});
 	}
@@ -617,8 +624,9 @@
 					console.error('Error loading backend config:', error);
 				}
 
-				initI18n(backendConfig?.default_locale);
-				if (!localStorage.locale) {
+				const hadStoredLocale = !!localStorage.locale;
+				await initI18n(backendConfig?.default_locale);
+				if (!hadStoredLocale) {
 					const languages = await getLanguages();
 					const browserLanguages = navigator.languages?.length
 						? navigator.languages
@@ -626,7 +634,11 @@
 					const lang = backendConfig?.default_locale
 						? backendConfig.default_locale
 						: bestMatchingLanguage(languages, browserLanguages, 'en-GB');
-					$i18n.changeLanguage(lang);
+					await $i18n.changeLanguage(lang);
+				}
+				const routeLocale = routeLanguage($page.url.pathname);
+				if (routeLocale && $i18n.language !== routeLocale) {
+					await $i18n.changeLanguage(routeLocale);
 				}
 
 				if (!backendConfig) {
@@ -653,13 +665,19 @@
 				if (sessionUser) {
 					await applySessionUser(sessionUser, { redirectFromAuth: true });
 					// Check Terms of Use Status
-					if ($page.url.pathname !== '/terms' && $page.url.pathname !== '/conditions') {
+					if (
+						$page.url.pathname !== OLA_ENGLISH_TERMS_PATH &&
+						$page.url.pathname !== OLA_FRENCH_TERMS_PATH &&
+						$page.url.pathname !== '/terms' &&
+						$page.url.pathname !== '/conditions'
+					) {
 						const termsStatus = await getTermsStatus(getRequestToken()).catch((error) => {
 							console.error('Failed to load Terms of Use status:', error);
 							return null;
 						});
 						if (!termsStatus) {
-							const termsPage = $i18n.language === 'fr-CA' ? '/conditions' : '/terms';
+							const termsPage =
+								$i18n.language === 'fr-CA' ? OLA_FRENCH_TERMS_PATH : OLA_ENGLISH_TERMS_PATH;
 							await goto(termsPage);
 						}
 					}
