@@ -6,7 +6,7 @@
 	const i18n = getI18n();
 
 	import CodeEditor from '$lib/components/common/CodeEditor.svelte';
-	import { goto } from '$app/navigation';
+	import { goto } from '$lib/navigation';
 	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import ChevronLeft from '$lib/components/icons/ChevronLeft.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';

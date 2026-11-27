@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getI18n } from '$lib/utils/context';
+	import { localizedRoute } from '$lib/utils/localizedRoutes';
 
 	import { toast } from 'svelte-sonner';
 	import fileSaver from 'file-saver';
@@ -748,7 +749,7 @@
 			<div class="px-1.5 flex justify-center text-gray-800 dark:text-gray-200">
 				<a
 					class="flex-grow flex space-x-3 rounded-lg px-2 py-[7px] hover:bg-gray-100 dark:hover:bg-gray-900 transition"
-					href="/workspace"
+					href={localizedRoute('/workspace', $i18n.language)}
 					on:click={() => {
 						clearSelection();
 						chatId.set('');

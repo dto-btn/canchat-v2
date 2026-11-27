@@ -18,7 +18,7 @@
 		getKnowledgeBaseList
 	} from '$lib/apis/knowledge';
 
-	import { goto } from '$app/navigation';
+	import { goto } from '$lib/navigation';
 
 	import DeleteConfirmDialog from '../common/ConfirmDialog.svelte';
 	import ItemMenu from './Knowledge/ItemMenu.svelte';

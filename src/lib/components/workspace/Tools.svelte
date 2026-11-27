@@ -8,7 +8,8 @@
 	import { onMount } from 'svelte';
 	import { WEBUI_NAME, config, tools as _tools, user } from '$lib/stores';
 
-	import { goto } from '$app/navigation';
+	import { goto } from '$lib/navigation';
+	import { localizedRoute } from '$lib/utils/localizedRoutes';
 	import {
 		createNewTool,
 		deleteToolById,
@@ -199,7 +200,7 @@
 			<div>
 				<a
 					class=" px-2 py-2 rounded-xl hover:bg-gray-700/10 dark:hover:bg-gray-100/10 dark:text-gray-300 dark:hover:text-white transition font-medium text-sm flex items-center space-x-1"
-					href="/workspace/tools/create"
+					href={localizedRoute('/workspace/tools/create', $i18n.language)}
 				>
 					<Plus className="size-3.5" />
 				</a>
@@ -214,7 +215,10 @@
 			>
 				<a
 					class=" flex flex-1 space-x-3.5 cursor-pointer w-full"
-					href={`/workspace/tools/edit?id=${encodeURIComponent(tool.id)}`}
+					href={localizedRoute(
+						'/workspace/tools/edit?id=' + encodeURIComponent(tool.id),
+						$i18n.language
+					)}
 				>
 					<div class="flex items-center text-left">
 						<div class=" flex-1 self-center">

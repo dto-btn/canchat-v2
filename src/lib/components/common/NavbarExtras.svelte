@@ -10,6 +10,7 @@
 	import SuggestionModal from '$lib/components/common/SuggestionModal.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import { goto } from '$app/navigation';
+	import { OLA_ENGLISH_TERMS_PATH, OLA_FRENCH_TERMS_PATH } from '$lib/constants';
 
 	const i18n = getI18n();
 
@@ -22,7 +23,7 @@
 	$: SurveyUrl = $i18n.language === 'fr-CA' ? $config?.survey_url_fr : $config?.survey_url;
 	$: DocsUrl = $i18n.language === 'fr-CA' ? $config?.docs_url_fr : $config?.docs_url;
 	$: TrainingUrl = $i18n.language === 'fr-CA' ? $config?.training_url_fr : $config?.training_url;
-	$: TermsOfUseUrl = $i18n.language === 'fr-CA' ? '/conditions' : '/terms';
+	$: TermsOfUseUrl = $i18n.language === 'fr-CA' ? OLA_FRENCH_TERMS_PATH : OLA_ENGLISH_TERMS_PATH;
 
 	// Event Handlers
 	const toggleShortcuts = () => (showShortcuts = !showShortcuts);

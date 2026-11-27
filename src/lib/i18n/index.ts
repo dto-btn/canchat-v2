@@ -46,7 +46,7 @@ export const initI18n = (defaultLocale: string | undefined) => {
 	const loadResource = (language: string, namespace: string) =>
 		import(`./locales/${language}/${namespace}.json`);
 
-	i18next
+	return i18next
 		.use(resourcesToBackend(loadResource))
 		.use(LanguageDetector)
 		.init({

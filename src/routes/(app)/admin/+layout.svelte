@@ -9,6 +9,7 @@
 	import MenuLines from '$lib/components/icons/MenuLines.svelte';
 	import { page } from '$app/stores';
 	import NavbarExtras from '$lib/components/common/NavbarExtras.svelte';
+	import { internalRoute, localizedRoute } from '$lib/utils/localizedRoutes';
 
 	const i18n = getI18n();
 
@@ -75,31 +76,40 @@
 						class="flex gap-1 scrollbar-none overflow-x-auto w-fit text-center text-sm font-medium rounded-full bg-transparent pt-1"
 					>
 						<a
-							class="min-w-fit rounded-full p-1.5 {['/admin/users'].includes($page.url.pathname)
+							class="min-w-fit rounded-full p-1.5 {['/admin/users'].includes(
+								internalRoute($page.url.pathname) ?? $page.url.pathname
+							)
 								? ''
 								: 'text-[#717171] dark:text-gray-600 hover:text-gray-700 dark:hover:text-white'} transition"
-							href="/admin/users">{$i18n.t('Users & Access')}</a
+							href={localizedRoute('/admin/users', $i18n.language)}>{$i18n.t('Users & Access')}</a
 						>
 
 						<a
-							class="min-w-fit rounded-full p-1.5 {$page.url.pathname.includes('/admin/evaluations')
+							class="min-w-fit rounded-full p-1.5 {(
+								internalRoute($page.url.pathname) ?? $page.url.pathname
+							).includes('/admin/evaluations')
 								? ''
 								: 'text-[#717171] dark:text-gray-600 hover:text-gray-700 dark:hover:text-white'} transition"
-							href="/admin/evaluations">{$i18n.t('Evaluations')}</a
+							href={localizedRoute('/admin/evaluations', $i18n.language)}
+							>{$i18n.t('Evaluations')}</a
 						>
 
 						<a
-							class="min-w-fit rounded-full p-1.5 {$page.url.pathname.includes('/admin/functions')
+							class="min-w-fit rounded-full p-1.5 {(
+								internalRoute($page.url.pathname) ?? $page.url.pathname
+							).includes('/admin/functions')
 								? ''
 								: 'text-[#717171] dark:text-gray-600 hover:text-gray-700 dark:hover:text-white'} transition"
-							href="/admin/functions">{$i18n.t('Functions')}</a
+							href={localizedRoute('/admin/functions', $i18n.language)}>{$i18n.t('Functions')}</a
 						>
 
 						<a
-							class="min-w-fit rounded-full p-1.5 {$page.url.pathname.includes('/admin/settings')
+							class="min-w-fit rounded-full p-1.5 {(
+								internalRoute($page.url.pathname) ?? $page.url.pathname
+							).includes('/admin/settings')
 								? ''
 								: 'text-[#717171] dark:text-gray-600 hover:text-gray-700 dark:hover:text-white'} transition"
-							href="/admin/settings">{$i18n.t('Settings')}</a
+							href={localizedRoute('/admin/settings', $i18n.language)}>{$i18n.t('Settings')}</a
 						>
 					</div>
 				</div>

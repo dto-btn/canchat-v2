@@ -2,7 +2,7 @@
 	import { getI18n } from '$lib/utils/context';
 
 	import { createEventDispatcher, tick } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { goto } from '$lib/navigation';
 
 	const dispatch = createEventDispatcher();
 	const i18n = getI18n();

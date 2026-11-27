@@ -2,7 +2,7 @@
 	import { getI18n } from '$lib/utils/context';
 
 	import { toast } from 'svelte-sonner';
-	import { goto } from '$app/navigation';
+	import { goto } from '$lib/navigation';
 	import { models } from '$lib/stores';
 
 	import { onMount } from 'svelte';
