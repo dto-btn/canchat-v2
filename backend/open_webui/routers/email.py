@@ -56,9 +56,21 @@ LOGO_ATTACHMENT = {
 ############################
 
 
-def build_email_body(title: str, sections: List[tuple]) -> tuple:
-    """Render the plain-text and HTML bodies from (label, value) pairs."""
-    context = {"title": title, "sections": sections, "logo_cid": LOGO_CID}
+def build_email_body(
+    title: str, subject: str, submitted_by: str, sections: List[tuple]
+) -> tuple:
+    """Render the plain-text and HTML bodies from (label, value) pairs.
+
+    The submitter's address is rendered as a mailto link with a reply
+    subject already filled in.
+    """
+    context = {
+        "title": title,
+        "subject": subject,
+        "submitted_by": submitted_by,
+        "sections": sections,
+        "logo_cid": LOGO_CID,
+    }
     plain_text = templates.get_template("form_submission.txt").render(context)
     html_body = templates.get_template("form_submission.html").render(context)
     return plain_text, html_body
@@ -146,18 +158,20 @@ async def report_issue(
     log.info("Processing issue report submission")
 
     try:
+        subject = "CANCHAT Issue Report"
         attachments = await build_attachments(files)
         plain_text, html_body = build_email_body(
             "Issue Report",
+            subject,
+            email,
             [
-                ("Submitted by", email),
                 ("Description", description),
                 ("Steps to Reproduce", stepsToReproduce),
             ],
         )
 
         message_id = await send_email(
-            subject="CANCHAT Issue Report",
+            subject=subject,
             plain_text=plain_text,
             html_body=html_body,
             reply_to=email,
@@ -192,17 +206,17 @@ async def submit_suggestion(
     log.info("Processing suggestion submission")
 
     try:
+        subject = "CANCHAT Suggestion"
         attachments = await build_attachments(files)
         plain_text, html_body = build_email_body(
             "Suggestion",
-            [
-                ("Submitted by", email),
-                ("Suggestion", description),
-            ],
+            subject,
+            email,
+            [("Suggestion", description)],
         )
 
         message_id = await send_email(
-            subject="CANCHAT Suggestion",
+            subject=subject,
             plain_text=plain_text,
             html_body=html_body,
             reply_to=email,

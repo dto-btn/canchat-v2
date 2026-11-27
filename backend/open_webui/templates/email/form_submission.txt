@@ -1,4 +1,7 @@
 CANChat - {{ title }}
+
+Submitted by:
+{{ submitted_by }}
 {% for label, value in sections %}
 {{ label }}:
 {{ value }}

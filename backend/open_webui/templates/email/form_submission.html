@@ -58,6 +58,20 @@
 								{{ title }}
 							</td>
 						</tr>
+						<tr>
+							<td style="padding: 12px 0">
+								<div style="font-size: 13px; font-weight: 600; color: #4b5563; padding-bottom: 4px">
+									Submitted by
+								</div>
+								<div style="font-size: 14px; line-height: 1.6; color: #1f2937">
+									<a
+										href="mailto:{{ submitted_by }}?subject={{ ('Re: ' ~ subject) | urlencode }}"
+										style="color: #284162; text-decoration: underline"
+										>{{ submitted_by }}</a
+									>
+								</div>
+							</td>
+						</tr>
 						{% for label, value in sections %}
 						<tr>
 							<td style="padding: 12px 0">
