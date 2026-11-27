@@ -2747,29 +2747,16 @@ TRAINING_URL_FR = PersistentConfig(
 )
 
 ####################################
-# Jira Integration
+# Email (Azure Communication Services)
 ####################################
 
-JIRA_API_URL = PersistentConfig(
-    "JIRA_API_URL",
-    "jira.api_url",
-    os.environ.get("JIRA_API_URL", ""),
-)
-
-JIRA_USERNAME = PersistentConfig(
-    "JIRA_USERNAME",
-    "jira.username",
-    os.environ.get("JIRA_USERNAME", ""),
-)
-
-JIRA_API_TOKEN = PersistentConfig(
-    "JIRA_API_TOKEN",
-    "jira.api_token",
-    os.environ.get("JIRA_API_TOKEN", ""),
-)
-
-JIRA_PROJECT_KEY = PersistentConfig(
-    "JIRA_PROJECT_KEY",
-    "jira.project_key",
-    os.environ.get("JIRA_PROJECT_KEY", ""),
-)
+# Plain env vars rather than PersistentConfig: there is no admin UI for these,
+# and the connection string is a secret that should not be stored in the DB.
+AZURE_EMAIL_CONNECTION_STRING = os.environ.get("AZURE_EMAIL_CONNECTION_STRING", "")
+EMAIL_SENDER_ADDRESS = os.environ.get("EMAIL_SENDER_ADDRESS", "")
+# Comma-separated list of inboxes that receive issue reports and suggestions.
+EMAIL_SUPPORT_RECIPIENTS = [
+    address.strip()
+    for address in os.environ.get("EMAIL_SUPPORT_RECIPIENTS", "").split(",")
+    if address.strip()
+]

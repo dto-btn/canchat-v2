@@ -98,7 +98,7 @@ log_sources = [
     "TASK",
     "WEBHOOK",
     "SOCKET",
-    "JIRA",
+    "EMAIL",
     "METRICS",
 ]
 

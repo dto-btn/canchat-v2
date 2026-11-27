@@ -88,7 +88,7 @@ from open_webui.routers import (
     terms,
     tools,
     users,
-    jira,
+    email as email_router,
     utils,
 )
 
@@ -291,11 +291,6 @@ from open_webui.config import (
     AUTOCOMPLETE_GENERATION_INPUT_MAX_LENGTH,
     AppConfig,
     reset_config,
-    # Jira
-    JIRA_API_URL,
-    JIRA_USERNAME,
-    JIRA_API_TOKEN,
-    JIRA_PROJECT_KEY,
     # Chat Lifetime
     CHAT_LIFETIME_ENABLED,
     CHAT_LIFETIME_DAYS,
@@ -924,30 +919,6 @@ app.state.config.TRAINING_URL_FR = TRAINING_URL_FR
 
 ########################################
 #
-# Jira Integration
-#
-########################################
-
-app.state.config.JIRA_API_URL = JIRA_API_URL
-app.state.config.JIRA_USERNAME = JIRA_USERNAME
-app.state.config.JIRA_API_TOKEN = JIRA_API_TOKEN
-app.state.config.JIRA_PROJECT_KEY = JIRA_PROJECT_KEY
-
-
-########################################
-#
-# Jira Integration
-#
-########################################
-
-app.state.config.JIRA_API_URL = JIRA_API_URL
-app.state.config.JIRA_USERNAME = JIRA_USERNAME
-app.state.config.JIRA_API_TOKEN = JIRA_API_TOKEN
-app.state.config.JIRA_PROJECT_KEY = JIRA_PROJECT_KEY
-
-
-########################################
-#
 # WEBUI
 #
 ########################################
@@ -1150,7 +1121,7 @@ app.include_router(
     evaluations.router, prefix="/api/v1/evaluations", tags=["evaluations"]
 )
 app.include_router(utils.router, prefix="/api/v1/utils", tags=["utils"])
-app.include_router(jira.router, prefix="/api/v1/jira", tags=["jira"])
+app.include_router(email_router.router, prefix="/api/v1/email", tags=["email"])
 app.include_router(metrics.router, prefix="/api/v1/metrics", tags=["metrics"])
 app.include_router(terms.router, prefix="/api/v1/terms", tags=["terms"])
 app.include_router(crew_mcp.router, prefix="/api/v1/crew-mcp", tags=["crew-mcp"])

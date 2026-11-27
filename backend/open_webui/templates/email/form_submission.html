@@ -1,0 +1,116 @@
+<!doctype html>
+<html>
+	<!-- Styles are inline because most email clients strip <style> blocks. -->
+	<body style="margin: 0; padding: 0; background-color: #ffffff">
+		<table
+			role="presentation"
+			width="100%"
+			cellpadding="0"
+			cellspacing="0"
+			style="background-color: #ffffff"
+		>
+			<tr>
+				<td style="padding: 24px 16px">
+					<table
+						role="presentation"
+						width="100%"
+						cellpadding="0"
+						cellspacing="0"
+						style="
+							max-width: 600px;
+							font-family:
+								Segoe UI,
+								Arial,
+								Helvetica,
+								sans-serif;
+							color: #1f2937;
+						"
+					>
+						<tr>
+							<td style="padding: 0 0 16px; border-bottom: 2px solid #c8102e">
+								<table role="presentation" cellpadding="0" cellspacing="0">
+									<tr>
+										{% if logo_cid %}
+										<td style="vertical-align: middle; padding-right: 10px">
+											<img
+												src="cid:{{ logo_cid }}"
+												width="40"
+												height="40"
+												alt="CANChat"
+												style="display: block; border: 0"
+											/>
+										</td>
+										{% endif %}
+										<td
+											style="
+												vertical-align: middle;
+												font-size: 20px;
+												font-weight: 600;
+												color: #1f2937;
+											"
+										>
+											CANChat
+										</td>
+									</tr>
+								</table>
+							</td>
+						</tr>
+						<tr>
+							<td style="padding: 24px 0 8px; font-size: 18px; font-weight: 600; color: #1f2937">
+								{{ title }}
+							</td>
+						</tr>
+						<tr>
+							<td style="padding: 12px 0">
+								<div style="font-size: 13px; font-weight: 600; color: #4b5563; padding-bottom: 4px">
+									Submitted by
+								</div>
+								<div style="font-size: 14px; line-height: 1.6; color: #1f2937">
+									<a
+										href="mailto:{{ submitted_by | urlencode | replace('%40', '@') }}?subject={{ ('Re: ' ~ subject) | urlencode }}"
+										style="color: #284162; text-decoration: underline"
+										>{{ submitted_by }}</a
+									>
+								</div>
+							</td>
+						</tr>
+						{% for label, value in sections %}
+						<tr>
+							<td style="padding: 12px 0">
+								<div style="font-size: 13px; font-weight: 600; color: #4b5563; padding-bottom: 4px">
+									{{ label }}
+								</div>
+								<div
+									style="
+										font-size: 14px;
+										line-height: 1.6;
+										color: #1f2937;
+										white-space: pre-wrap;
+										word-break: break-word;
+									"
+								>
+									{{- value -}}
+								</div>
+							</td>
+						</tr>
+						{% endfor %}
+						<tr>
+							<td
+								style="
+									padding: 24px 0 0;
+									border-top: 1px solid #e5e7eb;
+									font-size: 12px;
+									line-height: 1.5;
+									color: #6b7280;
+								"
+							>
+								This message was sent from the CANChat feedback form. Reply to this email to respond
+								to the user directly.
+							</td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+	</body>
+</html>
