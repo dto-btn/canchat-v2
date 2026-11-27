@@ -17,6 +17,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from open_webui.routers import email as email_router
+from open_webui.utils import rate_limit
 from open_webui.utils.auth import get_current_user
 
 SUPPORT_INBOX = "support@example.gc.ca"
@@ -84,14 +85,21 @@ def fake_email_client(monkeypatch):
     monkeypatch.setattr(email_router, "AZURE_EMAIL_CONNECTION_STRING", "endpoint=fake")
     monkeypatch.setattr(email_router, "EMAIL_SENDER_ADDRESS", SENDER)
     monkeypatch.setattr(email_router, "EMAIL_SUPPORT_RECIPIENTS", [SUPPORT_INBOX])
+
+    # A fresh limiter per test, so earlier tests do not use up the budget.
+    monkeypatch.setattr(
+        email_router,
+        "email_rate_limiter",
+        rate_limit.RateLimiter("support-email-test", limit=5, window_seconds=3600),
+    )
     return FakeEmailClient
 
 
-def make_client(role="user", email=SUBMITTER):
+def make_client(role="user", email=SUBMITTER, user_id="user-1"):
     app = FastAPI()
     app.include_router(email_router.router, prefix="/api/v1/email")
     app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(
-        id="user-1", role=role, email=email
+        id=user_id, role=role, email=email
     )
     return TestClient(app)
 
@@ -492,6 +500,46 @@ class TestSharedBehaviour:
 
 
 # ── endpoint-specific fields ──────────────────────────────────────────────────
+
+
+class TestRateLimit:
+    def test_sixth_submission_in_window_returns_429(self, client, fake_email_client):
+        for _ in range(5):
+            assert (
+                client.post("/api/v1/email/issue", data=ISSUE_FORM).status_code == 200
+            )
+
+        response = client.post("/api/v1/email/issue", data=ISSUE_FORM)
+
+        assert response.status_code == 429
+        assert response.json()["detail"] == (
+            "You've sent too many reports. Please try again later."
+        )
+        assert 0 < int(response.headers["Retry-After"]) <= 3600
+        assert len(fake_email_client.sent_messages) == 5
+
+    def test_issues_and_suggestions_share_one_budget(self, client, fake_email_client):
+        for _ in range(3):
+            client.post("/api/v1/email/issue", data=ISSUE_FORM)
+        for _ in range(2):
+            client.post("/api/v1/email/suggestion", data=SUGGESTION_FORM)
+
+        response = client.post("/api/v1/email/suggestion", data=SUGGESTION_FORM)
+
+        assert response.status_code == 429
+
+    def test_each_user_has_their_own_budget(self, fake_email_client):
+        first_user = make_client(user_id="user-1")
+        for _ in range(5):
+            first_user.post("/api/v1/email/issue", data=ISSUE_FORM)
+        assert (
+            first_user.post("/api/v1/email/issue", data=ISSUE_FORM).status_code == 429
+        )
+
+        second_user = make_client(user_id="user-2", email="john@example.gc.ca")
+        response = second_user.post("/api/v1/email/issue", data=ISSUE_FORM)
+
+        assert response.status_code == 200
 
 
 class TestIssueFields:

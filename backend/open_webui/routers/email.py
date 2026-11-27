@@ -24,6 +24,7 @@ from open_webui.config import (
 )
 from open_webui.env import SRC_LOG_LEVELS
 from open_webui.utils.auth import get_verified_user
+from open_webui.utils.rate_limit import RateLimiter
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["EMAIL"])
@@ -59,6 +60,10 @@ MAX_FILES = 3
 MAX_TEXT_LENGTH = 20_000
 EMAIL_POLLING_INTERVAL_SECONDS = 1
 EMAIL_SEND_TIMEOUT_SECONDS = 60
+
+# Issue reports and suggestions share one per-user budget, which protects the
+# support inbox and the Azure sending quota from a user submitting in a loop.
+email_rate_limiter = RateLimiter("support-email", limit=5, window_seconds=60 * 60)
 
 # The forms only accept images. The filename and content type are whatever the
 # client sends, so the type is decided from the file's leading bytes instead.
@@ -250,6 +255,19 @@ async def send_email(
     return result.get("id")
 
 
+async def rate_limited_user(user=Depends(get_verified_user)):
+    """The signed-in user, once they are within their email budget."""
+    retry_after = email_rate_limiter.hit(user.id)
+    if retry_after is not None:
+        log.warning(f"Email rate limit reached for user {user.id}")
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="You've sent too many reports. Please try again later.",
+            headers={"Retry-After": str(retry_after)},
+        )
+    return user
+
+
 ############################
 # Report Issue
 ############################
@@ -260,7 +278,7 @@ async def report_issue(
     description: str = Form(..., max_length=MAX_TEXT_LENGTH),
     stepsToReproduce: str = Form(..., max_length=MAX_TEXT_LENGTH),
     files: List[UploadFile] = File(None),
-    user=Depends(get_verified_user),
+    user=Depends(rate_limited_user),
 ):
     log.info("Processing issue report submission")
 
@@ -311,7 +329,7 @@ async def report_issue(
 async def submit_suggestion(
     description: str = Form(..., max_length=MAX_TEXT_LENGTH),
     files: List[UploadFile] = File(None),
-    user=Depends(get_verified_user),
+    user=Depends(rate_limited_user),
 ):
     log.info("Processing suggestion submission")
 
