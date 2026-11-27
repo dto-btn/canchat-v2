@@ -175,3 +175,48 @@ async def report_issue(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred while processing your request.",
         )
+
+
+############################
+# Submit Suggestion
+############################
+
+
+@router.post("/suggestion", tags=["email"])
+async def submit_suggestion(
+    email: str = Form(...),
+    description: str = Form(...),
+    files: List[UploadFile] = File(None),
+    user=Depends(get_verified_user),
+):
+    log.info("Processing suggestion submission")
+
+    try:
+        attachments = await build_attachments(files)
+        plain_text, html_body = build_email_body(
+            "Suggestion",
+            [
+                ("Submitted by", email),
+                ("Suggestion", description),
+            ],
+        )
+
+        message_id = await send_email(
+            subject="CANCHAT Suggestion",
+            plain_text=plain_text,
+            html_body=html_body,
+            reply_to=email,
+            attachments=attachments,
+        )
+
+        log.info(f"Suggestion sent: {message_id}")
+        return {"success": True, "messageId": message_id}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.exception(f"Unexpected error while sending suggestion: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while processing your request.",
+        )
