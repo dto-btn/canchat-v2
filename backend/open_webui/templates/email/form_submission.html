@@ -65,7 +65,7 @@
 								</div>
 								<div style="font-size: 14px; line-height: 1.6; color: #1f2937">
 									<a
-										href="mailto:{{ submitted_by }}?subject={{ ('Re: ' ~ subject) | urlencode }}"
+										href="mailto:{{ submitted_by | urlencode | replace('%40', '@') }}?subject={{ ('Re: ' ~ subject) | urlencode }}"
 										style="color: #284162; text-decoration: underline"
 										>{{ submitted_by }}</a
 									>
