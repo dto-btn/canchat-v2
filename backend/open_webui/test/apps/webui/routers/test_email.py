@@ -10,6 +10,7 @@ message instead of sending it. No database, network or Azure account is used.
 import asyncio
 import base64
 from types import SimpleNamespace
+from urllib.parse import quote
 
 import pytest
 from azure.core.exceptions import HttpResponseError
@@ -124,14 +125,14 @@ ENDPOINTS = [
     pytest.param(
         "/api/v1/email/issue",
         ISSUE_FORM,
-        "CANCHAT Issue Report",
+        f"CANCHAT Issue Report - {SUBMITTER}",
         "Issue Report",
         id="issue",
     ),
     pytest.param(
         "/api/v1/email/suggestion",
         SUGGESTION_FORM,
-        "CANCHAT Suggestion",
+        f"CANCHAT Suggestion - {SUBMITTER}",
         "Suggestion",
         id="suggestion",
     ),
@@ -202,7 +203,7 @@ class TestSharedBehaviour:
         client.post(path, data=form)
 
         html = fake_email_client.sent_messages[0]["content"]["html"]
-        reply_subject = ("Re: " + subject).replace(":", "%3A").replace(" ", "%20")
+        reply_subject = quote("Re: " + subject, safe="/")
         assert f'href="mailto:{SUBMITTER}?subject={reply_subject}"' in html
 
     def test_escapes_user_input_in_html(

@@ -286,7 +286,7 @@ async def report_issue(
         # The submitter is the signed-in user, never a client-supplied address,
         # so replies can't be redirected and senders can't be impersonated.
         submitter = user.email
-        subject = "CANCHAT Issue Report"
+        subject = f"CANCHAT Issue Report - {submitter}"
         attachments, omitted = await build_attachments(files)
         plain_text, html_body = build_email_body(
             "Issue Report",
@@ -335,7 +335,7 @@ async def submit_suggestion(
 
     try:
         submitter = user.email
-        subject = "CANCHAT Suggestion"
+        subject = f"CANCHAT Suggestion - {submitter}"
         attachments, omitted = await build_attachments(files)
         plain_text, html_body = build_email_body(
             "Suggestion",
