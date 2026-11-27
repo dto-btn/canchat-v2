@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import logging
+from functools import lru_cache
 from pathlib import Path
 from typing import List, Optional
 
@@ -42,14 +43,7 @@ templates = Environment(
 # The logo goes in as an inline attachment the HTML references by cid:.
 # Outlook blocks data: URIs and asks before loading remote images.
 LOGO_CID = "canchat-logo"
-LOGO_ATTACHMENT = {
-    "name": "canchat-logo.png",
-    "contentType": "image/png",
-    "contentInBase64": base64.b64encode(
-        (EMAIL_TEMPLATES_DIR / "canchat-logo.png").read_bytes()
-    ).decode("utf-8"),
-    "contentId": LOGO_CID,
-}
+LOGO_PATH = EMAIL_TEMPLATES_DIR / "canchat-logo.png"
 
 # Azure caps a message at 10 MB including base64 overhead (~4/3), so keep the
 # raw attachment total well under that.
@@ -81,6 +75,26 @@ IMAGE_SIGNATURES = [
 ############################
 
 
+@lru_cache(maxsize=1)
+def get_logo_attachment() -> Optional[dict]:
+    """The logo as an inline attachment, or None if the file can't be read.
+
+    Loaded on first use rather than at import, so a missing logo only drops
+    the logo from emails instead of stopping the backend from starting.
+    """
+    try:
+        content = LOGO_PATH.read_bytes()
+    except OSError as e:
+        log.warning(f"Email logo unavailable, sending without it: {e}")
+        return None
+    return {
+        "name": "canchat-logo.png",
+        "contentType": "image/png",
+        "contentInBase64": base64.b64encode(content).decode("utf-8"),
+        "contentId": LOGO_CID,
+    }
+
+
 def build_email_body(
     title: str, subject: str, submitted_by: str, sections: List[tuple]
 ) -> tuple:
@@ -94,7 +108,7 @@ def build_email_body(
         "subject": subject,
         "submitted_by": submitted_by,
         "sections": sections,
-        "logo_cid": LOGO_CID,
+        "logo_cid": LOGO_CID if get_logo_attachment() else None,
     }
     plain_text = templates.get_template("form_submission.txt").render(context)
     html_body = templates.get_template("form_submission.html").render(context)
@@ -216,7 +230,10 @@ async def send_email(
             "plainText": plain_text,
             "html": html_body,
         },
-        "attachments": [LOGO_ATTACHMENT, *attachments],
+        "attachments": [
+            *filter(None, [get_logo_attachment()]),
+            *attachments,
+        ],
     }
 
     try:

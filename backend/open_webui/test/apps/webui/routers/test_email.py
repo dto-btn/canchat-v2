@@ -285,6 +285,30 @@ class TestSharedBehaviour:
         assert f'src="cid:{email_router.LOGO_CID}"' in message["content"]["html"]
         assert user_attachments(message) == []
 
+    def test_sends_without_logo_when_file_is_missing(
+        self,
+        client,
+        fake_email_client,
+        monkeypatch,
+        tmp_path,
+        path,
+        form,
+        subject,
+        title,
+    ):
+        monkeypatch.setattr(email_router, "LOGO_PATH", tmp_path / "missing.png")
+        email_router.get_logo_attachment.cache_clear()
+        try:
+            response = client.post(path, data=form)
+        finally:
+            email_router.get_logo_attachment.cache_clear()
+
+        assert response.status_code == 200
+        message = fake_email_client.sent_messages[0]
+        assert message["attachments"] == []
+        assert "cid:" not in message["content"]["html"]
+        assert "CANChat" in message["content"]["html"]
+
     def test_attaches_uploaded_files(
         self, client, fake_email_client, path, form, subject, title
     ):

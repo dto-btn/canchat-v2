@@ -88,7 +88,7 @@ from open_webui.routers import (
     terms,
     tools,
     users,
-    email,
+    email as email_router,
     utils,
 )
 
@@ -1121,7 +1121,7 @@ app.include_router(
     evaluations.router, prefix="/api/v1/evaluations", tags=["evaluations"]
 )
 app.include_router(utils.router, prefix="/api/v1/utils", tags=["utils"])
-app.include_router(email.router, prefix="/api/v1/email", tags=["email"])
+app.include_router(email_router.router, prefix="/api/v1/email", tags=["email"])
 app.include_router(metrics.router, prefix="/api/v1/metrics", tags=["metrics"])
 app.include_router(terms.router, prefix="/api/v1/terms", tags=["terms"])
 app.include_router(crew_mcp.router, prefix="/api/v1/crew-mcp", tags=["crew-mcp"])

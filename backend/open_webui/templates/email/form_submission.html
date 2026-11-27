@@ -30,6 +30,7 @@
 							<td style="padding: 0 0 16px; border-bottom: 2px solid #c8102e">
 								<table role="presentation" cellpadding="0" cellspacing="0">
 									<tr>
+										{% if logo_cid %}
 										<td style="vertical-align: middle; padding-right: 10px">
 											<img
 												src="cid:{{ logo_cid }}"
@@ -39,6 +40,7 @@
 												style="display: block; border: 0"
 											/>
 										</td>
+										{% endif %}
 										<td
 											style="
 												vertical-align: middle;
