@@ -1,0 +1,47 @@
+name: Dependency Update Scan
+
+on:
+  schedule:
+    - cron: "0 */3 * * *"
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "renovate.json"
+      - ".github/workflows/cron-dependency-scan.yaml"
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  renovate-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create App token
+        id: create_token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.RENOVATE_APP_ID }}
+          private-key: ${{ secrets.RENOVATE_APP_KEY }}
+          repositories: ${{ github.event.repository.name }}
+          owner: ${{ github.repository_owner }}
+          permission-contents: write
+          permission-workflows: write
+          permission-pull-requests: write
+          permission-issues: write
+          permission-statuses: write
+          permission-vulnerability-alerts: read
+
+      - name: Run Renovate
+        uses: renovatebot/github-action@43b963bf5dd5e57f1f95c59765a018d782870211 # v46.3.11
+        with:
+          token: ${{ steps.create_token.outputs.token }}
+          renovate-image: ghcr.io/renovatebot/renovate
+          renovate-version: 44.165.0@sha256:df00749d4568b488c6d50ca6ff031cea257ff490d20a846db03831a1a7359601
+        env:
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
