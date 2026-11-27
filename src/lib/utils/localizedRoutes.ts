@@ -1,4 +1,5 @@
 const routes: Record<string, string> = {
+	'/terms': '/conditions',
 	'/workspace': '/espace-travail',
 	'/workspace/models': '/espace-travail/modeles',
 	'/workspace/models/create': '/espace-travail/modeles/creer',

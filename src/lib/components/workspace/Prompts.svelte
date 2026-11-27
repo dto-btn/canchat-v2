@@ -263,8 +263,10 @@
 					href={localizedRoute(
 						$user?.role === 'admin' ||
 							(prompt?.user?.id === $user?.id && prompt.access_control !== null)
-							? `/workspace/prompts/edit?command=${encodeURIComponent(prompt.command.replace(/^\//, ''))}`
-							: `/workspace/prompts/view?command=${encodeURIComponent(prompt.command.replace(/^\//, ''))}`,
+							? '/workspace/prompts/edit?command=' +
+									encodeURIComponent(prompt.command.replace(/^\//, ''))
+							: '/workspace/prompts/view?command=' +
+									encodeURIComponent(prompt.command.replace(/^\//, '')),
 						$i18n.language
 					)}
 				>
@@ -312,7 +314,8 @@
 							class="self-center w-fit text-sm px-2 py-2 dark:text-gray-300 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded-xl"
 							type="button"
 							href={localizedRoute(
-								`/workspace/prompts/edit?command=${encodeURIComponent(prompt.command.replace(/^\//, ''))}`,
+								'/workspace/prompts/edit?command=' +
+									encodeURIComponent(prompt.command.replace(/^\//, '')),
 								$i18n.language
 							)}
 						>

@@ -228,7 +228,7 @@
 			<a
 				class=" flex flex-1 space-x-3.5 cursor-pointer w-full"
 				href={localizedRoute(
-					`/admin/functions/edit?id=${encodeURIComponent(func.id)}`,
+					'/admin/functions/edit?id=' + encodeURIComponent(func.id),
 					$i18n.language
 				)}
 			>

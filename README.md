@@ -168,10 +168,11 @@ npm run dev
 
 Keep this terminal running; it's serving your frontend!
 
-Workspace and admin pages use language-specific URLs (for example,
-`/en/workspace/models` and `/fr/espace-travail/modeles`). Existing unprefixed
-URLs remain available. Switching languages keeps the current page and its
-query parameters.
+Terms pages use `/en/terms` and `/fr/conditions`. Workspace and admin pages
+also use language-specific URLs (for example, `/en/workspace/models` and
+`/fr/espace-travail/modeles`). Existing unprefixed URLs remain available.
+Switching languages on workspace and admin pages keeps the current page and
+its query parameters.
 
 #### 2.4 Frontend Accessibility Tests
 
@@ -449,10 +450,12 @@ npm run dev
 - Vous devriez voir un message indiquant que le frontend est opérationnel et attend la connexion avec le backend.
   Gardez ce terminal ouvert : il sert votre frontend !
 
-Les pages de l'espace de travail et d'administration utilisent des URL propres
-à chaque langue (par exemple, `/en/workspace/models` et
+Les pages des conditions utilisent `/en/terms` et `/fr/conditions`. Les pages
+de l'espace de travail et d'administration utilisent aussi des URL propres à
+chaque langue (par exemple, `/en/workspace/models` et
 `/fr/espace-travail/modeles`). Les anciennes URL sans préfixe restent
-accessibles. Le changement de langue conserve la page et ses paramètres.
+accessibles. Le changement de langue dans ces pages conserve la page et ses
+paramètres.
 
 ---
 

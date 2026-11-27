@@ -1,12 +1,16 @@
 import { expect, test, type Page } from '@playwright/test';
 
-async function mockBackend(page: Page, role: 'admin' | 'user' = 'admin') {
-	await page.addInitScript(() => {
+async function mockBackend(
+	page: Page,
+	role: 'admin' | 'user' = 'admin',
+	locale: 'en-GB' | 'fr-CA' = 'en-GB'
+) {
+	await page.addInitScript((initialLocale) => {
 		if (!sessionStorage.getItem('test-locale-initialized')) {
-			localStorage.setItem('locale', 'en-GB');
+			localStorage.setItem('locale', initialLocale);
 			sessionStorage.setItem('test-locale-initialized', 'true');
 		}
-	});
+	}, locale);
 	await page.route('**/ws/**', (route) => route.abort());
 	await page.route('**/api/**', async (route) => {
 		const request = route.request();
@@ -47,6 +51,23 @@ async function mockBackend(page: Page, role: 'admin' | 'user' = 'admin') {
 		await route.fulfill({ status: 200, json, headers });
 	});
 }
+
+test('opens and switches localized terms pages', async ({ page }) => {
+	await mockBackend(page, 'admin', 'fr-CA');
+	await page.goto('/en/terms');
+	await expect(page.getByRole('heading', { name: 'CANChat – Terms of Use' })).toBeVisible();
+	await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
+	await page.getByRole('link', { name: 'Français', exact: true }).click();
+	await expect(page).toHaveURL(/\/fr\/conditions$/);
+	await expect(page.locator('html')).toHaveAttribute('lang', 'fr-CA');
+	await page.getByRole('link', { name: 'English', exact: true }).click();
+	await expect(page).toHaveURL(/\/en\/terms$/);
+	await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
+
+	await page.goto('/fr/conditions');
+	await expect(page.locator('html')).toHaveAttribute('lang', 'fr-CA');
+	await expect(page.getByRole('link', { name: 'English', exact: true })).toBeVisible();
+});
 
 test('switches workspace URLs without losing unsaved input or URL state', async ({ page }) => {
 	await mockBackend(page);
