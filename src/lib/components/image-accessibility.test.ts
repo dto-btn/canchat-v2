@@ -137,9 +137,21 @@ describe.each([
 		user.set({ id: 'alex', name: 'Alex', role: 'user' });
 		try {
 			const html = await render('chat/ChatPlaceholder', locale, {
-				modelIds: ['unnamed']
+				modelIds: ['alpha', 'unnamed']
 			});
 			expect(html).toContain(`alt="${select} unnamed"`);
+		} finally {
+			user.set(undefined);
+		}
+	}, 20_000);
+
+	it('keeps a single model avatar decorative and non-interactive', async () => {
+		const { user } = await server.ssrLoadModule('/src/lib/stores/index.ts');
+		user.set({ id: 'alex', name: 'Alex', role: 'user' });
+		try {
+			const html = await render('chat/ChatPlaceholder', locale, { modelIds: ['unnamed'] });
+			expect(html).toMatch(/<span><img\b[^>]*alt=""/);
+			expect(html).not.toContain(`alt="${select} unnamed"`);
 		} finally {
 			user.set(undefined);
 		}
