@@ -62,7 +62,7 @@ def fake_email_client(monkeypatch):
     FakeEmailClient.error = None
 
     monkeypatch.setattr(email_router, "EmailClient", FakeEmailClient)
-    monkeypatch.setattr(email_router, "EMAIL_CONNECTION_STRING", "endpoint=fake")
+    monkeypatch.setattr(email_router, "AZURE_EMAIL_CONNECTION_STRING", "endpoint=fake")
     monkeypatch.setattr(email_router, "EMAIL_SENDER_ADDRESS", SENDER)
     monkeypatch.setattr(email_router, "EMAIL_SUPPORT_RECIPIENT", SUPPORT_INBOX)
     return FakeEmailClient
@@ -244,7 +244,7 @@ class TestSharedBehaviour:
     def test_not_configured_returns_500(
         self, client, fake_email_client, monkeypatch, path, form, subject, title
     ):
-        monkeypatch.setattr(email_router, "EMAIL_CONNECTION_STRING", "")
+        monkeypatch.setattr(email_router, "AZURE_EMAIL_CONNECTION_STRING", "")
         response = client.post(path, data=form)
 
         assert response.status_code == 500

@@ -2745,3 +2745,13 @@ TRAINING_URL_FR = PersistentConfig(
     "training.url.fr",
     os.environ.get("TRAINING_URL_FR", ""),
 )
+
+####################################
+# Email (Azure Communication Services)
+####################################
+
+# Plain env vars rather than PersistentConfig: there is no admin UI for these,
+# and the connection string is a secret that should not be stored in the DB.
+AZURE_EMAIL_CONNECTION_STRING = os.environ.get("AZURE_EMAIL_CONNECTION_STRING", "")
+EMAIL_SENDER_ADDRESS = os.environ.get("EMAIL_SENDER_ADDRESS", "")
+EMAIL_SUPPORT_RECIPIENT = os.environ.get("EMAIL_SUPPORT_RECIPIENT", "")

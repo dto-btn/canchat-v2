@@ -1,6 +1,5 @@
 import base64
 import logging
-import os
 from pathlib import Path
 from typing import List, Optional
 
@@ -17,6 +16,11 @@ from fastapi import (
     status,
 )
 
+from open_webui.config import (
+    AZURE_EMAIL_CONNECTION_STRING,
+    EMAIL_SENDER_ADDRESS,
+    EMAIL_SUPPORT_RECIPIENT,
+)
 from open_webui.env import SRC_LOG_LEVELS
 from open_webui.utils.auth import get_verified_user
 
@@ -24,11 +28,6 @@ log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["EMAIL"])
 
 router = APIRouter()
-
-# Temporary: read from the environment until these move into config.py.
-EMAIL_CONNECTION_STRING = os.environ.get("AZURE_EMAIL_CONNECTION_STRING", "")
-EMAIL_SENDER_ADDRESS = os.environ.get("EMAIL_SENDER_ADDRESS", "")
-EMAIL_SUPPORT_RECIPIENT = os.environ.get("EMAIL_SUPPORT_RECIPIENT", "")
 
 EMAIL_TEMPLATES_DIR = Path(__file__).parent.parent / "templates" / "email"
 
@@ -107,7 +106,9 @@ async def send_email(
 ) -> str:
     """Send an email to the support inbox and return the Azure message id."""
     if not (
-        EMAIL_CONNECTION_STRING and EMAIL_SENDER_ADDRESS and EMAIL_SUPPORT_RECIPIENT
+        AZURE_EMAIL_CONNECTION_STRING
+        and EMAIL_SENDER_ADDRESS
+        and EMAIL_SUPPORT_RECIPIENT
     ):
         log.error("Email service is not configured")
         raise HTTPException(
@@ -127,7 +128,9 @@ async def send_email(
         "attachments": [LOGO_ATTACHMENT, *attachments],
     }
 
-    async with EmailClient.from_connection_string(EMAIL_CONNECTION_STRING) as client:
+    async with EmailClient.from_connection_string(
+        AZURE_EMAIL_CONNECTION_STRING
+    ) as client:
         poller = await client.begin_send(message)
         result = await poller.result()
 
