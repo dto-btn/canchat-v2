@@ -2754,4 +2754,9 @@ TRAINING_URL_FR = PersistentConfig(
 # and the connection string is a secret that should not be stored in the DB.
 AZURE_EMAIL_CONNECTION_STRING = os.environ.get("AZURE_EMAIL_CONNECTION_STRING", "")
 EMAIL_SENDER_ADDRESS = os.environ.get("EMAIL_SENDER_ADDRESS", "")
-EMAIL_SUPPORT_RECIPIENT = os.environ.get("EMAIL_SUPPORT_RECIPIENT", "")
+# Comma-separated list of inboxes that receive issue reports and suggestions.
+EMAIL_SUPPORT_RECIPIENTS = [
+    address.strip()
+    for address in os.environ.get("EMAIL_SUPPORT_RECIPIENTS", "").split(",")
+    if address.strip()
+]

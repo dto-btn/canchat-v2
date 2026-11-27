@@ -19,7 +19,7 @@ from fastapi import (
 from open_webui.config import (
     AZURE_EMAIL_CONNECTION_STRING,
     EMAIL_SENDER_ADDRESS,
-    EMAIL_SUPPORT_RECIPIENT,
+    EMAIL_SUPPORT_RECIPIENTS,
 )
 from open_webui.env import SRC_LOG_LEVELS
 from open_webui.utils.auth import get_verified_user
@@ -104,11 +104,11 @@ async def send_email(
     reply_to: str,
     attachments: List[dict],
 ) -> str:
-    """Send an email to the support inbox and return the Azure message id."""
+    """Send an email to the support inboxes and return the Azure message id."""
     if not (
         AZURE_EMAIL_CONNECTION_STRING
         and EMAIL_SENDER_ADDRESS
-        and EMAIL_SUPPORT_RECIPIENT
+        and EMAIL_SUPPORT_RECIPIENTS
     ):
         log.error("Email service is not configured")
         raise HTTPException(
@@ -118,7 +118,9 @@ async def send_email(
 
     message = {
         "senderAddress": EMAIL_SENDER_ADDRESS,
-        "recipients": {"to": [{"address": EMAIL_SUPPORT_RECIPIENT}]},
+        "recipients": {
+            "to": [{"address": address} for address in EMAIL_SUPPORT_RECIPIENTS]
+        },
         "replyTo": [{"address": reply_to}],
         "content": {
             "subject": subject,

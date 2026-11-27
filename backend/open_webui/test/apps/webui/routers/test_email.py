@@ -64,7 +64,7 @@ def fake_email_client(monkeypatch):
     monkeypatch.setattr(email_router, "EmailClient", FakeEmailClient)
     monkeypatch.setattr(email_router, "AZURE_EMAIL_CONNECTION_STRING", "endpoint=fake")
     monkeypatch.setattr(email_router, "EMAIL_SENDER_ADDRESS", SENDER)
-    monkeypatch.setattr(email_router, "EMAIL_SUPPORT_RECIPIENT", SUPPORT_INBOX)
+    monkeypatch.setattr(email_router, "EMAIL_SUPPORT_RECIPIENTS", [SUPPORT_INBOX])
     return FakeEmailClient
 
 
@@ -134,6 +134,28 @@ class TestSharedBehaviour:
         assert message["recipients"] == {"to": [{"address": SUPPORT_INBOX}]}
         assert message["replyTo"] == [{"address": SUBMITTER}]
         assert message["content"]["subject"] == subject
+
+    def test_sends_to_every_support_recipient(
+        self, client, fake_email_client, monkeypatch, path, form, subject, title
+    ):
+        recipients = [SUPPORT_INBOX, "second@example.gc.ca"]
+        monkeypatch.setattr(email_router, "EMAIL_SUPPORT_RECIPIENTS", recipients)
+        client.post(path, data=form)
+
+        message = fake_email_client.sent_messages[0]
+        assert message["recipients"] == {
+            "to": [{"address": SUPPORT_INBOX}, {"address": "second@example.gc.ca"}]
+        }
+
+    def test_no_recipients_returns_500(
+        self, client, fake_email_client, monkeypatch, path, form, subject, title
+    ):
+        monkeypatch.setattr(email_router, "EMAIL_SUPPORT_RECIPIENTS", [])
+        response = client.post(path, data=form)
+
+        assert response.status_code == 500
+        assert response.json()["detail"] == "Email service is not configured."
+        assert fake_email_client.sent_messages == []
 
     def test_body_includes_title_and_submitter(
         self, client, fake_email_client, path, form, subject, title
