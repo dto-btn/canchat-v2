@@ -34,7 +34,7 @@
 
 	<div class="flex max-w-full w-full mx-auto px-1 pt-0.5 bg-transparent items-center">
 		<!-- Left Section: Sidebar Toggle and Model Selector -->
-		<div class="flex items-center gap-1">
+		<div class="flex min-w-0 items-center gap-1">
 			<!-- Sidebar Toggle -->
 			<div
 				class="{$showSidebar
@@ -58,7 +58,7 @@
 			</div>
 
 			<!-- Model Selector -->
-			<div class="overflow-hidden max-w-full py-0.5 {$showSidebar ? 'ml-1' : ''}">
+			<div class="min-w-0 overflow-hidden max-w-full py-0.5 {$showSidebar ? 'ml-1' : ''}">
 				{#if showModelSelector}
 					<ModelSelector bind:selectedModels showSetDefault={!shareEnabled} />
 				{/if}
@@ -77,7 +77,7 @@
 		{/if}
 
 		<!-- Right Section: New Chat, Controls, and Navbar Extras -->
-		<div class="flex items-center gap-1 ml-auto">
+		<div class="flex shrink-0 items-center gap-1 ml-auto">
 			<!-- New Chat Button -->
 			{#if !$showSidebar}
 				<div class="self-start flex flex-none items-center text-gray-600 dark:text-gray-400">

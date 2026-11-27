@@ -959,8 +959,16 @@
 					{#if message.done || siblings.length > 1}
 						<div
 							data-message-actions
+							role="toolbar"
+							aria-label={$i18n.t('Message actions')}
+							aria-describedby={`response-actions-help-${message.id}`}
 							class="flex flex-wrap justify-start overflow-x-auto buttons text-gray-600 dark:text-gray-500 mt-0.5"
 						>
+							<span id={`response-actions-help-${message.id}`} class="sr-only">
+								{$i18n.t(
+									'Use Left and Right arrow keys to move between actions. Press Enter or Space to activate an action. Escape dismisses an open tooltip first; press Escape again to return to the message.'
+								)}
+							</span>
 							{#if siblings.length > 1}
 								<div class="flex self-center min-w-fit">
 									<Tooltip content={$i18n.t('Previous Response')} placement="bottom">

@@ -153,9 +153,12 @@
 					<div class="flex -space-x-4 mb-0.5" in:fade={{ duration: 100 }}>
 						{#each models as model, modelIdx}
 							<Tooltip content={getModelTagTooltip(modelIdx)} placement="top">
-								<button
+								<svelte:element
+									this={models.length > 1 ? 'button' : 'span'}
+									type={models.length > 1 ? 'button' : undefined}
+									role={models.length > 1 ? 'button' : undefined}
 									on:click={() => {
-										selectedModelIdx = modelIdx;
+										if (models.length > 1) selectedModelIdx = modelIdx;
 									}}
 								>
 									<img
@@ -165,12 +168,14 @@
 												? `/doge.png`
 												: `${WEBUI_BASE_URL}/static/favicon.png`)}
 										class=" size-9 sm:size-10 rounded-full border-[1px] border-gray-200 dark:border-none"
-										alt={$i18n.t('Select {{model}}', {
-											model: getModelName(model) || selectedModels[modelIdx]
-										})}
+										alt={models.length > 1
+											? $i18n.t('Select {{model}}', {
+													model: getModelName(model) || selectedModels[modelIdx]
+												})
+											: ''}
 										draggable="false"
 									/>
-								</button>
+								</svelte:element>
 							</Tooltip>
 						{/each}
 					</div>

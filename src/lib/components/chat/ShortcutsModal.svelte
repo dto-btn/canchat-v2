@@ -235,7 +235,7 @@
 		</h2>
 
 		<div class="flex flex-col md:flex-row w-full p-5 md:space-x-4 dark:text-gray-200">
-			<div class=" flex flex-col w-full sm:flex-row sm:justify-center sm:space-x-6">
+			<div class="flex flex-col w-full max-w-sm">
 				<div class="flex flex-col space-y-3 w-full self-start">
 					<div class="w-full flex justify-between items-center" tabindex="0">
 						<div class=" text-sm">

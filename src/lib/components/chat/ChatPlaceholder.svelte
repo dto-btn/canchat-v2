@@ -40,16 +40,19 @@
 		<div class="flex justify-start">
 			<div class="flex -space-x-4 mb-0.5" in:fade={{ duration: 200 }}>
 				{#each models as model, modelIdx}
-					<button
-						on:click={() => {
-							selectedModelIdx = modelIdx;
-						}}
+					<Tooltip
+						content={marked.parse(
+							sanitizeResponseContent(models[selectedModelIdx]?.info?.meta?.description ?? '')
+						)}
+						placement="right"
 					>
-						<Tooltip
-							content={marked.parse(
-								sanitizeResponseContent(models[selectedModelIdx]?.info?.meta?.description ?? '')
-							)}
-							placement="right"
+						<svelte:element
+							this={models.length > 1 ? 'button' : 'span'}
+							type={models.length > 1 ? 'button' : undefined}
+							role={models.length > 1 ? 'button' : undefined}
+							on:click={() => {
+								if (models.length > 1) selectedModelIdx = modelIdx;
+							}}
 						>
 							<img
 								crossorigin="anonymous"
@@ -58,13 +61,15 @@
 										? `/doge.png`
 										: `${WEBUI_BASE_URL}/static/favicon.png`)}
 								class=" size-[2.7rem] rounded-full border-[1px] border-gray-200 dark:border-none"
-								alt={$i18n.t('Select {{model}}', {
-									model: model?.name || modelIds[modelIdx]
-								})}
+								alt={models.length > 1
+									? $i18n.t('Select {{model}}', {
+											model: model?.name || modelIds[modelIdx]
+										})
+									: ''}
 								draggable="false"
 							/>
-						</Tooltip>
-					</button>
+						</svelte:element>
+					</Tooltip>
 				{/each}
 			</div>
 		</div>

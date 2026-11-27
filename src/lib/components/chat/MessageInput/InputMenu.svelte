@@ -87,7 +87,6 @@
 	let show = false;
 
 	let showImageGeneration = false;
-	const hoverOnlyTooltipOptions = { trigger: 'mouseenter' };
 
 	$: showImageGeneration =
 		$config?.features?.enable_image_generation &&
@@ -191,7 +190,6 @@
 									: getToolTooltipContent(tools[toolId], $i18n)}
 							placement="right"
 							className="w-full"
-							tippyOptions={hoverOnlyTooltipOptions}
 						>
 							<button
 								role="menuitem"
@@ -280,11 +278,7 @@
 			{/if}
 
 			{#if showImageGeneration}
-				<Tooltip
-					content={$i18n.t('Image Generation')}
-					placement="right"
-					tippyOptions={hoverOnlyTooltipOptions}
-				>
+				<Tooltip content={$i18n.t('Image Generation')} placement="right">
 					<button
 						role="menuitem"
 						class="flex w-full justify-between gap-2 items-center px-3 py-2 text-sm font-medium cursor-pointer rounded-xl"
@@ -310,7 +304,6 @@
 							? $i18n.t('Web Search disabled - MCP tools are active')
 							: $i18n.t('Web Search (Beta)')}
 					placement="right"
-					tippyOptions={hoverOnlyTooltipOptions}
 				>
 					<button
 						role="menuitem"
@@ -352,7 +345,6 @@
 					content={tooltipContent}
 					placement="right"
 					className="w-full"
-					tippyOptions={hoverOnlyTooltipOptions}
 				>
 					<button
 						role="menuitem"

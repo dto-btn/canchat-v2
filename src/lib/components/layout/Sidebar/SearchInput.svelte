@@ -14,7 +14,7 @@
 	export let value = '';
 	let inputElement: HTMLInputElement;
 
-	let selectedIdx = 0;
+	let selectedIdx: number | null = 0;
 
 	let lastWord = '';
 	$: lastWord = value ? value.split(' ').at(-1) : value;
@@ -95,6 +95,7 @@
 				return true;
 			})
 		: [];
+	$: optionsOpen = focused && (filteredOptions.length > 0 || filteredTags.length > 0);
 
 	const initTags = async () => {
 		loading = true;
@@ -139,7 +140,27 @@
 	});
 </script>
 
-<div class="px-1 mb-1 flex justify-center space-x-2 relative z-10" id="search-container">
+<!-- svelte-ignore a11y-no-static-element-interactions -->
+<div
+	class="px-1 mb-1 flex justify-center space-x-2 relative z-10"
+	id="search-container"
+	on:focusout={(event) => {
+		if (
+			!(event.relatedTarget instanceof Node) ||
+			!event.currentTarget.contains(event.relatedTarget)
+		) {
+			focused = false;
+		}
+	}}
+	on:keydown={(event) => {
+		if (event.key === 'Escape' && optionsOpen) {
+			event.preventDefault();
+			event.stopPropagation();
+			inputElement.focus();
+			focused = false;
+		}
+	}}
+>
 	<div class="flex w-full rounded-xl" id="chat-search">
 		<div class="self-center pl-3 py-2 rounded-l-xl bg-transparent">
 			<svg
@@ -161,8 +182,16 @@
 			class="flex-1 py-1.5 pl-2.5 pr-1 text-sm bg-transparent dark:text-gray-300 outline-none"
 			placeholder={placeholder ? placeholder : $i18n.t('Search')}
 			aria-label={placeholder ? placeholder : $i18n.t('Search')}
+			role="combobox"
+			aria-expanded={optionsOpen}
+			aria-controls={optionsOpen ? 'search-options-list' : undefined}
+			aria-activedescendant={optionsOpen && selectedIdx !== null
+				? `${filteredTags.length > 0 ? 'search-tag' : 'search-option'}-${selectedIdx}`
+				: undefined}
+			aria-autocomplete="list"
 			bind:value
 			on:input={() => {
+				focused = true;
 				dispatch('input');
 			}}
 			on:focus={() => {
@@ -170,7 +199,7 @@
 				initTags();
 			}}
 			on:keydown={(e) => {
-				if (e.key === 'Enter') {
+				if (e.key === 'Enter' && optionsOpen && selectedIdx !== null) {
 					if (filteredTags.length > 0) {
 						const tagElement = document.getElementById(`search-tag-${selectedIdx}`);
 						tagElement.click();
@@ -184,23 +213,20 @@
 					}
 				}
 
-				if (e.key === 'Escape') {
-					e.preventDefault();
-					focused = false;
-					inputElement.blur();
-					return;
-				}
-
 				if (e.key === 'ArrowUp') {
 					e.preventDefault();
-					selectedIdx = Math.max(0, selectedIdx - 1);
+					focused = true;
+					selectedIdx = Math.max(0, (selectedIdx ?? 0) - 1);
 				} else if (e.key === 'ArrowDown') {
 					e.preventDefault();
+					focused = true;
 
 					if (filteredTags.length > 0) {
-						selectedIdx = Math.min(selectedIdx + 1, filteredTags.length - 1);
+						selectedIdx = Math.min((selectedIdx ?? -1) + 1, filteredTags.length - 1);
+					} else if (filteredOptions.length > 0) {
+						selectedIdx = Math.min((selectedIdx ?? -1) + 1, filteredOptions.length - 1);
 					} else {
-						selectedIdx = Math.min(selectedIdx + 1, filteredOptions.length - 1);
+						selectedIdx = 0;
 					}
 				} else {
 					// if the user types something, reset to the top selection.
@@ -237,7 +263,7 @@
 		{/if}
 	</div>
 
-	{#if focused && (filteredOptions.length > 0 || filteredTags.length > 0)}
+	{#if optionsOpen}
 		<!-- svelte-ignore a11y-no-static-element-interactions -->
 		<div
 			class="absolute top-0 mt-8 left-0 right-1 border dark:border-gray-900 bg-gray-50 dark:bg-gray-950 rounded-lg z-10 shadow-lg"
@@ -258,7 +284,12 @@
 						{$i18n.t('Tags')}
 					</div>
 
-					<div class="max-h-60 overflow-auto" role="listbox" aria-labelledby="search-tags-label">
+					<div
+						id="search-options-list"
+						class="max-h-60 overflow-auto"
+						role="listbox"
+						aria-labelledby="search-tags-label"
+					>
 						{#each filteredTags as tag, tagIdx}
 							<button
 								type="button"
@@ -268,7 +299,9 @@
 									: ''}"
 								id="search-tag-{tagIdx}"
 								role="option"
+								tabindex="-1"
 								aria-selected={selectedIdx === tagIdx}
+								on:mousedown|preventDefault
 								on:click|stopPropagation={async () => {
 									const words = value.split(' ');
 
@@ -302,6 +335,7 @@
 					</div>
 
 					<div
+						id="search-options-list"
 						class=" max-h-60 overflow-auto"
 						role="listbox"
 						aria-labelledby="search-options-label"
@@ -315,7 +349,9 @@
 									: ''}"
 								id="search-option-{optionIdx}"
 								role="option"
+								tabindex="-1"
 								aria-selected={selectedIdx === optionIdx}
+								on:mousedown|preventDefault
 								on:click|stopPropagation={async () => {
 									const words = value.split(' ');
 

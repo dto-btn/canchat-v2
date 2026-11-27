@@ -53,6 +53,8 @@
 
 	let copied = false;
 	let saved = false;
+	let codeBlockElement: HTMLDivElement;
+	let codeEditor: CodeEditor;
 
 	const saveCode = () => {
 		saved = true;
@@ -288,7 +290,21 @@ __builtins__.input = input`);
 </script>
 
 <div>
-	<div class="relative {className} flex flex-col rounded-lg">
+	<!-- svelte-ignore a11y-no-noninteractive-tabindex -->
+	<div
+		bind:this={codeBlockElement}
+		class="relative {className} flex flex-col rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+		role={lang === 'mermaid' ? undefined : 'group'}
+		tabindex={lang === 'mermaid' ? undefined : 0}
+		aria-label={lang === 'mermaid' ? undefined : $i18n.t('Code block')}
+		aria-describedby={lang === 'mermaid' ? undefined : `code-help-${id}`}
+		on:keydown={(event) => {
+			if (event.target === codeBlockElement && event.key === 'Enter' && lang !== 'mermaid') {
+				event.preventDefault();
+				codeEditor?.focusEditor();
+			}
+		}}
+	>
 		{#if lang === 'mermaid'}
 			{#if mermaidHtml}
 				<SvgPanZoom
@@ -348,9 +364,12 @@ __builtins__.input = input`);
 			>
 				<div class=" pt-7 bg-gray-50 dark:bg-gray-850"></div>
 				<CodeEditor
+					bind:this={codeEditor}
 					value={code}
 					{id}
 					{lang}
+					keyboardNavigation
+					on:exit={() => codeBlockElement.focus()}
 					on:save={() => {
 						saveCode();
 					}}
@@ -358,6 +377,9 @@ __builtins__.input = input`);
 						_code = e.detail.value;
 					}}
 				/>
+			</div>
+			<div id="code-help-{id}" class="px-3 py-1 text-xs text-gray-600 dark:text-gray-400">
+				{$i18n.t('Press Enter to edit code and Escape to leave the editor.')}
 			</div>
 
 			<div

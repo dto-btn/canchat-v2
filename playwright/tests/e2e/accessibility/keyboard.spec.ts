@@ -49,6 +49,7 @@ test.beforeAll(async () => {
 									import Fixture from '/playwright/fixtures/KeyboardAccessibility.svelte';
 									import '/src/tailwind.css?import';
 									import '/src/app.css?import';
+									import 'tippy.js/dist/tippy.css';
 									new Fixture({ target: document.getElementById('fixture') });
 								</script></body></html>`
 								)
@@ -97,6 +98,18 @@ for (const locale of ['en-GB', 'fr-CA']) {
 		await page.goto(`${baseURL}/__keyboard?locale=${locale}`);
 		const messages = page.locator('[data-keyboard-message]');
 		await expect(messages).toHaveCount(3, { timeout: 30_000 });
+		for (const message of await messages.all()) {
+			const toolbar = message.getByRole('toolbar', {
+				name: locale === 'fr-CA' ? 'Actions du message' : 'Message actions',
+				exact: true
+			});
+			await expect(toolbar).toHaveCount(1);
+			await expect(toolbar).toHaveAccessibleDescription(
+				locale === 'fr-CA'
+					? "Utilisez les flèches gauche et droite pour parcourir les actions. Appuyez sur Entrée ou Espace pour activer une action. Échap ferme d'abord une infobulle ouverte; appuyez de nouveau sur Échap pour revenir au message."
+					: 'Use Left and Right arrow keys to move between actions. Press Enter or Space to activate an action. Escape dismisses an open tooltip first; press Escape again to return to the message.'
+			);
+		}
 		await page.locator('#before').focus();
 		await page.keyboard.press('Tab');
 		await expect(messages.nth(0)).toBeFocused();
@@ -118,6 +131,8 @@ for (const locale of ['en-GB', 'fr-CA']) {
 		await expect(copy).toBeFocused();
 		await expect(copy).toBeVisible();
 		await expect(copy).toHaveCSS('outline-style', 'solid');
+		await page.keyboard.press('Escape');
+		await expect(copy).toBeFocused();
 		await page.keyboard.press('Escape');
 		await expect(messages.nth(1)).toBeFocused();
 		await page.keyboard.press('End');
@@ -518,4 +533,191 @@ test('the Chat Controls drawer on small screens traps focus and Escape returns i
 	await page.keyboard.press('Escape');
 	await expect(dialog).toHaveCount(0);
 	await expect(opener).toBeFocused();
+});
+
+for (const locale of ['en-GB', 'fr-CA']) {
+	test(`code blocks allow keyboard entry and exit in ${locale}`, async ({ page }) => {
+		await page.goto(`${baseURL}/__keyboard?tester-notes&locale=${locale}`);
+		const block = page.locator('[aria-describedby="code-help-notes-code"]');
+		await expect(block).toHaveAccessibleName(locale === 'fr-CA' ? 'Bloc de code' : 'Code block');
+		const editor = block.locator('.cm-content');
+		await page.locator('#before-code').focus();
+		await page.keyboard.press('Tab');
+		await expect(block).toBeFocused();
+		await expect(block).toHaveAttribute('aria-describedby', 'code-help-notes-code');
+		await page.keyboard.press('Enter');
+		await expect(editor).toBeFocused();
+		await page.keyboard.press('End');
+		await page.keyboard.type(' // edited');
+		await expect(editor).toContainText('// edited');
+		await page.keyboard.press('Escape');
+		if (await editor.evaluate((element) => element === document.activeElement)) {
+			await page.keyboard.press('Escape');
+		}
+		await expect(block).toBeFocused();
+		await page.keyboard.press('Tab');
+		await expect(block.locator('.copy-code-button')).toBeFocused();
+		await page.keyboard.press('Tab');
+		await expect(page.locator('#after-code')).toBeFocused();
+		await block.focus();
+		await page.keyboard.press('Shift+Tab');
+		await expect(page.locator('#before-code')).toBeFocused();
+		await expect(page.locator('#code-textarea-standalone .cm-content')).not.toHaveAttribute(
+			'tabindex',
+			'-1'
+		);
+	});
+
+	test(`response code navigation works with message navigation in ${locale}`, async ({ page }) => {
+		await page.goto(`${baseURL}/__keyboard?tester-notes&locale=${locale}`);
+		const message = page.locator('#response-with-code [data-keyboard-message]');
+		const block = message.getByRole('group', {
+			name: locale === 'fr-CA' ? 'Bloc de code' : 'Code block'
+		});
+		await message.focus();
+		await page.keyboard.press('Tab');
+		await expect(block).toBeFocused();
+		await page.keyboard.press('Enter');
+		await expect(block.locator('.cm-content')).toBeFocused();
+		await page.keyboard.press('Escape');
+		await expect(block).toBeFocused();
+		await page.keyboard.press('Shift+Tab');
+		await expect(message).toBeFocused();
+	});
+
+	test(`message statistics tooltip is keyboard dismissible in ${locale}`, async ({ page }) => {
+		await page.goto(`${baseURL}/__keyboard?tester-notes&locale=${locale}`);
+		const message = page.locator('#response-with-code [data-keyboard-message]');
+		await message.focus();
+		const info = message.locator('#info-response');
+		await info.focus();
+		const tooltip = page.getByRole('tooltip').filter({ hasText: 'total_tokens: 42' });
+		await expect(tooltip).toBeVisible();
+		await page.keyboard.press('Escape');
+		await expect(tooltip).not.toBeVisible();
+		await expect(info).toBeFocused();
+		await page.keyboard.press('Escape');
+		await expect(message).toBeFocused();
+	});
+
+	test(`search options dismiss and remain selectable in ${locale}`, async ({ page }) => {
+		await page.goto(`${baseURL}/__keyboard?tester-notes&locale=${locale}`);
+		const search = page.getByRole('combobox', {
+			name: locale === 'fr-CA' ? 'Recherche' : 'Search'
+		});
+		await search.focus();
+		await expect(search).toHaveAttribute('aria-expanded', 'true');
+		await page.keyboard.press('Escape');
+		await expect(search).toBeFocused();
+		await expect(search).toHaveAttribute('aria-expanded', 'false');
+		await page.keyboard.press('ArrowDown');
+		await expect(search).toHaveAttribute('aria-expanded', 'true');
+		await page.keyboard.press('Enter');
+		await expect(search).toHaveValue(locale === 'fr-CA' ? 'étiquette:' : 'tag:');
+		await expect(search).toBeFocused();
+		await page.keyboard.press('Escape');
+		await expect(search).toHaveAttribute('aria-expanded', 'false');
+		await search.fill('');
+		await expect(search).toHaveAttribute('aria-expanded', 'true');
+		await page.keyboard.press('Tab');
+		await expect(page.locator('#after-search')).toBeFocused();
+		await expect(search).toHaveAttribute('aria-expanded', 'false');
+		await search.focus();
+		await page.locator('#search-option-0').click();
+		await expect(search).toHaveValue(locale === 'fr-CA' ? 'étiquette:' : 'tag:');
+	});
+}
+
+test('tooltips support focus, hover and Escape without closing a parent', async ({ page }) => {
+	await page.goto(`${baseURL}/__keyboard?tester-notes`);
+	const trigger = page.locator('#tooltip-trigger');
+	const tooltip = page.getByRole('tooltip').filter({ hasText: 'Helpful tooltip' });
+	await trigger.focus();
+	await expect(tooltip).toBeVisible();
+	await page.evaluate(() => {
+		(window as typeof window & { escapeCount: number }).escapeCount = 0;
+		window.addEventListener('keydown', (event) => {
+			if (event.key === 'Escape') (window as typeof window & { escapeCount: number }).escapeCount++;
+		});
+	});
+	await page.keyboard.press('Escape');
+	await expect(tooltip).not.toBeVisible();
+	await expect(trigger).toBeFocused();
+	expect(
+		await page.evaluate(() => (window as typeof window & { escapeCount: number }).escapeCount)
+	).toBe(0);
+	await page.locator('#after-search').focus();
+	await trigger.hover();
+	await expect(tooltip).toBeVisible();
+	await tooltip.hover();
+	await expect(tooltip).toBeVisible();
+	await page.keyboard.press('Escape');
+	await expect(tooltip).not.toBeVisible();
+});
+
+test('feature menu descriptions appear on keyboard focus', async ({ page }) => {
+	await page.goto(`${baseURL}/__keyboard?tester-notes`);
+	await page.locator('#features-menu [data-dropdown-trigger]').click();
+	const image = page.getByRole('menuitem', { name: /Image/ });
+	await image.focus();
+	const tooltip = page.getByRole('tooltip').filter({ hasText: 'Image Generation' });
+	await expect(tooltip).toBeVisible();
+	await page.keyboard.press('Escape');
+	await expect(tooltip).not.toBeVisible();
+	await expect(image).toBeFocused();
+	await page.keyboard.press('Escape');
+	await expect(image).toHaveCount(0);
+});
+
+test('header actions fit at narrow widths and the model image is only a button when useful', async ({
+	page
+}) => {
+	await page.setViewportSize({ width: 320, height: 900 });
+	await page.goto(`${baseURL}/__keyboard?tester-notes`);
+	const newChat = page.locator('#new-chat-button');
+	await expect(newChat).toBeVisible();
+	await newChat.click();
+	await expect(page.getByLabel('New chats')).toHaveText('1');
+	const bounds = await page.locator('#notes-header').evaluate((header) =>
+		Array.from(header.querySelectorAll('button')).map((button) => {
+			const rect = button.getBoundingClientRect();
+			return { left: rect.left, right: rect.right };
+		})
+	);
+	expect(bounds.every((rect) => rect.left >= 0 && rect.right <= 320)).toBe(true);
+	await expect(
+		page.locator('#single-model').getByRole('button', { name: /Select Test model/ })
+	).toHaveCount(0);
+	await expect(
+		page.locator('#welcome-single').getByRole('button', { name: /Select Test model/ })
+	).toHaveCount(0);
+	const multi = page.locator('#multiple-models');
+	await multi.getByRole('button', { name: 'Select Test model' }).click();
+	await expect(multi).toContainText('Test model');
+});
+
+test('input shortcut labels and keys remain close', async ({ page }) => {
+	await page.goto(`${baseURL}/__keyboard?tester-notes`);
+	await page.locator('#show-shortcuts').click();
+	const dialog = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
+	const row = dialog.getByText('Attach file', { exact: true }).locator('..');
+	expect(
+		await row.evaluate((element) => element.getBoundingClientRect().width)
+	).toBeLessThanOrEqual(384);
+});
+
+test('long model names do not push header actions outside a narrow viewport', async ({ page }) => {
+	await page.setViewportSize({ width: 320, height: 900 });
+	await page.goto(`${baseURL}/__keyboard?tester-notes&long-model`);
+	const actions = page.locator('#notes-header button');
+	const bounds = await actions.evaluateAll((buttons) =>
+		buttons.map((button) => {
+			const rect = button.getBoundingClientRect();
+			return { left: rect.left, right: rect.right };
+		})
+	);
+	expect(bounds.every((rect) => rect.left >= 0 && rect.right <= 320)).toBe(true);
+	await expect(page.locator('#new-chat-button')).toBeVisible();
+	await page.locator('#new-chat-button').click();
+	await expect(page.getByLabel('New chats')).toHaveText('1');
 });
