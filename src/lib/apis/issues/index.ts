@@ -1,7 +1,6 @@
 import { WEBUI_API_BASE_URL } from '$lib/constants';
 
 type IssueItem = {
-	email: string;
 	description: string;
 	stepsToReproduce: string;
 	files?: null | FileList;
@@ -10,7 +9,6 @@ type IssueItem = {
 export const createIssue = async (token: string, issue: IssueItem) => {
 	const formData = new FormData();
 
-	formData.append('email', issue.email);
 	formData.append('description', issue.description);
 	formData.append('stepsToReproduce', issue.stepsToReproduce);
 

@@ -3,7 +3,6 @@
 
 	import { onMount } from 'svelte';
 	import Modal from './Modal.svelte';
-	import { user } from '$lib/stores';
 	import { createIssue } from '$lib/apis/issues';
 	import { toast } from 'svelte-sonner';
 	import { getRequestToken } from '$lib/services/auth';
@@ -84,7 +83,6 @@
 			error = '';
 
 			await createIssue(getRequestToken(), {
-				email: $user?.email || '',
 				description,
 				stepsToReproduce,
 				files

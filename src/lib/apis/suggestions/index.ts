@@ -1,7 +1,6 @@
 import { WEBUI_API_BASE_URL } from '$lib/constants';
 
 type SuggestionItem = {
-	email: string;
 	description: string;
 	files?: null | FileList;
 };
@@ -9,7 +8,6 @@ type SuggestionItem = {
 export const createSuggestion = async (token: string, suggestion: SuggestionItem) => {
 	const formData = new FormData();
 
-	formData.append('email', suggestion.email);
 	formData.append('description', suggestion.description);
 
 	if (suggestion.files) {
