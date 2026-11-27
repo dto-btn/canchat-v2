@@ -3,9 +3,9 @@
 
 	import { basicSetup, EditorView } from 'codemirror';
 	import { keymap, placeholder } from '@codemirror/view';
-	import { Compartment, EditorState } from '@codemirror/state';
+	import { Compartment, EditorState, Prec } from '@codemirror/state';
 
-	import { acceptCompletion } from '@codemirror/autocomplete';
+	import { acceptCompletion, completionStatus } from '@codemirror/autocomplete';
 	import { indentWithTab } from '@codemirror/commands';
 
 	import { indentUnit, LanguageDescription } from '@codemirror/language';
@@ -42,8 +42,13 @@
 
 	export let id = '';
 	export let lang = '';
+	export let keyboardNavigation = false;
 
-	let codeEditor: any;
+	let codeEditor: EditorView;
+
+	export const focusEditor = () => {
+		codeEditor?.focus();
+	};
 
 	let isDarkMode = false;
 	let editorTheme = new Compartment();
@@ -92,6 +97,23 @@
 	let extensions = [
 		basicSetup,
 		keymap.of([{ key: 'Tab', run: acceptCompletion }, indentWithTab]),
+		...(keyboardNavigation
+			? [
+					EditorView.contentAttributes.of({ tabindex: '-1' }),
+					Prec.highest(
+						keymap.of([
+							{
+								key: 'Escape',
+								run: (view) => {
+									if (completionStatus(view.state) === 'active') return false;
+									dispatch('exit');
+									return true;
+								}
+							}
+						])
+					)
+				]
+			: []),
 		indentUnit.of('    '),
 		placeholder('Enter your code here...'),
 		EditorView.updateListener.of((e) => {

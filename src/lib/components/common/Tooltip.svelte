@@ -23,18 +23,20 @@
 		name: 'hideOnEsc',
 		defaultValue: true,
 		fn({ hide }: any) {
-			function onKeyDown(event: any) {
-				if (event.keyCode === 27) {
+			function onKeyDown(event: KeyboardEvent) {
+				if (event.key === 'Escape') {
 					hide();
+					event.preventDefault();
+					event.stopPropagation();
 				}
 			}
 
 			return {
 				onShow() {
-					document.addEventListener('keydown', onKeyDown);
+					window.addEventListener('keydown', onKeyDown, true);
 				},
 				onHide() {
-					document.removeEventListener('keydown', onKeyDown);
+					window.removeEventListener('keydown', onKeyDown, true);
 				}
 			};
 		}

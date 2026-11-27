@@ -555,7 +555,7 @@
 												maxWidth: 'none',
 												hideOnClick: false,
 												trigger: 'mouseenter focus',
-												interactive: false,
+												interactive: true,
 												animation: 'fade',
 												duration: [200, 150],
 												onCreate: handleWikiGroundingTooltipCreate
