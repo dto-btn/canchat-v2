@@ -36,7 +36,7 @@ jobs:
 
       - name: Install CSpell
         run: |
-          npm install --no-audit --no-fund --no-save \
+          npm install --prefix "${RUNNER_TEMP}/cspell" --no-audit --no-fund --no-save \
             cspell \
             @cspell/dict-fr-fr
 
@@ -111,7 +111,7 @@ jobs:
         run: |
           set +e
 
-          npx cspell \
+          npx --prefix "${RUNNER_TEMP}/cspell" cspell \
             --config cspell.json \
             --no-progress \
             --show-suggestions \
