@@ -20,7 +20,7 @@ export const createIssue = async (token: string, issue: IssueItem) => {
 		});
 	}
 
-	return await fetch(`${WEBUI_API_BASE_URL}/jira/bug`, {
+	return await fetch(`${WEBUI_API_BASE_URL}/email/issue`, {
 		method: 'POST',
 		headers: {
 			Accept: 'application/json',
