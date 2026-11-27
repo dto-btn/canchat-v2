@@ -269,6 +269,7 @@
 					</div>
 
 					<button
+						aria-label={$i18n.t('Add banner')}
 						class="p-1 px-3 text-xs flex rounded transition"
 						type="button"
 						on:click={() => {
@@ -359,6 +360,7 @@
 							</div>
 
 							<button
+								aria-label={$i18n.t('Remove banner')}
 								class="px-2"
 								type="button"
 								on:click={() => {
@@ -390,6 +392,7 @@
 						</div>
 
 						<button
+							aria-label={$i18n.t('Add prompt suggestion')}
 							class="p-1 px-3 text-xs flex rounded transition"
 							type="button"
 							on:click={() => {
@@ -452,6 +455,7 @@
 								</div>
 
 								<button
+									aria-label={$i18n.t('Remove prompt suggestion')}
 									class="px-3"
 									type="button"
 									on:click={() => {

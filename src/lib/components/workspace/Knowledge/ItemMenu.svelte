@@ -19,6 +19,7 @@
 </script>
 
 <Dropdown
+	ariaLabel={$i18n.t('More')}
 	bind:show
 	on:change={(e) => {
 		if (e.detail === false) {
@@ -29,16 +30,11 @@
 >
 	<Tooltip content={$i18n.t('More')}>
 		<slot
-			><button
+			><span
 				class="self-center w-fit text-sm p-1.5 dark:text-gray-300 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded-xl"
-				type="button"
-				on:click={(e) => {
-					e.stopPropagation();
-					show = true;
-				}}
 			>
 				<EllipsisHorizontal className="size-5" />
-			</button>
+			</span>
 		</slot>
 	</Tooltip>
 

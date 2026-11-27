@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
 	import { DropdownMenu } from 'bits-ui';
 	import { flyAndScale } from '$lib/utils/transitions';
 	import emojiGroups from '$lib/emoji-groups.json';
@@ -7,6 +8,7 @@
 	import VirtualList from '@sveltejs/svelte-virtual-list';
 
 	const emojiGroupsMap = emojiGroups as Record<string, string[]>;
+	const i18n = getI18n();
 	const emojiShortCodesMap = emojiShortCodes as Record<string, string | string[]>;
 
 	export let onClose = () => {};
@@ -115,7 +117,7 @@
 	}}
 	typeahead={false}
 >
-	<DropdownMenu.Trigger>
+	<DropdownMenu.Trigger aria-label={$i18n.t('Add Reaction')} on:click>
 		<slot />
 	</DropdownMenu.Trigger>
 	<DropdownMenu.Content

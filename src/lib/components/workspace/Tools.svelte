@@ -270,6 +270,7 @@
 					{#if shiftKey}
 						<Tooltip content={$i18n.t('Delete')}>
 							<button
+								aria-label={$i18n.t('Delete')}
 								class="self-center w-fit text-sm px-2 py-2 dark:text-gray-300 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded-xl"
 								type="button"
 								on:click={() => {
@@ -283,6 +284,7 @@
 						{#if tool?.meta?.manifest?.funding_url ?? false}
 							<Tooltip content="Support">
 								<button
+									aria-label={$i18n.t('Support')}
 									class="self-center w-fit text-sm px-2 py-2 dark:text-gray-300 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded-xl"
 									type="button"
 									on:click={() => {
@@ -297,6 +299,7 @@
 
 						<Tooltip content={$i18n.t('Valves')}>
 							<button
+								aria-label={$i18n.t('Valves')}
 								class="self-center w-fit text-sm px-2 py-2 dark:text-gray-300 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded-xl"
 								type="button"
 								on:click={() => {
@@ -345,12 +348,11 @@
 							}}
 							onClose={() => {}}
 						>
-							<button
-								class="self-center w-fit text-sm p-1.5 dark:text-gray-300 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded-xl"
-								type="button"
+							<span
+								class="inline-flex self-center w-fit text-sm p-1.5 dark:text-gray-300 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded-xl"
 							>
 								<EllipsisHorizontal className="size-5" />
-							</button>
+							</span>
 						</ToolMenu>
 					{/if}
 				</div>

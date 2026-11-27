@@ -371,11 +371,8 @@
 
 <div class="scrollbar-hidden relative whitespace-nowrap overflow-x-auto max-w-full rounded pt-0.5">
 	{#if loadingLeaderboard}
-		<div
-			class=" absolute top-0 bottom-0 left-0 right-0 flex"
-			aria-live="polite"
-			aria-label="Loading leaderboard"
-		>
+		<div class=" absolute top-0 bottom-0 left-0 right-0 flex" aria-live="polite" role="status">
+			<span class="sr-only">{$i18n.t('Loading leaderboard')}</span>
 			<div class="m-auto">
 				<Spinner />
 			</div>

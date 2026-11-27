@@ -192,6 +192,7 @@
 
 		<div class="absolute pointer-events-none z-50 w-full flex items-center justify-start p-4">
 			<button
+				aria-label={$i18n.t('Back')}
 				class="self-center pointer-events-auto p-1 rounded-full bg-white dark:bg-gray-850"
 				on:click={() => {
 					showArtifacts.set(false);
@@ -203,6 +204,7 @@
 
 		<div class=" absolute pointer-events-none z-50 w-full flex items-center justify-end p-4">
 			<button
+				aria-label={$i18n.t('Close')}
 				class="self-center pointer-events-auto p-1 rounded-full bg-white dark:bg-gray-850"
 				on:click={() => {
 					dispatch('close');
@@ -248,6 +250,7 @@
 			<div class="flex items-center space-x-2">
 				<div class="flex items-center gap-0.5 self-center min-w-fit">
 					<button
+						aria-label={$i18n.t('Previous artifact')}
 						class="self-center p-1 hover:bg-black/5 dark:hover:bg-white/5 dark:hover:text-white hover:text-black rounded-md transition disabled:cursor-not-allowed"
 						on:click={() => navigateContent('prev')}
 						disabled={contents.length <= 1}
@@ -276,6 +279,7 @@
 					</div>
 
 					<button
+						aria-label={$i18n.t('Next artifact')}
 						class="self-center p-1 hover:bg-black/5 dark:hover:bg-white/5 dark:hover:text-white hover:text-black rounded-md transition disabled:cursor-not-allowed"
 						on:click={() => navigateContent('next')}
 						disabled={contents.length <= 1}
@@ -310,6 +314,7 @@
 				{#if contents[selectedContentIdx].type === 'iframe'}
 					<Tooltip content={$i18n.t('Open in full screen')}>
 						<button
+							aria-label={$i18n.t('Open in full screen')}
 							class=" bg-none border-none text-xs bg-gray-50 hover:bg-gray-100 dark:bg-gray-850 dark:hover:bg-gray-800 transition rounded-md p-0.5"
 							on:click={showFullScreen}
 						>

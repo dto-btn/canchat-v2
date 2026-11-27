@@ -283,6 +283,7 @@
 						{#if shiftKey}
 							<Tooltip content={$i18n.t('Delete')}>
 								<button
+									aria-label={$i18n.t('Delete')}
 									class="self-center w-fit text-sm px-2 py-2 dark:text-gray-300 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded-xl"
 									type="button"
 									on:click={() => {
@@ -334,12 +335,11 @@
 								}}
 								onClose={() => {}}
 							>
-								<button
-									class="self-center w-fit text-sm p-1.5 dark:text-gray-300 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded-xl"
-									type="button"
+								<span
+									class="inline-flex self-center w-fit text-sm p-1.5 dark:text-gray-300 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded-xl"
 								>
 									<EllipsisHorizontal className="size-5" />
-								</button>
+								</span>
 							</ModelMenu>
 
 							<div class="ml-1">

@@ -152,6 +152,7 @@
 </script>
 
 <Dropdown
+	ariaLabel={$i18n.t('More')}
 	bind:show
 	on:change={(e) => {
 		if (e.detail === false) {
@@ -161,8 +162,6 @@
 >
 	<Tooltip content={$i18n.t('More')}>
 		<div
-			aria-label="More"
-			role="button"
 			class="flex bg-transparent hover:bg-white/80 text-gray-800 dark:text-white dark:hover:bg-gray-800 transition rounded-full p-2 outline-none"
 		>
 			<slot />

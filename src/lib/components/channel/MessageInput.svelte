@@ -343,6 +343,7 @@
 							class=" absolute -top-12 left-0 right-0 flex justify-center z-30 pointer-events-none"
 						>
 							<button
+								aria-label={$i18n.t('Scroll to bottom')}
 								class=" bg-white border border-gray-100 dark:border-none dark:bg-white/20 p-1.5 rounded-full pointer-events-auto"
 								on:click={() => {
 									scrollEnd = true;
@@ -424,6 +425,7 @@
 											</div>
 											<div class=" absolute -top-1 -right-1">
 												<button
+													aria-label={$i18n.t('Remove File')}
 													class=" bg-gray-400 text-white border border-white rounded-full group-hover:visible invisible transition"
 													type="button"
 													on:click={() => {
@@ -471,10 +473,8 @@
 										filesInputElement.click();
 									}}
 								>
-									<button
+									<span
 										class="bg-transparent hover:bg-white/80 text-gray-800 dark:text-white dark:hover:bg-gray-800 transition rounded-full p-2 outline-none"
-										type="button"
-										aria-label="More"
 									>
 										<svg
 											xmlns="http://www.w3.org/2000/svg"
@@ -486,7 +486,7 @@
 												d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z"
 											/>
 										</svg>
-									</button>
+									</span>
 								</InputMenu>
 							</div>
 
@@ -570,6 +570,7 @@
 									<div class=" flex items-center">
 										<Tooltip content={$i18n.t('Send message')}>
 											<button
+												aria-label={$i18n.t('Send message')}
 												id="send-message-button"
 												class="{content !== '' || (files.length !== 0 && !hasUploadingFiles)
 													? 'bg-black text-white hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100 '

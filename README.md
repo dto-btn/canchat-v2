@@ -184,7 +184,8 @@ npx playwright test playwright/tests/e2e/accessibility --project=chromium-en --n
 ```
 
 The frontend CI workflow runs both suites. Browser coverage includes rendered navigation
-structure, image alternatives, shared text/placeholder contrast, keyboard focus indicators,
+structure, image alternatives, accessible button names, permitted ARIA attributes,
+non-nested shared controls in English and French, shared text/placeholder contrast, keyboard focus indicators,
 border styling, upload error associations in both locales, and required rating feedback.
 Message reflow tests cover English and French at 320 and 1280 CSS pixels, including
 action visibility and regeneration, message editing, and stacked multi-model replies

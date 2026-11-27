@@ -152,7 +152,6 @@
 	const focusEdit = async (node: HTMLInputElement) => {
 		node.focus();
 	};
-	const getElementTarget = (event: Event) => event.target as HTMLElement;
 
 	let itemElement: any;
 
@@ -289,63 +288,27 @@
 				]
 			}}
 		>
-			<a
+			<div
+				role="group"
 				class=" w-full flex justify-between rounded-lg px-[11px] py-[6px]
 				{isCurrentChat
 					? 'bg-gray-200 dark:bg-gray-900 border-2 border-gray-400 dark:border-gray-500'
 					: selected
 						? 'bg-gray-100 dark:bg-gray-800'
 						: 'group-hover:bg-gray-100 dark:group-hover:bg-gray-950'} whitespace-nowrap text-ellipsis"
-				href="/c/{id}"
-				on:click={(e) => {
-					// Check if the click was on the checkbox area, bulk actions, or chat menu
-					const target = e.target;
-					const elementTarget = getElementTarget(e);
-					const clickedCheckbox = elementTarget.closest('.checkbox-area');
-					const clickedBulkAction = elementTarget.closest('button[title]');
-					const clickedDropdown = elementTarget.closest('[data-dropdown-trigger]');
-
-					if (clickedDropdown) {
-						// Dropdown/menu clicked - do nothing, let it handle its own logic
-						e.preventDefault();
-						return;
-					} else if (clickedBulkAction) {
-						// Bulk action buttons handle their own clicks
-						return;
-					} else if (clickedCheckbox) {
-						// Clicked on checkbox - toggle selection
-						e.preventDefault();
-						if (selected) {
-							dispatch('unselect');
-						} else {
-							dispatch('select');
-						}
-					} else {
-						// Normal navigation
-						dispatch('navigate');
-						if ($mobile) {
-							showSidebar.set(false);
-						}
-					}
-				}}
-				on:dblclick={() => {
-					chatTitle = title;
-					confirmEdit = true;
-				}}
 				on:mouseenter={(e) => {
 					mouseOver = true;
 				}}
 				on:mouseleave={(e) => {
 					mouseOver = false;
 				}}
-				on:focus={(e) => {}}
-				draggable="false"
 			>
 				<div class=" flex self-center flex-1 w-full">
 					{#if inSelectionMode || mouseOver}
 						<!-- Show checkbox when in selection mode or on hover -->
-						<div
+						<button
 							class="checkbox-area mr-2 flex items-center cursor-pointer p-1 -m-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+							type="button"
 							on:click|stopPropagation|preventDefault={() => {
 								if (selected) {
 									dispatch('unselect');
@@ -353,20 +316,8 @@
 									dispatch('select');
 								}
 							}}
-							on:keydown={(e) => {
-								if (e.key === 'Enter' || e.key === ' ') {
-									e.stopPropagation();
-									e.preventDefault();
-									if (selected) {
-										dispatch('unselect');
-									} else {
-										dispatch('select');
-									}
-								}
-							}}
-							role="button"
-							tabindex="0"
-							aria-label={selected ? 'Unselect' : 'Select'}
+							aria-pressed={selected}
+							aria-label={$i18n.t('Select chat {{title}}', { title })}
 						>
 							{#if selected}
 								<!-- Selected checkbox -->
@@ -386,7 +337,7 @@
 								<!-- Empty checkbox -->
 								<div class="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 rounded"></div>
 							{/if}
-						</div>
+						</button>
 					{:else if isCurrentChat}
 						<!-- Current chat indicator -->
 						<div class="mr-2 flex items-center">
@@ -404,11 +355,25 @@
 							</svg>
 						</div>
 					{/if}
-					<div class=" text-left self-center overflow-hidden w-full h-[20px]">
+					<a
+						class="text-left self-center overflow-hidden w-full h-[20px]"
+						href="/c/{id}"
+						draggable="false"
+						on:click={() => {
+							dispatch('navigate');
+							if ($mobile) {
+								showSidebar.set(false);
+							}
+						}}
+						on:dblclick={() => {
+							chatTitle = title;
+							confirmEdit = true;
+						}}
+					>
 						<span class="truncate">{title}</span>
-					</div>
+					</a>
 				</div>
-			</a>
+			</div>
 		</Tooltip>
 	{/if}
 
@@ -518,6 +483,7 @@
 				{#if id === $chatId}
 					<!-- Shortcut support using "delete-chat-button" id -->
 					<button
+						aria-label={$i18n.t('Delete Chat')}
 						id="delete-chat-button"
 						class="hidden"
 						on:click={() => {

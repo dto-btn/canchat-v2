@@ -277,6 +277,7 @@
 						<div data-message-actions class=" flex-shrink-0 text-gray-600 dark:text-gray-500 mt-1">
 							<Tooltip content={$i18n.t('Merge Responses')} placement="bottom">
 								<button
+									aria-label={$i18n.t('Merge Responses')}
 									type="button"
 									id="merge-response-button"
 									class="{true

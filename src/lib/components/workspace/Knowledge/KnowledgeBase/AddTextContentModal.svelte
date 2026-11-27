@@ -24,6 +24,7 @@
 <Modal size="full" containerClassName="" className="h-full bg-white dark:bg-gray-900" bind:show>
 	<div class="absolute top-0 right-0 p-5">
 		<button
+			aria-label={$i18n.t('Close')}
 			class="self-center dark:text-white"
 			type="button"
 			on:click={() => {
@@ -100,6 +101,7 @@
 					{:else}
 						<Tooltip content={$i18n.t('Voice Input')}>
 							<button
+								aria-label={$i18n.t('Voice Input')}
 								class=" p-2 bg-gray-50 text-gray-700 dark:bg-gray-700 dark:text-white transition rounded-full"
 								type="button"
 								on:click={async () => {

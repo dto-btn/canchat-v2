@@ -18,7 +18,7 @@
 	let show = false;
 </script>
 
-<Dropdown bind:show on:change={(e) => {}}>
+<Dropdown bind:show ariaLabel={$i18n.t('More')} on:change={(e) => {}}>
 	<Tooltip content={$i18n.t('More')}>
 		<slot />
 	</Tooltip>

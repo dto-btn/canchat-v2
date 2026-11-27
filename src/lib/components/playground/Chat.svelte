@@ -196,6 +196,7 @@
 
 					<div class=" translate-x-1.5">
 						<button
+							aria-label={$i18n.t('Settings')}
 							class="p-1.5 bg-transparent hover:bg-white/5 transition rounded-lg"
 							on:click={() => {
 								showSettings = !showSettings;
@@ -278,6 +279,7 @@
 
 				<div class="translate-y-1">
 					<button
+						aria-label={$i18n.t('Settings')}
 						class="p-1.5 bg-transparent hover:bg-white/5 transition rounded-lg"
 						on:click={() => {
 							showSettings = !showSettings;

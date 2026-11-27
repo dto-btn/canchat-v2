@@ -41,6 +41,7 @@
 					<div class=" flex items-center gap-2 mr-3">
 						<div class="self-center flex items-center">
 							<Checkbox
+								ariaLabel={_filters[filter].name}
 								state={_filters[filter].selected ? 'checked' : 'unchecked'}
 								on:change={(e) => {
 									_filters[filter].selected = e.detail === 'checked';

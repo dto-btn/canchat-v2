@@ -642,8 +642,10 @@
 										</button>
 									</Tooltip>
 								{:else}
-									<span class="text-[#757575] italic text-xs" aria-label="No chat available">-</span
-									>
+									<span class="text-[#757575] italic text-xs">
+										<span aria-hidden="true">-</span>
+										<span class="sr-only">{$i18n.t('No chat available')}</span>
+									</span>
 								{/if}
 							</div>
 						</td>
@@ -766,7 +768,6 @@
 								>
 									<div
 										class="inline-flex text-sm p-1 dark:text-gray-300 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded-xl cursor-pointer"
-										aria-label="Open feedback actions menu"
 									>
 										<EllipsisHorizontal />
 									</div>

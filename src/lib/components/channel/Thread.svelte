@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+	const i18n = getI18n();
+
 	import { goto } from '$app/navigation';
 
 	import { socket, user } from '$lib/stores';
@@ -162,6 +165,7 @@
 
 			<div>
 				<button
+					aria-label={$i18n.t('Close')}
 					class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 p-2"
 					on:click={() => {
 						onClose();

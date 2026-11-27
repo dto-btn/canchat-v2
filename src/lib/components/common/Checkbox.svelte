@@ -4,6 +4,7 @@
 
 	export let state = 'unchecked';
 	export let indeterminate = false;
+	export let ariaLabel: string;
 
 	let _state = 'unchecked';
 
@@ -11,6 +12,9 @@
 </script>
 
 <button
+	role="checkbox"
+	aria-label={ariaLabel}
+	aria-checked={_state === 'checked' ? true : indeterminate ? 'mixed' : false}
 	class=" outline -outline-offset-1 outline-[1.5px] outline-gray-200 dark:outline-gray-600 {state !==
 	'unchecked'
 		? 'bg-black outline-black '

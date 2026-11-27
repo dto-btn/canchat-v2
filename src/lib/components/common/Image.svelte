@@ -1,4 +1,8 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+
+	const i18n = getI18n();
+
 	import { WEBUI_BASE_URL } from '$lib/constants';
 	import ImagePreview from './ImagePreview.svelte';
 
@@ -15,6 +19,7 @@
 </script>
 
 <button
+	aria-label={alt || $i18n.t('Open image')}
 	class={className}
 	on:click={() => {
 		showImagePreview = true;

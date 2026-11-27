@@ -72,6 +72,7 @@
 		<div class=" flex justify-between dark:text-gray-300 px-5 py-4">
 			<div class=" text-lg font-medium self-center">{$i18n.t('Edit User')}</div>
 			<button
+				aria-label={$i18n.t('Close')}
 				class="self-center"
 				on:click={() => {
 					show = false;

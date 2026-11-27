@@ -674,6 +674,7 @@
 								{#if !showSidepanel}
 									<div class="-translate-x-2">
 										<button
+											aria-label={$i18n.t('Expand sidebar')}
 											class="w-full text-left text-sm p-1.5 rounded-lg dark:text-gray-300 dark:hover:text-white hover:bg-black/5 dark:hover:bg-gray-850"
 											on:click={() => {
 												pane.expand();
@@ -740,6 +741,7 @@
 							<div class="flex-shrink-0 mt-1 mb-2 flex items-center">
 								<div class="mr-2">
 									<button
+										aria-label={$i18n.t('Back')}
 										class="w-full text-left text-sm p-1.5 rounded-lg dark:text-gray-300 dark:hover:text-white hover:bg-black/5 dark:hover:bg-gray-850"
 										on:click={() => {
 											selectedFileId = null;

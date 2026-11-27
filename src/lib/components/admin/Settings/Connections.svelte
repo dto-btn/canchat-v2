@@ -221,6 +221,7 @@
 
 								<Tooltip content={$i18n.t(`Add Connection`)}>
 									<button
+										aria-label={$i18n.t(`Add Connection`)}
 										class="px-1"
 										on:click={() => {
 											showAddOpenAIConnectionModal = true;
@@ -283,6 +284,7 @@
 
 							<Tooltip content={$i18n.t(`Add Connection`)}>
 								<button
+									aria-label={$i18n.t(`Add Connection`)}
 									class="px-1"
 									on:click={() => {
 										showAddOllamaConnectionModal = true;

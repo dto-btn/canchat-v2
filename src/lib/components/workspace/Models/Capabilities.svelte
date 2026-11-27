@@ -26,6 +26,7 @@
 		{#each Object.keys(capabilities) as capability}
 			<div class=" flex items-center gap-2 mr-3">
 				<Checkbox
+					ariaLabel={$i18n.t(capability)}
 					state={capabilities[capability] ? 'checked' : 'unchecked'}
 					on:change={(e) => {
 						capabilities[capability] = e.detail === 'checked';

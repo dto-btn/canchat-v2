@@ -79,6 +79,7 @@
 			{:else}
 				<Tooltip content={$i18n.t('Voice Input')}>
 					<button
+						aria-label={$i18n.t('Voice Input')}
 						class="cursor-pointer p-2.5 flex rounded-full hover:bg-gray-100 dark:hover:bg-gray-850 transition shadow-xl"
 						type="button"
 						on:click={async () => {

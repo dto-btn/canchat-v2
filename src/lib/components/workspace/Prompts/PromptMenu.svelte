@@ -19,6 +19,7 @@
 </script>
 
 <Dropdown
+	ariaLabel={$i18n.t('More')}
 	bind:show
 	on:change={(e) => {
 		if (e.detail === false) {

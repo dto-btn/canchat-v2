@@ -1239,6 +1239,7 @@
 										placement="bottom"
 									>
 										<button
+											aria-label={$i18n.t('Message statistics')}
 											class=" {isLastMessage
 												? 'visible'
 												: 'invisible group-hover:visible'} p-1.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg dark:hover:text-white hover:text-black transition whitespace-pre-wrap"

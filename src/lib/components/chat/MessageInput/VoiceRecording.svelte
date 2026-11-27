@@ -327,6 +327,7 @@
 >
 	<div class="flex items-center mr-1">
 		<button
+			aria-label={$i18n.t('Cancel recording')}
 			type="button"
 			class="p-1.5
 
@@ -482,6 +483,7 @@
 				</div>
 			{:else}
 				<button
+					aria-label={$i18n.t('Confirm recording')}
 					type="button"
 					class="p-1.5 bg-indigo-500 text-white dark:bg-indigo-500 dark:text-blue-950 rounded-full"
 					on:click={async () => {

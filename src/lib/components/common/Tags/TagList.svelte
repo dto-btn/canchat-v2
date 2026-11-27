@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+	const i18n = getI18n();
+
 	import { createEventDispatcher } from 'svelte';
 	import Tooltip from '../Tooltip.svelte';
 	import XMark from '$lib/components/icons/XMark.svelte';
@@ -17,6 +20,7 @@
 			</div>
 			<div class="absolute invisible right-0.5 group-hover/tags:visible transition">
 				<button
+					aria-label={$i18n.t('Remove {{name}}', { name: tag.name })}
 					class="rounded-full border bg-white dark:bg-gray-700 h-full flex self-center cursor-pointer"
 					on:click={() => {
 						dispatch('delete', tag.name);

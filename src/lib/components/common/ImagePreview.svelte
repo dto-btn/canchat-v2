@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { getI18n } from '$lib/utils/context';
+	const i18n = getI18n();
+
 	import { onDestroy, onMount } from 'svelte';
 
 	export let show = false;
@@ -64,6 +67,7 @@
 		<div class=" absolute left-0 w-full flex justify-between select-none">
 			<div>
 				<button
+					aria-label={$i18n.t('Close')}
 					class=" p-5"
 					on:click={() => {
 						show = false;
@@ -84,6 +88,7 @@
 
 			<div>
 				<button
+					aria-label={$i18n.t('Download')}
 					class=" p-5"
 					on:click={() => {
 						downloadImage(src, src.substring(src.lastIndexOf('/') + 1), alt);

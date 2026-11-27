@@ -162,6 +162,7 @@
 				<div class="flex items-center gap-1.5">
 					<Tooltip content={$i18n.t('Manage Models')}>
 						<button
+							aria-label={$i18n.t('Manage Models')}
 							class=" p-1 rounded-full flex gap-1 items-center"
 							id="manage-models"
 							type="button"
@@ -175,6 +176,7 @@
 
 					<Tooltip content={$i18n.t('Settings')}>
 						<button
+							aria-label={$i18n.t('Settings')}
 							class=" p-1 rounded-full flex gap-1 items-center"
 							id="config-models"
 							type="button"
@@ -245,6 +247,7 @@
 						</button>
 						<div class="flex flex-row gap-0.5 items-center self-center">
 							<button
+								aria-label={$i18n.t('Configure')}
 								class="self-center w-fit text-sm px-2 py-2 dark:text-gray-300 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded-xl"
 								type="button"
 								on:click={() => {

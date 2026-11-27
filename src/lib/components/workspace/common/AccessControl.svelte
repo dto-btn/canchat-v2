@@ -198,6 +198,7 @@
 									<Badge type={'info'} content={$i18n.t('Read')} />
 
 									<button
+										aria-label={$i18n.t('Remove {{name}}', { name: group.name })}
 										class=" rounded-full p-1 hover:bg-gray-100 dark:hover:bg-gray-850 transition"
 										type="button"
 										on:click={() => {
