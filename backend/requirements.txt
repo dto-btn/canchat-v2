@@ -40,6 +40,7 @@ txtai[graph]==9.0.0
 # Cloud Services & Integrations
 # ==========================================
 azure-storage-blob==12.25.1
+azure-communication-email==1.1.0
 azure-core==1.38.0
 boto3>=1.43.120
 botocore>=1.43.120

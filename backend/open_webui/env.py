@@ -99,6 +99,7 @@ log_sources = [
     "WEBHOOK",
     "SOCKET",
     "JIRA",
+    "EMAIL",
     "METRICS",
 ]
 
