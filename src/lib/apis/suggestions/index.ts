@@ -18,7 +18,7 @@ export const createSuggestion = async (token: string, suggestion: SuggestionItem
 		});
 	}
 
-	return await fetch(`${WEBUI_API_BASE_URL}/jira/task`, {
+	return await fetch(`${WEBUI_API_BASE_URL}/email/suggestion`, {
 		method: 'POST',
 		headers: {
 			Accept: 'application/json',
