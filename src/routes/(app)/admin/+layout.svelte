@@ -11,8 +11,21 @@
 	import NavbarExtras from '$lib/components/common/NavbarExtras.svelte';
 
 	const i18n = getI18n();
+	const sectionTitles: Record<string, string> = {
+		users: 'Users & Access',
+		evaluations: 'Evaluations',
+		functions: 'Functions',
+		settings: 'Settings'
+	};
 
 	let loaded = false;
+	$: section = $page.url.pathname.split('/')[2];
+	$: sectionTitle = sectionTitles[section] ?? 'Admin Panel';
+	$: action = $page.url.pathname.split('/')[3];
+	$: heading = [
+		...(action === 'create' ? [$i18n.t('Create')] : action === 'edit' ? [$i18n.t('Edit')] : []),
+		$i18n.t(sectionTitle)
+	].join(' - ');
 
 	const waitForAuthBootstrap = async () => {
 		if ($authBootstrapReady) {
@@ -43,7 +56,7 @@
 
 <svelte:head>
 	<title>
-		{$i18n.t('Admin Panel')} | {$WEBUI_NAME}
+		{heading} - {$i18n.t('Admin Panel')} | {$WEBUI_NAME}
 	</title>
 </svelte:head>
 
@@ -53,7 +66,7 @@
 			? 'md:max-w-[calc(100%-260px)]'
 			: ''} max-w-full"
 	>
-		<nav class="px-2.5 pt-1 pb-2 backdrop-blur-xl drag-region">
+		<nav aria-label={$i18n.t('Admin Panel')} class="px-2.5 pt-1 pb-2 backdrop-blur-xl drag-region">
 			<div class=" flex items-center gap-1">
 				<div class="{$showSidebar ? 'md:hidden' : ''} flex flex-none items-center self-end">
 					<button
@@ -108,8 +121,9 @@
 			</div>
 		</nav>
 
-		<div class=" pb-1 px-[16px] flex-1 max-h-full overflow-y-auto">
+		<main class=" pb-1 px-[16px] flex-1 max-h-full overflow-y-auto">
+			<h1 class="sr-only">{heading}</h1>
 			<slot />
-		</div>
+		</main>
 	</div>
 {/if}

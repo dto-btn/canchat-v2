@@ -12,6 +12,7 @@
 	import Markdown from './Markdown.svelte';
 	import Name from './Name.svelte';
 	import Skeleton from './Skeleton.svelte';
+	import { getResponseHeadingPreview } from '$lib/utils';
 	const i18n = getI18n();
 
 	export let chatId: any;
@@ -249,8 +250,11 @@
 							{@const message = history.messages[messageId]?.merged}
 
 							<div class="w-full rounded-xl pl-5 pr-2 py-2">
+								<h2 class="sr-only">
+									{$i18n.t('Merged Response')}: {getResponseHeadingPreview(message.content ?? '')}
+								</h2>
 								<Name>
-									Merged Response
+									{$i18n.t('Merged Response')}
 
 									{#if message.timestamp}
 										<span

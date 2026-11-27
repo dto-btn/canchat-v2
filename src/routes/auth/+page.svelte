@@ -156,7 +156,7 @@
 
 <svelte:head>
 	<title>
-		{`${$WEBUI_NAME}`}
+		{$i18n.t(mode === 'signup' ? 'Sign up' : 'Sign in')} | {$WEBUI_NAME}
 	</title>
 </svelte:head>
 
@@ -168,7 +168,7 @@
 	}}
 />
 
-<div class="w-full h-screen max-h-[100dvh] text-white relative">
+<main class="w-full h-screen max-h-[100dvh] text-white relative">
 	<div class="w-full h-full absolute top-0 left-0 bg-white dark:bg-black"></div>
 
 	<div class="w-full absolute top-0 left-0 right-0 h-8 drag-region" />
@@ -196,9 +196,9 @@
 						<div
 							class="flex items-center justify-center gap-3 text-xl sm:text-2xl text-center font-semibold dark:text-gray-200"
 						>
-							<h2>
+							<h1>
 								{$i18n.t('Signing in to {{WEBUI_NAME}}', { WEBUI_NAME: $WEBUI_NAME })}
-							</h2>
+							</h1>
 
 							<div>
 								<Spinner />
@@ -215,7 +215,7 @@
 							}}
 						>
 							<div class="mb-1">
-								<h2 class=" text-2xl font-medium">
+								<h1 class=" text-2xl font-medium">
 									{#if hasOnboardingEnabled()}
 										{$i18n.t(`Get started with {{WEBUI_NAME}}`, { WEBUI_NAME: $WEBUI_NAME })}
 									{:else if mode === 'ldap'}
@@ -225,7 +225,7 @@
 									{:else}
 										{$i18n.t(`Sign up to {{WEBUI_NAME}}`, { WEBUI_NAME: $WEBUI_NAME })}
 									{/if}
-								</h2>
+								</h1>
 
 								{#if hasOnboardingEnabled()}
 									<div class=" mt-1 text-xs font-medium text-gray-500">
@@ -477,4 +477,4 @@
 			</div>
 		</div>
 	{/if}
-</div>
+</main>

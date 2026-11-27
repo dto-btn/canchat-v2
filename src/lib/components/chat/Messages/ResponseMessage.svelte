@@ -16,6 +16,7 @@
 		copyToClipboard as _copyToClipboard,
 		getMessageContentParts,
 		sanitizeResponseContent,
+		getResponseHeadingPreview,
 		createMessagesList,
 		formatDate
 	} from '$lib/utils';
@@ -639,6 +640,10 @@
 
 {#key message.id}
 	<div class=" flex w-full message-{message.id}" id="message-{message.id}">
+		<h2 class="sr-only">
+			{model?.name || message.model || $i18n.t('Assistant')}:
+			{getResponseHeadingPreview(message.content ?? '')}
+		</h2>
 		<div class="flex-shrink-0 mr-3">
 			<ProfileImage
 				src={model?.info?.meta?.profile_image_url ??

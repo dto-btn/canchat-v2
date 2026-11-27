@@ -7,13 +7,16 @@
 	import { page } from '$app/stores';
 
 	const i18n = getI18n();
+	$: heading = $page.url.pathname.includes('/completions')
+		? $i18n.t('Completions')
+		: $i18n.t('Chat');
 
 	onMount(async () => {});
 </script>
 
 <svelte:head>
 	<title>
-		{$i18n.t('Playground')} | {$WEBUI_NAME}
+		{heading} - {$i18n.t('Playground')} | {$WEBUI_NAME}
 	</title>
 </svelte:head>
 
@@ -22,7 +25,7 @@
 		? 'md:max-w-[calc(100%-260px)]'
 		: ''} max-w-full"
 >
-	<nav class="px-2.5 pt-1 backdrop-blur-xl w-full drag-region">
+	<nav aria-label={$i18n.t('Playground')} class="px-2.5 pt-1 backdrop-blur-xl w-full drag-region">
 		<div class="flex items-center justify-between">
 			<!-- Left Section: Sidebar Toggle and Links -->
 			<div class="flex items-center gap-1">
@@ -78,7 +81,8 @@
 		</div>
 	</nav>
 
-	<div class="flex-1 max-h-full overflow-y-auto">
+	<main class="flex-1 max-h-full overflow-y-auto">
+		<h1 class="sr-only">{heading}</h1>
 		<slot />
-	</div>
+	</main>
 </div>

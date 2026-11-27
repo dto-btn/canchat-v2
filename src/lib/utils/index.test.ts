@@ -1,5 +1,21 @@
 import { describe, it, expect } from 'vitest';
-import { processResponseContent } from './index';
+import { getResponseHeadingPreview, processResponseContent } from './index';
+
+describe('getResponseHeadingPreview', () => {
+	it('uses the visible answer rather than collapsed reasoning and Markdown markers', () => {
+		const content =
+			'<details type="reasoning" done="true">\n<summary>Thought process</summary>\n> private reasoning\n</details>\n## Answer\n**Hello** [world](https://example.com)';
+		expect(getResponseHeadingPreview(content)).toBe('Answer\nHello world');
+	});
+
+	it('does not expose incomplete reasoning while streaming', () => {
+		expect(getResponseHeadingPreview('<details type="reasoning" done="false">\nsecret')).toBe('');
+	});
+
+	it('limits the preview to 100 characters', () => {
+		expect(getResponseHeadingPreview('a'.repeat(120))).toHaveLength(100);
+	});
+});
 
 describe('processResponseContent — undelimited TeX wrapping', () => {
 	// The exact failing case from the user report
