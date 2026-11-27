@@ -120,7 +120,12 @@ export const queryCrewMCPWebSocket = async (
 	selectedTools: string[] = [],
 	chatId: string = '',
 	onStatus?: (message: string) => void
-): Promise<{ result: string; tools_used: string[]; success: boolean }> => {
+): Promise<{
+	result: string;
+	tools_used: string[];
+	success: boolean;
+	metadata?: unknown;
+}> => {
 	return new Promise((resolve, reject) => {
 		const _socket = get(socket) as Socket | null;
 

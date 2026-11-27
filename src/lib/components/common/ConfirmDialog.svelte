@@ -16,7 +16,7 @@
 	export let cancelLabel = $i18n.t('Cancel');
 	export let confirmLabel = $i18n.t('Confirm');
 
-	export let onConfirm = () => {};
+	export let onConfirm: () => void = () => {};
 
 	export let input = false;
 	export let inputPlaceholder = '';
@@ -79,7 +79,7 @@
 				if (returnFocusSelector) {
 					const returnEl = document.querySelector(returnFocusSelector);
 					if (returnEl) {
-						returnEl.focus();
+						(returnEl as HTMLElement).focus();
 						return;
 					}
 				}

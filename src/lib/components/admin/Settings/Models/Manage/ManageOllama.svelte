@@ -30,10 +30,10 @@
 	// Models
 	export let urlIdx: number | null = null;
 
-	let ollamaModels = [];
+	let ollamaModels: any[] = [];
 
-	let updateModelId = null;
-	let updateProgress = null;
+	let updateModelId: any = null;
+	let updateProgress: any = null;
 	let showExperimentalOllama = false;
 
 	const MAX_PARALLEL_DOWNLOADS = 3;
@@ -46,10 +46,10 @@
 	let createModelObject = '';
 
 	let createModelDigest = '';
-	let createModelPullProgress = null;
+	let createModelPullProgress: any = null;
 
 	let digest = '';
-	let pullProgress = null;
+	let pullProgress: any = null;
 
 	let modelUploadMode = 'file';
 	let modelInputFile: File[] | null = null;
@@ -57,7 +57,7 @@
 	let modelFileContent = `TEMPLATE """{{ .System }}\nUSER: {{ .Prompt }}\nASSISTANT: """\nPARAMETER stop "</s>"\nPARAMETER stop "USER:"\nPARAMETER stop "ASSISTANT:"`;
 	let modelFileDigest = '';
 
-	let uploadProgress = null;
+	let uploadProgress: any = null;
 	let uploadMessage = '';
 
 	let deleteModelTag = '';
@@ -108,7 +108,7 @@
 								}
 							}
 						}
-					} catch (error) {
+					} catch (error: any) {
 						console.log(error);
 					}
 				}
@@ -207,7 +207,7 @@
 							}
 						}
 					}
-				} catch (error) {
+				} catch (error: any) {
 					console.log(error);
 					if (typeof error !== 'string') {
 						error = error.message;
@@ -245,7 +245,7 @@
 		modelTransferring = true;
 
 		let uploaded = false;
-		let fileResponse = null;
+		let fileResponse: any = null;
 		let name = '';
 
 		if (modelUploadMode === 'file') {
@@ -302,7 +302,7 @@
 							}
 						}
 					}
-				} catch (error) {
+				} catch (error: any) {
 					console.log(error);
 				}
 			}
@@ -363,7 +363,7 @@
 								}
 							}
 						}
-					} catch (error) {
+					} catch (error: any) {
 						console.log(error);
 						toast.error(`${error}`);
 					}
@@ -416,11 +416,11 @@
 	const createModelHandler = async () => {
 		createModelLoading = true;
 
-		let modelObject = {};
+		let modelObject: Record<string, any> = {};
 		// parse createModelObject
 		try {
 			modelObject = JSON.parse(createModelObject);
-		} catch (error) {
+		} catch (error: any) {
 			toast.error(`${error}`);
 			createModelLoading = false;
 			return;
@@ -483,7 +483,7 @@
 							}
 						}
 					}
-				} catch (error) {
+				} catch (error: any) {
 					console.log(error);
 					toast.error(`${error}`);
 				}

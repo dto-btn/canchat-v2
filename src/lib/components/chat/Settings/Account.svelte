@@ -153,13 +153,14 @@
 							id="profile-image"
 							class="relative rounded-full dark:bg-gray-700"
 							type="button"
+							aria-label={$i18n.t('Change profile image')}
 							on:click={() => {
 								profileImageInputElement.click();
 							}}
 						>
 							<img
 								src={profileImageUrl !== '' ? profileImageUrl : generateInitialsImage(name)}
-								alt="profile"
+								alt=""
 								class=" rounded-full size-16 object-cover"
 							/>
 

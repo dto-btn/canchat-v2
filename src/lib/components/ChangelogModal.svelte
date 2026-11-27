@@ -17,7 +17,7 @@
 
 	export let show = false;
 
-	let changelog = null;
+	let changelog: any = null;
 
 	onMount(async () => {
 		const res = await getChangelog($i18n.language);

@@ -12,12 +12,43 @@ import weakref
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, List, Optional
 from datetime import datetime
+from urllib.parse import quote
 
 from open_webui.env import SRC_LOG_LEVELS
-from .context_analysis import analyze_conversation_context
+from . import ekh_client
+from .constants import (
+    EKH_SOURCE_TBS_POLICIES,
+    EKH_SOURCE_WIKIPEDIA,
+    PROVIDER_EKH,
+    PROVIDER_TXTAI,
+)
+from .context_analysis import (
+    analyze_conversation_context,
+    enhance_query_with_temporal_context,
+)
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["GROUNDING"])
+
+
+def _get_provider() -> str:
+    from open_webui.config import WIKIPEDIA_GROUNDING_PROVIDER
+
+    return WIKIPEDIA_GROUNDING_PROVIDER
+
+
+def _get_ekh_knowledge_source() -> str:
+    from open_webui.config import EKH_KNOWLEDGE_SOURCE
+    from .constants import EKH_KNOWLEDGE_SOURCES, EKH_SOURCE_WIKIPEDIA
+
+    source = getattr(EKH_KNOWLEDGE_SOURCE, "value", EKH_KNOWLEDGE_SOURCE)
+    if isinstance(source, str) and source.strip().lower() in EKH_KNOWLEDGE_SOURCES:
+        return source.strip().lower()
+    log.warning(
+        "Invalid EKH_KNOWLEDGE_SOURCE value; defaulting to %r",
+        EKH_SOURCE_WIKIPEDIA,
+    )
+    return EKH_SOURCE_WIKIPEDIA
 
 
 def _get_txtai_embeddings():
@@ -238,6 +269,13 @@ class WikiSearchGrounder:
     async def initialize(self) -> bool:
         """Initialize models (call once before using search methods)"""
         if self._initialized:
+            return True
+
+        if _get_provider() == PROVIDER_EKH:
+            log.info(
+                "Wikipedia grounding provider is EKH; skipping txtai model loading"
+            )
+            self._initialized = True
             return True
 
         success = True
@@ -472,6 +510,9 @@ class WikiSearchGrounder:
 
     async def search(self, query: str) -> List[Dict]:
         """Pure txtai search with translation and reranking support"""
+        if _get_provider() == PROVIDER_EKH:
+            return await self._search_ekh(query)
+
         # Ensure models are initialized
         if not await self.ensure_initialized():
             return []
@@ -483,12 +524,7 @@ class WikiSearchGrounder:
 
             # Apply temporal enhancement AFTER translation to English
             # This ensures decade detection works properly for all languages
-            from .context_analysis import ConversationContextAnalyzer
-
-            temp_analyzer = ConversationContextAnalyzer()
-            temporal_enhanced_query = (
-                temp_analyzer._enhance_query_with_temporal_context(search_query)
-            )
+            temporal_enhanced_query = enhance_query_with_temporal_context(search_query)
 
             if temporal_enhanced_query != search_query:
                 log.info(
@@ -686,6 +722,84 @@ class WikiSearchGrounder:
             log.error(f"Search failed: {e}")
             return []
 
+    async def _search_ekh(self, query: str) -> List[Dict]:
+        """Search EKH and return the best-scoring chunk per document."""
+        from open_webui.config import (
+            EKH_API_KEY,
+            EKH_BASE_URL,
+            EKH_TIMEOUT_SECONDS,
+        )
+
+        knowledge_source = _get_ekh_knowledge_source()
+        search_query = enhance_query_with_temporal_context(query)
+
+        rows = await ekh_client.search_knowledge_source(
+            search_query,
+            base_url=EKH_BASE_URL,
+            knowledge_source=knowledge_source,
+            limit=self.max_search_results * 3,
+            timeout_seconds=EKH_TIMEOUT_SECONDS,
+            api_key=EKH_API_KEY or None,
+        )
+
+        best: Dict[tuple, tuple[Dict, float]] = {}
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            similarity = row.get("similarity")
+            if not isinstance(similarity, (int, float)):
+                similarity = 0
+            key = (row.get("source"), row.get("id"), row.get("name"))
+            if key not in best or similarity > best[key][1]:
+                best[key] = (row, similarity)
+
+        results = []
+        for row, similarity in sorted(
+            best.values(), key=lambda item: item[1], reverse=True
+        )[: self.max_search_results]:
+            content = row.get("content") or ""
+            if not isinstance(content, str):
+                continue
+            if len(content) > self.max_content_length:
+                content = content[: self.max_content_length] + "..."
+            title = row.get("name") or ""
+            if not isinstance(title, str):
+                title = str(title)
+            if knowledge_source == EKH_SOURCE_TBS_POLICIES:
+                document_language = self._detect_language(query)
+                document_name = (
+                    "doc-fra.aspx" if document_language == "fr" else "doc-eng.aspx"
+                )
+                url = row.get("url") or (
+                    "https://www.tbs-sct.canada.ca/pol/"
+                    f"{document_name}?id={quote(str(row['id']), safe='')}"
+                    if row.get("id") is not None
+                    else None
+                )
+            elif knowledge_source == EKH_SOURCE_WIKIPEDIA:
+                url = row.get("url") or (
+                    "https://en.wikipedia.org/wiki/"
+                    f"{quote(title.replace(' ', '_'), safe='()_,')}"
+                )
+            else:
+                url = row.get("url")
+            results.append(
+                {
+                    "title": title,
+                    "content": content,
+                    "score": similarity,
+                    "url": url,
+                    "language": row.get("language"),
+                    "language_specific_url": bool(
+                        row.get("url") and row.get("language")
+                    ),
+                    "source": f"ekh-{knowledge_source}",
+                    "original_query": query,
+                    "search_query": search_query,
+                }
+            )
+        return results
+
     async def ground_query(
         self, query: str, request=None, user=None, messages: List[Dict] = None
     ) -> Optional[Dict]:
@@ -753,7 +867,11 @@ class WikiSearchGrounder:
             "original_query": original_query,
             "search_query": query,  # May be different from original if enhanced
             "grounding_data": results,
-            "source": "txtai-wikipedia",
+            "source": (
+                f"ekh-{_get_ekh_knowledge_source()}"
+                if _get_provider() == PROVIDER_EKH
+                else "txtai-wikipedia"
+            ),
             "timestamp": datetime.now().isoformat(),
             "context_metadata": context_metadata,
         }
@@ -820,7 +938,7 @@ class WikiSearchGrounder:
                 f"Search Query ({enhancement_text}): {grounding_data.get('search_query', '')}"
             )
 
-        context.append(f"Source: txtai-wikipedia")
+        context.append(f"Source: {grounding_data.get('source', 'txtai-wikipedia')}")
 
         # Check if reranking was applied
         if (

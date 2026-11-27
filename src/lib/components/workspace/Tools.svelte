@@ -39,19 +39,19 @@
 	let loaded = false;
 
 	let toolsImportInputElement: HTMLInputElement;
-	let importFiles;
+	let importFiles: any;
 
 	let showConfirm = false;
 	let query = '';
 
 	let showManifestModal = false;
 	let showValvesModal = false;
-	let selectedTool = null;
+	let selectedTool: any = null;
 
 	let showDeleteConfirm = false;
 
-	let tools = [];
-	let filteredItems = [];
+	let tools: any[] = [];
+	let filteredItems: any[] = [];
 
 	$: filteredItems = tools.filter(
 		(t) =>
@@ -60,7 +60,7 @@
 			t.id.toLowerCase().includes(query.toLowerCase())
 	);
 
-	const shareHandler = async (tool) => {
+	const shareHandler = async (tool: any) => {
 		const item = await getToolById(getRequestToken(), tool.id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
@@ -73,7 +73,7 @@
 		const tab = await window.open(`${url}/tools/create`, '_blank');
 
 		// Define the event handler function
-		const messageHandler = (event) => {
+		const messageHandler = (event: any) => {
 			if (event.origin !== url) return;
 			if (event.data === 'loaded') {
 				tab.postMessage(JSON.stringify(item), '*');
@@ -86,8 +86,8 @@
 		window.addEventListener('message', messageHandler, false);
 	};
 
-	const cloneHandler = async (tool) => {
-		const _tool = await getToolById(getRequestToken(), tool.id).catch((error) => {
+	const cloneHandler = async (tool: any) => {
+		const _tool: any = await getToolById(getRequestToken(), tool.id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
@@ -102,8 +102,8 @@
 		}
 	};
 
-	const exportHandler = async (tool) => {
-		const _tool = await getToolById(getRequestToken(), tool.id).catch((error) => {
+	const exportHandler = async (tool: any) => {
+		const _tool: any = await getToolById(getRequestToken(), tool.id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});
@@ -116,7 +116,7 @@
 		}
 	};
 
-	const deleteHandler = async (tool) => {
+	const deleteHandler = async (tool: any) => {
 		const res = await deleteToolById(getRequestToken(), tool.id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
@@ -138,13 +138,13 @@
 		await init();
 		loaded = true;
 
-		const onKeyDown = (event) => {
+		const onKeyDown = (event: any) => {
 			if (event.key === 'Shift') {
 				shiftKey = true;
 			}
 		};
 
-		const onKeyUp = (event) => {
+		const onKeyUp = (event: any) => {
 			if (event.key === 'Shift') {
 				shiftKey = false;
 			}
@@ -481,8 +481,8 @@
 		on:confirm={() => {
 			const reader = new FileReader();
 			reader.onload = async (event) => {
-				const _tools = JSON.parse(event.target.result);
-				for (const tool of _tools) {
+				const importedTools = JSON.parse(event.target?.result ?? '[]');
+				for (const tool of importedTools) {
 					const res = await createNewTool(getRequestToken(), tool).catch((error) => {
 						toast.error(`${error}`);
 						return null;
@@ -490,7 +490,7 @@
 				}
 
 				toast.success($i18n.t('Tool imported successfully'));
-				tools.set(await getTools(getRequestToken()));
+				_tools.set(await getTools(getRequestToken()));
 			};
 
 			reader.readAsText(importFiles[0]);

@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.7-ccv2-1.17.0] - 2026-11-18
+
+### Added
+
+- **📥 Batch Chat Download**: Added a mechanism for batch download of chats.
+- **🌐 Wikipedia Grounding**: Added an EKH endpoint for Wikipedia grounding.
+- **🔄 Stream Tasks Manager**: Added a stream tasks manager for chat response streams.
+- **📊 Request Logging**: Included the user email in LiteLLM request logs for better tracking.
+
+### Changed
+
+- **🤖 Gemini 3.5 Flash**: Added configuration in preparation for the Gemini 3.5 Flash upgrade; rollout pending model provisioning.
+- **📄 Terms of Use**: Updated the terms of use and required all users to re-accept them.
+- **📈 Metrics**: Improved model names in the metrics model list.
+- **📱 PWA**: Disabled PWA installation discovery.
+- **🏢 Organization**: Moved the repository to the dto-btn organization.
+- **📦 Dependencies**: Updated dependencies to fix vulnerabilities.
+
+### Fixed
+
+- **♿ Colour Contrast**: Fixed colour contrast issues reported in the AAACT report.
+- **♿ Keyboard Accessibility**: Fixed keyboard accessibility issues reported in the AAACT report.
+- **♿ Image Alternative Text**: Fixed missing image alternative text reported in the AAACT report.
+- **♿ Form Accessibility**: Fixed form accessibility and error handling issues reported in the AAACT report.
+- **♿ Reflow and Responsive Design**: Fixed reflow and responsive design issues reported in the AAACT report.
+- **🔒 Utils Endpoints**: Added authentication to the utils endpoints.
+- **🔤 Character Encoding**: Fixed a character encoding error in user names.
+- **🧰 TypeScript Errors**: Resolved TypeScript null/undefined safety, missing property, and implicit any errors.
+- **🚀 Multi-Worker Startup**: Guarded backend startup tasks for multi-worker deployments.
+- **🐳 Docker Build Cache**: Switched Docker builds to a registry cache to fix caching issues.
+
 ## [0.5.7-ccv2-1.16.0] - 2026-08-12
 
 ### Added

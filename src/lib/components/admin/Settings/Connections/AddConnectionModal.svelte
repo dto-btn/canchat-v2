@@ -25,7 +25,7 @@
 	export let ollama = false;
 	export let mcp = false;
 
-	export let connection = null;
+	export let connection: any = null;
 
 	let url = '';
 	let key = '';
@@ -34,7 +34,7 @@
 	let enable = true;
 
 	let modelId = '';
-	let modelIds = [];
+	let modelIds: any[] = [];
 
 	let loading = false;
 
@@ -148,7 +148,7 @@
 	});
 </script>
 
-<Modal size="sm" bind:show returnfocusSelector="#add-connection">
+<Modal size="sm" bind:show returnFocusSelector="#add-connection">
 	<div>
 		<div class=" flex justify-between dark:text-gray-100 px-5 pt-4 pb-2">
 			<div class=" text-lg font-medium self-center font-primary">

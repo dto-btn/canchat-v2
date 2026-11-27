@@ -31,14 +31,14 @@
 	let showModelSelector = false;
 	let selectedModels = [''];
 
-	let chat = null;
-	let user = null;
+	let chat: any = null;
+	let user: any = null;
 
 	let title = '';
-	let files = [];
+	let files: any[] = [];
 
-	let messages = [];
-	let history = {
+	let messages: any[] = [];
+	let history: any = {
 		messages: {},
 		currentId: null
 	};
@@ -105,7 +105,7 @@
 	const cloneSharedChat = async () => {
 		if (!chat) return;
 
-		const res = await cloneSharedChatById(getRequestToken(), chat.id).catch((error) => {
+		const res: any = await cloneSharedChatById(getRequestToken(), chat.id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});

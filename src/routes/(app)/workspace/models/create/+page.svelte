@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	import { toast } from 'svelte-sonner';
@@ -14,7 +14,7 @@
 
 	const i18n = getI18n();
 
-	const onSubmit = async (modelInfo) => {
+	const onSubmit = async (modelInfo: any) => {
 		if ($models.find((m) => m.id === modelInfo.id)) {
 			toast.error(
 				`Error: A model with the ID '${modelInfo.id}' already exists. Please select a different ID to proceed.`
@@ -34,7 +34,7 @@
 					...modelInfo.meta,
 					profile_image_url: modelInfo.meta.profile_image_url ?? '/static/favicon.png',
 					suggestion_prompts: modelInfo.meta.suggestion_prompts
-						? modelInfo.meta.suggestion_prompts.filter((prompt) => prompt.content !== '')
+						? modelInfo.meta.suggestion_prompts.filter((prompt: any) => prompt.content !== '')
 						: null
 				},
 				params: { ...modelInfo.params }
@@ -51,7 +51,7 @@
 		}
 	};
 
-	let model = null;
+	let model: any = null;
 
 	onMount(async () => {
 		window.addEventListener('message', async (event) => {

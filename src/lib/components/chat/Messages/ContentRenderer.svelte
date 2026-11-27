@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	import { onDestroy, onMount, tick, createEventDispatcher } from 'svelte';
@@ -10,23 +10,27 @@
 	import FloatingButtons from '../ContentRenderer/FloatingButtons.svelte';
 	import { createMessagesList } from '$lib/utils';
 
-	export let id;
-	export let content;
-	export let history;
-	export let model = null;
-	export let sources = null;
+	export let id: any;
+	export let content: any;
+	export let history: any;
+	export let model: any = null;
+	export let sources: any = null;
 
 	export let save = false;
 	export let floatingButtons = true;
 
-	export let onSourceClick = () => {};
-	export let onAddMessages = () => {};
+	export let onSourceClick: () => void = () => {};
+	export let onAddMessages: (payload: {
+		modelId: string;
+		parentId: string;
+		messages: any[];
+	}) => void = () => {};
 
-	let contentContainerElement;
+	let contentContainerElement: any;
 
-	let floatingButtonsElement;
+	let floatingButtonsElement: any;
 
-	const updateButtonPosition = (event) => {
+	const updateButtonPosition = (event: any) => {
 		const buttonsContainerElement = document.getElementById(`floating-buttons-${id}`);
 		if (
 			!contentContainerElement?.contains(event.target) &&
@@ -88,10 +92,41 @@
 		}
 	};
 
-	const keydownHandler = (e) => {
+	const keydownHandler = (e: any) => {
 		if (e.key === 'Escape') {
 			closeFloatingButtons();
 		}
+	};
+
+	const getSourceIds = (sourceList: any[] = []) => {
+		return sourceList.reduce((acc: any[], s: any) => {
+			let ids: any[] = [];
+			s.document.forEach((document: any, index: any) => {
+				const metadata = s.metadata?.[index];
+				const id = metadata?.source ?? 'N/A';
+
+				if (metadata?.name) {
+					ids.push(metadata.name);
+					return ids;
+				}
+
+				if (id.startsWith('http://') || id.startsWith('https://')) {
+					ids.push(id);
+				} else {
+					ids.push(s?.source?.name ?? id);
+				}
+
+				return ids;
+			});
+
+			acc = [...acc, ...ids];
+			return acc.filter((item, index) => acc.indexOf(item) === index);
+		}, []);
+	};
+
+	const handleAddMessages = ({ modelId, parentId, messages }: any) => {
+		onAddMessages({ modelId, parentId, messages });
+		closeFloatingButtons();
 	};
 
 	onMount(() => {
@@ -117,31 +152,7 @@
 		{content}
 		{model}
 		{save}
-		sourceIds={(sources ?? []).reduce((acc, s) => {
-			let ids = [];
-			s.document.forEach((document, index) => {
-				const metadata = s.metadata?.[index];
-				const id = metadata?.source ?? 'N/A';
-
-				if (metadata?.name) {
-					ids.push(metadata.name);
-					return ids;
-				}
-
-				if (id.startsWith('http://') || id.startsWith('https://')) {
-					ids.push(id);
-				} else {
-					ids.push(s?.source?.name ?? id);
-				}
-
-				return ids;
-			});
-
-			acc = [...acc, ...ids];
-
-			// remove duplicates
-			return acc.filter((item, index) => acc.indexOf(item) === index);
-		}, [])}
+		sourceIds={getSourceIds(sources ?? [])}
 		{onSourceClick}
 		on:update={(e) => {
 			dispatch('update', e.detail);
@@ -167,9 +178,6 @@
 		{id}
 		model={model?.id}
 		messages={createMessagesList(history, id)}
-		onAdd={({ modelId, parentId, messages }) => {
-			onAddMessages({ modelId, parentId, messages });
-			closeFloatingButtons();
-		}}
+		onAdd={handleAddMessages}
 	/>
 {/if}

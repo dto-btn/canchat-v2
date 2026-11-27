@@ -163,35 +163,31 @@ test.describe('Model Selection', () => {
 			.filter({ has: userPage.page.locator('.chat-assistant') });
 		const getAssistantCount = async () => assistantMessages.count();
 
+		// 1. Send first message to single model (Model 0)
 		await userPage.addModelByIndex(0, 0);
 		const beforeFirst = await getAssistantCount();
 		await userPage.sendMessage(
-			locale === 'fr-CA' ? MULTI_MODEL_QUESTION.fr : MULTI_MODEL_QUESTION.en,
-			false
+			locale === 'fr-CA' ? MULTI_MODEL_QUESTION.fr : MULTI_MODEL_QUESTION.en
 		);
-		await userPage.addModelByIndex(0, 1);
-		await userPage.waitForGeneration();
 		const afterFirst = await getAssistantCount();
 		expect(afterFirst - beforeFirst).toBe(1);
 
+		// 2. Add second model before sending follow-up prompt, see 2 models answer
+		await userPage.clickModelSelector();
+		await userPage.addModelByIndex(1, 1);
 		const beforeSecond = await getAssistantCount();
 		await userPage.sendMessage(
-			locale === 'fr-CA' ? MULTI_MODEL_FOLLOWUP_1.fr : MULTI_MODEL_FOLLOWUP_1.en,
-			false
+			locale === 'fr-CA' ? MULTI_MODEL_FOLLOWUP_1.fr : MULTI_MODEL_FOLLOWUP_1.en
 		);
-		await userPage.clickModelSelector();
-		await userPage.addModelByIndex(1, 2);
-		await userPage.waitForGeneration();
 		const afterSecond = await getAssistantCount();
-		expect(afterSecond - beforeSecond).toBe(1);
+		expect(afterSecond - beforeSecond).toBe(2);
 
+		// 3. Remove second model, send follow-up prompt, see first model continue
+		await userPage.removeModelSelector(1);
 		const beforeThird = await getAssistantCount();
 		await userPage.sendMessage(
-			locale === 'fr-CA' ? MULTI_MODEL_FOLLOWUP_2.fr : MULTI_MODEL_FOLLOWUP_2.en,
-			false
+			locale === 'fr-CA' ? MULTI_MODEL_FOLLOWUP_2.fr : MULTI_MODEL_FOLLOWUP_2.en
 		);
-		await userPage.removeModelSelector(1);
-		await userPage.waitForGeneration();
 		const afterThird = await getAssistantCount();
 		expect(afterThird - beforeThird).toBe(1);
 	});

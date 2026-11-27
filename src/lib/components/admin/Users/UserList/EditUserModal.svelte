@@ -15,8 +15,8 @@
 	const dispatch = createEventDispatcher();
 
 	export let show = false;
-	export let selectedUser;
-	export let sessionUser;
+	export let selectedUser: any;
+	export let sessionUser: any;
 
 	let _user = {
 		id: '',
@@ -67,7 +67,7 @@
 	});
 </script>
 
-<Modal size="sm" bind:show returnfocusSelector="#edit-user">
+<Modal size="sm" bind:show returnFocusSelector="#edit-user">
 	<div>
 		<div class=" flex justify-between dark:text-gray-300 px-5 py-4">
 			<div class=" text-lg font-medium self-center">{$i18n.t('Edit User')}</div>
@@ -104,7 +104,7 @@
 							<img
 								src={selectedUser.profile_image_url}
 								class=" max-w-[55px] object-cover rounded-full"
-								alt="User profile"
+								alt=""
 							/>
 						</div>
 

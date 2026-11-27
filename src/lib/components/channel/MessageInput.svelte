@@ -7,6 +7,19 @@
 	import { tick, onMount, onDestroy } from 'svelte';
 
 	const i18n = getI18n();
+	const getKeyboardEvent = (event: CustomEvent<{ event: KeyboardEvent }>) => event.detail.event;
+	const hasTouchInput = () => {
+		if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+			return false;
+		}
+
+		const legacyNavigator = navigator as Navigator & { msMaxTouchPoints?: number };
+		return (
+			'ontouchstart' in window ||
+			navigator.maxTouchPoints > 0 ||
+			(legacyNavigator.msMaxTouchPoints ?? 0) > 0
+		);
+	};
 
 	import { config, mobile, settings } from '$lib/stores';
 	import { blobToFile, compressImage } from '$lib/utils';
@@ -24,20 +37,20 @@
 	import { getRequestToken } from '$lib/services/auth';
 
 	export let placeholder = $i18n.t('Send a Message');
-	export let transparentBackground = false;
+	export const transparentBackground = false;
 
-	export let id = null;
+	export let id: any = null;
 
 	let draggedOver = false;
 
 	let recording = false;
 	let content = '';
-	let files = [];
+	let files: any[] = [];
 
-	let filesInputElement;
-	let inputFiles;
+	let filesInputElement: any;
+	let inputFiles: any;
 
-	export let typingUsers = [];
+	export let typingUsers: any[] = [];
 
 	export let onSubmit: Function;
 	export let onChange: Function;
@@ -51,7 +64,7 @@
 		try {
 			// Request screen media
 			const mediaStream = await navigator.mediaDevices.getDisplayMedia({
-				video: { cursor: 'never' },
+				video: { cursor: 'never' } as any,
 				audio: false
 			});
 			// Once the user selects a screen, temporarily create a video element
@@ -65,7 +78,7 @@
 			canvas.height = video.videoHeight;
 			// Grab a single frame from the video stream using the canvas
 			const context = canvas.getContext('2d');
-			context.drawImage(video, 0, 0, canvas.width, canvas.height);
+			context?.drawImage(video, 0, 0, canvas.width, canvas.height);
 			// Stop all video tracks (stop screen sharing) after capturing the image
 			mediaStream.getTracks().forEach((track) => track.stop());
 
@@ -78,14 +91,14 @@
 			files = [...files, { type: 'image', url: imageUrl }];
 			// Clean memory: Clear video srcObject
 			video.srcObject = null;
-		} catch (error) {
+		} catch (error: any) {
 			// Handle any errors (e.g., user cancels screen sharing)
 			console.error('Error capturing screen:', error);
 		}
 	};
 
-	const inputFilesHandler = async (inputFiles) => {
-		inputFiles.forEach((file) => {
+	const inputFilesHandler = async (inputFiles: any) => {
+		inputFiles.forEach((file: any) => {
 			if (
 				($config?.file?.max_size ?? null) !== null &&
 				file.size > ($config?.file?.max_size ?? 0) * 1024 * 1024
@@ -106,14 +119,22 @@
 				let reader = new FileReader();
 
 				reader.onload = async (event) => {
-					let imageUrl = event.target.result;
+					let imageUrl = event.target?.result;
 
 					if ($settings?.imageCompression ?? false) {
 						const width = $settings?.imageCompressionSize?.width ?? null;
 						const height = $settings?.imageCompressionSize?.height ?? null;
 
 						if (width || height) {
-							imageUrl = await compressImage(imageUrl, width, height);
+							const compressed =
+								typeof imageUrl === 'string'
+									? await compressImage(
+											imageUrl,
+											width ? Number(width) : null,
+											height ? Number(height) : null
+										)
+									: null;
+							imageUrl = typeof compressed === 'string' ? compressed : null;
 						}
 					}
 
@@ -133,7 +154,7 @@
 		});
 	};
 
-	const uploadFileHandler = async (file) => {
+	const uploadFileHandler = async (file: any) => {
 		const tempItemId = uuidv4();
 		const fileItem = {
 			type: 'file',
@@ -191,7 +212,7 @@
 			} else {
 				files = files.filter((item) => item?.itemId !== tempItemId);
 			}
-		} catch (e) {
+		} catch (e: any) {
 			toast.error(e);
 			files = files.filter((item) => item?.itemId !== tempItemId);
 		}
@@ -203,7 +224,7 @@
 		}
 	};
 
-	const onDragOver = (e) => {
+	const onDragOver = (e: any) => {
 		e.preventDefault();
 
 		// Check if a file is being draggedOver.
@@ -218,7 +239,7 @@
 		draggedOver = false;
 	};
 
-	const onDrop = async (e) => {
+	const onDrop = async (e: any) => {
 		e.preventDefault();
 		if (e.dataTransfer?.files) {
 			const inputFiles = Array.from(e.dataTransfer?.files);
@@ -451,7 +472,7 @@
 									}}
 								>
 									<button
-										class="bg-transparent hover:bg-white/80 text-gray-800 dark:text-white dark:hover:bg-gray-800 transition rounded-full p-2 outline-none focus:outline-none"
+										class="bg-transparent hover:bg-white/80 text-gray-800 dark:text-white dark:hover:bg-gray-800 transition rounded-full p-2 outline-none"
 										type="button"
 										aria-label="More"
 									>
@@ -476,25 +497,13 @@
 									bind:value={content}
 									id={`chat-input-${id}`}
 									messageInput={true}
-									shiftEnter={!$mobile ||
-										!(
-											'ontouchstart' in window ||
-											navigator.maxTouchPoints > 0 ||
-											navigator.msMaxTouchPoints > 0
-										)}
+									shiftEnter={!$mobile || !hasTouchInput()}
 									{placeholder}
 									largeTextAsFile={$settings?.largeTextAsFile ?? false}
-									on:keydown={async (e) => {
-										e = e.detail.event;
+									on:keydown={async (event) => {
+										const e = getKeyboardEvent(event);
 										const isCtrlPressed = e.ctrlKey || e.metaKey; // metaKey is for Cmd key on Mac
-										if (
-											!$mobile ||
-											!(
-												'ontouchstart' in window ||
-												navigator.maxTouchPoints > 0 ||
-												navigator.msMaxTouchPoints > 0
-											)
-										) {
+										if (!$mobile || !hasTouchInput()) {
 											// Prevent Enter key from creating a new line
 											// Uses keyCode '13' for Enter key for chinese/japanese keyboards
 											if (e.keyCode === 13 && !e.shiftKey) {
@@ -506,10 +515,6 @@
 												submitHandler();
 											}
 										}
-									}}
-									on:paste={async (e) => {
-										e = e.detail.event;
-										console.log(e);
 									}}
 								/>
 							</div>

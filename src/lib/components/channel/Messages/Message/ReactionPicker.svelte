@@ -6,47 +6,59 @@
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import VirtualList from '@sveltejs/svelte-virtual-list';
 
+	const emojiGroupsMap = emojiGroups as Record<string, string[]>;
+	const emojiShortCodesMap = emojiShortCodes as Record<string, string | string[]>;
+
 	export let onClose = () => {};
-	export let onSubmit = (name) => {};
+	export let onSubmit = (_name: string) => {};
 	export let side = 'top';
 	export let align = 'start';
 	export let user = null;
 
 	let show = false;
-	let emojis = emojiShortCodes;
+	let emojis: Record<string, string | string[]> = emojiShortCodesMap;
 	let search = '';
-	let flattenedEmojis = [];
-	let emojiRows = [];
+	let flattenedEmojis: any[] = [];
+	let emojiRows: any[] = [];
+
+	const getEmojiTooltip = (shortCodes: any[] = []) => {
+		return shortCodes.map((code: any) => `:${code}:`).join(', ');
+	};
 
 	// Reactive statement to filter the emojis based on search query
 	$: {
 		if (search) {
-			emojis = Object.keys(emojiShortCodes).reduce((acc, key) => {
-				if (key.includes(search)) {
-					acc[key] = emojiShortCodes[key];
-				} else {
-					if (Array.isArray(emojiShortCodes[key])) {
-						const filtered = emojiShortCodes[key].filter((emoji) => emoji.includes(search));
-						if (filtered.length) {
-							acc[key] = filtered;
-						}
+			emojis = Object.keys(emojiShortCodesMap).reduce<Record<string, string | string[]>>(
+				(acc, key) => {
+					if (key.includes(search)) {
+						acc[key] = emojiShortCodesMap[key];
 					} else {
-						if (emojiShortCodes[key].includes(search)) {
-							acc[key] = emojiShortCodes[key];
+						if (Array.isArray(emojiShortCodesMap[key])) {
+							const filtered = emojiShortCodesMap[key].filter((emoji: any) =>
+								emoji.includes(search)
+							);
+							if (filtered.length) {
+								acc[key] = filtered;
+							}
+						} else {
+							if (emojiShortCodesMap[key].includes(search)) {
+								acc[key] = emojiShortCodesMap[key];
+							}
 						}
 					}
-				}
-				return acc;
-			}, {});
+					return acc;
+				},
+				{}
+			);
 		} else {
-			emojis = emojiShortCodes;
+			emojis = emojiShortCodesMap;
 		}
 	}
 	// Flatten emoji groups and group them into rows of 8 for virtual scrolling
 	$: {
 		flattenedEmojis = [];
-		Object.keys(emojiGroups).forEach((group) => {
-			const groupEmojis = emojiGroups[group].filter((emoji) => emojis[emoji]);
+		Object.keys(emojiGroupsMap).forEach((group) => {
+			const groupEmojis = emojiGroupsMap[group].filter((emoji) => emojis[emoji]);
 			if (groupEmojis.length > 0) {
 				flattenedEmojis.push({ type: 'group', label: group });
 				flattenedEmojis.push(
@@ -54,16 +66,16 @@
 						type: 'emoji',
 						name: emoji,
 						shortCodes:
-							typeof emojiShortCodes[emoji] === 'string'
-								? [emojiShortCodes[emoji]]
-								: emojiShortCodes[emoji]
+							typeof emojiShortCodesMap[emoji] === 'string'
+								? [emojiShortCodesMap[emoji]]
+								: emojiShortCodesMap[emoji]
 					}))
 				);
 			}
 		});
 		// Group emojis into rows of 8
 		emojiRows = [];
-		let currentRow = [];
+		let currentRow: any[] = [];
 		flattenedEmojis.forEach((item) => {
 			if (item.type === 'emoji') {
 				currentRow.push(item);
@@ -85,7 +97,7 @@
 	}
 	const ROW_HEIGHT = 48; // Approximate height for a row with multiple emojis
 	// Handle emoji selection
-	function selectEmoji(emoji) {
+	function selectEmoji(emoji: any) {
 		const selectedCode = emoji.shortCodes[0];
 		onSubmit(selectedCode);
 		show = false;
@@ -138,10 +150,7 @@
 								<!-- Render emojis in a row -->
 								<div class="flex items-center gap-1.5 w-full">
 									{#each item as emojiItem}
-										<Tooltip
-											content={emojiItem.shortCodes.map((code) => `:${code}:`).join(', ')}
-											placement="top"
-										>
+										<Tooltip content={getEmojiTooltip(emojiItem.shortCodes)} placement="top">
 											<button
 												class="p-1.5 rounded-lg cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition"
 												on:click={() => selectEmoji(emojiItem)}

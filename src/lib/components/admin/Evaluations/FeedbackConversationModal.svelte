@@ -9,13 +9,13 @@
 	const i18n = getI18n();
 
 	export let show = false;
-	export let feedback = null;
+	export let feedback: any = null;
 
 	// Track if we're viewing the chat details
 	let viewingChat = false;
 
 	// Create a synthesized snapshot if one doesn't exist
-	function ensureSnapshot(feedback) {
+	function ensureSnapshot(feedback: any) {
 		if (!feedback) return feedback;
 
 		if (!feedback.snapshot && feedback.meta?.chat_id) {
@@ -35,14 +35,14 @@
 	}
 
 	// Extract chat information from feedback with better title extraction
-	function extractChatInfo(feedback) {
+	function extractChatInfo(feedback: any) {
 		if (!feedback) return null;
 
 		// Ensure we have a snapshot
 		feedback = ensureSnapshot(feedback);
 
 		try {
-			let chatId = null;
+			let chatId: any = null;
 			let chatTitle = 'Chat';
 			let updatedAt = 0;
 
@@ -84,13 +84,13 @@
 				title: chatTitle,
 				updated_at: updatedAt
 			};
-		} catch (error) {
+		} catch (error: any) {
 			return null;
 		}
 	}
 
 	// Extract messages from chat snapshot with improved handling of nested structures
-	function extractConversation(feedback) {
+	function extractConversation(feedback: any) {
 		if (!feedback) return [];
 
 		// Ensure we have a snapshot
@@ -100,7 +100,7 @@
 			// If there's no snapshot, try to extract minimal information from the feedback data
 			if (!feedback.snapshot) {
 				if (feedback.data && feedback.meta) {
-					const messages = [];
+					const messages: any[] = [];
 
 					// Create a minimal conversation from the feedback data
 					if (feedback.data.model_id) {
@@ -154,7 +154,7 @@
 				feedback.snapshot.chat.chat?.messages &&
 				Array.isArray(feedback.snapshot.chat.chat.messages)
 			) {
-				return feedback.snapshot.chat.chat.messages.map((msg) => ({
+				return feedback.snapshot.chat.chat.messages.map((msg: any) => ({
 					role: msg.role,
 					content: msg.content || '',
 					timestamp: msg.timestamp || 0
@@ -175,7 +175,7 @@
 
 			// If still no conversation but we have meta and data, create one from feedback data
 			if (feedback.meta?.message_id && feedback.data) {
-				const messages = [];
+				const messages: any[] = [];
 
 				// Create a minimal conversation from the feedback data
 				if (feedback.data.model_id) {
@@ -217,7 +217,7 @@
 			}
 
 			return [];
-		} catch (error) {
+		} catch (error: any) {
 			return [];
 		}
 	}

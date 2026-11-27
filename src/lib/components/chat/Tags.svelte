@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import {
 		addTagById,
 		deleteTagById,
@@ -16,7 +16,7 @@
 	import { getRequestToken } from '$lib/services/auth';
 
 	export let chatId = '';
-	let tags = [];
+	let tags: any[] = [];
 
 	const getTags = async () => {
 		return await getTagsById(getRequestToken(), chatId).catch(async (error) => {
@@ -24,7 +24,7 @@
 		});
 	};
 
-	const addTag = async (tagName) => {
+	const addTag = async (tagName: any) => {
 		const res = await addTagById(getRequestToken(), chatId, tagName).catch(async (error) => {
 			toast.error(`${error}`);
 			return null;
@@ -44,7 +44,7 @@
 		});
 	};
 
-	const deleteTag = async (tagName) => {
+	const deleteTag = async (tagName: any) => {
 		const res = await deleteTagById(getRequestToken(), chatId, tagName);
 		tags = await getTags();
 		await updateChatById(getRequestToken(), chatId, {

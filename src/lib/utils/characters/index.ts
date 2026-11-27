@@ -1,6 +1,6 @@
 import CRC32 from 'crc-32';
 
-export const parseFile = async (file) => {
+export const parseFile = async (file: any) => {
 	if (file.type === 'application/json') {
 		return await parseJsonFile(file);
 	} else if (file.type === 'image/png') {
@@ -10,7 +10,7 @@ export const parseFile = async (file) => {
 	}
 };
 
-const parseJsonFile = async (file) => {
+const parseJsonFile = async (file: any) => {
 	const text = await file.text();
 	const json = JSON.parse(text);
 
@@ -24,7 +24,7 @@ const parseJsonFile = async (file) => {
 	};
 };
 
-const parsePngFile = async (file) => {
+const parsePngFile = async (file: any) => {
 	const arrayBuffer = await file.arrayBuffer();
 	const text = parsePngText(arrayBuffer);
 	const json = JSON.parse(text);
@@ -41,7 +41,7 @@ const parsePngFile = async (file) => {
 	};
 };
 
-const parsePngText = (arrayBuffer) => {
+const parsePngText = (arrayBuffer: any) => {
 	const textChunkKeyword = 'chara';
 	const chunks = readPngChunks(new Uint8Array(arrayBuffer));
 
@@ -56,12 +56,12 @@ const parsePngText = (arrayBuffer) => {
 
 	try {
 		return new TextDecoder().decode(Uint8Array.from(atob(textChunk.text), (c) => c.charCodeAt(0)));
-	} catch (e) {
+	} catch (e: any) {
 		throw new Error('Unable to parse "chara" field as base64', e);
 	}
 };
 
-const readPngChunks = (data) => {
+const readPngChunks = (data: any) => {
 	const isValidPng =
 		data[0] === 0x89 &&
 		data[1] === 0x50 &&
@@ -74,7 +74,7 @@ const readPngChunks = (data) => {
 
 	if (!isValidPng) throw new Error('Invalid PNG file');
 
-	const chunks = [];
+	const chunks: any[] = [];
 	let offset = 8; // Skip PNG signature
 
 	while (offset < data.length) {
@@ -99,10 +99,10 @@ const readPngChunks = (data) => {
 	return chunks;
 };
 
-const decodeTextChunk = (data) => {
+const decodeTextChunk = (data: any) => {
 	let i = 0;
-	const keyword = [];
-	const text = [];
+	const keyword: any[] = [];
+	const text: any[] = [];
 
 	for (; i < data.length && data[i] !== 0; i++) {
 		keyword.push(String.fromCharCode(data[i]));
@@ -115,10 +115,10 @@ const decodeTextChunk = (data) => {
 	return { keyword: keyword.join(''), text: text.join('') };
 };
 
-const extractCharacter = (json) => {
-	function getTrimmedValue(json, keys) {
+const extractCharacter = (json: any) => {
+	function getTrimmedValue(json: any, keys: any) {
 		return keys
-			.map((key) => {
+			.map((key: any) => {
 				const keyParts = key.split('.');
 				let value = json;
 				for (const part of keyParts) {
@@ -131,7 +131,7 @@ const extractCharacter = (json) => {
 				}
 				return value && value.trim();
 			})
-			.find((value) => value);
+			.find((value: any) => value);
 	}
 
 	const name = getTrimmedValue(json, ['char_name', 'name', 'data.name']);
@@ -154,8 +154,8 @@ const extractCharacter = (json) => {
 	return { name, summary, personality, scenario, greeting, examples };
 };
 
-const detectFormats = (json) => {
-	const formats = [];
+const detectFormats = (json: any) => {
+	const formats: any[] = [];
 
 	if (
 		json.char_name &&

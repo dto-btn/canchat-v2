@@ -24,7 +24,7 @@
 	export let onSubmit: Function;
 	export let onBack: null | Function = null;
 
-	export let model = null;
+	export let model: any = null;
 	export let edit = false;
 
 	export let preset = true;
@@ -32,8 +32,8 @@
 	let loading = false;
 	let success = false;
 
-	let filesInputElement;
-	let inputFiles;
+	let filesInputElement: any;
+	let inputFiles: any;
 
 	let showAdvanced = false;
 	let showPreview = false;
@@ -53,7 +53,7 @@
 		}
 	}
 
-	let info = {
+	let info: any = {
 		id: '',
 		base_model_id: null,
 		name: '',
@@ -70,23 +70,28 @@
 		}
 	};
 
-	let params = {
+	let params: Record<string, any> = {
 		system: ''
 	};
-	let capabilities = {
+	let capabilities: Record<string, any> = {
 		vision: true,
 		usage: undefined,
 		citations: true
 	};
 
-	let knowledge = [];
-	let toolIds = [];
-	let filterIds = [];
-	let actionIds = [];
+	let knowledge: any[] = [];
+	let toolIds: any[] = [];
+	let filterIds: any[] = [];
+	let actionIds: any[] = [];
 
-	let accessControl = {};
+	let accessControl: Record<string, any> = {};
 
-	const addUsage = (base_model_id) => {
+	const filterTags = (tags: any[], tagName: any) => tags.filter((tag: any) => tag.name !== tagName);
+
+	const filterFunctionsByType = (items: any[] | null, type: string) =>
+		(items ?? []).filter((func: any) => func.type === type);
+
+	const addUsage = (base_model_id: any) => {
 		const baseModel = $models.find((m) => m.id === base_model_id);
 
 		if (baseModel) {
@@ -97,6 +102,11 @@
 			}
 			capabilities = capabilities;
 		}
+	};
+
+	// TS casts aren't allowed inline in template expressions, so handle the event here
+	const onBaseModelChange = (e: Event) => {
+		addUsage((e.target as HTMLSelectElement).value);
 	};
 
 	// Add validation logic
@@ -168,7 +178,7 @@
 			}
 		}
 
-		info.params.stop = params.stop ? params.stop.split(',').filter((s) => s.trim()) : null;
+		info.params.stop = params.stop ? params.stop.split(',').filter((s: any) => s.trim()) : null;
 		Object.keys(info.params).forEach((key) => {
 			if (info.params[key] === '' || info.params[key] === null) {
 				delete info.params[key];
@@ -221,7 +231,7 @@
 			toolIds = model?.meta?.toolIds ?? [];
 			filterIds = model?.meta?.filterIds ?? [];
 			actionIds = model?.meta?.actionIds ?? [];
-			knowledge = (model?.meta?.knowledge ?? []).map((item) => {
+			knowledge = (model?.meta?.knowledge ?? []).map((item: any) => {
 				if (item?.collection_name) {
 					return {
 						id: item.collection_name,
@@ -376,6 +386,7 @@
 								? 'bg-transparent'
 								: 'bg-white'} shadow-xl group relative"
 							type="button"
+							aria-label={$i18n.t('Change profile image')}
 							on:click={() => {
 								filesInputElement.click();
 							}}
@@ -383,13 +394,13 @@
 							{#if info.meta.profile_image_url}
 								<img
 									src={info.meta.profile_image_url}
-									alt="model profile"
+									alt=""
 									class="rounded-xl size-72 md:size-60 object-cover shrink-0"
 								/>
 							{:else}
 								<img
 									src="/static/favicon.png"
-									alt="model profile"
+									alt=""
 									class=" rounded-xl size-72 md:size-60 object-cover shrink-0"
 								/>
 							{/if}
@@ -482,9 +493,7 @@
 									class="text-sm w-full bg-transparent outline-none"
 									placeholder="Select a base model (e.g. llama3, gpt-4o)"
 									bind:value={info.base_model_id}
-									on:change={(e) => {
-										addUsage(e.target.value);
-									}}
+									on:change={onBaseModelChange}
 									required
 								>
 									<option value={null} class=" text-gray-900"
@@ -492,8 +501,8 @@
 									>
 									{#each $models
 										.sort((a, b) => a.name.localeCompare(b.name))
-										.filter((m) => (model ? m.id !== model.id : true) && !m?.preset && m?.owned_by !== 'arena') as model}
-										<option value={model.id} class=" text-gray-900">{model.name}</option>
+										.filter((m) => (model ? m.id !== model.id : true) && !m?.preset && m?.owned_by !== 'arena') as baseModel}
+										<option value={baseModel.id} class=" text-gray-900">{baseModel.name}</option>
 									{/each}
 								</select>
 							</div>
@@ -533,7 +542,7 @@
 								tags={info?.meta?.tags ?? []}
 								on:delete={(e) => {
 									const tagName = e.detail;
-									info.meta.tags = info.meta.tags.filter((tag) => tag.name !== tagName);
+									info.meta.tags = filterTags(info.meta.tags, tagName);
 								}}
 								on:add={(e) => {
 									const tagName = e.detail;
@@ -551,9 +560,7 @@
 								tags={info?.meta?.tags_fr ?? []}
 								on:delete={(e) => {
 									const tagName = e.detail;
-									info.meta.tags_fr = (info.meta.tags_fr ?? []).filter(
-										(tag) => tag.name !== tagName
-									);
+									info.meta.tags_fr = filterTags(info.meta.tags_fr ?? [], tagName);
 								}}
 								on:add={(e) => {
 									const tagName = e.detail;
@@ -738,14 +745,14 @@
 					<div class="my-2">
 						<FiltersSelector
 							bind:selectedFilterIds={filterIds}
-							filters={$functions.filter((func) => func.type === 'filter')}
+							filters={filterFunctionsByType($functions, 'filter')}
 						/>
 					</div>
 
 					<div class="my-2">
 						<ActionsSelector
 							bind:selectedActionIds={actionIds}
-							actions={$functions.filter((func) => func.type === 'action')}
+							actions={filterFunctionsByType($functions, 'action')}
 						/>
 					</div>
 

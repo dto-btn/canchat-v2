@@ -7,10 +7,10 @@
 
 	const i18n = getI18n();
 
-	export let filters = [];
-	export let selectedFilterIds = [];
+	export let filters: any[] = [];
+	export let selectedFilterIds: any[] = [];
 
-	let _filters = {};
+	let _filters: Record<string, any> = {};
 
 	onMount(() => {
 		_filters = filters.reduce((acc, filter) => {

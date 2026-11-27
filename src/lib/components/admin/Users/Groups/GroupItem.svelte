@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	import { toast } from 'svelte-sonner';
@@ -15,17 +15,26 @@
 	import GroupModal from './EditGroupModal.svelte';
 	import { getRequestToken } from '$lib/services/auth';
 
-	export let users = [];
-	export let group = {
-		name: 'Admins',
-		user_ids: [1, 2, 3]
+	export let users: any[] = [];
+	type Group = {
+		id?: string;
+		name: string;
+		user_ids: number[];
+		allowed_domains?: string[];
 	};
 
-	export let setGroups = () => {};
+	export let group: Group = {
+		id: undefined,
+		name: 'Admins',
+		user_ids: [1, 2, 3],
+		allowed_domains: []
+	};
+
+	export let setGroups: () => void = () => {};
 
 	let showEdit = false;
 
-	const updateHandler = async (_group) => {
+	const updateHandler = async (_group: any) => {
 		const res = await updateGroupById(getRequestToken(), group.id, _group).catch((error) => {
 			toast.error(`${error}`);
 			return null;

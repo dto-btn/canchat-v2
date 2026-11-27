@@ -45,7 +45,7 @@
 	let requestFormat = '';
 	let keepAlive: string | null = null;
 
-	let params = {
+	let params: Record<string, string | number | boolean | null | undefined> = {
 		// Advanced
 		stream_response: null,
 		seed: null,
@@ -63,7 +63,10 @@
 		num_batch: null,
 		num_keep: null,
 		max_tokens: null,
-		num_gpu: null
+		num_gpu: null,
+		use_mmap: null,
+		use_mlock: null,
+		num_thread: null
 	};
 
 	const toggleRequestFormat = async () => {
@@ -134,6 +137,13 @@
 		theme.set(_theme);
 		localStorage.setItem('theme', _theme);
 		applyTheme(_theme);
+	};
+
+	const stopParams = (params: { stop?: string | null }) => {
+		if (params.stop) {
+			return params.stop.split(',').filter((e) => e);
+		}
+		return undefined;
 	};
 </script>
 
@@ -301,7 +311,7 @@
 					params: {
 						stream_response: params.stream_response !== null ? params.stream_response : undefined,
 						seed: (params.seed !== null ? params.seed : undefined) ?? undefined,
-						stop: params.stop ? params.stop.split(',').filter((e) => e) : undefined,
+						stop: stopParams(params),
 						temperature: params.temperature !== null ? params.temperature : undefined,
 						frequency_penalty:
 							params.frequency_penalty !== null ? params.frequency_penalty : undefined,

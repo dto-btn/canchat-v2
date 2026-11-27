@@ -15,7 +15,7 @@
 	export let command = '';
 
 	let selectedIdx = 0;
-	let filteredItems = [];
+	let filteredItems: any[] = [];
 
 	let fuse = new Fuse(
 		$models
@@ -24,8 +24,8 @@
 				const _item = {
 					...model,
 					modelName: model?.name,
-					tags: model?.info?.meta?.tags?.map((tag) => tag.name).join(' '),
-					tags_fr: model?.info?.meta?.tags_fr?.map((tag) => tag.name).join(' '),
+					tags: model?.info?.meta?.tags?.map((tag: any) => tag.name).join(' '),
+					tags_fr: model?.info?.meta?.tags_fr?.map((tag: any) => tag.name).join(' '),
 					desc: model?.info?.meta?.description
 				};
 				return _item;
@@ -54,7 +54,7 @@
 		selectedIdx = Math.min(selectedIdx + 1, filteredItems.length - 1);
 	};
 
-	const confirmSelect = async (model) => {
+	const confirmSelect = async (model: any) => {
 		command = '';
 		dispatch('select', model);
 	};
@@ -95,7 +95,7 @@
 							<div class="flex font-medium text-black dark:text-gray-100 line-clamp-1">
 								<img
 									src={model?.info?.meta?.profile_image_url ?? '/static/favicon.png'}
-									alt={model?.name ?? model.id}
+									alt=""
 									class="rounded-full size-6 items-center mr-2"
 								/>
 								{model.name}

@@ -1,9 +1,9 @@
 <script lang="ts">
-	export let token;
+	export let token: any;
 	export let onClick: Function = () => {};
 
 	let id = '';
-	function extractDataAttribute(input) {
+	function extractDataAttribute(input: any) {
 		// Use a regular expression to extract the value of the `data` attribute
 		const match = input.match(/data="([^"]*)"/);
 		// Check if a match was found and return the first captured group

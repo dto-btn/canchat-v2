@@ -38,7 +38,7 @@
 	let role = 'user';
 	let message = '';
 
-	let messages = [];
+	let messages: any[] = [];
 
 	const scrollToBottom = () => {
 		const element = messagesContainerElement;
@@ -52,8 +52,11 @@
 		stopResponseFlag = true;
 	};
 
+	const getTextArea = (event: Event) => event.currentTarget as HTMLTextAreaElement;
+
 	const chatCompletionHandler = async () => {
 		const model = $models.find((model) => model.id === selectedModelId);
+		if (!model) return;
 
 		const [res, controller] = await chatCompletion(
 			getRequestToken(),
@@ -73,7 +76,7 @@
 			`${WEBUI_BASE_URL}/api`
 		);
 
-		let responseMessage;
+		let responseMessage: any;
 		if (messages.at(-1)?.role === 'assistant') {
 			responseMessage = messages.at(-1);
 		} else {
@@ -89,6 +92,9 @@
 		const textareaElement = document.getElementById(`assistant-${messages.length - 1}-textarea`);
 
 		if (res && res.ok) {
+			if (!res.body) {
+				return;
+			}
 			const reader = res.body
 				.pipeThrough(new TextDecoderStream())
 				.pipeThrough(splitStream('\n'))
@@ -117,19 +123,21 @@
 								if (responseMessage.content == '' && data.choices[0].delta.content == '\n') {
 									continue;
 								} else {
-									textareaElement.style.height = textareaElement.scrollHeight + 'px';
+									textareaElement?.style &&
+										(textareaElement.style.height = textareaElement.scrollHeight + 'px');
 
 									responseMessage.content += data.choices[0].delta.content ?? '';
 									messages = messages;
 
-									textareaElement.style.height = textareaElement.scrollHeight + 'px';
+									textareaElement?.style &&
+										(textareaElement.style.height = textareaElement.scrollHeight + 'px');
 
 									await tick();
 								}
 							}
 						}
 					}
-				} catch (error) {
+				} catch (error: any) {
 					console.log(error);
 				}
 
@@ -220,6 +228,8 @@
 		<div class=" flex flex-col h-full px-3.5">
 			<div class="flex w-full items-start gap-1.5">
 				<Collapsible
+					customTrigger
+					let:toggle
 					className="w-full flex-1"
 					bind:open={showSystem}
 					buttonClassName="w-full rounded-lg text-sm border border-gray-50 dark:border-gray-850 w-full py-1 px-1.5"
@@ -237,7 +247,13 @@
 						{/if}
 
 						<div class="flex-shrink-0">
-							<button class="p-1.5 bg-transparent hover:bg-white/5 transition rounded-lg">
+							<button
+								type="button"
+								aria-label={$i18n.t('System Instructions')}
+								aria-expanded={showSystem}
+								on:click={toggle}
+								class="p-1.5 bg-transparent hover:bg-white/5 transition rounded-lg"
+							>
 								{#if showSystem}
 									<ChevronUp className="size-3.5" />
 								{:else}
@@ -299,12 +315,14 @@
 								role: role === 'user' ? $i18n.t('a user') : $i18n.t('an assistant')
 							})}
 							on:input={(e) => {
-								e.target.style.height = '';
-								e.target.style.height = Math.min(e.target.scrollHeight, 150) + 'px';
+								const textarea = getTextArea(e);
+								textarea.style.height = '';
+								textarea.style.height = Math.min(textarea.scrollHeight, 150) + 'px';
 							}}
 							on:focus={(e) => {
-								e.target.style.height = '';
-								e.target.style.height = Math.min(e.target.scrollHeight, 150) + 'px';
+								const textarea = getTextArea(e);
+								textarea.style.height = '';
+								textarea.style.height = Math.min(textarea.scrollHeight, 150) + 'px';
 							}}
 							rows="2"
 						/>

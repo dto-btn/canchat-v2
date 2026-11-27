@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	const i18n = getI18n();
@@ -10,7 +10,7 @@
 	import ArrowRightCircle from './icons/ArrowRightCircle.svelte';
 
 	export let show = true;
-	export let getStartedHandler = () => {};
+	export let getStartedHandler: () => void = () => {};
 </script>
 
 {#if show}
@@ -22,7 +22,7 @@
 						crossorigin="anonymous"
 						src="{WEBUI_BASE_URL}/static/favicon.png"
 						class=" w-6 rounded-full"
-						alt="logo"
+						alt={$i18n.t('CANChat logo')}
 					/>
 				</div>
 			</div>

@@ -22,13 +22,14 @@
 	const dispatch = createEventDispatcher();
 
 	const i18n = getI18n();
+	const getFileInput = (event: Event) => event.currentTarget as HTMLInputElement;
 
 	let loading = false;
 
-	let config = null;
-	let imageGenerationConfig = null;
+	let config: any = null;
+	let imageGenerationConfig: any = null;
 
-	let models = null;
+	let models: any = null;
 
 	let samplers = [
 		'DPM++ 2M',
@@ -128,14 +129,14 @@
 		}
 	};
 
-	const validateJSON = (json) => {
+	const validateJSON = (json: any) => {
 		try {
 			const obj = JSON.parse(json);
 
 			if (obj && typeof obj === 'object') {
 				return true;
 			}
-		} catch (e) {}
+		} catch (e: any) {}
 		return false;
 	};
 
@@ -202,7 +203,8 @@
 			}
 
 			requiredWorkflowNodes = requiredWorkflowNodes.map((node) => {
-				const n = config.comfyui.COMFYUI_WORKFLOW_NODES.find((n) => n.type === node.type) ?? node;
+				const n =
+					config.comfyui.COMFYUI_WORKFLOW_NODES.find((n: any) => n.type === node.type) ?? node;
 
 				return {
 					type: n.type,
@@ -513,12 +515,14 @@
 									type="file"
 									accept=".json"
 									on:change={(e) => {
-										const file = e.target.files[0];
+										const input = getFileInput(e);
+										const file = input.files?.[0];
+										if (!file) return;
 										const reader = new FileReader();
 
-										reader.onload = (e) => {
-											config.comfyui.COMFYUI_WORKFLOW = e.target.result;
-											e.target.value = null;
+										reader.onload = (event) => {
+											config.comfyui.COMFYUI_WORKFLOW = event.target?.result;
+											input.value = '';
 										};
 
 										reader.readAsText(file);

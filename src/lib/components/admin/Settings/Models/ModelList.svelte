@@ -10,10 +10,10 @@
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import EllipsisVertical from '$lib/components/icons/EllipsisVertical.svelte';
 
-	export let modelIds = [];
+	export let modelIds: any[] = [];
 
-	let sortable = null;
-	let modelListElement = null;
+	let sortable: any = null;
+	let modelListElement: any = null;
 
 	const positionChangeHandler = () => {
 		const modelList = Array.from(modelListElement.children).map((child) =>

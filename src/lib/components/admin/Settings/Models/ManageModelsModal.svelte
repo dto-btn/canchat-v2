@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	import { createEventDispatcher, onMount } from 'svelte';
@@ -15,8 +15,8 @@
 
 	export let show = false;
 
-	let selected = null;
-	let ollamaConfig = null;
+	let selected: any = null;
+	let ollamaConfig: any = null;
 
 	onMount(async () => {
 		if ($user.role === 'admin') {
@@ -36,7 +36,7 @@
 	});
 </script>
 
-<Modal size="sm" bind:show returnfocusSelector="#manage-models">
+<Modal size="sm" bind:show returnFocusSelector="#manage-models">
 	<div>
 		<div class=" flex justify-between dark:text-gray-100 px-5 pt-4">
 			<div class=" text-lg font-medium self-center font-primary">

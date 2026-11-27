@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	const i18n = getI18n();
@@ -7,10 +7,10 @@
 	import AccessControl from './AccessControl.svelte';
 
 	export let show = false;
-	export let accessControl = null;
+	export let accessControl: any = null;
 	export let accessRoles = ['read'];
 
-	export let onChange = () => {};
+	export let onChange: () => void = () => {};
 </script>
 
 <Modal size="sm" bind:show>

@@ -660,6 +660,9 @@ async def generate_chat_completion(
             "email": user.email,
             "role": user.role,
         }
+    else:
+        # Include user email so it appears in the LiteLLM request logs "End User" column
+        payload["user"] = user.email
 
     url = request.app.state.config.OPENAI_API_BASE_URLS[idx]
     key = request.app.state.config.OPENAI_API_KEYS[idx]

@@ -57,7 +57,7 @@ self.onmessage = async (event) => {
 
 	try {
 		self.result = await self.pyodide.runPythonAsync(code);
-	} catch (error) {
+	} catch (error: any) {
 		self.stderr = error.toString();
 	}
 	self.postMessage({ id, result: self.result, stdout: self.stdout, stderr: self.stderr });

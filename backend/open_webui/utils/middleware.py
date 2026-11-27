@@ -9,10 +9,12 @@ import asyncio
 from typing import Optional
 import json
 import inspect
-from uuid import uuid4
 from datetime import datetime
+from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
+from uuid import uuid4
 
+from bs4 import BeautifulSoup
 from open_webui.models.message_metrics import MessageMetrics
 from fastapi import Request
 
@@ -67,9 +69,6 @@ from open_webui.utils.misc import (
 )
 from open_webui.utils.tools import get_tools_async
 from open_webui.utils.plugin import load_function_module_by_id
-
-
-from open_webui.tasks import create_task
 
 from open_webui.config import (
     DEFAULT_TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE,
@@ -151,7 +150,7 @@ def fetch_wikipedia_title_and_excerpt(url: str) -> tuple[str, str, int | None]:
 
         # Make request with timeout and proper headers
         headers = {
-            "User-Agent": "CanChat/2.0 (https://github.com/ssc-dsai/canchat-v2; contact@example.com) requests/2.31.0",
+            "User-Agent": "CanChat/2.0 (https://github.com/dto-btn/canchat-v2; contact@example.com) requests/2.31.0",
             "Accept": "application/json",
             "Accept-Language": "en-US,en;q=0.9,fr;q=0.8",
         }
@@ -166,6 +165,49 @@ def fetch_wikipedia_title_and_excerpt(url: str) -> tuple[str, str, int | None]:
 
     except Exception as e:
         log.warning(f"Error fetching Wikipedia summary for {url}: {e}")
+        return "", "", None
+
+
+def fetch_tbs_policy_title_and_excerpt(url: str) -> tuple[str, str, int | None]:
+    """Fetch a French TBS policy title and excerpt for localized source previews."""
+    if not isinstance(url, str):
+        return "", "", None
+    parsed_url = urlsplit(url)
+    if (
+        parsed_url.scheme != "https"
+        or parsed_url.hostname != "www.tbs-sct.canada.ca"
+        or parsed_url.path != "/pol/doc-fra.aspx"
+    ):
+        return "", "", None
+
+    try:
+        response = requests.get(
+            url,
+            timeout=3,
+            headers={
+                "User-Agent": "CanChat/2.0 (https://github.com/dto-btn/canchat-v2; contact@example.com) requests/2.31.0",
+                "Accept": "text/html",
+                "Accept-Language": "fr-CA,fr;q=0.9",
+            },
+        )
+        if response.status_code != 200:
+            return "", "", response.status_code
+
+        soup = BeautifulSoup(response.text, "html.parser")
+        title_tag = soup.find("h1")
+        title = title_tag.get_text(" ", strip=True) if title_tag else ""
+        content_area = soup.find("div", id="ps-doc") or soup.find("main")
+        if content_area is None:
+            return title, "", response.status_code
+
+        for tag in content_area.find_all(
+            ["script", "style", "nav", "header", "footer"]
+        ):
+            tag.decompose()
+        excerpt = content_area.get_text(" ", strip=True)
+        return title, excerpt, response.status_code
+    except Exception as e:
+        log.warning(f"Error fetching French TBS policy preview: {type(e).__name__}")
         return "", "", None
 
 
@@ -926,12 +968,36 @@ async def chat_wiki_grounding_handler(
             sources_summary = []
             for source in grounding_data["grounding_data"]:
                 original_url = source.get("url", "")
-                converted_url, source_language = convert_wikipedia_url_for_language(
-                    original_url, detected_language
-                )
+                # Preserve EKH page-ID URLs only when EKH provides their language.
+                if source.get("source") == "ekh-tbs-policies":
+                    converted_url = original_url
+                    source_language = source.get("language") or detected_language
+                elif (
+                    isinstance(source.get("source"), str)
+                    and source["source"].startswith("ekh-")
+                    and source.get("language_specific_url")
+                ):
+                    converted_url, source_language = original_url, source["language"]
+                else:
+                    converted_url, source_language = convert_wikipedia_url_for_language(
+                        original_url, detected_language
+                    )
 
+                if (
+                    source.get("source") == "ekh-tbs-policies"
+                    and source_language == "fr"
+                ):
+                    french_title, french_excerpt, _ = (
+                        fetch_tbs_policy_title_and_excerpt(converted_url)
+                    )
+                    title = french_title or source.get("title", "")
+                    preview = french_excerpt or source.get("content", "")
+                    content = preview[:200] + "..." if len(preview) > 200 else preview
+                    final_url = converted_url
+                    final_language = "fr"
+                    fallback_reason = None
                 # If we converted to a French URL, try to fetch the French title and content
-                if source_language == "fr" and converted_url != original_url:
+                elif source_language == "fr" and converted_url != original_url:
                     french_title, french_excerpt, status_code = (
                         fetch_wikipedia_title_and_excerpt(converted_url)
                     )
@@ -986,6 +1052,7 @@ async def chat_wiki_grounding_handler(
                     "url": final_url,
                     "score": primary_score,  # This is what frontend displays as relevance
                     "language": final_language,
+                    "source": source.get("source"),
                 }
 
                 # Add reranking information if available
@@ -1847,9 +1914,9 @@ async def process_chat_response(
         return response
 
     if event_emitter:
-        task_id = str(uuid4())  # Create a unique task ID.
-
         # Handle as a background task
+        task_id = None
+
         async def post_response_handler(response, events):
             message = Chats.get_message_by_id_and_message_id(
                 metadata["chat_id"], metadata["message_id"]
@@ -2154,7 +2221,6 @@ async def process_chat_response(
 
                 await background_tasks_handler()
             except asyncio.CancelledError:
-                print("Task was cancelled!")
                 await event_emitter({"type": "task-cancelled"})
 
                 if not ENABLE_REALTIME_CHAT_SAVE:
@@ -2170,8 +2236,15 @@ async def process_chat_response(
             if response.background is not None:
                 await response.background()
 
-        # background_tasks.add_task(post_response_handler, response, events)
-        task_id, _ = create_task(post_response_handler(response, events))
+        task_id, _ = await request.app.state.stream_task_manager.create(
+            post_response_handler(response, events),
+            metadata={
+                "chat_id": metadata.get("chat_id"),
+                "message_id": metadata.get("message_id"),
+                "session_id": metadata.get("session_id"),
+                "user_id": metadata.get("user_id"),
+            },
+        )
         return {"status": True, "task_id": task_id}
 
     else:

@@ -1,14 +1,30 @@
 import time
-from typing import Optional
+from typing import Optional, Union
 import uuid
 from pydantic import BaseModel
-from sqlalchemy import Column, Text, BigInteger, func
+from sqlalchemy import Column, Text, BigInteger, func, not_, or_
 
 from open_webui.internal.db import get_db
 from open_webui.models.base import Base
 from logging import getLogger
 
 logger = getLogger(__name__)
+
+# A single stored model name, or several (e.g. "GPT 4o" and "gpt 4o")
+ModelFilter = Optional[Union[str, list[str]]]
+
+
+def _model_condition(model: Union[str, list[str]]):
+    if isinstance(model, list):
+        return MessageMetric.model.in_(model)
+    return MessageMetric.model == model
+
+
+# CrewAI (prompts with tools selected) logs the model as "azure/<deployment>"
+# or "crewai". Model analytics leaves these rows out.
+# TODO: use a tool-use column once one exists.
+def _tool_use_filter():
+    return or_(MessageMetric.model.like("azure/%"), MessageMetric.model == "crewai")
 
 
 class MessageMetric(Base):
@@ -81,13 +97,15 @@ class MessageMetricsTable:
             db.commit()
             db.refresh(result)
 
-    def get_used_models(self) -> list[str]:
+    def get_prompt_models(self) -> list[str]:
+        """Distinct models users prompted with directly (no tools)."""
         try:
             with get_db() as db:
-                models = db.query(MessageMetric.model).distinct().all()
+                query = db.query(MessageMetric.model).filter(not_(_tool_use_filter()))
+                models = query.distinct().all()
                 return [model[0] for model in models if model[0]]
         except Exception as e:
-            logger.error(f"Failed to get used models: {e}")
+            logger.error(f"Failed to get prompt models: {e}")
             return []
 
     def get_domains(self) -> list[str]:
@@ -115,7 +133,7 @@ class MessageMetricsTable:
             return []
 
     def get_messages_number(
-        self, domain: Optional[str] = None, model: Optional[str] = None
+        self, domain: Optional[str] = None, model: ModelFilter = None
     ) -> Optional[int]:
         try:
             with get_db() as db:
@@ -123,14 +141,14 @@ class MessageMetricsTable:
                 if domain:
                     query = query.filter(MessageMetric.user_domain == domain)
                 if model:
-                    query = query.filter(MessageMetric.model == model)
+                    query = query.filter(_model_condition(model))
                 return query.count()
         except Exception as e:
             logger.error(f"Failed to get messages number: {e}")
             return 0
 
     def get_daily_messages_number(
-        self, domain: Optional[str] = None, model: Optional[str] = None
+        self, domain: Optional[str] = None, model: ModelFilter = None
     ) -> Optional[int]:
         try:
             with get_db() as db:
@@ -147,7 +165,7 @@ class MessageMetricsTable:
                 if domain:
                     query = query.filter(MessageMetric.user_domain == domain)
                 if model:
-                    query = query.filter(MessageMetric.model == model)
+                    query = query.filter(_model_condition(model))
 
                 return query.count()
         except Exception as e:
@@ -227,7 +245,7 @@ class MessageMetricsTable:
             return 0  # Return 0 instead of None
 
     def get_historical_messages_data(
-        self, days: int = 7, domain: Optional[str] = None, model: Optional[str] = None
+        self, days: int = 7, domain: Optional[str] = None, model: ModelFilter = None
     ) -> list[dict]:
         """
         Returns a list of dicts with 'date' and 'count' for each day in the range (oldest to newest),
@@ -256,7 +274,7 @@ class MessageMetricsTable:
                 if domain:
                     query = query.filter(MessageMetric.user_domain == domain)
                 if model:
-                    query = query.filter(MessageMetric.model == model)
+                    query = query.filter(_model_condition(model))
                 results = query.all()
                 for (created_at,) in results:
                     date_str = time.strftime("%Y-%m-%d", time.gmtime(created_at))
@@ -341,7 +359,7 @@ class MessageMetricsTable:
         start_timestamp: int,
         end_timestamp: int,
         domain: str = None,
-        model: str = None,
+        model: ModelFilter = None,
     ) -> dict:
         """Get message metrics for a specific date range"""
         try:
@@ -358,7 +376,7 @@ class MessageMetricsTable:
 
                 # Apply model filter if specified
                 if model:
-                    query = query.filter(MessageMetric.model == model)
+                    query = query.filter(_model_condition(model))
 
                 # Count total prompts
                 total_prompts = query.count()
@@ -419,7 +437,7 @@ class MessageMetricsTable:
         start_timestamp: int,
         end_timestamp: int,
         domain: str = None,
-        model: str = None,
+        model: ModelFilter = None,
     ) -> list[dict]:
         """Get historical daily prompt data for a specific date range"""
         try:
@@ -440,7 +458,7 @@ class MessageMetricsTable:
                         query = query.filter(MessageMetric.user_domain == domain)
 
                     if model:
-                        query = query.filter(MessageMetric.model == model)
+                        query = query.filter(_model_condition(model))
 
                     count = query.count()
 
@@ -459,7 +477,7 @@ class MessageMetricsTable:
         start_timestamp: int,
         end_timestamp: int,
         domain: str = None,
-        model: str = None,
+        model: ModelFilter = None,
         mcp_tool: str = None,
     ) -> list[dict]:
         """Get historical daily token usage data for a specific date range"""
@@ -481,7 +499,7 @@ class MessageMetricsTable:
                         query = query.filter(MessageMetric.user_domain == domain)
 
                     if model:
-                        query = query.filter(MessageMetric.model == model)
+                        query = query.filter(_model_condition(model))
 
                     query = self._apply_mcp_filter(query, mcp_tool)
 
@@ -503,7 +521,7 @@ class MessageMetricsTable:
     # This function is here and not with Users model since the values needed are in the message metrics table.
     # Values are grouped by date and user_id without sql due to limitations with timestamps and being database agnostic.
     def get_historical_daily_users(
-        self, days: int = 7, domain: Optional[str] = None, model: Optional[str] = None
+        self, days: int = 7, domain: Optional[str] = None, model: ModelFilter = None
     ) -> list[dict]:
         try:
             current_time = int(time.time())
@@ -522,7 +540,7 @@ class MessageMetricsTable:
                 if domain:
                     query = query.filter(MessageMetric.user_domain == domain)
                 if model:
-                    query = query.filter(MessageMetric.model == model)
+                    query = query.filter(_model_condition(model))
 
                 results = query.all()
 
@@ -556,7 +574,7 @@ class MessageMetricsTable:
             return sorted(fallback, key=lambda x: x["date"])
 
     def get_inter_prompt_latency_histogram(
-        self, domain: Optional[str] = None, model: Optional[str] = None
+        self, domain: Optional[str] = None, model: ModelFilter = None
     ) -> dict:
         """
         Calculate inter-prompt latency histogram for user behavior analysis.
@@ -576,7 +594,7 @@ class MessageMetricsTable:
                 if domain:
                     query = query.filter(MessageMetric.user_domain == domain)
                 if model:
-                    query = query.filter(MessageMetric.model == model)
+                    query = query.filter(_model_condition(model))
 
                 query = query.order_by(MessageMetric.chat_id, MessageMetric.created_at)
                 results = query.all()

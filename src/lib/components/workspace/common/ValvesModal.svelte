@@ -21,13 +21,13 @@
 	export let show = false;
 
 	export let type = 'tool';
-	export let id = null;
+	export let id: any = null;
 
 	let saving = false;
 	let loading = false;
 
-	let valvesSpec = null;
-	let valves = {};
+	let valvesSpec: any = null;
+	let valves: Record<string, any> = {};
 
 	const submitHandler = async () => {
 		saving = true;
@@ -36,11 +36,11 @@
 			// Convert string to array
 			for (const property in valvesSpec.properties) {
 				if (valvesSpec.properties[property]?.type === 'array') {
-					valves[property] = (valves[property] ?? '').split(',').map((v) => v.trim());
+					valves[property] = (valves[property] ?? '').split(',').map((v: any) => v.trim());
 				}
 			}
 
-			let res = null;
+			let res: any = null;
 
 			if (type === 'tool') {
 				res = await updateToolValvesById(getRequestToken(), id, valves).catch((error) => {

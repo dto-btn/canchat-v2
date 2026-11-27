@@ -19,12 +19,12 @@
 
 	const i18n = getI18n();
 
-	export let user;
+	export let user: any;
 
-	export let history;
-	export let messageId;
+	export let history: any;
+	export let messageId: any;
 
-	export let siblings;
+	export let siblings: any;
 
 	export let showPreviousMessage: Function;
 	export let showNextMessage: Function;
@@ -37,6 +37,7 @@
 
 	let edit = false;
 	let editedContent = '';
+	const getTextArea = (event: Event) => event.currentTarget as HTMLTextAreaElement;
 	let messageEditTextAreaElement: HTMLTextAreaElement;
 	let showDeleteConfirm = false;
 
@@ -47,7 +48,7 @@
 		}
 	}
 
-	const copyToClipboard = async (text) => {
+	const copyToClipboard = async (text: any) => {
 		const res = await _copyToClipboard(text);
 		if (res) {
 			toast.success($i18n.t('Copying to clipboard was successful!'));
@@ -117,6 +118,7 @@
 
 					{#if message.timestamp}
 						<div
+							data-reveal-on-focus
 							class=" self-center text-xs invisible group-hover:visible text-gray-400 font-medium first-letter:capitalize ml-0.5 translate-y-[1px]"
 						>
 							<Tooltip content={dayjs(message.timestamp * 1000).format('dddd, DD MMMM YYYY HH:mm')}>
@@ -159,8 +161,9 @@
 							class=" bg-transparent outline-none w-full resize-none"
 							bind:value={editedContent}
 							on:input={(e) => {
-								e.target.style.height = '';
-								e.target.style.height = `${e.target.scrollHeight}px`;
+								const textarea = getTextArea(e);
+								textarea.style.height = '';
+								textarea.style.height = `${textarea.scrollHeight}px`;
 							}}
 							on:keydown={(e) => {
 								if (e.key === 'Escape') {
@@ -230,6 +233,7 @@
 					</div>
 
 					<div
+						data-message-actions
 						class=" flex {($settings?.chatBubble ?? true)
 							? 'justify-end'
 							: ''}  text-gray-600 dark:text-gray-500"

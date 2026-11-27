@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { marked } from 'marked';
 	import { replaceTokens, processResponseContent } from '$lib/utils';
 	import { user } from '$lib/stores';
@@ -11,15 +11,15 @@
 
 	const dispatch = createEventDispatcher();
 
-	export let id;
-	export let content;
-	export let model = null;
+	export let id: any;
+	export let content: any;
+	export let model: any = null;
 	export let save = false;
 
-	export let sourceIds = [];
-	export let onSourceClick = () => {};
+	export let sourceIds: any[] = [];
+	export let onSourceClick: () => void = () => {};
 
-	let tokens = [];
+	let tokens: any[] = [];
 
 	const options = {
 		throwOnError: false

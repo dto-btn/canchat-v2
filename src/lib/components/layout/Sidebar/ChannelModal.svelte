@@ -14,14 +14,14 @@
 	const i18n = getI18n();
 
 	export let show = false;
-	export let onSubmit: Function = () => {};
+	export let onSubmit: (value: unknown) => void = () => {};
 	export let onUpdate: Function = () => {};
 
-	export let channel = null;
+	export let channel: any = null;
 	export let edit = false;
 
 	let name = '';
-	let accessControl = null;
+	let accessControl: any = null;
 
 	let loading = false;
 

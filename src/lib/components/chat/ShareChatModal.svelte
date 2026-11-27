@@ -11,10 +11,10 @@
 	import Link from '../icons/Link.svelte';
 	import { getRequestToken } from '$lib/services/auth';
 
-	export let chatId;
+	export let chatId: any;
 
-	let chat = null;
-	let shareUrl = null;
+	let chat: any = null;
+	let shareUrl: any = null;
 	const i18n = getI18n();
 
 	const shareLocalChat = async () => {
@@ -54,7 +54,7 @@
 
 	export let show = false;
 
-	const isDifferentChat = (_chat) => {
+	const isDifferentChat = (_chat: any) => {
 		if (!chat) {
 			return true;
 		}

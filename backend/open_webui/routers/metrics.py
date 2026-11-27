@@ -6,6 +6,7 @@ from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
+    Request,
     status,
     Response,
 )
@@ -13,6 +14,8 @@ from fastapi.responses import StreamingResponse
 import logging
 import csv
 import io
+import time
+from typing import Optional
 
 from open_webui.utils.auth import get_metrics_user
 from open_webui.env import SRC_LOG_LEVELS
@@ -245,16 +248,133 @@ async def get_historical_tokens(
 ############################
 
 
+# Active = a stored name that matches a model in the chat dropdown.
+# Archived = any other stored name, one entry each.
+# TODO: group by the planned model_family / model_generation columns once they exist.
+
+
+def _match_live_name(used_id: str, live: dict) -> Optional[str]:
+    """Id of the chat model whose id or display name matches, ignoring case."""
+    name = used_id.casefold()
+    for live_id, model in live.items():
+        if name in (live_id.casefold(), str(model.get("name") or "").casefold()):
+            return live_id
+    return None
+
+
+def _model_key(used_id: str, live: dict) -> str:
+    """Dropdown entry for a stored name: the chat model id, or the name itself."""
+    return _match_live_name(used_id, live) or used_id
+
+
+def _is_hidden(model: dict) -> bool:
+    """Hidden models aren't in the chat dropdown, so they count as archived."""
+    meta = (model.get("info") or {}).get("meta") or {}
+    return bool(meta.get("hidden"))
+
+
+_LIVE_MODELS_RETRY_SECONDS = 60
+
+
+async def _get_live_models(request: Request) -> dict:
+    """Models in the chat dropdown, keyed by id (no arena or hidden models)."""
+    state = request.app.state
+    live_models = state.MODELS
+    # Loading calls every provider, so retry at most once a minute if it comes back empty
+    retry_at = getattr(state, "METRICS_MODELS_RETRY_AT", 0.0)
+    if not live_models and time.monotonic() >= retry_at:
+        # Set before awaiting so concurrent requests don't load again
+        state.METRICS_MODELS_RETRY_AT = time.monotonic() + _LIVE_MODELS_RETRY_SECONDS
+        reason = "no chat models were returned"
+        try:
+            # Imported here to avoid a circular import at module load
+            from open_webui.utils.models import get_all_models
+
+            await get_all_models(request)
+            live_models = state.MODELS
+        except Exception as e:
+            reason = f"loading chat models failed: {e}"
+            live_models = {}
+        if not live_models:
+            log.warning(
+                f"Model Analysis shows every model as archived because {reason}; "
+                f"retrying in {_LIVE_MODELS_RETRY_SECONDS}s"
+            )
+
+    return {
+        model_id: model
+        for model_id, model in (live_models or {}).items()
+        if not model.get("arena") and not _is_hidden(model)
+    }
+
+
+# Listing stored names scans all of message_metrics, so reuse the list for a minute
+_PROMPT_MODELS_TTL_SECONDS = 60
+
+
+def _get_prompt_models_cached(request: Request) -> list[str]:
+    """Stored model names (no tool use), read from the database at most once a minute."""
+    state = request.app.state
+    now = time.monotonic()
+    if now < getattr(state, "METRICS_PROMPT_MODELS_EXPIRES_AT", 0.0):
+        return state.METRICS_PROMPT_MODELS
+    names = MessageMetrics.get_prompt_models() or []
+    # An empty list may mean the query failed, so it isn't kept
+    if names:
+        state.METRICS_PROMPT_MODELS = names
+        state.METRICS_PROMPT_MODELS_EXPIRES_AT = now + _PROMPT_MODELS_TTL_SECONDS
+    return names
+
+
+async def _resolve_model_filter(
+    request: Request, model: Optional[str]
+) -> Optional[list[str]]:
+    """Stored names to count for a dropdown selection.
+
+    Archived: the name itself. Active: the chat model's id and display name in
+    any case (e.g. "GPT 4o", "gpt 4o").
+    """
+    if not model:
+        return None
+    live = await _get_live_models(request)
+    if model not in live:
+        return [model]
+    # Exact matches only, so "GPT 4o mini" isn't counted under "GPT 4o"
+    names = [
+        name
+        for name in _get_prompt_models_cached(request)
+        if _match_live_name(name, live) == model
+    ]
+    return names or [model]
+
+
 @router.get("/models")
-async def get_models(user=Depends(get_metrics_user)):
-    models = MessageMetrics.get_used_models() or []
+async def get_models(request: Request, user=Depends(get_metrics_user)):
+    """Models users prompted with, split into active and archived.
 
-    # For analyst role, we should filter models by domain if needed
-    # However, since this is for metrics display, analysts should see all models
-    # that have been used (they'll be domain-filtered in the actual data queries)
-    # This allows the dropdown to show all available models for selection
+    Tool-use (CrewAI) rows are left out; the Tokens tab covers them. Analysts
+    see every model; the metric queries are domain-filtered.
 
-    return {"models": models}
+    NOTE: `models` (every stored name, kept for older callers) no longer includes
+    tool-use names like "azure/gpt-4o" or "crewai" (CANCHAT-5).
+    """
+    used_models = _get_prompt_models_cached(request)
+    live = await _get_live_models(request)
+
+    keys = sorted({_model_key(name, live) for name in used_models})
+    active_models = [
+        {"id": key, "name": live[key].get("name") or key} for key in keys if key in live
+    ]
+    archived_models = [{"id": key, "name": key} for key in keys if key not in live]
+
+    active_models.sort(key=lambda m: m["name"].lower())
+    archived_models.sort(key=lambda m: m["name"].lower())
+
+    return {
+        "models": used_models,
+        "active_models": active_models,
+        "archived_models": archived_models,
+    }
 
 
 ############################
@@ -264,7 +384,10 @@ async def get_models(user=Depends(get_metrics_user)):
 
 @router.get("/models/prompts")
 async def get_model_prompts(
-    model: str = None, domain: str = None, user=Depends(get_metrics_user)
+    request: Request,
+    model: str = None,
+    domain: str = None,
+    user=Depends(get_metrics_user),
 ):
     # For analyst role, enforce domain restriction
     if user.role == "analyst":
@@ -273,7 +396,8 @@ async def get_model_prompts(
 
     # Admin and global_analyst can see all domains or filter by domain
 
-    total_prompts = MessageMetrics.get_messages_number(domain, model)
+    models = await _resolve_model_filter(request, model)
+    total_prompts = MessageMetrics.get_messages_number(domain, models)
     return {"total_prompts": total_prompts or 0}
 
 
@@ -284,7 +408,10 @@ async def get_model_prompts(
 
 @router.get("/models/daily/prompts")
 async def get_model_daily_prompts(
-    model: str = None, domain: str = None, user=Depends(get_metrics_user)
+    request: Request,
+    model: str = None,
+    domain: str = None,
+    user=Depends(get_metrics_user),
 ):
     # For analyst role, enforce domain restriction
     if user.role == "analyst":
@@ -293,8 +420,9 @@ async def get_model_daily_prompts(
 
     # Admin and global_analyst can see all domains or filter by domain
 
+    models = await _resolve_model_filter(request, model)
     total_daily_prompts = MessageMetrics.get_daily_messages_number(
-        domain=domain, model=model
+        domain=domain, model=models
     )
     return {"total_daily_prompts": total_daily_prompts}
 
@@ -306,6 +434,7 @@ async def get_model_daily_prompts(
 
 @router.get("/models/historical/prompts")
 async def get_model_historical_prompts(
+    request: Request,
     days: int = 7,
     model: str = None,
     domain: str = None,
@@ -324,7 +453,8 @@ async def get_model_historical_prompts(
     if model == "":
         model = None
 
-    historical_data = MessageMetrics.get_historical_messages_data(days, domain, model)
+    models = await _resolve_model_filter(request, model)
+    historical_data = MessageMetrics.get_historical_messages_data(days, domain, models)
 
     return {"historical_prompts": historical_data}
 
@@ -336,6 +466,7 @@ async def get_model_historical_prompts(
 
 @router.get("/historical/users/daily")
 async def get_historical_daily_users(
+    request: Request,
     days: int = 7,
     model: str = None,
     domain: str = None,
@@ -351,8 +482,9 @@ async def get_historical_daily_users(
             detail=ERROR_MESSAGES.NOT_FOUND,
         )
 
+    models = await _resolve_model_filter(request, model)
     historical_daily_data = MessageMetrics.get_historical_daily_users(
-        days, domain_to_use, model
+        days, domain_to_use, models
     )
 
     return {"historical_daily_users": historical_daily_data}
@@ -362,9 +494,13 @@ async def get_historical_daily_users(
 # Date Range Metrics
 ############################
 
+# NOTE: unused until CANCHAT-215 (date-range summary panel). The frontend call was
+# removed in CANCHAT-5 because the result was never shown.
+
 
 @router.get("/range/users")
 async def get_range_metrics(
+    request: Request,
     start_date: str,
     end_date: str,
     domain: str = None,
@@ -391,8 +527,9 @@ async def get_range_metrics(
 
         # Get metrics for date range
         users_data = Users.get_range_metrics(start_timestamp, end_timestamp, domain)
+        models = await _resolve_model_filter(request, model)
         prompts_data = MessageMetrics.get_range_metrics(
-            start_timestamp, end_timestamp, domain, model
+            start_timestamp, end_timestamp, domain, models
         )
 
         # Calculate averages
@@ -412,8 +549,9 @@ async def get_range_metrics(
         prev_start = start_timestamp - (end_timestamp - start_timestamp)
         prev_end = start_timestamp
         prev_users_data = Users.get_range_metrics(prev_start, prev_end, domain)
+        # Same names as the current period, so growth compares like with like
         prev_prompts_data = MessageMetrics.get_range_metrics(
-            prev_start, prev_end, domain, model
+            prev_start, prev_end, domain, models
         )
 
         user_growth = (

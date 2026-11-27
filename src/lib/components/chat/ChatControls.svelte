@@ -11,31 +11,46 @@
 	import Overview from './Overview.svelte';
 	import EllipsisVertical from '../icons/EllipsisVertical.svelte';
 	import Artifacts from './Artifacts.svelte';
-	import * as focusTrap from 'focus-trap';
+	import { getI18n } from '$lib/utils/context';
 
-	export let history;
-	export let models = [];
+	const i18n = getI18n();
 
-	export let chatId = null;
+	export let history: any;
+	export let models: any[] = [];
 
-	export let chatFiles = [];
-	export let params = {};
+	export let chatId: any = null;
+
+	export let chatFiles: any[] = [];
+	export let params: Record<string, any> = {};
 
 	export let eventTarget: EventTarget;
 	export let submitPrompt: Function;
 	export let stopResponse: Function;
 	export let showMessage: Function;
-	export let files;
-	export let modelId;
+	export let files: any;
+	export let modelId: any;
 
-	export let pane;
+	export let pane: any;
 
-	let mediaQuery;
+	let mediaQuery: any;
 	let largeScreen = false;
 	let dragged = false;
 
 	let minSize = 0;
-	let trap = null;
+	let returnFocus: HTMLElement | null = null;
+
+	const focusControls = async () => {
+		const previousFocus = document.activeElement;
+		await tick();
+		if (!$showControls) return;
+		const control = document.querySelector<HTMLButtonElement>(
+			'#chat-controls-container-wrapper button'
+		);
+		if (control) {
+			returnFocus = previousFocus instanceof HTMLElement ? previousFocus : null;
+			control.focus();
+		}
+	};
 
 	export const openPane = () => {
 		if (parseInt(localStorage?.chatControlsSize)) {
@@ -45,7 +60,7 @@
 		}
 	};
 
-	const handleMediaQuery = async (e) => {
+	const handleMediaQuery = async (e: any) => {
 		if (e.matches) {
 			largeScreen = true;
 
@@ -66,22 +81,12 @@
 		}
 	};
 
-	const onMouseDown = (event) => {
+	const onMouseDown = (event: any) => {
 		dragged = true;
 	};
 
-	const onMouseUp = (event) => {
+	const onMouseUp = (event: any) => {
 		dragged = false;
-	};
-
-	const focusTrapListener = async () => {
-		await tick();
-		const wrapper = document.getElementById('chat-controls-container-wrapper');
-		trap = focusTrap.createFocusTrap(wrapper, {
-			clickOutsideDeactivates: true,
-			returnFocusOnDeactivate: true
-		});
-		trap.activate();
 	};
 
 	onMount(() => {
@@ -93,13 +98,16 @@
 
 		// Select the container element you want to observe
 		const container = document.getElementById('chat-container');
+		if (!container) {
+			return;
+		}
 
 		// initialize the minSize based on the container width
 		minSize = Math.floor((350 / container.clientWidth) * 100);
 
 		// Create a new ResizeObserver instance
 		const resizeObserver = new ResizeObserver((entries) => {
-			for (let entry of entries) {
+			for (const entry of entries) {
 				const width = entry.contentRect.width;
 				// calculate the percentage of 200px
 				const percentage = (350 / width) * 100;
@@ -123,6 +131,7 @@
 
 	onDestroy(() => {
 		showControls.set(false);
+		returnFocus?.focus();
 
 		mediaQuery.removeEventListener('change', handleMediaQuery);
 		document.removeEventListener('mousedown', onMouseDown);
@@ -140,7 +149,11 @@
 	};
 
 	$: if ($showControls) {
-		focusTrapListener();
+		focusControls();
+	}
+	$: if (!$showControls && returnFocus) {
+		returnFocus.focus();
+		returnFocus = null;
 	}
 	$: if (!chatId) {
 		closeHandler();
@@ -152,6 +165,7 @@
 		{#if $showControls}
 			<Drawer
 				show={$showControls}
+				ariaLabel={$i18n.t('Chat Controls')}
 				on:close={() => {
 					showControls.set(false);
 				}}
@@ -194,7 +208,6 @@
 							<Controls
 								on:close={() => {
 									showControls.set(false);
-									trap.deactivate();
 								}}
 								{models}
 								bind:chatFiles
@@ -286,7 +299,6 @@
 								<Controls
 									on:close={() => {
 										showControls.set(false);
-										trap.deactivate();
 									}}
 									{models}
 									bind:chatFiles

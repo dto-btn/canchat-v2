@@ -7,10 +7,10 @@
 
 	const i18n = getI18n();
 
-	export let actions = [];
-	export let selectedActionIds = [];
+	export let actions: any[] = [];
+	export let selectedActionIds: any[] = [];
 
-	let _actions = {};
+	let _actions: Record<string, any> = {};
 
 	onMount(() => {
 		_actions = actions.reduce((acc, action) => {

@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { getI18n } from '$lib/utils/context';
 
 	import { toast } from 'svelte-sonner';
@@ -16,7 +16,7 @@
 	import ModelEditor from '$lib/components/workspace/Models/ModelEditor.svelte';
 	import { getRequestToken } from '$lib/services/auth';
 
-	let model = null;
+	let model: any = null;
 
 	onMount(async () => {
 		const _id = $page.url.searchParams.get('id');
@@ -33,7 +33,7 @@
 		}
 	});
 
-	const onSubmit = async (modelInfo) => {
+	const onSubmit = async (modelInfo: any) => {
 		const res = await updateModelById(getRequestToken(), modelInfo.id, modelInfo);
 
 		if (res) {

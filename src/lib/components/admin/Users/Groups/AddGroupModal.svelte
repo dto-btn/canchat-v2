@@ -5,12 +5,12 @@
 
 	import Modal from '$lib/components/common/Modal.svelte';
 	import Textarea from '$lib/components/common/Textarea.svelte';
-	export let onSubmit: Function = () => {};
+	export let onSubmit: (value: unknown) => void = () => {};
 	export let show = false;
 
 	let name = '';
 	let description = '';
-	let userIds = [];
+	let userIds: any[] = [];
 
 	let loading = false;
 
@@ -33,7 +33,7 @@
 	};
 </script>
 
-<Modal size="sm" bind:show returnfocusSelector="#add-group">
+<Modal size="sm" bind:show returnFocusSelector="#add-group">
 	<div>
 		<div class=" flex justify-between dark:text-gray-100 px-5 pt-4 mb-1.5">
 			<div class=" text-lg font-medium self-center font-primary">

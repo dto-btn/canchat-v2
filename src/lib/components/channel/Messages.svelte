@@ -23,9 +23,9 @@
 
 	const i18n = getI18n();
 
-	export let id = null;
-	export let channel = null;
-	export let messages = [];
+	export let id: any = null;
+	export let channel: any = null;
+	export let messages: any[] = [];
 	export let top = false;
 	export let thread = false;
 
@@ -45,6 +45,100 @@
 
 		await tick();
 		messagesLoading = false;
+	};
+
+	const deleteChannelMessage = async (message: any) => {
+		messages = messages.filter((m: any) => m.id !== message.id);
+
+		await deleteMessage(getRequestToken(), message.channel_id, message.id).catch((error) => {
+			toast.error(`${error}`);
+			return null;
+		});
+	};
+
+	const editChannelMessage = async (message: any, content: any) => {
+		messages = messages.map((m: any) => {
+			if (m.id === message.id) {
+				m.content = content;
+			}
+			return m;
+		});
+
+		await updateMessage(getRequestToken(), message.channel_id, message.id, {
+			content
+		}).catch((error) => {
+			toast.error(`${error}`);
+			return null;
+		});
+	};
+
+	const openThread = (threadId: any) => {
+		onThread(threadId);
+	};
+
+	const getEditHandler = (message: any) => {
+		return (content: any) => editChannelMessage(message, content);
+	};
+
+	const getReactionHandler = (message: any) => {
+		return (name: any) => toggleReaction(message, name);
+	};
+
+	const toggleReaction = async (message: any, name: any) => {
+		if (
+			(message?.reactions ?? [])
+				.find((reaction: any) => reaction.name === name)
+				?.user_ids?.includes($user.id) ??
+			false
+		) {
+			messages = messages.map((m: any) => {
+				if (m.id === message.id) {
+					const reaction = m.reactions.find((reaction: any) => reaction.name === name);
+
+					if (reaction) {
+						reaction.user_ids = reaction.user_ids.filter((id: any) => id !== $user.id);
+						reaction.count = reaction.user_ids.length;
+
+						if (reaction.count === 0) {
+							m.reactions = m.reactions.filter((r: any) => r.name !== name);
+						}
+					}
+				}
+				return m;
+			});
+
+			await removeReaction(getRequestToken(), message.channel_id, message.id, name).catch(
+				(error) => {
+					toast.error(`${error}`);
+					return null;
+				}
+			);
+		} else {
+			messages = messages.map((m: any) => {
+				if (m.id === message.id) {
+					if (m.reactions) {
+						const reaction = m.reactions.find((reaction: any) => reaction.name === name);
+
+						if (reaction) {
+							reaction.user_ids.push($user.id);
+							reaction.count = reaction.user_ids.length;
+						} else {
+							m.reactions.push({
+								name,
+								user_ids: [$user.id],
+								count: 1
+							});
+						}
+					}
+				}
+				return m;
+			});
+
+			await addReaction(getRequestToken(), message.channel_id, message.id, name).catch((error) => {
+				toast.error(`${error}`);
+				return null;
+			});
+		}
 	};
 </script>
 
@@ -99,95 +193,10 @@
 				{thread}
 				showUserProfile={messageIdx === 0 ||
 					messageList.at(messageIdx - 1)?.user_id !== message.user_id}
-				onDelete={() => {
-					messages = messages.filter((m) => m.id !== message.id);
-
-					const res = deleteMessage(getRequestToken(), message.channel_id, message.id).catch(
-						(error) => {
-							toast.error(`${error}`);
-							return null;
-						}
-					);
-				}}
-				onEdit={(content) => {
-					messages = messages.map((m) => {
-						if (m.id === message.id) {
-							m.content = content;
-						}
-						return m;
-					});
-
-					const res = updateMessage(getRequestToken(), message.channel_id, message.id, {
-						content: content
-					}).catch((error) => {
-						toast.error(`${error}`);
-						return null;
-					});
-				}}
-				onThread={(id) => {
-					onThread(id);
-				}}
-				onReaction={(name) => {
-					if (
-						(message?.reactions ?? [])
-							.find((reaction) => reaction.name === name)
-							?.user_ids?.includes($user.id) ??
-						false
-					) {
-						messages = messages.map((m) => {
-							if (m.id === message.id) {
-								const reaction = m.reactions.find((reaction) => reaction.name === name);
-
-								if (reaction) {
-									reaction.user_ids = reaction.user_ids.filter((id) => id !== $user.id);
-									reaction.count = reaction.user_ids.length;
-
-									if (reaction.count === 0) {
-										m.reactions = m.reactions.filter((r) => r.name !== name);
-									}
-								}
-							}
-							return m;
-						});
-
-						const res = removeReaction(
-							getRequestToken(),
-							message.channel_id,
-							message.id,
-							name
-						).catch((error) => {
-							toast.error(`${error}`);
-							return null;
-						});
-					} else {
-						messages = messages.map((m) => {
-							if (m.id === message.id) {
-								if (m.reactions) {
-									const reaction = m.reactions.find((reaction) => reaction.name === name);
-
-									if (reaction) {
-										reaction.user_ids.push($user.id);
-										reaction.count = reaction.user_ids.length;
-									} else {
-										m.reactions.push({
-											name: name,
-											user_ids: [$user.id],
-											count: 1
-										});
-									}
-								}
-							}
-							return m;
-						});
-
-						const res = addReaction(getRequestToken(), message.channel_id, message.id, name).catch(
-							(error) => {
-								toast.error(`${error}`);
-								return null;
-							}
-						);
-					}
-				}}
+				onDelete={() => deleteChannelMessage(message)}
+				onEdit={getEditHandler(message)}
+				onThread={openThread}
+				onReaction={getReactionHandler(message)}
 			/>
 		{/each}
 
