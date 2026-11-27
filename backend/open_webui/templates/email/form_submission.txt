@@ -1,0 +1,6 @@
+CANChat - {{ title }}
+{% for label, value in sections %}
+{{ label }}:
+{{ value }}
+{% endfor %}
+This message was sent from the CANChat feedback form. Reply to this email to respond to the user directly.

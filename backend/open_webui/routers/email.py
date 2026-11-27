@@ -1,10 +1,11 @@
 import base64
-import html
 import logging
 import os
+from pathlib import Path
 from typing import List, Optional
 
 from azure.communication.email.aio import EmailClient
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 from fastapi import (
     APIRouter,
     Depends,
@@ -16,7 +17,7 @@ from fastapi import (
     status,
 )
 
-from open_webui.env import SRC_LOG_LEVELS, VERSION
+from open_webui.env import SRC_LOG_LEVELS
 from open_webui.utils.auth import get_verified_user
 
 log = logging.getLogger(__name__)
@@ -24,10 +25,30 @@ log.setLevel(SRC_LOG_LEVELS["EMAIL"])
 
 router = APIRouter()
 
-# Temporary: read from the environment until these move into PersistentConfig.
+# Temporary: read from the environment until these move into config.py.
 EMAIL_CONNECTION_STRING = os.environ.get("AZURE_EMAIL_CONNECTION_STRING", "")
 EMAIL_SENDER_ADDRESS = os.environ.get("EMAIL_SENDER_ADDRESS", "")
 EMAIL_SUPPORT_RECIPIENT = os.environ.get("EMAIL_SUPPORT_RECIPIENT", "")
+
+EMAIL_TEMPLATES_DIR = Path(__file__).parent.parent / "templates" / "email"
+
+# Autoescape covers the .html template, so user input can't inject markup.
+templates = Environment(
+    loader=FileSystemLoader(EMAIL_TEMPLATES_DIR),
+    autoescape=select_autoescape(["html"]),
+)
+
+# The logo goes in as an inline attachment the HTML references by cid:.
+# Outlook blocks data: URIs and asks before loading remote images.
+LOGO_CID = "canchat-logo"
+LOGO_ATTACHMENT = {
+    "name": "canchat-logo.png",
+    "contentType": "image/png",
+    "contentInBase64": base64.b64encode(
+        (EMAIL_TEMPLATES_DIR / "canchat-logo.png").read_bytes()
+    ).decode("utf-8"),
+    "contentId": LOGO_CID,
+}
 
 
 ############################
@@ -36,23 +57,10 @@ EMAIL_SUPPORT_RECIPIENT = os.environ.get("EMAIL_SUPPORT_RECIPIENT", "")
 
 
 def build_email_body(title: str, sections: List[tuple]) -> tuple:
-    """Build the plain-text and HTML bodies from (label, value) pairs.
-
-    User input is escaped before it goes into the HTML body.
-    """
-    plain_text = f"{title}\n\n" + "\n\n".join(
-        f"{label}:\n{value}" for label, value in sections
-    )
-
-    html_sections = "".join(
-        f"<h3>{html.escape(label)}</h3>"
-        f'<p style="white-space: pre-wrap;">{html.escape(value)}</p>'
-        for label, value in sections
-    )
-    html_body = (
-        f"<html><body><h2>{html.escape(title)}</h2>{html_sections}</body></html>"
-    )
-
+    """Render the plain-text and HTML bodies from (label, value) pairs."""
+    context = {"title": title, "sections": sections, "logo_cid": LOGO_CID}
+    plain_text = templates.get_template("form_submission.txt").render(context)
+    html_body = templates.get_template("form_submission.html").render(context)
     return plain_text, html_body
 
 
@@ -104,9 +112,8 @@ async def send_email(
             "plainText": plain_text,
             "html": html_body,
         },
+        "attachments": [LOGO_ATTACHMENT, *attachments],
     }
-    if attachments:
-        message["attachments"] = attachments
 
     async with EmailClient.from_connection_string(EMAIL_CONNECTION_STRING) as client:
         poller = await client.begin_send(message)
@@ -139,20 +146,18 @@ async def report_issue(
     log.info("Processing issue report submission")
 
     try:
+        attachments = await build_attachments(files)
         plain_text, html_body = build_email_body(
-            "User Issue Submission",
+            "Issue Report",
             [
-                ("Environment", request.app.state.config.WEBUI_URL),
-                ("App Version", VERSION),
-                ("Email", email),
+                ("Submitted by", email),
                 ("Description", description),
                 ("Steps to Reproduce", stepsToReproduce),
             ],
         )
-        attachments = await build_attachments(files)
 
         message_id = await send_email(
-            subject="User Issue Submission",
+            subject="CANCHAT Issue Report",
             plain_text=plain_text,
             html_body=html_body,
             reply_to=email,
